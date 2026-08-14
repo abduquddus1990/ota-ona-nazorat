@@ -46,6 +46,19 @@ async def healthz():
         "zero_trust": "enforced"
     }
 
+# 5. Telegram Mini App Frontendni to'g'ridan-to'g'ri ulash (Zero-Config Hosting)
+import os
+from fastapi.staticfiles import StaticFiles
+
+frontend_dir = os.path.join(os.path.dirname(__file__), "..", "telegram_miniapp")
+if not os.path.exists(os.path.join(frontend_dir, "index.html")):
+    frontend_dir = os.path.join(os.path.dirname(__file__), "telegram_miniapp")
+if not os.path.exists(os.path.join(frontend_dir, "index.html")):
+    frontend_dir = os.path.join(os.path.dirname(__file__), "..")
+
+if os.path.exists(os.path.join(frontend_dir, "index.html")):
+    app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="frontend")
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
