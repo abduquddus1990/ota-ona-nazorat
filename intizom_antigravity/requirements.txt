@@ -1,0 +1,15 @@
+google-generativeai==0.8.6
+faster-whisper==1.2.1
+aiogram==3.30.0
+supabase==2.31.0
+# bot.py to'g'ridan-to'g'ri ishlatadi (past ball ogohlantirishi uchun Gemini
+# TTS'ga so'rov yuborishda) — avval faqat supabase'ning yashirin (transitive)
+# qaramligi edi, endi aniq versiyalangan
+httpx==0.28.1
+python-dotenv==1.2.2
+sounddevice==0.5.5
+# webrtcvad o'rniga: Windows'da C++ Build Tools talab qilmaydi, tayyor
+# binary wheel bilan keladi, import nomi bir xil ("import webrtcvad")
+webrtcvad-wheels==2.0.14
+numpy==2.4.6
+pydub==0.25.1

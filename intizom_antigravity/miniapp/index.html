@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Xodim Intizom</title>
+<meta name="theme-color" content="#2563eb" />
+<link rel="manifest" href="./manifest.json" />
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL@20..48,100..700,0..1&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <div id="app">
+    <div class="floating-bg" aria-hidden="true">
+      <div class="floating-text floating-text-1">intizom xodim nazorat intizom</div>
+      <div class="floating-text floating-text-2">nazorat intizom xodim nazorat</div>
+      <div class="floating-text floating-text-3">xodim nazorat intizom xodim</div>
+      <div class="floating-text floating-text-4">intizom xodim nazorat intizom</div>
+      <div class="floating-text floating-text-5">nazorat intizom xodim nazorat</div>
+      <div class="floating-text floating-text-6">xodim nazorat intizom xodim</div>
+      <div class="floating-text floating-text-7">intizom xodim nazorat intizom</div>
+      <div class="floating-text floating-text-8">nazorat intizom xodim nazorat</div>
+      <div class="floating-text floating-text-9">xodim nazorat intizom xodim</div>
+      <div class="floating-text floating-text-10">intizom xodim nazorat intizom</div>
+    </div>
+
+    <header class="topbar">
+      <button id="menu-btn" class="icon-btn" aria-label="Menyu">
+        <span class="material-symbols-outlined">menu</span>
+      </button>
+      <h1 id="app-title">Xodim Intizom</h1>
+      <button id="profile-btn" class="avatar-btn" aria-label="Profil">
+        <span id="avatar-letter">?</span>
+      </button>
+    </header>
+
+    <div id="sidebar-overlay" class="overlay hidden"></div>
+
+    <aside id="sidebar" class="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-icon"><span class="material-symbols-outlined">shield_person</span></div>
+        <div>
+          <h3>Xodim Intizom</h3>
+          <p id="sidebar-whoami">Yuklanmoqda...</p>
+        </div>
+        <button id="sidebar-close" class="icon-btn" aria-label="Yopish">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <nav id="sidebar-nav"></nav>
+    </aside>
+
+    <div id="profile-dropdown" class="dropdown hidden">
+      <div class="dropdown-header">
+        <p id="dropdown-name" class="dropdown-name">—</p>
+        <p id="dropdown-role" class="dropdown-role">—</p>
+      </div>
+    </div>
+
+    <main id="view">
+      <div class="state-message">Yuklanmoqda...</div>
+    </main>
+  </div>
+
+  <script src="./app.js"></script>
+</body>
+</html>

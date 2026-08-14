@@ -1,0 +1,49 @@
+{
+  "industry": "kafe",
+  "industry_name_uz": "Kafe / restoran",
+  "criteria": [
+    {
+      "key": "salomlashish",
+      "max_score": 15,
+      "description": "Mijozni kutib olish va salomlashish",
+      "label": "Salomlashish"
+    },
+    {
+      "key": "buyurtma_aniqligi",
+      "max_score": 25,
+      "description": "Buyurtmani aniq va to'liq qabul qilish",
+      "label": "Buyurtma aniqligi"
+    },
+    {
+      "key": "taklif_qilish",
+      "max_score": 15,
+      "description": "Qo'shimcha taom/ichimlik taklif qilish",
+      "label": "Qo'shimcha taklif"
+    },
+    {
+      "key": "xizmat_tezligi",
+      "max_score": 15,
+      "description": "Xizmat ko'rsatish tezligi va e'tibor",
+      "label": "Xizmat tezligi"
+    },
+    {
+      "key": "shikoyatga_yondashuv",
+      "max_score": 15,
+      "description": "Shikoyat yoki muammo bo'lsa, unga to'g'ri yondashish",
+      "label": "Shikoyatga yondashuv"
+    },
+    {
+      "key": "xayrlashish",
+      "max_score": 15,
+      "description": "Xayrlashish va yakuniy taassurot",
+      "label": "Xayrlashish"
+    }
+  ],
+  "classification_keywords": [
+    "buyurtma",
+    "taom",
+    "menyu",
+    "stol",
+    "ichimlik"
+  ]
+}

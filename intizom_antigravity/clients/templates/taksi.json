@@ -1,0 +1,43 @@
+{
+  "industry": "taksi",
+  "industry_name_uz": "Taksi haydovchilari",
+  "criteria": [
+    {
+      "key": "salomlashish",
+      "max_score": 20,
+      "description": "Yo'lovchini kutib olish va muomala odobi",
+      "label": "Salomlashish"
+    },
+    {
+      "key": "manzil_aniqligi",
+      "max_score": 20,
+      "description": "Manzilni aniq so'rash va tasdiqlash",
+      "label": "Manzil aniqligi"
+    },
+    {
+      "key": "narx_shaffofligi",
+      "max_score": 20,
+      "description": "Narxni oldindan aniq va ochiq aytish",
+      "label": "Narx shaffofligi"
+    },
+    {
+      "key": "qulaylik",
+      "max_score": 20,
+      "description": "Yo'lovchi qulayligi uchun harakat (konditsioner, musiqa va h.k. so'rash)",
+      "label": "Qulaylik"
+    },
+    {
+      "key": "xayrlashish",
+      "max_score": 20,
+      "description": "Xayrlashish va yakuniy taassurot",
+      "label": "Xayrlashish"
+    }
+  ],
+  "classification_keywords": [
+    "manzil",
+    "yo'lovchi",
+    "haydab",
+    "buyurtma",
+    "taksi"
+  ]
+}

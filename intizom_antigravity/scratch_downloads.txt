@@ -1,0 +1,85 @@
+fayl : 173311-r25.pdf
+fayl : 704_6- Life Vision_Pre-Intermediate Workbook_2021, 128p.pdf
+fayl : AmazingSetup (1).exe
+fayl : AmazingSetup.exe
+fayl : Antigravity-x64.exe
+fayl : BorealisLauncher.exe
+fayl : ChromeSetup.exe
+fayl : Claude Setup (1).exe
+fayl : Claude Setup.exe
+fayl : Evony_WdlUGgKt5bk.exe
+fayl : GitHub-Copilot-windows-x64-setup.exe
+fayl : Install-Reverse Audio Game-GooglePlayGames (1).exe
+fayl : Install-Reverse Audio Game-GooglePlayGames.exe
+fayl : MinecraftInstaller (1).exe
+fayl : MinecraftInstaller (2).exe
+fayl : MinecraftInstaller (3).exe
+fayl : MinecraftInstaller.exe
+fayl : OfficeSetup.exe
+fayl : Office_Tool_with_runtime_v10.21.35.0_x64.zip
+fayl : PixVerse_V5.6_Image_Text_360P_Анимированная_де.mp4
+fayl : Python-3.11.15.tar.xz
+fayl : SetFlix.apk
+fayl : TZ (1).md
+fayl : TZ (2).md
+fayl : TZ muomala.md
+fayl : TZ.md
+papka : Telegram Desktop
+fayl : VSCodeUserSetup-x64-1.132.0.exe
+fayl : VSCodeUserSetup-x64-1.99.3.exe
+fayl : desktop.ini
+fayl : english.pdf
+papka : fabrizio-bot (1)
+fayl : fabrizio-bot (1).zip
+fayl : fabrizio-bot.zip
+fayl : fabrizio-romano-bot-TZ.md
+fayl : files (1).zip
+fayl : files (2).zip
+fayl : files (3).zip
+fayl : files.zip
+fayl : google-play-services-updater.apk
+fayl : msedge.exe
+fayl : photo_2026-01-18_21-48-46.jpg
+fayl : photo_2026-01-18_21-49-07.jpg
+fayl : photo_2026-01-18_21-49-14.jpg
+fayl : photo_2026-01-18_21-49-20.jpg
+fayl : photo_2026-01-18_21-49-27.jpg
+fayl : photo_2026-01-18_22-02-07.jpg
+fayl : photo_2026-01-24_09-58-51.jpg
+fayl : photo_2026-02-26_09-13-12.jpg
+fayl : photo_2026-03-02_07-41-46.jpg
+fayl : photo_2026-03-13_07-35-19.jpg
+fayl : photo_2026-03-13_07-35-26.jpg
+fayl : photo_2026-03-13_07-35-31.jpg
+fayl : photo_2026-03-13_07-35-36.jpg
+fayl : photo_2026-03-13_07-35-40.jpg
+fayl : photo_2026-03-13_07-35-45.jpg
+fayl : photo_2026-03-13_07-35-49.jpg
+fayl : photo_2026-03-13_07-35-54.jpg
+fayl : photo_2026-03-13_07-35-58.jpg
+fayl : photo_2026-03-13_07-36-02.jpg
+fayl : photo_2026-03-13_08-09-21.jpg
+fayl : photo_2026-03-13_08-09-50.jpg
+fayl : photo_2026-03-13_08-09-56.jpg
+fayl : photo_2026-03-13_08-10-01.jpg
+fayl : photo_2026-03-13_08-10-06.jpg
+fayl : photo_2026-03-13_08-55-08.jpg
+fayl : photo_2026-08-11_21-09-59.jpg
+fayl : python-3.10.4-amd64.exe
+fayl : python-3.11.1-amd64.exe
+fayl : python-manager-25.2.msix
+fayl : python-manager-26.3 (1).msix
+fayl : python-manager-26.3.msix
+papka : telegram-forward-bot
+papka : telegram-forward-bot (1)
+fayl : telegram-forward-bot (1).zip
+fayl : telegram-forward-bot.zip
+fayl : vscode-setup-prompt.txt
+fayl : winrar-x64-711ru.exe
+fayl : xLauncher_Installer (1).exe
+fayl : xLauncher_Installer (2).exe
+fayl : xLauncher_Installer.exe
+fayl : zorfutbol2.zip
+fayl : Дарча 2.m4a
+fayl : Дарча 3.m4a
+fayl : Феруза_през. ВКР123.pptx

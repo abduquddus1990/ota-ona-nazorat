@@ -1,0 +1,42 @@
+{
+  "industry": "operator",
+  "industry_name_uz": "Call-markaz operatorlari (umumiy)",
+  "criteria": [
+    {
+      "key": "salomlashish",
+      "max_score": 15,
+      "description": "Salomlashish va muomala odobi",
+      "label": "Salomlashish"
+    },
+    {
+      "key": "tinglash",
+      "max_score": 20,
+      "description": "Mijoz so'rovini diqqat bilan tinglash",
+      "label": "Tinglash"
+    },
+    {
+      "key": "malumot_togriligi",
+      "max_score": 25,
+      "description": "Berilgan ma'lumotning to'g'riligi",
+      "label": "Ma'lumot to'g'riligi"
+    },
+    {
+      "key": "muammo_hal_qilish",
+      "max_score": 25,
+      "description": "Muammoni hal qilish yoki to'g'ri yo'naltirish",
+      "label": "Muammo hal qilish"
+    },
+    {
+      "key": "xayrlashish",
+      "max_score": 15,
+      "description": "Xayrlashish va yakuniy taassurot",
+      "label": "Xayrlashish"
+    }
+  ],
+  "classification_keywords": [
+    "murojaat",
+    "shikoyat",
+    "so'rov",
+    "ariza"
+  ]
+}

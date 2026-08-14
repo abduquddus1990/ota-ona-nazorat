@@ -1,0 +1,923 @@
+:root {
+  --bg: var(--tg-theme-bg-color, #ffffff);
+  --secondary-bg: var(--tg-theme-secondary-bg-color, #f0f2f5);
+  --text: var(--tg-theme-text-color, #111827);
+  --hint: var(--tg-theme-hint-color, #6b7280);
+  --link: var(--tg-theme-link-color, #2563eb);
+  --button: var(--tg-theme-button-color, #2563eb);
+  --button-text: var(--tg-theme-button-text-color, #ffffff);
+
+  --score-good: #16a34a;
+  --score-mid: #d97706;
+  --score-bad: #dc2626;
+
+  /* "Shisha panel" (glass-panel) uslubi — fon rasmi ustida yarim shaffof
+     qatlam hosil qiladi (Stitch dizayni asosida). */
+  --glass-bg: rgba(255, 255, 255, 0.72);
+  --glass-border: rgba(255, 255, 255, 0.5);
+  --overlay-bg: rgba(15, 23, 42, 0.35);
+}
+
+:root[data-theme="dark"] {
+  /* Chuqurroq "tungi" (navy) shisha panel — Stitch dizayni asosida. */
+  --glass-bg: rgba(25, 34, 49, 0.65);
+  --glass-border: rgba(255, 255, 255, 0.06);
+  --overlay-bg: rgba(0, 0, 0, 0.5);
+  /* ESLATMA: bu — faqat Telegram o'zi rang bermagan holatdagi standart
+     (fallback) qiymat — Telegram ichida odatda --tg-theme-text-color /
+     --tg-theme-hint-color Telegram tomonidan avtomatik beriladi va shu
+     ustunlik qiladi. Shu sabab, Telegram ichida ranglar bu yerdagidan
+     biroz farqli ko'rinishi mumkin. */
+  --text: var(--tg-theme-text-color, #f5f7fb);
+  --hint: var(--tg-theme-hint-color, rgb(217, 230, 242));
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+}
+
+html {
+  /* "background-attachment: fixed" ko'plab mobil WebView'larda ishlamaydi
+     — shuning uchun oddiy (scroll bilan birga suriladigan) fon ishlatiladi. */
+  background-color: var(--bg);
+  background-image: url("./bg-light.svg");
+  background-size: cover;
+  background-position: center top;
+  background-repeat: no-repeat;
+}
+
+:root[data-theme="dark"] html {
+  background-image: url("./bg-dark.svg");
+}
+
+/* ---- TZ 25-bo'lim: Dashboard fon temalari (Sozlamalar > Fon) ----------
+   Uchala tema ham CSS orqali (gradient/naqsh) — tashqi rasmga bog'liq
+   emas. ESLATMA: "background-attachment: fixed" ataylab ISHLATILMAGAN —
+   yuqoridagi izohda aytilgandek, ko'plab mobil Telegram WebView'larida
+   butunlay ko'rinmay qolishi kuzatilgan (xuddi shu sabab bilan
+   .floating-bg ham "position: fixed"dan "absolute"ga o'zgartirilgan edi). */
+/* ESLATMA: "html:root[...]" (barchasi bitta elementga, "html" + ":root"
+   + atribut) ataylab shu tarzda yozilgan — yuqoridagi
+   ":root[data-theme="dark"] html" qoidasi bilan CSS spetsifikligini
+   tenglashtirish uchun, aks holda dark-rejimda o'sha qoida (yuqoriroq
+   spetsifiklik) bu fon temalarini bekor qilib yuborishi mumkin edi.
+   Tenglashgandan keyin manba tartibi (bu qoidalar pastda joylashgan)
+   hal qiluvchi bo'ladi. ("html" — "<html>" elementining o'zi, ":root"
+   ham xuddi shu elementni bildiradi — ikkalasi bitta compound selector
+   sifatida ishlatilishi kerak, descendant sifatida emas.) */
+html:root[data-bg-theme="theme-trust"] {
+  background-image: none;
+  background-color: #0a1a35;
+  background: linear-gradient(160deg, #0a1a35 0%, #16345c 45%, #1f4e79 100%);
+}
+
+html:root[data-bg-theme="theme-order"] {
+  background-image:
+    linear-gradient(rgba(120, 160, 220, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(120, 160, 220, 0.08) 1px, transparent 1px);
+  background-color: #0d1420;
+  background-size: 32px 32px;
+}
+
+html:root[data-bg-theme="theme-control"] {
+  background-image: radial-gradient(rgba(140, 200, 170, 0.15) 1.5px, transparent 1.5px);
+  background-color: #101b2e;
+  background-size: 22px 22px;
+}
+
+/* Pinterest uslubidagi 4 och + 4 to'q rang. Har bir guruh o'zining
+   shisha-karta (glass-card) va matn ranglarini MAJBURIY o'rnatadi —
+   shunda o'qilishi Telegram'ning o'zi tanlagan och/to'q rejimidan
+   qat'iy nazar har doim to'g'ri bo'ladi (masalan, Telegram och rejimda
+   bo'lsa ham, "Tun" foni tanlansa — kartalar baribir to'q shishaga
+   o'tadi, aks holda oq karta qora fonda deyarli o'qilmas edi). */
+html:root[data-bg-theme="color-cream"],
+html:root[data-bg-theme="color-sage"],
+html:root[data-bg-theme="color-blush"],
+html:root[data-bg-theme="color-sky"] {
+  --glass-bg: rgba(255, 255, 255, 0.6);
+  --glass-border: rgba(15, 23, 42, 0.08);
+  --text: #262019;
+  --hint: #6b6255;
+  background-image: none;
+}
+html:root[data-bg-theme="color-cream"] { background: linear-gradient(160deg, #f8f3ea 0%, #efe3d0 100%); }
+html:root[data-bg-theme="color-sage"] { background: linear-gradient(160deg, #eef2ea 0%, #dbe6d9 100%); }
+html:root[data-bg-theme="color-blush"] { background: linear-gradient(160deg, #f7ece9 0%, #edd9d3 100%); }
+html:root[data-bg-theme="color-sky"] { background: linear-gradient(160deg, #eaf1f7 0%, #d8e6f0 100%); }
+
+html:root[data-bg-theme="color-espresso"],
+html:root[data-bg-theme="color-forest"],
+html:root[data-bg-theme="color-plum"],
+html:root[data-bg-theme="color-night"] {
+  --glass-bg: rgba(255, 255, 255, 0.08);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --text: #f5f1ea;
+  --hint: rgba(245, 241, 234, 0.65);
+  background-image: none;
+}
+html:root[data-bg-theme="color-espresso"] { background: linear-gradient(160deg, #2b2420 0%, #1a1512 100%); }
+html:root[data-bg-theme="color-forest"] { background: linear-gradient(160deg, #1a2b23 0%, #101c16 100%); }
+html:root[data-bg-theme="color-plum"] { background: linear-gradient(160deg, #2a1a2b 0%, #1a0f1c 100%); }
+html:root[data-bg-theme="color-night"] { background: linear-gradient(160deg, #181c24 0%, #0e1116 100%); }
+
+body {
+  background: transparent;
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.material-symbols-outlined {
+  font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
+  font-size: 22px;
+  line-height: 1;
+}
+
+#app {
+  min-height: 100vh;
+  min-height: 100dvh;
+  position: relative;
+}
+
+/* Suzuvchi orqa fon yozuvlari — Stitch dizaynidagi brendlash detali.
+   Juda past shaffoflik bilan, faqat bezak (pointer-events yo'q, ma'lumot
+   emas), matn/kartalar ustida to'sqinlik qilmaydi. */
+.floating-bg {
+  /* ESLATMA: avval "position: fixed" edi — "background-attachment: fixed"
+     kabi, bu ham ko'plab mobil Telegram WebView'larida (real qurilmada)
+     umuman ko'rinmay qolar edi. "absolute" #app (position:relative,
+     kamida 100dvh balandlik) ichida xuddi shunday effekt beradi, lekin
+     mobilda ishonchli render qilinadi. */
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.floating-text {
+  position: absolute;
+  left: 0;
+  color: var(--text);
+  opacity: 0.035;
+  font-size: 34px;
+  font-weight: 700;
+  text-transform: uppercase;
+  white-space: nowrap;
+  letter-spacing: 0.08em;
+  animation: floating-text-slide linear infinite;
+}
+
+.floating-text-1 { top: 2%; animation-duration: 58s; }
+.floating-text-2 { top: 12%; animation-duration: 64s; animation-direction: reverse; }
+.floating-text-3 { top: 22%; animation-duration: 52s; }
+.floating-text-4 { top: 32%; animation-duration: 70s; animation-direction: reverse; }
+.floating-text-5 { top: 42%; animation-duration: 60s; }
+.floating-text-6 { top: 52%; animation-duration: 66s; animation-direction: reverse; }
+.floating-text-7 { top: 62%; animation-duration: 54s; }
+.floating-text-8 { top: 72%; animation-duration: 68s; animation-direction: reverse; }
+.floating-text-9 { top: 82%; animation-duration: 56s; }
+.floating-text-10 { top: 92%; animation-duration: 62s; animation-direction: reverse; }
+
+@keyframes floating-text-slide {
+  0% { transform: translateX(-50%); }
+  100% { transform: translateX(50%); }
+}
+
+#app > *:not(.floating-bg) {
+  position: relative;
+  z-index: 1;
+}
+
+/* ---- Brauzer ko'rib chiqish (preview) banneri ------------------------ */
+.preview-banner {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  padding: 8px 14px;
+  font-size: 12px;
+  line-height: 1.4;
+  text-align: center;
+  color: var(--text);
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--glass-border);
+}
+
+/* ---- Top bar ------------------------------------------------------- */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.topbar h1 {
+  flex: 1;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--link);
+  margin: 0;
+  text-align: center;
+}
+
+.icon-btn {
+  border: none;
+  background: none;
+  color: var(--text);
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.icon-btn:active { background: var(--secondary-bg); }
+
+.avatar-btn {
+  border: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  background: var(--link);
+  color: #fff;
+  font-weight: 700;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* ---- Sidebar (hamburger drawer) ------------------------------------- */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: var(--overlay-bg);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.overlay.hidden { display: none; }
+.overlay.visible { opacity: 1; }
+
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 78%;
+  max-width: 300px;
+  z-index: 70;
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  border-right: 1px solid var(--glass-border);
+  box-shadow: 8px 0 24px rgba(15, 23, 42, 0.12);
+  padding: 18px;
+  transform: translateX(-100%);
+  transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow-y: auto;
+}
+
+.sidebar.open { transform: translateX(0); }
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.sidebar-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--link);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.sidebar-header h3 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.sidebar-header p {
+  margin: 0;
+  font-size: 11px;
+  color: var(--hint);
+}
+
+.sidebar-header .icon-btn { margin-left: auto; }
+
+#sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+#sidebar-nav button.sidebar-nav-btn {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border: none;
+  background: none;
+  width: 100%;
+  padding: 12px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+  text-align: left;
+  font-family: inherit;
+}
+
+#sidebar-nav button.sidebar-nav-btn.active {
+  background: color-mix(in srgb, var(--link) 12%, transparent);
+  background: rgba(37, 99, 235, 0.12);
+  color: var(--link);
+  font-weight: 700;
+}
+
+/* "Hisobotlar" qatori yonidagi "Yozuvlar tarixi" (uchta chiziq) tugmasi —
+   dashboard ichida emas, aynan shu yon menyu qatorida turadi. */
+.sidebar-nav-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.sidebar-nav-row .sidebar-nav-btn { flex: 1; }
+.sidebar-nav-row .icon-btn { width: 36px; height: 36px; flex-shrink: 0; }
+
+/* ---- Profile dropdown ------------------------------------------------ */
+.dropdown {
+  position: absolute;
+  top: 54px;
+  right: 10px;
+  z-index: 55;
+  width: 220px;
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.15);
+  padding: 14px;
+}
+
+.dropdown.hidden { display: none; }
+
+.dropdown-header {
+  text-align: center;
+  padding-bottom: 8px;
+}
+
+.dropdown-name { font-weight: 700; margin: 0; }
+.dropdown-role { font-size: 12px; color: var(--hint); margin: 4px 0 0; }
+
+/* ---- Content ---------------------------------------------------------- */
+#view {
+  padding: 12px 14px 24px;
+}
+
+.state-message {
+  text-align: center;
+  color: var(--hint);
+  padding: 32px 16px;
+}
+
+.state-message.error { color: var(--score-bad); }
+.hidden { display: none !important; }
+
+/* ---- Bosh sahifa (default landing) ------------------------------------
+   Ataylab bo'sh: hech qanday jonli ma'lumot (statistika, suhbatlar
+   ro'yxati) ko'rsatilmaydi — bu joy kelajakda reklama joylashtirish uchun
+   ochiq qoldirilgan. Haqiqiy hisobotlar "Hisobotlar" bo'limida ochiladi. */
+.home-view {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 18px;
+  padding: 48px 12px 16px;
+}
+
+.home-view h2 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.home-view p {
+  margin: 0;
+  color: var(--hint);
+  font-size: 14px;
+}
+
+.home-ad-slot {
+  width: 100%;
+  min-height: 160px;
+  border: 1px dashed var(--glass-border);
+  border-radius: 20px;
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+
+.item-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.item-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+  padding: 14px 16px;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
+}
+
+.item-card { flex-wrap: wrap; }
+.item-card .emoji { font-size: 20px; flex-shrink: 0; }
+.item-card .info { flex: 1; min-width: 0; }
+.item-card .title {
+  font-weight: 600;
+  font-size: 15px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.item-card .subtitle { font-size: 12px; color: var(--hint); }
+
+.attendance-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--text);
+}
+.attendance-stats b { font-weight: 600; }
+
+.badge {
+  font-weight: 700;
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  color: #fff;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.badge.good { background: var(--score-good); }
+.badge.mid { background: var(--score-mid); }
+.badge.bad { background: var(--score-bad); }
+.badge.pending { background: var(--hint); }
+.badge.neutral { background: var(--link); }
+
+.listen-btn {
+  border: none;
+  background: var(--link);
+  color: #fff;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.listen-btn .material-symbols-outlined { font-size: 18px; }
+.listen-btn:disabled { opacity: 0.6; }
+
+.audio-slot:empty { display: none; }
+.audio-player {
+  width: 100%;
+  height: 32px;
+  margin-top: 8px;
+}
+
+.settings-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+  margin-bottom: 8px;
+}
+
+.settings-row .label { color: var(--hint); }
+.settings-row .value { font-weight: 600; }
+
+/* "Bonuslarni ko'rsatish"/"Til"/"Fon" — Hisobotlar yon menyu qatoridagi
+   kabi: label + kichik uchta-chiziq (☰) tugmasi, bosilganda pastdagi
+   bo'lim ochiladi/yopiladi. */
+.settings-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+  margin-bottom: 4px;
+}
+.settings-toggle-label { font-weight: 600; font-size: 14px; }
+.settings-toggle-row .icon-btn { width: 36px; height: 36px; flex-shrink: 0; }
+#bonuses-slot:not(.hidden), #language-slot:not(.hidden), #background-slot:not(.hidden) {
+  margin-bottom: 12px;
+}
+
+/* ---- Ekran sarlavhasi (stat-grid/sarlavha + mahalliy menyu tugmasi) --- */
+.view-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.view-header .stat-grid { flex: 1; margin-bottom: 0; }
+.section-title {
+  flex: 1;
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+/* ---- 31 kunlik kalendar (Yozuvlar tarixi) ----------------------------- */
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  margin: 12px 0 18px;
+}
+
+.calendar-day {
+  aspect-ratio: 1;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: inherit;
+}
+
+.calendar-day.today { border-color: var(--link); color: var(--link); }
+.calendar-day.selected { background: var(--link); color: #fff; }
+
+/* ---- Stat cards (Hisobotlar bosh qismi) ------------------------------- */
+.stat-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.stat-card {
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--glass-border);
+  border-radius: 22px;
+  padding: 16px;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Yumshoq porlash — kartaning yuqori-o'ng burchagida (Stitch dizayni). */
+.stat-card::before {
+  content: "";
+  position: absolute;
+  top: -16px;
+  right: -16px;
+  width: 96px;
+  height: 96px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--link) 12%, transparent);
+  filter: blur(20px);
+  pointer-events: none;
+}
+
+.stat-card .stat-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--hint);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.stat-card .stat-value {
+  font-size: 26px;
+  font-weight: 800;
+  margin-top: 8px;
+  color: var(--text);
+}
+
+/* ---- Sozlamalar > Fon (background theme picker) — TZ 25-bo'lim ------- */
+.theme-swatch-grid {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.theme-swatch {
+  flex: 1;
+  height: 64px;
+  border-radius: 14px;
+  border: 2px solid transparent;
+  display: flex;
+  align-items: flex-end;
+  padding: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #fff;
+  font-family: inherit;
+  position: relative;
+}
+
+.theme-swatch.selected { border-color: var(--link); }
+.theme-swatch.selected::after {
+  content: "✓";
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  background: var(--link);
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: #fff;
+}
+
+.swatch-trust { background: linear-gradient(160deg, #0a1a35, #1f4e79); }
+.swatch-order {
+  background-color: #0d1420;
+  background-image:
+    linear-gradient(rgba(120, 160, 220, 0.25) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(120, 160, 220, 0.25) 1px, transparent 1px);
+  background-size: 10px 10px;
+}
+.swatch-control {
+  background-color: #101b2e;
+  background-image: radial-gradient(rgba(140, 200, 170, 0.4) 1.5px, transparent 1.5px);
+  background-size: 8px 8px;
+}
+
+/* Pinterest uslubidagi 4 och + 4 to'q rang (TZ 25-bo'lim kengaytmasi) —
+   och ranglarda matn qorong'i (#2b2420 atrofida) bo'ladi, chunki fon o'zi
+   och; to'q ranglarda esa oq matn ishlatiladi. */
+.theme-group-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--hint);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 10px 0 6px;
+}
+.theme-group-label:first-child { margin-top: 0; }
+
+.swatch-cream { background: linear-gradient(160deg, #f8f3ea, #efe3d0); color: #3a3226; }
+.swatch-sage { background: linear-gradient(160deg, #eef2ea, #dbe6d9); color: #2e3a30; }
+.swatch-blush { background: linear-gradient(160deg, #f7ece9, #edd9d3); color: #3d2b27; }
+.swatch-sky { background: linear-gradient(160deg, #eaf1f7, #d8e6f0); color: #24333d; }
+.swatch-cream.selected, .swatch-sage.selected, .swatch-blush.selected, .swatch-sky.selected {
+  border-color: #2563eb;
+}
+
+.swatch-espresso { background: linear-gradient(160deg, #2b2420, #1a1512); }
+.swatch-forest { background: linear-gradient(160deg, #1a2b23, #101c16); }
+.swatch-plum { background: linear-gradient(160deg, #2a1a2b, #1a0f1c); }
+.swatch-night { background: linear-gradient(160deg, #181c24, #0e1116); }
+
+/* ---- Sozlamalar > Til ---------------------------------------------- */
+.lang-btn-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+.lang-btn-row button {
+  flex: 1;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg);
+  border-radius: 14px;
+  padding: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  font-family: inherit;
+}
+.lang-btn-row button.selected { border-color: var(--link); color: var(--link); }
+
+/* ---- Intizom AI suhbat ekrani ------------------------------------------ */
+.chat-container {
+  display: flex;
+  flex-direction: column;
+  height: calc(100dvh - 56px);
+  margin: -12px -14px -24px;
+}
+
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.chat-bubble {
+  max-width: 82%;
+  padding: 10px 14px;
+  border-radius: 18px;
+  font-size: 14px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.chat-bubble.assistant {
+  align-self: flex-start;
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--glass-border);
+  border-bottom-left-radius: 4px;
+}
+
+.chat-bubble.user {
+  align-self: flex-end;
+  background: var(--link);
+  color: #fff;
+  border-bottom-right-radius: 4px;
+}
+
+.chat-tts-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.chat-speak-btn,
+.chat-stop-btn {
+  border: none;
+  background: none;
+  color: var(--link);
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.chat-speak-btn .material-symbols-outlined,
+.chat-stop-btn .material-symbols-outlined { font-size: 18px; }
+.chat-speak-btn:disabled { opacity: 0.5; }
+.chat-stop-btn { color: var(--score-bad); }
+
+/* Avtomatik ijro brauzer tomonidan bloklanganda (asosan iOS) — tayyor
+   ovozli javob borligini sezilarli qilish uchun. */
+.tts-ready-pulse {
+  border-radius: 999px;
+  animation: tts-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes tts-pulse {
+  0%, 100% { background: color-mix(in srgb, var(--link) 15%, transparent); }
+  50% { background: color-mix(in srgb, var(--link) 35%, transparent); }
+}
+
+.chat-image {
+  max-width: 100%;
+  border-radius: 12px;
+  margin-bottom: 6px;
+  display: block;
+}
+
+.chat-audio-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  opacity: 0.85;
+  margin-bottom: 4px;
+}
+
+.chat-pending-row {
+  display: flex;
+  gap: 6px;
+  padding: 6px 14px;
+}
+
+.chat-pending-row.hidden { display: none; }
+
+.chat-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+.chat-chip button {
+  border: none;
+  background: none;
+  color: var(--hint);
+  font-size: 13px;
+  padding: 0;
+  cursor: pointer;
+}
+
+.chat-input-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  padding-bottom: calc(8px + env(safe-area-inset-bottom, 0));
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  border-top: 1px solid var(--glass-border);
+}
+
+.chat-input-row input[type="text"] {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--glass-border);
+  background: var(--bg);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.chat-input-row input[type="text"]:focus { outline: none; border-color: var(--link); }
+
+.send-btn {
+  border: none;
+  background: var(--link);
+  color: #fff;
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.send-btn:disabled { opacity: 0.6; }
+
+#chat-mic-btn.recording {
+  background: var(--score-bad);
+  color: #fff;
+}
