@@ -1,19 +1,100 @@
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
+/* ==========================================================================
+   THEME PALETTES (8-10 PINTEREST-INSPIRED AESTHETIC THEMES)
+   ========================================================================== */
 :root {
     --bg-primary: #090d16;
     --bg-surface: #111827;
     --bg-card: rgba(17, 24, 39, 0.85);
     --border-subtle: rgba(255, 255, 255, 0.08);
     --border-active: rgba(16, 185, 129, 0.4);
-    --accent-emerald: #10b981;
-    --accent-sky: #0ea5e9;
-    --accent-amber: #f59e0b;
-    --accent-rose: #f43f5e;
-    --accent-violet: #8b5cf6;
+    --accent-primary: #10b981;
+    --accent-hover: #059669;
     --text-primary: #f8fafc;
     --text-secondary: #94a3b8;
     --text-muted: #64748b;
+    --wallpaper-gradient: radial-gradient(circle at 50% 0%, rgba(16, 185, 129, 0.15), transparent 70%);
+}
+
+/* Theme 1: Aurora Borealis */
+body[data-theme="aurora"] {
+    --bg-primary: #05131e;
+    --bg-surface: #0a253a;
+    --bg-card: rgba(10, 37, 58, 0.85);
+    --border-active: rgba(14, 165, 233, 0.4);
+    --accent-primary: #0ea5e9;
+    --wallpaper-gradient: radial-gradient(circle at 50% 0%, rgba(14, 165, 233, 0.25), rgba(16, 185, 129, 0.15) 50%, transparent 80%);
+}
+
+/* Theme 2: Deep Space Nebula */
+body[data-theme="nebula"] {
+    --bg-primary: #0d0818;
+    --bg-surface: #1b1030;
+    --bg-card: rgba(27, 16, 48, 0.85);
+    --border-active: rgba(168, 85, 247, 0.4);
+    --accent-primary: #a855f7;
+    --wallpaper-gradient: radial-gradient(circle at 50% 0%, rgba(168, 85, 247, 0.25), rgba(236, 72, 153, 0.15) 50%, transparent 80%);
+}
+
+/* Theme 3: Sunset Glow */
+body[data-theme="sunset"] {
+    --bg-primary: #180a0a;
+    --bg-surface: #2b1212;
+    --bg-card: rgba(43, 18, 18, 0.85);
+    --border-active: rgba(249, 115, 22, 0.4);
+    --accent-primary: #f97316;
+    --wallpaper-gradient: radial-gradient(circle at 50% 0%, rgba(249, 115, 22, 0.25), rgba(239, 68, 68, 0.15) 50%, transparent 80%);
+}
+
+/* Theme 4: Emerald Matrix */
+body[data-theme="emerald"] {
+    --bg-primary: #06140d;
+    --bg-surface: #0b291a;
+    --bg-card: rgba(11, 41, 26, 0.85);
+    --border-active: rgba(16, 185, 129, 0.4);
+    --accent-primary: #10b981;
+    --wallpaper-gradient: radial-gradient(circle at 50% 0%, rgba(16, 185, 129, 0.25), transparent 75%);
+}
+
+/* Theme 5: Sakura Mist */
+body[data-theme="sakura"] {
+    --bg-primary: #170912;
+    --bg-surface: #2b1122;
+    --bg-card: rgba(43, 17, 34, 0.85);
+    --border-active: rgba(244, 63, 94, 0.4);
+    --accent-primary: #f43f5e;
+    --wallpaper-gradient: radial-gradient(circle at 50% 0%, rgba(244, 63, 94, 0.2), rgba(217, 70, 239, 0.1) 60%, transparent 80%);
+}
+
+/* Theme 6: Obsidian Gold */
+body[data-theme="gold"] {
+    --bg-primary: #12100a;
+    --bg-surface: #242013;
+    --bg-card: rgba(36, 32, 19, 0.85);
+    --border-active: rgba(234, 179, 8, 0.4);
+    --accent-primary: #eab308;
+    --wallpaper-gradient: radial-gradient(circle at 50% 0%, rgba(234, 179, 8, 0.2), transparent 75%);
+}
+
+/* Theme 7: Minimal Slate */
+body[data-theme="minimal"] {
+    --bg-primary: #0f172a;
+    --bg-surface: #1e293b;
+    --bg-card: rgba(30, 41, 59, 0.85);
+    --border-active: rgba(148, 163, 184, 0.4);
+    --accent-primary: #38bdf8;
+    --wallpaper-gradient: none;
+}
+
+/* Theme 8: Cyberpunk Night */
+body[data-theme="cyberpunk"] {
+    --bg-primary: #05050d;
+    --bg-surface: #0f1026;
+    --bg-card: rgba(15, 16, 38, 0.9);
+    --border-active: rgba(6, 182, 212, 0.4);
+    --accent-primary: #06b6d4;
+    --wallpaper-gradient: radial-gradient(circle at 50% 0%, rgba(6, 182, 212, 0.25), rgba(217, 70, 239, 0.15) 60%, transparent 80%);
 }
 
 * {
@@ -26,18 +107,21 @@
 
 body {
     background-color: var(--bg-primary);
+    background-image: var(--wallpaper-gradient);
+    background-attachment: fixed;
     color: var(--text-primary);
     min-height: 100vh;
     padding-bottom: 90px;
     user-select: none;
     overflow-x: hidden;
+    transition: background-color 0.4s ease, background-image 0.4s ease;
 }
 
 /* Glassmorphism Card Effect */
 .glass-card {
     background: var(--bg-card);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
     border: 1px solid var(--border-subtle);
     border-radius: 1.25rem;
     box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
@@ -46,21 +130,44 @@ body {
 
 .glass-card:hover {
     border-color: var(--border-active);
-    transform: translateY(-1px);
 }
 
-/* Tab Animation */
+/* 3D Smooth Page Flip / Slide Transition (Yengil va Tezkor) */
 .tab-content {
     display: none;
-    animation: fadeIn 0.25s ease-in-out;
+    opacity: 0;
+    transform: translateY(8px) scale(0.99);
+    transition: opacity 0.28s cubic-bezier(0.4, 0, 0.2, 1), transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .tab-content.active {
     display: block;
+    opacity: 1;
+    transform: translateY(0) scale(1);
 }
 
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(6px); }
+/* Sub-page / Modal Overlay */
+.subpage-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--bg-primary);
+    z-index: 2000;
+    display: none;
+    overflow-y: auto;
+    padding: 16px;
+    padding-bottom: 80px;
+    animation: slideUp 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.subpage-modal.active {
+    display: block;
+}
+
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px); }
     to { opacity: 1; transform: translateY(0); }
 }
 
@@ -106,7 +213,7 @@ body {
 }
 
 .nav-btn.active {
-    color: var(--accent-emerald);
+    color: var(--accent-primary);
     background: rgba(16, 185, 129, 0.1);
 }
 
@@ -114,7 +221,7 @@ body {
     transform: scale(1.1);
 }
 
-/* Leaflet Map Customization */
+/* Leaflet Map */
 #map {
     height: 240px;
     width: 100%;
@@ -122,11 +229,11 @@ body {
     z-index: 10;
 }
 
-/* Radar Pulse Marker */
+/* Radar Pin */
 .radar-pin {
     width: 14px;
     height: 14px;
-    background: #10b981;
+    background: var(--accent-primary);
     border: 2px solid #ffffff;
     border-radius: 50%;
     position: relative;
@@ -161,4 +268,23 @@ body {
     height: 100%;
     border-radius: 9999px;
     transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Theme Thumbnail Cards */
+.theme-card {
+    height: 70px;
+    border-radius: 12px;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: flex-end;
+    padding: 8px;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.theme-card.active {
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 12px rgba(16, 185, 129, 0.4);
 }

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Shield Parent Guard | AI Dashboard</title>
+    <title>Shield Parental Guard | AI Dashboard</title>
     <!-- TailwindCSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -33,27 +33,40 @@
 <body class="p-4 max-w-md mx-auto">
 
     <!-- Top Navigation Header -->
-    <header class="flex items-center justify-between pb-3.5 border-b border-slate-800/80 mb-4">
+    <header class="flex items-center justify-between pb-3.5 border-b border-slate-800/80 mb-3">
         <div class="flex items-center gap-2.5">
             <div class="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-bold text-lg shadow-inner">
                 🛡️
             </div>
             <div>
-                <div class="text-[10px] font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+                <div class="text-[10px] font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5" data-i18n="appName">
                     <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Zero-Trust Himoya
                 </div>
-                <h1 class="text-sm font-bold text-white leading-tight" id="childName">Aliyor (14 yosh)</h1>
+                <h1 class="text-sm font-bold text-white leading-tight" id="childNameDisplay">Aliyor (14 yosh)</h1>
             </div>
         </div>
         <div class="flex items-center gap-2">
             <div class="flex items-center gap-1 bg-slate-900/90 px-2.5 py-1 rounded-xl border border-slate-800 text-[11px] font-mono font-bold text-emerald-400">
                 🔋 <span id="batteryBadge">84%</span>
             </div>
-            <div id="parentNameBadge" class="text-xs font-semibold text-slate-300 bg-slate-900/90 px-2.5 py-1 rounded-xl border border-slate-800">
+            <div id="parentNameBadge" class="text-xs font-semibold text-slate-300 bg-slate-900/90 px-2.5 py-1 rounded-xl border border-slate-800" data-i18n="parentBadge">
                 Ota-ona
             </div>
         </div>
     </header>
+
+    <!-- Farzandlarni Tanlash Slayderi (Multi-Child Switcher) -->
+    <section class="flex items-center gap-2 overflow-x-auto pb-3 mb-2 no-scrollbar">
+        <button onclick="switchChild('child_1')" class="px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-xs font-bold text-emerald-400 whitespace-nowrap flex items-center gap-1.5">
+            👦 <span>Aliyor (14 yosh)</span>
+        </button>
+        <button onclick="switchChild('child_2')" class="px-3 py-1.5 rounded-xl bg-slate-900/80 border border-slate-800 text-xs font-medium text-slate-400 whitespace-nowrap flex items-center gap-1.5 hover:text-white">
+            👧 <span>Madina (10 yosh)</span>
+        </button>
+        <button onclick="openSubpage('modal-pairing')" class="px-2.5 py-1.5 rounded-xl bg-slate-900/50 border border-dashed border-slate-700 text-xs font-medium text-slate-400 whitespace-nowrap flex items-center gap-1 hover:text-emerald-400">
+            ➕ <span data-i18n="pairingSelect">Farzand ulash</span>
+        </button>
+    </section>
 
     <!-- ==================================================================== -->
     <!-- TAB 1: 📊 ASOSIY BOShQARUV & ILOVALAR REYTINGI -->
@@ -62,17 +75,19 @@
         <!-- Ekran Vaqti KPI Kartasi -->
         <section class="glass-card p-4">
             <div class="flex items-center justify-between mb-3">
-                <span class="text-xs font-medium text-slate-400">Bugungi Umumiy Ekran Vaqti</span>
-                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                <span class="text-xs font-medium text-slate-400" data-i18n="totalScreenTime">Bugungi Umumiy Ekran Vaqti</span>
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" data-i18n="inNorm">
                     Me'yorda
                 </span>
             </div>
             <div class="flex items-baseline justify-between">
                 <div>
                     <div class="text-3xl font-extrabold text-white tracking-tight" id="totalScreenTime">3s 45d</div>
-                    <div class="text-[11px] text-slate-400 mt-0.5">Kunlik limit: 4s 00d (Qoldi: 15d)</div>
+                    <div class="text-[11px] text-slate-400 mt-0.5">
+                        <span data-i18n="dailyLimit">Kunlik limit</span>: 4s 00d (<span data-i18n="remaining">Qoldi</span>: <span id="remainingTime">15d</span>)
+                    </div>
                 </div>
-                <button onclick="switchTab('tab-radar')" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-2 px-3 rounded-xl transition shadow-lg shadow-emerald-900/40 flex items-center gap-1">
+                <button onclick="switchTab('tab-radar')" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-2 px-3 rounded-xl transition shadow-lg shadow-emerald-900/40 flex items-center gap-1" data-i18n="viewRadar">
                     📍 Radarda Ko'rish
                 </button>
             </div>
@@ -82,12 +97,12 @@
         <section class="glass-card p-4 space-y-3">
             <div class="flex items-center justify-between">
                 <div>
-                    <h2 class="text-xs font-bold text-white flex items-center gap-1.5">
+                    <h2 class="text-xs font-bold text-white flex items-center gap-1.5" data-i18n="appUsageTitle">
                         📱 Ilovalardan Foydalanish Reytingi
                     </h2>
-                    <p class="text-[10px] text-slate-400 mt-0.5">Android Batareya va Raqamli Qulaylik tahlili</p>
+                    <p class="text-[10px] text-slate-400 mt-0.5" data-i18n="appUsageSubtitle">Android Batareya va Raqamli Qulaylik tahlili</p>
                 </div>
-                <span class="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md">AI OCR</span>
+                <span class="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md">Gemini OCR</span>
             </div>
 
             <!-- Ilovalar Ro'yxati (Dinamik) -->
@@ -96,28 +111,14 @@
             </div>
         </section>
 
-        <!-- Tezkor Harakatlar -->
-        <section class="grid grid-cols-2 gap-3">
-            <button onclick="triggerVoiceAlert()" class="glass-card p-3 flex items-center gap-2.5 hover:border-emerald-500/40 text-left transition">
-                <div class="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 text-sm">
-                    🎙️
-                </div>
-                <div>
-                    <div class="text-xs font-bold text-white">Ovozli Radar</div>
-                    <div class="text-[10px] text-slate-400">Lokatsiya so'rovi</div>
-                </div>
-            </button>
-
-            <button onclick="openTelegramCall()" class="glass-card p-3 flex items-center gap-2.5 hover:border-sky-500/40 text-left transition">
-                <div class="w-8 h-8 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400 text-sm">
-                    📞
-                </div>
-                <div>
-                    <div class="text-xs font-bold text-white">Qo'ng'iroq</div>
-                    <div class="text-[10px] text-slate-400">Telegram orqali</div>
-                </div>
-            </button>
-        </section>
+        <!-- Ovozli Radar Tezkor Tugmasi -->
+        <button onclick="triggerVoiceAlert()" class="w-full glass-card p-3 flex items-center justify-center gap-2 hover:border-emerald-500/40 transition">
+            <span class="text-base">🎙️</span>
+            <div class="text-left">
+                <div class="text-xs font-bold text-white" data-i18n="voiceAlertBtn">Ovozli Radar Eslatmasi</div>
+                <div class="text-[10px] text-slate-400" data-i18n="voiceAlertSub">Farzandga lokatsiya so'rovi bildirishnomasi</div>
+            </div>
+        </button>
     </main>
 
     <!-- ==================================================================== -->
@@ -129,29 +130,29 @@
             <div class="flex items-center justify-between mb-3">
                 <div class="flex items-center gap-2">
                     <span class="radar-pin"></span>
-                    <h2 class="text-xs font-bold text-white">Jonli Geolokatsiya (Radar)</h2>
+                    <h2 class="text-xs font-bold text-white" data-i18n="radarTitle">Jonli Geolokatsiya (Radar)</h2>
                 </div>
-                <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" data-i18n="gpsLive">
                     GPS Jonli
                 </span>
             </div>
             <div id="map" class="mb-3"></div>
             <div class="p-2.5 rounded-xl bg-slate-900/60 border border-slate-800 text-[11px] text-slate-300 flex items-center justify-between">
-                <span>📍 Yunusobod, 244-Maktab hududida</span>
+                <span id="radarAddress">📍 Yunusobod, 244-Maktab hududida</span>
                 <span class="text-emerald-400 font-mono text-[10px]">1 daq oldin</span>
             </div>
         </section>
 
         <!-- Xavfsiz Hududlar (Geofencing) -->
         <section class="glass-card p-4 space-y-2.5">
-            <h3 class="text-xs font-bold text-white">🛡️ Xavfsiz Hududlar Holati</h3>
+            <h3 class="text-xs font-bold text-white" data-i18n="geofenceTitle">🛡️ Xavfsiz Hududlar Holati</h3>
             <div class="space-y-2" id="geofenceZoneList">
                 <!-- JS orqali to'ldiriladi -->
             </div>
         </section>
 
         <!-- Ovozli Chaqiruv Tugmasi -->
-        <button onclick="triggerVoiceAlert()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-3 px-4 rounded-xl transition shadow-lg shadow-emerald-900/40 flex items-center justify-center gap-2">
+        <button onclick="triggerVoiceAlert()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-3 px-4 rounded-xl transition shadow-lg shadow-emerald-900/40 flex items-center justify-center gap-2" data-i18n="sendVoicePrompt">
             🎙️ Farzandga Ovozli Lokatsiya Ogohlantirishini Yuborish
         </button>
     </main>
@@ -163,10 +164,10 @@
         <!-- Bugungi Psixologik Tavsiya -->
         <section class="glass-card p-4 space-y-2.5 border-emerald-500/30">
             <div class="flex items-center justify-between">
-                <span class="text-[10px] font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1">
+                <span class="text-[10px] font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1" data-i18n="aiPedagogyTitle">
                     🧠 Gemini AI Pedagogik Tahlili
                 </span>
-                <span class="text-[10px] text-slate-400">Bugungi xulosa</span>
+                <span class="text-[10px] text-slate-400" data-i18n="aiTodaySummary">Bugungi xulosa</span>
             </div>
             <p class="text-xs text-slate-200 leading-relaxed" id="aiPedagogyAdvice">
                 Yuklanmoqda...
@@ -175,7 +176,7 @@
 
         <!-- Qiziqishlar Matritsasi -->
         <section class="glass-card p-4 space-y-3">
-            <h3 class="text-xs font-bold text-white">✨ Iqtidorlar va Qiziqishlar Matritsasi</h3>
+            <h3 class="text-xs font-bold text-white" data-i18n="aiVectorTitle">✨ Iqtidorlar va Qiziqishlar Matritsasi</h3>
             <div class="space-y-3" id="aiVectorList">
                 <!-- JS orqali to'ldiriladi -->
             </div>
@@ -183,7 +184,7 @@
 
         <!-- Ko'rilgan Reels & YouTube Mavzulari -->
         <section class="glass-card p-4 space-y-2.5">
-            <h3 class="text-xs font-bold text-white">🎬 Tahlil Qilingan Media & Mavzular</h3>
+            <h3 class="text-xs font-bold text-white" data-i18n="reelsDigestTitle">🎬 Tahlil Qilingan Media & Mavzular</h3>
             <div class="space-y-2" id="reelsDigestList">
                 <!-- JS orqali to'ldiriladi -->
             </div>
@@ -197,21 +198,19 @@
         <!-- KPI ko'rsatkichlar -->
         <section class="grid grid-cols-2 gap-3">
             <div class="glass-card p-3.5 flex flex-col justify-between">
-                <span class="text-[11px] font-medium text-slate-400">O'rtacha Baho</span>
-                <div class="text-2xl font-black text-emerald-400 mt-1">4.9 / 5.0</div>
-                <span class="text-[10px] text-emerald-400 mt-0.5">A'lochi o'quvchi</span>
+                <span class="text-[11px] font-medium text-slate-400" data-i18n="gpaAvg">O'rtacha Baho</span>
+                <div class="text-2xl font-black text-emerald-400 mt-1" id="gpaBadge">4.9 / 5.0</div>
             </div>
             <div class="glass-card p-3.5 flex flex-col justify-between">
-                <span class="text-[11px] font-medium text-slate-400">Davomat</span>
-                <div class="text-2xl font-black text-white mt-1">100%</div>
-                <span class="text-[10px] text-slate-400 mt-0.5">Dars qoldirmagan</span>
+                <span class="text-[11px] font-medium text-slate-400" data-i18n="attendance">Davomat</span>
+                <div class="text-2xl font-black text-white mt-1" id="attendanceBadge">100%</div>
             </div>
         </section>
 
         <!-- Bugungi Dars Jadvali & Baholar -->
         <section class="glass-card p-4 space-y-3">
             <div class="flex items-center justify-between">
-                <h3 class="text-xs font-bold text-white">📚 Bugungi Darslar va Baholar</h3>
+                <h3 class="text-xs font-bold text-white" data-i18n="todayLessons">📚 Bugungi Darslar va Baholar</h3>
                 <span class="text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded font-mono">e-Maktab Sync</span>
             </div>
             <div class="space-y-2" id="schoolScheduleList">
@@ -221,34 +220,218 @@
     </main>
 
     <!-- ==================================================================== -->
-    <!-- TAB 5: 🛡️ JUFTLASH & BIOMETRIKA -->
+    <!-- TAB 5: ⚙️ SOZLAMALAR (YANGI BO'LIM) -->
     <!-- ==================================================================== -->
-    <main id="tab-security" class="tab-content space-y-4">
-        <!-- Farzandni Ulash Qismi -->
+    <main id="tab-settings" class="tab-content space-y-3">
+        <h2 class="text-sm font-bold text-white px-1" data-i18n="settingsTitle">⚙️ Tizim Sozlamalari</h2>
+
+        <!-- 1. Fon Tanlash (Pinterest Estetikasi) -->
+        <div onclick="openSubpage('modal-themes')" class="glass-card p-3.5 flex items-center justify-between cursor-pointer hover:border-emerald-500/40 transition">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 text-lg">
+                    🎨
+                </div>
+                <div>
+                    <div class="text-xs font-bold text-white" data-i18n="themeSelect">Fon va Dizaynni Tanlash</div>
+                    <div class="text-[10px] text-slate-400" data-i18n="themeSub">8 xil eksklyuziv estetika fonlari</div>
+                </div>
+            </div>
+            <span class="text-slate-500 text-sm">›</span>
+        </div>
+
+        <!-- 2. Tilni O'zgartirish (UZ / RU) -->
+        <div onclick="openSubpage('modal-languages')" class="glass-card p-3.5 flex items-center justify-between cursor-pointer hover:border-emerald-500/40 transition">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400 text-lg">
+                    🌐
+                </div>
+                <div>
+                    <div class="text-xs font-bold text-white" data-i18n="langSelect">Tilni O'zgartirish (Язык)</div>
+                    <div class="text-[10px] text-slate-400" data-i18n="langSub">O'zbekcha / Русский</div>
+                </div>
+            </div>
+            <span class="text-slate-500 text-sm">›</span>
+        </div>
+
+        <!-- 3. Tariflar va Obuna -->
+        <div onclick="openSubpage('modal-plans')" class="glass-card p-3.5 flex items-center justify-between cursor-pointer hover:border-emerald-500/40 transition">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 text-lg">
+                    💎
+                </div>
+                <div>
+                    <div class="text-xs font-bold text-white" data-i18n="plansSelect">Tariflar va Obuna</div>
+                    <div class="text-[10px] text-slate-400" data-i18n="plansSub">Bepul va Premium imkoniyatlar</div>
+                </div>
+            </div>
+            <span class="text-slate-500 text-sm">›</span>
+        </div>
+
+        <!-- 4. Farzandni Bog'lash & Biometrika (Face ID) -->
+        <div onclick="openSubpage('modal-pairing')" class="glass-card p-3.5 flex items-center justify-between cursor-pointer hover:border-emerald-500/40 transition">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 text-lg">
+                    🛡️
+                </div>
+                <div>
+                    <div class="text-xs font-bold text-white" data-i18n="pairingSelect">Farzandni Bog'lash & Face ID</div>
+                    <div class="text-[10px] text-slate-400" data-i18n="pairingSub">Biometrik tasdiq va QR kod</div>
+                </div>
+            </div>
+            <span class="text-slate-500 text-sm">›</span>
+        </div>
+    </main>
+
+    <!-- ==================================================================== -->
+    <!-- SUBPAGE MODALS (ICHKI SAHIFALAR) -->
+    <!-- ==================================================================== -->
+
+    <!-- 🎨 MODAL: FONLAR GALEREYASI (PINTEREST) -->
+    <div id="modal-themes" class="subpage-modal space-y-4">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+            <button onclick="closeSubpage()" class="text-xs font-bold text-emerald-400" data-i18n="backBtn">← Orqaga</button>
+            <h2 class="text-xs font-bold text-white" data-i18n="themeSelect">Fonlar Tanlovi</h2>
+            <span class="w-8"></span>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+            <div onclick="setTheme('default')" data-theme-name="default" class="theme-card active bg-gradient-to-br from-slate-900 to-slate-950 border-slate-800 text-emerald-400">
+                Cyber Dark (Standart)
+            </div>
+            <div onclick="setTheme('aurora')" data-theme-name="aurora" class="theme-card bg-gradient-to-br from-sky-950 to-emerald-950 border-sky-800 text-sky-400">
+                Aurora Borealis
+            </div>
+            <div onclick="setTheme('nebula')" data-theme-name="nebula" class="theme-card bg-gradient-to-br from-purple-950 to-pink-950 border-purple-800 text-purple-400">
+                Deep Space Nebula
+            </div>
+            <div onclick="setTheme('sunset')" data-theme-name="sunset" class="theme-card bg-gradient-to-br from-amber-950 to-red-950 border-amber-800 text-amber-400">
+                Sunset Glow
+            </div>
+            <div onclick="setTheme('emerald')" data-theme-name="emerald" class="theme-card bg-gradient-to-br from-emerald-950 to-slate-950 border-emerald-800 text-emerald-300">
+                Emerald Matrix
+            </div>
+            <div onclick="setTheme('sakura')" data-theme-name="sakura" class="theme-card bg-gradient-to-br from-pink-950 to-slate-950 border-pink-800 text-pink-300">
+                Sakura Mist
+            </div>
+            <div onclick="setTheme('gold')" data-theme-name="gold" class="theme-card bg-gradient-to-br from-yellow-950 to-slate-950 border-yellow-800 text-yellow-300">
+                Obsidian Gold
+            </div>
+            <div onclick="setTheme('cyberpunk')" data-theme-name="cyberpunk" class="theme-card bg-gradient-to-br from-cyan-950 to-fuchsia-950 border-cyan-800 text-cyan-300">
+                Cyberpunk Night
+            </div>
+        </div>
+    </div>
+
+    <!-- 🌐 MODAL: TILNI TANLASH -->
+    <div id="modal-languages" class="subpage-modal space-y-4">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+            <button onclick="closeSubpage()" class="text-xs font-bold text-emerald-400" data-i18n="backBtn">← Orqaga</button>
+            <h2 class="text-xs font-bold text-white" data-i18n="langSelect">Til / Язык</h2>
+            <span class="w-8"></span>
+        </div>
+
+        <div class="space-y-3">
+            <div onclick="setLanguage('uz')" class="glass-card p-4 flex items-center justify-between cursor-pointer hover:border-emerald-500">
+                <div class="flex items-center gap-3">
+                    <span class="text-2xl">🇺🇿</span>
+                    <div>
+                        <div class="text-xs font-bold text-white">O'zbek tili</div>
+                        <div class="text-[10px] text-slate-400">To'liq o'zbekcha interfeys va AI</div>
+                    </div>
+                </div>
+                <span class="text-emerald-400 font-bold">Tanlash</span>
+            </div>
+
+            <div onclick="setLanguage('ru')" class="glass-card p-4 flex items-center justify-between cursor-pointer hover:border-emerald-500">
+                <div class="flex items-center gap-3">
+                    <span class="text-2xl">🇷🇺</span>
+                    <div>
+                        <div class="text-xs font-bold text-white">Русский язык</div>
+                        <div class="text-[10px] text-slate-400">Полный русский интерфейс и AI</div>
+                    </div>
+                </div>
+                <span class="text-sky-400 font-bold">Выбрать</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 💎 MODAL: TARIFLAR VA OBUNA -->
+    <div id="modal-plans" class="subpage-modal space-y-4">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+            <button onclick="closeSubpage()" class="text-xs font-bold text-emerald-400" data-i18n="backBtn">← Orqaga</button>
+            <h2 class="text-xs font-bold text-white" data-i18n="plansSelect">Tariflar</h2>
+            <span class="w-8"></span>
+        </div>
+
+        <div class="space-y-3">
+            <!-- Free Plan -->
+            <div class="glass-card p-4 space-y-2 border-slate-700">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-xs font-bold text-white">Boshlang'ich (Free)</h3>
+                    <span class="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded">Faol</span>
+                </div>
+                <div class="text-xl font-black text-white">0 so'm <span class="text-xs font-normal text-slate-400">/ doimiy</span></div>
+                <ul class="text-[11px] text-slate-300 space-y-1">
+                    <li>✓ 1 ta farzand ulash</li>
+                    <li>✓ GPS Jonli Radar va Geofence</li>
+                    <li>✓ Telegram bot orqali skrinshot tahlili</li>
+                </ul>
+            </div>
+
+            <!-- Premium Plan -->
+            <div class="glass-card p-4 space-y-2 border-emerald-500/50 relative overflow-hidden">
+                <div class="absolute top-0 right-0 bg-emerald-500 text-slate-950 font-bold text-[9px] px-3 py-0.5 rounded-bl-lg uppercase tracking-wider">
+                    Tavsiya etiladi
+                </div>
+                <div class="flex justify-between items-center">
+                    <h3 class="text-xs font-bold text-emerald-400">Oila Premium (AI Smart)</h3>
+                </div>
+                <div class="text-xl font-black text-white">29 000 so'm <span class="text-xs font-normal text-slate-400">/ oyiga</span></div>
+                <ul class="text-[11px] text-slate-300 space-y-1">
+                    <li>✓ 3 tagacha farzand ulash (Multi-child)</li>
+                    <li>✓ Gemini AI Pedagogik Tahlili va Psixologik Maslahatlar</li>
+                    <li>✓ e-Maktab avtomatik baholar va davomat sinxronizatsiyasi</li>
+                    <li>✓ Ovozli Radar va Biometrik Face ID tasdiqlash</li>
+                </ul>
+                <button class="w-full mt-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-2.5 rounded-xl transition shadow-lg shadow-emerald-900/40">
+                    Premiumga O'tish
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 🛡️ MODAL: FARZANDNI BOG'LASH & BIOMETRIKA (FACE ID) -->
+    <div id="modal-pairing" class="subpage-modal space-y-4">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+            <button onclick="closeSubpage()" class="text-xs font-bold text-emerald-400" data-i18n="backBtn">← Orqaga</button>
+            <h2 class="text-xs font-bold text-white" data-i18n="pairingSelect">Farzandni Ulash</h2>
+            <span class="w-8"></span>
+        </div>
+
         <section class="glass-card p-4 space-y-3">
-            <h3 class="text-xs font-bold text-white">🔗 Yangi Farzand Qurilmasini Ulash</h3>
+            <h3 class="text-xs font-bold text-white">🔗 Yangi Farzand Ulash Havolasi</h3>
             <p class="text-[11px] text-slate-300 leading-relaxed">
-                Farzandingiz Telegramiga quyidagi havola yoki QR kodni yuboring. Farzand tasdiqlagach, tizimga ulanadi.
+                Farzandingiz Telegramiga ushbu havolani yuboring:
             </p>
             <div class="p-3 bg-slate-900 rounded-xl border border-slate-800 text-[11px] font-mono text-emerald-400 break-all select-all">
                 https://t.me/farzand_nazorat_bot?start=pair_8f93a1c2
             </div>
-            <button onclick="copyPairingLink()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold py-2.5 px-4 rounded-xl border border-slate-700 transition flex items-center justify-center gap-1.5">
+            <button onclick="copyPairingLink()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold py-2.5 px-4 rounded-xl border border-slate-700 transition flex items-center justify-center gap-1.5" data-i18n="copyLink">
                 📋 Havolani Nusxalash
             </button>
         </section>
 
-        <!-- Biometrik Face ID Holati -->
-        <section class="glass-card p-4 space-y-2.5">
+        <!-- Qat'iy Biometrik Talab -->
+        <section class="glass-card p-4 space-y-2 border-emerald-500/30">
             <div class="flex items-center justify-between">
-                <h3 class="text-xs font-bold text-white">📹 Biometrik Tasdiq (Face ID)</h3>
-                <span class="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-bold">Tasdiqlangan</span>
+                <h3 class="text-xs font-bold text-white">📹 Biometrik Face ID Qoidasi</h3>
+                <span class="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-bold">Majburiy</span>
             </div>
-            <p class="text-[11px] text-slate-400">
-                Farzandingiz Telegram Video Note (dumaloq video) orqali haqiqiy inson ekanligini tasdiqlagan.
+            <p class="text-[11px] text-slate-300 leading-relaxed" data-i18n="consentNotice">
+                Farzand dumaloq video xabarda (Telegram Video Note) aniq qilib: <b>"nazorat_bot o'rnatilishiga roziman"</b> (yoki rus tilida: <i>"Я согласен на установку nazorat_bot"</i>) deb aytishi shart.
             </p>
         </section>
-    </main>
+    </div>
 
     <!-- ==================================================================== -->
     <!-- BOTTOM NAVIGATION (MODULAR TABS) -->
@@ -256,7 +439,7 @@
     <nav class="bottom-nav">
         <button class="nav-btn active" data-tab="tab-main" onclick="switchTab('tab-main')">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
-            Asosiy
+            <span data-i18n="appName">Asosiy</span>
         </button>
 
         <button class="nav-btn" data-tab="tab-radar" onclick="switchTab('tab-radar')">
@@ -274,9 +457,9 @@
             e-Maktab
         </button>
 
-        <button class="nav-btn" data-tab="tab-security" onclick="switchTab('tab-security')">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
-            Juftlash
+        <button class="nav-btn" data-tab="tab-settings" onclick="switchTab('tab-settings')">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+            Sozlamalar
         </button>
     </nav>
 
