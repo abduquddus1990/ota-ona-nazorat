@@ -1541,11 +1541,17 @@ async def watch_recordings_folder():
             audio_files = [
                 f for ext in ("*.wav", "*.m4a", "*.ogg", "*.mp3")
                 for f in mic_dir.glob(ext)
+                if not f.name.endswith(".tmp") and not f.name.endswith(".recording.tmp")
             ]
             for audio_file in audio_files:
                 try:
                     await process_and_report(str(audio_file), microphone_id)
-                    audio_file.rename(processed_dir / audio_file.name)
+                    dest_file = processed_dir / audio_file.name
+                    if dest_file.exists():
+                        dest_file.unlink(missing_ok=True)
+                    audio_file.replace(dest_file)
+                except PermissionError:
+                    logger.warning(f"Fayl hozirda band, keyingi tsiklda uriniladi: {audio_file}")
                 except Exception:
                     logger.exception(f"Faylni qayta ishlashda xatolik: {audio_file}")
 

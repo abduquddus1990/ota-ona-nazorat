@@ -1,8 +1,6 @@
-// app.js — to'liq mini-ilova: hamburger-menyu (yon panel) + profil oynasi +
-// har bir bo'lim uchun ekran, jumladan "Intizom AI" (matn/ovoz/rasm orqali
-// suhbat). Har bir navigatsiya/xabar backend'ga (Edge Function) so'rov
-// yuboradi — initData har safar qayta tekshiriladi (stateless, sessiya
-// saqlanmaydi), shuning uchun alohida login/parol tizimi kerak emas.
+// =========================================================================
+// INTIZOM AI — Kengaytirilgan Mini App va Brauzer Dashboard Dasturi (Lite)
+// =========================================================================
 
 const SUPABASE_URL = "https://wfrclcwjeeqeqchmdhzw.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_XXGPseelcyjkO6EJie1bHQ_t32mh4Do";
@@ -10,1247 +8,768 @@ const FUNCTION_URL = `${SUPABASE_URL}/functions/v1/miniapp-api`;
 
 const tg = window.Telegram?.WebApp;
 
-// ESLATMA: "bonuses" endi mustaqil menyu bandi emas — "Sozlamalar" ichiga
-// ko'chirildi (rahbar so'rovi bo'yicha), o'rniga "Intizom AI" qo'shildi.
-// "label" endi shu yerda emas — TRANSLATIONS'dagi "nav_<key>" orqali
-// olinadi (TZ 24-bo'lim: to'liq o'zbek/rus interfeysi).
-const NAV_ITEMS = [
-  { key: "reports", icon: "analytics" },
-  { key: "attendance", icon: "schedule" },
-  { key: "employees", icon: "badge" },
-  { key: "ai_chat", icon: "smart_toy" },
-  { key: "camera", icon: "videocam" },
-  { key: "settings", icon: "settings" },
+// 1. Asosiy Menyu Bo'limlari (Saqlangan)
+const CORE_NAV_ITEMS = [
+  { key: "reports", icon: "analytics", label_uz: "Hisobotlar", label_ru: "Отчёты" },
+  { key: "attendance", icon: "schedule", label_uz: "Davomat", label_ru: "Посещаемость" },
+  { key: "employees", icon: "badge", label_uz: "Xodimlar", label_ru: "Сотрудники" },
+  { key: "ai_chat", icon: "smart_toy", label_uz: "Intizom AI", label_ru: "Intizom AI" },
+  { key: "camera", icon: "videocam", label_uz: "Kamera", label_ru: "Камера" },
+  { key: "settings", icon: "tune", label_uz: "Sozlamalar", label_ru: "Настройки" },
 ];
 
-let currentUser = null; // { full_name, role, role_label, permissions, language }
+// 2. Yangi Qo'shilgan Tahliliy Bo'limlar (Appeals va Coaching vaqtincha olib tashlandi)
+const ADVANCED_NAV_ITEMS = [
+  { key: "analytics", icon: "trending_up", label_uz: "Dinamika & Tahlil", label_ru: "Динамика и Анализ" },
+  { key: "live_radar", icon: "notifications_active", label_uz: "Jonli Radar & Alerts", label_ru: "Радар & Оповещения" },
+];
 
-// =========================================================================
-// TIL (i18n) — Dashboard interfeysi to'liq o'zbek va rus tilida (TZ 24-bo'lim).
-// `currentUser.language` — bot_users.language bilan bir xil qiymat
-// (bot.py'dagi TRANSLATIONS/t() bilan mantiqan mos, alohida tilda yozilgan).
-// =========================================================================
-
-const TRANSLATIONS = {
-  uz: {
-    loading: "Yuklanmoqda...",
-    error_generic: "Xatolik yuz berdi.",
-    telegram_only: "Bu ilova faqat Telegram ichida ochilganda ishlaydi.",
-    no_sections: "Sizga ko'rsatiladigan bo'lim yo'q.",
-    welcome: "Xush kelibsiz, {name}!",
-    welcome_hint: "Kerakli bo'limni ochish uchun yon menyudan (☰) foydalaning.",
-
-    nav_reports: "Hisobotlar",
-    nav_attendance: "Davomat",
-    nav_employees: "Xodimlar",
-    nav_ai_chat: "Intizom AI",
-    nav_camera: "Kamera",
-    nav_settings: "Sozlamalar",
-    nav_history: "Yozuvlar tarixi",
-
-    role_manager: "Rahbar", role_deputy: "O'rinbosar", role_hr: "HR xodimi", role_admin: "Admin",
-
-    reports_today_conversations: "Bugungi suhbatlar",
-    reports_avg_score: "O'rtacha ball",
-    reports_none_today: "Bugun hali suhbatlar tahlil qilinmagan.",
-    pending: "kutilmoqda",
-    listen: "Eshitish",
-    back: "Orqaga",
-
-    history_title: "Yozuvlar tarixi (so'nggi 31 kun)",
-    history_pick_day: "Kunni tanlang.",
-    history_no_conversations: "{date} uchun suhbatlar topilmadi.",
-    history_daily_summary: "Kunlik umumiy hisobot",
-    history_summary_line: "{count} suhbat · o'rtacha {avg} · min {min} · max {max}",
-    history_summary_pending: "Kunlik umumiy hisobot hali tayyor emas (ertasi kuni 00:15da avtomatik hisoblanadi).",
-
-    attendance_mic_on: "mikrofon yondi",
-    attendance_active: "faol",
-    attendance_offline: "o'chiq",
-    attendance_today: "Bugun",
-    attendance_month: "Shu oy",
-    attendance_active_recorded: "faol {active}, yozilgan {recorded}",
-    attendance_empty: "Hozircha xodimlar ro'yxati bo'sh.",
-    min_short: "daq",
-    hour_short: "soat",
-
-    employees_empty: "Hozircha xodimlar ro'yxati bo'sh.",
-    workstation: "darcha",
-
-    bonus_none: "Bu oy uchun hali hisoblanadigan bonus ma'lumotlari yo'q.",
-    bonus_line: "{count} suhbat · hajm {volume}% · o'rtacha {avg}",
-    bonus_monthly_norm: "Oylik norma",
-    bonus_norm_value: "{norm} suhbat",
-    bonus_currency: "so'm",
-
-    camera_unset: "Kamera hozircha sozlanmagan.",
-
-    settings_bonus_max_percent: "Bonus maksimal foizi",
-    settings_monthly_norm: "Oylik suhbat normasi",
-    settings_show_bonuses: "Bonuslarni ko'rsatish",
-    settings_language: "Til",
-    settings_background: "Fon",
-    theme_trust: "Ishonch",
-    theme_order: "Tartib",
-    theme_control: "Nazorat",
-
-    chat_placeholder: "Xodimlar haqida so'rang...",
-    chat_greeting: "Salom! Men Intizom AI'man. Xodimlaringiz haqida savol bering — masalan: \"Kim eng ko'p xato qilyapti?\" yoki \"Aliyevga qanday yordam kerak?\". Matn, ovozli xabar yoki rasm (masalan hisobot skrinshoti) yuborishingiz mumkin.",
-    chat_history_loading: "Suhbat tarixi yuklanmoqda...",
-    chat_image_chip: "Rasm",
-    chat_audio_chip: "Ovoz",
-    chat_voice_note: "Ovozli xabar",
-    chat_mic_denied: "Mikrofonga ruxsat berilmadi.",
-    chat_error: "Xatolik: {message}",
-    aria_image: "Rasm", aria_voice: "Ovoz", aria_send: "Yuborish",
-    aria_tts_toggle: "Ovozli o'qish/pauza", aria_tts_stop: "To'xtatish",
-
-    preview_user: "Ko'rib chiqish rejimi",
-    preview_banner: "🔍 Brauzer ko'rinishi — bu faqat dizaynni ko'rib chiqish uchun. Haqiqiy ma'lumotlar faqat Telegram ilovasi ichida yuklanadi.",
-    data_telegram_only: "Bu bo'limdagi haqiqiy ma'lumotlar faqat Telegram ilovasi ichida yuklanadi.",
-    theme_group_patterns: "Naqshli fonlar",
-    theme_group_light: "Och ranglar",
-    theme_group_dark: "To'q ranglar",
-    color_cream: "Fil suyagi", color_sage: "Sokin yashil", color_blush: "Nafis pushti", color_sky: "Tiniq osmon",
-    color_espresso: "Qahva", color_forest: "O'rmon", color_plum: "Shafaq", color_night: "Tun",
-  },
-  ru: {
-    loading: "Загрузка...",
-    error_generic: "Произошла ошибка.",
-    telegram_only: "Это приложение работает только внутри Telegram.",
-    no_sections: "Вам не доступен ни один раздел.",
-    welcome: "Добро пожаловать, {name}!",
-    welcome_hint: "Используйте боковое меню (☰), чтобы открыть нужный раздел.",
-
-    nav_reports: "Отчёты",
-    nav_attendance: "Посещаемость",
-    nav_employees: "Сотрудники",
-    nav_ai_chat: "Intizom AI",
-    nav_camera: "Камера",
-    nav_settings: "Настройки",
-    nav_history: "История записей",
-
-    role_manager: "Руководитель", role_deputy: "Заместитель", role_hr: "HR-специалист", role_admin: "Админ",
-
-    reports_today_conversations: "Разговоры за сегодня",
-    reports_avg_score: "Средний балл",
-    reports_none_today: "Сегодня разговоры ещё не анализировались.",
-    pending: "ожидается",
-    listen: "Слушать",
-    back: "Назад",
-
-    history_title: "История записей (последние 31 день)",
-    history_pick_day: "Выберите день.",
-    history_no_conversations: "Разговоры за {date} не найдены.",
-    history_daily_summary: "Итоговый отчёт за день",
-    history_summary_line: "{count} разговоров · среднее {avg} · мин {min} · макс {max}",
-    history_summary_pending: "Итоговый отчёт за день ещё не готов (формируется автоматически в 00:15 следующего дня).",
-
-    attendance_mic_on: "микрофон включён",
-    attendance_active: "активен",
-    attendance_offline: "выключен",
-    attendance_today: "Сегодня",
-    attendance_month: "В этом месяце",
-    attendance_active_recorded: "активен {active}, записано {recorded}",
-    attendance_empty: "Список сотрудников пока пуст.",
-    min_short: "мин",
-    hour_short: "ч",
-
-    employees_empty: "Список сотрудников пока пуст.",
-    workstation: "окно",
-
-    bonus_none: "За этот месяц пока нет данных для расчёта бонуса.",
-    bonus_line: "{count} разговоров · объём {volume}% · среднее {avg}",
-    bonus_monthly_norm: "Месячная норма",
-    bonus_norm_value: "{norm} разговоров",
-    bonus_currency: "сум",
-
-    camera_unset: "Камера пока не настроена.",
-
-    settings_bonus_max_percent: "Максимальный процент бонуса",
-    settings_monthly_norm: "Месячная норма разговоров",
-    settings_show_bonuses: "Показать бонусы",
-    settings_language: "Язык",
-    settings_background: "Фон",
-    theme_trust: "Доверие",
-    theme_order: "Порядок",
-    theme_control: "Контроль",
-
-    chat_placeholder: "Спросите о сотрудниках...",
-    chat_greeting: "Здравствуйте! Я Intizom AI. Задайте вопрос о своих сотрудниках — например: \"Кто чаще всего ошибается?\" или \"Какая помощь нужна Алиеву?\". Можно отправить текст, голосовое сообщение или изображение (например скриншот отчёта).",
-    chat_history_loading: "Загрузка истории переписки...",
-    chat_image_chip: "Фото",
-    chat_audio_chip: "Голос",
-    chat_voice_note: "Голосовое сообщение",
-    chat_mic_denied: "Доступ к микрофону не предоставлен.",
-    chat_error: "Ошибка: {message}",
-    aria_image: "Фото", aria_voice: "Голос", aria_send: "Отправить",
-    aria_tts_toggle: "Озвучить/пауза", aria_tts_stop: "Остановить",
-
-    preview_user: "Режим просмотра",
-    preview_banner: "🔍 Просмотр в браузере — только для оценки дизайна. Реальные данные загружаются лишь внутри приложения Telegram.",
-    data_telegram_only: "Реальные данные этого раздела загружаются только внутри приложения Telegram.",
-    theme_group_patterns: "Узорные фоны",
-    theme_group_light: "Светлые цвета",
-    theme_group_dark: "Тёмные цвета",
-    color_cream: "Слоновая кость", color_sage: "Спокойный зелёный", color_blush: "Нежный розовый", color_sky: "Ясное небо",
-    color_espresso: "Кофе", color_forest: "Лес", color_plum: "Сумерки", color_night: "Ночь",
-  },
+let currentUser = {
+  full_name: "Quddusxon",
+  role: "manager",
+  permissions: ["reports", "attendance", "employees", "ai_chat", "camera", "settings", "analytics", "live_radar"],
+  language: "uz",
 };
 
-function t(key, vars) {
-  const lang = (currentUser && currentUser.language === "ru") ? "ru" : "uz";
-  let text = (TRANSLATIONS[lang] && TRANSLATIONS[lang][key]) || TRANSLATIONS.uz[key] || key;
-  if (vars) {
-    for (const [k, v] of Object.entries(vars)) {
-      text = text.replaceAll(`{${k}}`, v);
-    }
-  }
-  return text;
-}
+// Pinterest Fon Mavzulari
+const PINTEREST_THEMES = [
+  { key: "theme-emerald", label_uz: "Zangori Zumrad", label_ru: "Изумрудный Лес", color: "#10b981" },
+  { key: "theme-cream", label_uz: "Wabi-Sabi Qum", label_ru: "Песочный Крем", color: "#e8d8c3" },
+  { key: "theme-sage", label_uz: "Sokin Matcha", label_ru: "Матча Зеленый", color: "#a3b899" },
+  { key: "theme-plum", label_uz: "Nafis Shafaq", label_ru: "Нежная Слива", color: "#8a508f" },
+  { key: "theme-sky", label_uz: "Tiniq Osmon", label_ru: "Ясное Небо", color: "#38bdf8" },
+  { key: "theme-obsidian", label_uz: "Obsidian Tuni", label_ru: "Ночной Обсидиан", color: "#0f172a" },
+  { key: "theme-espresso", label_uz: "Iliq Qahva", label_ru: "Теплый Эспрессо", color: "#3c2a21" },
+  { key: "theme-grid", label_uz: "Arxitektura To'ri", label_ru: "Сетка", color: "#0284c7" },
+];
 
-function applyTelegramTheme() {
-  if (!tg) return;
-  tg.ready();
-  tg.expand();
-  document.documentElement.setAttribute("data-theme", tg.colorScheme || "light");
-  const root = document.documentElement.style;
-  const p = tg.themeParams || {};
-  const map = {
-    bg_color: "--tg-theme-bg-color",
-    secondary_bg_color: "--tg-theme-secondary-bg-color",
-    text_color: "--tg-theme-text-color",
-    hint_color: "--tg-theme-hint-color",
-    link_color: "--tg-theme-link-color",
-    button_color: "--tg-theme-button-color",
-    button_text_color: "--tg-theme-button-text-color",
-  };
-  for (const [key, cssVar] of Object.entries(map)) {
-    if (p[key]) root.setProperty(cssVar, p[key]);
-  }
-}
-
-// ---- Fon temasi (TZ 25-bo'lim) — Telegram CloudStorage orqali saqlanadi,
-// qurilma almashtirilsa ham tanlov saqlanib qoladi. Mini App tashqarisida
-// (oddiy brauzerda) ochilsa, localStorage'ga tushadi (faqat sinov uchun).
-const BG_THEME_KEY = "dashboard_background_theme";
-const PATTERN_BG_THEMES = ["theme-trust", "theme-order", "theme-control"];
-const LIGHT_BG_COLORS = ["color-cream", "color-sage", "color-blush", "color-sky"];
-const DARK_BG_COLORS = ["color-espresso", "color-forest", "color-plum", "color-night"];
-const VALID_BG_THEMES = [...PATTERN_BG_THEMES, ...LIGHT_BG_COLORS, ...DARK_BG_COLORS];
-
-function cloudStorageGet(key) {
-  return new Promise((resolve) => {
-    try {
-      if (tg?.CloudStorage && !isPreviewMode()) {
-        tg.CloudStorage.getItem(key, (err, value) => resolve(!err && value ? value : null));
-        return;
-      }
-    } catch (e) {
-      // brauzerda/Telegram tashqarisida CloudStorage kutilmagan xato bersa
-      // ham, sahifa ishlashda davom etishi kerak (localStorage'ga tushamiz).
-    }
-    resolve(localStorage.getItem(key));
-  });
-}
-
-function cloudStorageSet(key, value) {
-  try {
-    if (tg?.CloudStorage && !isPreviewMode()) {
-      tg.CloudStorage.setItem(key, value);
-      return;
-    }
-  } catch (e) {
-    // xuddi shu — yiqilib qolmaslik uchun localStorage'ga tushamiz.
-  }
-  localStorage.setItem(key, value);
-}
-
-function applyBgTheme(theme) {
-  if (VALID_BG_THEMES.includes(theme)) {
-    document.documentElement.setAttribute("data-bg-theme", theme);
-  } else {
-    document.documentElement.removeAttribute("data-bg-theme");
-  }
-}
-
-async function loadSavedBgTheme() {
-  applyBgTheme(await cloudStorageGet(BG_THEME_KEY));
-}
-
-function escapeHtml(str) {
-  const div = document.createElement("div");
-  div.textContent = str ?? "";
-  return div.innerHTML;
-}
-
-function formatTime(isoString) {
-  const locale = (currentUser && currentUser.language === "ru") ? "ru-RU" : "uz-UZ";
-  return new Date(isoString).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" });
-}
-
-function formatMinutes(mins) {
-  const m = Math.round(mins || 0);
-  if (m < 60) return `${m} ${t("min_short")}`;
-  const h = Math.floor(m / 60);
-  const rem = m % 60;
-  return `${h} ${t("hour_short")} ${rem} ${t("min_short")}`;
-}
-
-function scoreBadgeClass(score) {
-  if (score === null || score === undefined) return "pending";
-  if (score >= 85) return "good";
-  if (score >= 60) return "mid";
-  return "bad";
-}
-
-function scoreEmoji(score) {
-  if (score === null || score === undefined) return "⏳";
-  if (score >= 85) return "🟢";
-  if (score >= 60) return "🟡";
-  return "🔴";
-}
-
-async function callApi(action, extra = {}) {
-  if (!tg || !tg.initData) {
-    throw new Error(t("telegram_only"));
-  }
-  const res = await fetch(FUNCTION_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
-      "apikey": SUPABASE_PUBLISHABLE_KEY,
+const DEMO_DATA = {
+  stats: {
+    today_convs: 48,
+    avg_score: 88.4,
+    active_mics: "4 / 4",
+    pending_alerts: 3,
+  },
+  conversations: [
+    {
+      id: "c-101",
+      employee_name: "Dilnoza Karimova",
+      workstation: "1-Darcha",
+      time: "10:42",
+      score: 94,
+      duration: "3 daq 12 son",
+      summary: "Mijozga kadastr ma'lumotnomasini olish bo'yicha to'liq va xushmuomala xizmat ko'rsatildi.",
+      criteria: { salomlashish: 15, tinglash: 20, malumot: 28, yechim: 18, xayrlashish: 13 },
+      errors: [],
+      strengths: ["Xushfe'l salomlashdi", "Barcha hujjatlarni bosqichma-bosqich tushuntirdi"],
+      audio_url: "https://actions.google.com/sounds/v1/ambiences/office_room.ogg",
     },
-    body: JSON.stringify({ initData: tg.initData, action, ...extra }),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || t("error_generic"));
-  return data;
+    {
+      id: "c-102",
+      employee_name: "Alisher Rustamov",
+      workstation: "2-Darcha",
+      time: "10:15",
+      score: 72,
+      duration: "4 daq 05 son",
+      summary: "Xodim ma'lumot berdi, ammo davlat boji miqdorini tushuntirishda biroz noaniqlikka yo'l qo'ydi.",
+      criteria: { salomlashish: 12, tinglash: 15, malumot: 20, yechim: 15, xayrlashish: 10 },
+      errors: [{ text: "Boj miqdorini aniq bilmadi", fix: "Yangi tariflar jadvaliga qarang" }],
+      strengths: ["Sabr bilan tingladi"],
+      audio_url: "https://actions.google.com/sounds/v1/ambiences/office_room.ogg",
+    },
+    {
+      id: "c-103",
+      employee_name: "Jasur Bekchanov",
+      workstation: "3-Darcha",
+      time: "09:30",
+      score: 48,
+      duration: "1 daq 40 son",
+      summary: "Xodim asabiy ohangda javob berdi, salomlashmadi va mijoz savolini oxirigacha tinglamadi.",
+      criteria: { salomlashish: 5, tinglash: 8, malumot: 15, yechim: 12, xayrlashish: 8 },
+      errors: [
+        { text: "Salom bermasdan gap boshladi", fix: "Har doim 'Assalomu alaykum' bilan boshlang" },
+        { text: "Mijoz gapini bo'ldi", fix: "Mijoz fikrini to'liq ifodalashiga imkon bering" },
+      ],
+      strengths: [],
+      audio_url: "https://actions.google.com/sounds/v1/ambiences/office_room.ogg",
+    },
+    {
+      id: "c-104",
+      employee_name: "Nigora Umarova",
+      workstation: "4-Darcha",
+      time: "09:05",
+      score: 96,
+      duration: "5 daq 20 son",
+      summary: "Mukammal xizmat ko'rsatish: elektron raqamli imzo masalasida barcha savollarga aniq javob berildi.",
+      criteria: { salomlashish: 15, tinglash: 20, malumot: 30, yechim: 18, xayrlashish: 13 },
+      errors: [],
+      strengths: ["A'lo darajadagi odob", "Muammoni tezkor hal qilish"],
+      audio_url: "https://actions.google.com/sounds/v1/ambiences/office_room.ogg",
+    },
+  ],
+  attendance: [
+    { name: "Dilnoza Karimova", mic: "mic-1", is_online: true, start: "08:50", active_mins: 145, recorded_mins: 82 },
+    { name: "Alisher Rustamov", mic: "mic-2", is_online: true, start: "08:55", active_mins: 140, recorded_mins: 76 },
+    { name: "Jasur Bekchanov", mic: "mic-3", is_online: true, start: "09:00", active_mins: 135, recorded_mins: 54 },
+    { name: "Nigora Umarova", mic: "mic-4", is_online: true, start: "08:45", active_mins: 150, recorded_mins: 90 },
+  ],
+  employees: [
+    { name: "Dilnoza Karimova", pos: "Katta Operator", ws: "1-Darcha", mic: "mic-1", salary: "4,500,000", score: 94, total: 142 },
+    { name: "Alisher Rustamov", pos: "Operator", ws: "2-Darcha", mic: "mic-2", salary: "3,800,000", score: 82, total: 118 },
+    { name: "Jasur Bekchanov", pos: "Kichik Operator", ws: "3-Darcha", mic: "mic-3", salary: "3,200,000", score: 68, total: 95 },
+    { name: "Nigora Umarova", pos: "Yetakchi Mutaxassis", ws: "4-Darcha", mic: "mic-4", salary: "5,000,000", score: 96, total: 160 },
+  ],
+  alerts: [
+    { id: "a-1", type: "critical", title: "Past ball ogohlantirishi", desc: "Jasur Bekchanov (3-darcha) 48 ball oldi.", time: "09:32" },
+    { id: "a-2", type: "medium", title: "Navbat zichligi", desc: "2-darchada kutish vaqti 8 daqiqadan oshdi.", time: "10:15" },
+    { id: "a-3", type: "info", title: "A'lo sifat", desc: "Nigora Umarova 96 ball bilan xizmat ko'rsatdi.", time: "09:08" },
+  ],
+};
+
+function isPreviewMode() {
+  return !tg || !tg.initData;
 }
 
-function setView(html) {
+function applyTheme(themeKey) {
+  document.documentElement.setAttribute("data-bg-theme", themeKey);
+  localStorage.setItem("intizom_bg_theme", themeKey);
+}
+
+function initTheme() {
+  const saved = localStorage.getItem("intizom_bg_theme") || "theme-emerald";
+  applyTheme(saved);
+}
+
+function showToast(message, icon = "info") {
+  const container = document.getElementById("toast-container");
+  const toast = document.createElement("div");
+  toast.className = "toast glass-card";
+  toast.innerHTML = `<span class="material-symbols-outlined">${icon}</span><span>${message}</span>`;
+  container.appendChild(toast);
+  setTimeout(() => {
+    toast.style.opacity = "0";
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
+}
+
+function openModal(title, bodyHtml) {
+  document.getElementById("modal-title").textContent = title;
+  document.getElementById("modal-body").innerHTML = bodyHtml;
+  document.getElementById("modal-overlay").classList.remove("hidden");
+}
+
+function closeModal() {
+  document.getElementById("modal-overlay").classList.add("hidden");
+}
+
+const setView = (html) => {
   document.getElementById("view").innerHTML = html;
-}
+};
 
-function stateMessage(text, isError = false) {
-  setView(`<div class="state-message${isError ? " error" : ""}">${escapeHtml(text)}</div>`);
-}
+// 1. HISOBOTLAR BO'LIMI (REPORTS)
+function viewReports() {
+  const convs = DEMO_DATA.conversations;
+  const avg = DEMO_DATA.stats.avg_score;
+  const total = DEMO_DATA.stats.today_convs;
 
-// ---- Ekranlar (views) ------------------------------------------------
+  const html = `
+    ${isPreviewMode() ? `<div class="preview-banner glass-card"><span class="preview-badge">BRAUZER REJIMI</span><span>Tezkor 60 FPS rejim faol. Barcha ma'lumotlar va audio tahlillar mavjud.</span></div>` : ""}
 
-function conversationListHtml(conversations) {
-  return `<ul class="item-list">${conversations.map((c) => `
-    <li class="item-card" data-conversation-id="${c.id}">
-      <span class="emoji">${scoreEmoji(c.score)}</span>
-      <span class="info">
-        <div class="title">${escapeHtml(c.employee_name)}</div>
-        <div class="subtitle">${formatTime(c.created_at)}</div>
-        <div class="audio-slot"></div>
-      </span>
-      <span class="badge ${scoreBadgeClass(c.score)}">
-        ${c.score !== null ? c.score + "/100" : t("pending")}
-      </span>
-      ${c.has_audio ? `<button class="listen-btn" aria-label="${t("listen")}"><span class="material-symbols-outlined">play_circle</span></button>` : ""}
-    </li>
-  `).join("")}</ul>`;
-}
-
-function wireListenButtons() {
-  document.querySelectorAll(".listen-btn").forEach((btn) => {
-    btn.addEventListener("click", () => playAudioFor(btn));
-  });
-}
-
-async function viewReports() {
-  stateMessage(t("loading"));
-  const { conversations } = await callApi("reports");
-
-  const total = conversations.length;
-  const scored = conversations.filter((c) => c.score !== null);
-  const avg = scored.length
-    ? Math.round(scored.reduce((s, c) => s + c.score, 0) / scored.length)
-    : null;
-
-  const statGrid = `
-    <div class="stat-grid">
-      <div class="stat-card">
-        <div class="stat-label">${t("reports_today_conversations")}</div>
-        <div class="stat-value">${total}</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">${t("reports_avg_score")}</div>
-        <div class="stat-value">${avg !== null ? avg : "—"}</div>
-      </div>
-    </div>
-  `;
-
-  if (!total) {
-    setView(statGrid + `<div class="state-message">${t("reports_none_today")}</div>`);
-    return;
-  }
-
-  setView(statGrid + conversationListHtml(conversations));
-  wireListenButtons();
-}
-
-async function playAudioFor(btn) {
-  const card = btn.closest(".item-card");
-  const conversationId = card.dataset.conversationId;
-  const slot = card.querySelector(".audio-slot");
-
-  btn.disabled = true;
-  btn.innerHTML = '<span class="material-symbols-outlined">hourglass_top</span>';
-  try {
-    const { url } = await callApi("audio_url", { conversation_id: conversationId });
-    const audio = document.createElement("audio");
-    audio.controls = true;
-    audio.autoplay = true;
-    audio.src = url;
-    audio.className = "audio-player";
-    slot.appendChild(audio);
-    btn.remove();
-  } catch (e) {
-    btn.disabled = false;
-    btn.innerHTML = '<span class="material-symbols-outlined">error</span>';
-  }
-}
-
-// ---- Yozuvlar tarixi (31 kunlik kalendar) ------------------------------
-
-function last31Dates() {
-  const dates = [];
-  const today = new Date();
-  for (let i = 30; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(d.getDate() - i);
-    dates.push(d);
-  }
-  return dates;
-}
-
-function toDateKey(d) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-
-async function viewHistory() {
-  const dates = last31Dates();
-  const todayKey = toDateKey(new Date());
-
-  setView(`
     <div class="view-header">
-      <h3 class="section-title">${t("history_title")}</h3>
-      <button id="history-back-btn" class="icon-btn" aria-label="${t("back")}">
-        <span class="material-symbols-outlined">arrow_back</span>
+      <div class="view-title-box">
+        <h2>Bugungi Suhbatlar Hisoboti</h2>
+        <p>Real vaqtli AI tahlili va sifat ko'rsatkichlari</p>
+      </div>
+      <button class="action-btn-pill" onclick="showToast('Hisobotlar PDF formatida eksport qilindi', 'download')">
+        <span class="material-symbols-outlined">download</span> Eksport
       </button>
     </div>
-    <div class="calendar-grid">
-      ${dates.map((d) => {
-        const key = toDateKey(d);
-        const isToday = key === todayKey;
-        return `<button class="calendar-day${isToday ? " today" : ""}" data-date="${key}">${d.getDate()}</button>`;
-      }).join("")}
+
+    <div class="stats-grid-4">
+      <div class="stat-card-pro glass-card">
+        <div class="stat-icon-wrap blue"><span class="material-symbols-outlined">forum</span></div>
+        <div class="stat-details">
+          <span class="stat-num">${total}</span>
+          <span class="stat-sub">Jami suhbatlar</span>
+          <span class="stat-trend up">↑ +12% kechagiga nisbatan</span>
+        </div>
+      </div>
+      <div class="stat-card-pro glass-card">
+        <div class="stat-icon-wrap green"><span class="material-symbols-outlined">verified</span></div>
+        <div class="stat-details">
+          <span class="stat-num">${avg}</span>
+          <span class="stat-sub">O'rtacha sifat bali</span>
+          <span class="stat-trend up">↑ +4.2 ball</span>
+        </div>
+      </div>
+      <div class="stat-card-pro glass-card">
+        <div class="stat-icon-wrap amber"><span class="material-symbols-outlined">mic</span></div>
+        <div class="stat-details">
+          <span class="stat-num">4 / 4</span>
+          <span class="stat-sub">Faol mikrofonlar</span>
+          <span class="stat-trend">100% qamrov</span>
+        </div>
+      </div>
+      <div class="stat-card-pro glass-card">
+        <div class="stat-icon-wrap purple"><span class="material-symbols-outlined">notifications_active</span></div>
+        <div class="stat-details">
+          <span class="stat-num">${DEMO_DATA.stats.pending_alerts} ta</span>
+          <span class="stat-sub">Radar signallari</span>
+          <span class="stat-trend">Nazoratda</span>
+        </div>
+      </div>
     </div>
-    <div id="history-day-slot">
-      <div class="state-message">${t("history_pick_day")}</div>
-    </div>
-  `);
 
-  document.getElementById("history-back-btn").addEventListener("click", () => navigateTo("reports"));
-
-  document.querySelectorAll(".calendar-day").forEach((btn) => {
-    btn.addEventListener("click", async () => {
-      document.querySelectorAll(".calendar-day").forEach((b) => b.classList.remove("selected"));
-      btn.classList.add("selected");
-      await loadHistoryDay(btn.dataset.date);
-    });
-  });
-}
-
-async function loadHistoryDay(dateKey) {
-  const slot = document.getElementById("history-day-slot");
-  slot.innerHTML = `<div class="state-message">${t("loading")}</div>`;
-  try {
-    const { conversations, summary } = await callApi("history_day", { date: dateKey });
-
-    if (!conversations.length) {
-      slot.innerHTML = `<div class="state-message">${escapeHtml(t("history_no_conversations", { date: dateKey }))}</div>`;
-      return;
-    }
-
-    const summaryHtml = summary.length ? `
-      <h4 class="section-title">${t("history_daily_summary")}</h4>
-      <ul class="item-list">
-        ${summary.map((s) => `
-          <li class="item-card">
-            <span class="emoji">${scoreEmoji(s.avg_score)}</span>
-            <span class="info">
-              <div class="title">${escapeHtml(s.employee_name)}</div>
-              <div class="subtitle">${escapeHtml(t("history_summary_line", {
-                count: s.conversations_count,
-                avg: s.avg_score ?? "—",
-                min: s.min_score ?? "—",
-                max: s.max_score ?? "—",
-              }))}</div>
-            </span>
+    <h3 style="margin-bottom:12px; font-size:17px;">So'nggi Tahlil Qilingan Suhbatlar</h3>
+    <ul class="item-list">
+      ${convs.map((c) => {
+        const scoreClass = c.score >= 85 ? "good" : c.score >= 60 ? "mid" : "bad";
+        return `
+          <li class="item-card glass-card" onclick="openConversationDetails('${c.id}')">
+            <div class="score-circle ${scoreClass}">${c.score}</div>
+            <div class="item-info">
+              <div class="item-title">
+                <span>${c.employee_name}</span>
+                <span class="item-badge-pill">${c.workstation}</span>
+              </div>
+              <div class="item-subtitle">${c.time} · ${c.duration} · ${c.summary}</div>
+            </div>
+            <div class="item-actions">
+              <button class="icon-btn" title="Eshitish" onclick="event.stopPropagation(); playAudioMock('${c.id}')">
+                <span class="material-symbols-outlined">play_circle</span>
+              </button>
+            </div>
           </li>
-        `).join("")}
-      </ul>
-    ` : `<div class="state-message">${t("history_summary_pending")}</div>`;
-
-    slot.innerHTML = conversationListHtml(conversations) + summaryHtml;
-    wireListenButtons();
-  } catch (e) {
-    slot.innerHTML = `<div class="state-message error">${escapeHtml(e.message)}</div>`;
-  }
-}
-
-async function viewAttendance() {
-  // TZ 22-bo'lim: har bir xodim uchun mikrofon holati (recorder.py
-  // heartbeat orqali) + bugungi va shu oylik faol/yozilgan daqiqalar.
-  stateMessage(t("loading"));
-  const { rows } = await callApi("attendance");
-
-  if (!rows.length) {
-    stateMessage(t("attendance_empty"));
-    return;
-  }
-
-  const items = rows.map((r) => `
-    <li class="item-card attendance-card">
-      <span class="emoji">${r.is_online ? "🟢" : "🔴"}</span>
-      <span class="info">
-        <div class="title">${escapeHtml(r.full_name)}</div>
-        <div class="subtitle">
-          ${escapeHtml(r.microphone_id || "-")} ·
-          ${t("attendance_mic_on")}: ${r.session_start ? formatTime(r.session_start) : "—"} ·
-          ${r.is_online ? t("attendance_active") : t("attendance_offline")}
-        </div>
-        <div class="attendance-stats">
-          <span><b>${t("attendance_today")}:</b> ${escapeHtml(t("attendance_active_recorded", {
-            active: formatMinutes(r.today_active_minutes),
-            recorded: formatMinutes(r.today_recorded_minutes),
-          }))}</span>
-          <span><b>${t("attendance_month")}:</b> ${escapeHtml(t("attendance_active_recorded", {
-            active: formatMinutes(r.month_active_minutes),
-            recorded: formatMinutes(r.month_recorded_minutes),
-          }))}</span>
-        </div>
-      </span>
-    </li>
-  `).join("");
-
-  setView(`<ul class="item-list">${items}</ul>`);
-}
-
-async function viewEmployees() {
-  stateMessage(t("loading"));
-  const { employees } = await callApi("employees");
-  if (!employees.length) {
-    stateMessage(t("employees_empty"));
-    return;
-  }
-  const items = employees.map((e) => `
-    <li class="item-card">
-      <span class="emoji">👤</span>
-      <span class="info">
-        <div class="title">${escapeHtml(e.full_name)}</div>
-        <div class="subtitle">${escapeHtml(e.position || "-")} · ${t("workstation")} ${escapeHtml(e.workstation_number || "-")}</div>
-      </span>
-      <span class="badge neutral">${escapeHtml(e.microphone_id || "-")}</span>
-    </li>
-  `).join("");
-  setView(`<ul class="item-list">${items}</ul>`);
-}
-
-function bonusListHtml(bonuses, conversationsNorm) {
-  if (!bonuses.length) {
-    return `<div class="state-message">${t("bonus_none")}</div>`;
-  }
-  const items = bonuses.map((b) => `
-    <li class="item-card">
-      <span class="emoji">${scoreEmoji(b.avg_score)}</span>
-      <span class="info">
-        <div class="title">${escapeHtml(b.full_name)}</div>
-        <div class="subtitle">${escapeHtml(t("bonus_line", { count: b.conv_count, volume: (b.volume_coef * 100).toFixed(0), avg: b.avg_score }))}</div>
-      </span>
-      <span class="badge neutral">
-        ${b.bonus_amount !== null ? Math.round(b.bonus_amount).toLocaleString("uz-UZ") + " " + t("bonus_currency") : "—"}
-      </span>
-    </li>
-  `).join("");
-  return `
-    <div class="settings-row"><span class="label">${t("bonus_monthly_norm")}</span><span class="value">${escapeHtml(t("bonus_norm_value", { norm: conversationsNorm }))}</span></div>
-    <ul class="item-list" style="margin-top:12px">${items}</ul>
+        `;
+      }).join("")}
+    </ul>
   `;
+  setView(html);
 }
 
-async function viewCamera() {
-  stateMessage(t("loading"));
-  const data = await callApi("camera");
-  stateMessage(data.message || t("camera_unset"));
+function openConversationDetails(convId) {
+  const c = DEMO_DATA.conversations.find((x) => x.id === convId);
+  if (!c) return;
+
+  const bodyHtml = `
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+      <div>
+        <h4 style="font-size:17px; font-weight:800;">${c.employee_name} (${c.workstation})</h4>
+        <p style="color:var(--text-muted); font-size:12px;">${c.time} · ${c.duration}</p>
+      </div>
+      <div class="score-circle ${c.score >= 85 ? "good" : c.score >= 60 ? "mid" : "bad"}" style="width:50px; height:50px; font-size:17px;">
+        ${c.score}
+      </div>
+    </div>
+
+    <div style="margin-bottom:14px;">
+      <h5 style="font-size:12px; color:var(--text-dim); text-transform:uppercase; margin-bottom:4px;">Qisqa Xulosa:</h5>
+      <p style="font-size:13px; background:rgba(0,0,0,0.25); padding:10px 12px; border-radius:8px;">${c.summary}</p>
+    </div>
+
+    <h5 style="font-size:12px; color:var(--text-dim); text-transform:uppercase; margin-bottom:8px;">Mezonlar bo'yicha ballar:</h5>
+    <div class="criteria-progress-list" style="margin-bottom:16px;">
+      <div class="crit-item"><div class="crit-header"><span>Salomlashish va odob</span><span>${c.criteria.salomlashish}/15</span></div><div class="crit-bar-bg"><div class="crit-bar-fill good" style="width:${(c.criteria.salomlashish/15)*100}%"></div></div></div>
+      <div class="crit-item"><div class="crit-header"><span>Tinglash va tushunish</span><span>${c.criteria.tinglash}/20</span></div><div class="crit-bar-bg"><div class="crit-bar-fill good" style="width:${(c.criteria.tinglash/20)*100}%"></div></div></div>
+      <div class="crit-item"><div class="crit-header"><span>Ma'lumot to'g'riligi</span><span>${c.criteria.malumot}/30</span></div><div class="crit-bar-bg"><div class="crit-bar-fill ${c.criteria.malumot < 20 ? "bad" : "good"}" style="width:${(c.criteria.malumot/30)*100}%"></div></div></div>
+      <div class="crit-item"><div class="crit-header"><span>Muammo hal qilish</span><span>${c.criteria.yechim}/20</span></div><div class="crit-bar-bg"><div class="crit-bar-fill good" style="width:${(c.criteria.yechim/20)*100}%"></div></div></div>
+      <div class="crit-item"><div class="crit-header"><span>Xayrlashish</span><span>${c.criteria.xayrlashish}/15</span></div><div class="crit-bar-bg"><div class="crit-bar-fill good" style="width:${(c.criteria.xayrlashish/15)*100}%"></div></div></div>
+    </div>
+
+    ${c.errors.length ? `
+      <h5 style="font-size:12px; color:var(--score-bad); text-transform:uppercase; margin-bottom:4px;">Aniqlangan xatolar:</h5>
+      <ul style="list-style:none; margin-bottom:14px;">
+        ${c.errors.map((e) => `<li style="background:rgba(239,68,68,0.12); padding:8px 10px; border-radius:6px; font-size:12px; margin-bottom:6px;"><b>Xato:</b> ${e.text}<br><span style="color:var(--score-good);"><b>Tavsiya:</b> ${e.fix}</span></li>`).join("")}
+      </ul>
+    ` : ""}
+
+    <div class="audio-player-custom" style="margin-top:10px;">
+      <audio controls autoplay src="${c.audio_url}" style="width:100%; height:36px;"></audio>
+    </div>
+  `;
+  openModal("Suhbat Tahlili Tafsilotlari", bodyHtml);
 }
 
-function settingsToggleRowHtml(rowId, iconBtnId, label, slotId, slotContentHtml) {
-  // "Hisobotlar" yon menyu qatoridagi kabi: label yonida kichik ☰
-  // (uch chiziq) tugmasi, bosilganda pastdagi bo'lim ochiladi/yopiladi.
-  return `
-    <div class="settings-toggle-row">
-      <span class="settings-toggle-label">${label}</span>
-      <button id="${iconBtnId}" class="icon-btn" aria-label="${label}">
-        <span class="material-symbols-outlined">menu</span>
+function playAudioMock(convId) {
+  openConversationDetails(convId);
+}
+
+// 2. DAVOMAT BO'LIMI (ATTENDANCE)
+function viewAttendance() {
+  const rows = DEMO_DATA.attendance;
+  const html = `
+    <div class="view-header">
+      <div class="view-title-box">
+        <h2>Xodimlar Davomati va Mikrofon Holati</h2>
+        <p>Heartbeat va ovoz faolligi nazorati (24/7 Monitoring)</p>
+      </div>
+      <button class="action-btn-pill" onclick="showToast('Mikrofonlar holati yangilandi', 'refresh')">
+        <span class="material-symbols-outlined">refresh</span> Yangilash
       </button>
     </div>
-    <div id="${slotId}" class="hidden">${slotContentHtml}</div>
+
+    <ul class="item-list">
+      ${rows.map((r) => `
+        <li class="item-card glass-card">
+          <div class="stat-icon-wrap ${r.is_online ? "green" : "amber"}">
+            <span class="material-symbols-outlined">${r.is_online ? "mic" : "mic_off"}</span>
+          </div>
+          <div class="item-info">
+            <div class="item-title">
+              <span>${r.name}</span>
+              <span class="item-badge-pill">${r.mic}</span>
+              <span class="status-tag ${r.is_online ? "approved" : "rejected"}">${r.is_online ? "Faol (Onlayn)" : "O'chiq"}</span>
+            </div>
+            <div class="item-subtitle">
+              Smena: ${r.start} · <b>Bugun faol:</b> ${Math.floor(r.active_mins/60)}s ${r.active_mins%60}d · <b>Nutq:</b> ${r.recorded_mins} daq
+            </div>
+          </div>
+        </li>
+      `).join("")}
+    </ul>
   `;
+  setView(html);
 }
 
-function themeSwatchButtonsHtml(keys, activeBgTheme) {
-  return keys.map((key) => {
-    // "color-cream" -> "cream", "theme-trust" -> "trust" (CSS klass va tarjima kaliti uchun)
-    const short = key.replace(/^(color|theme)-/, "");
-    const labelKey = key.startsWith("color-") ? `color_${short}` : `theme_${short}`;
-    return `<button class="theme-swatch swatch-${short}${activeBgTheme === key ? " selected" : ""}" data-theme="${key}">${t(labelKey)}</button>`;
-  }).join("");
-}
-
-async function viewSettings() {
-  stateMessage(t("loading"));
-
-  // Preview rejimida (Telegram tashqarisida) haqiqiy sozlamalarni
-  // yuklab bo'lmaydi — lekin bu Til/Fon tanlovini ko'rsatishga to'sqinlik
-  // qilmasin (ular backend ma'lumotiga muhtoj emas).
-  let s = null;
-  try {
-    s = await callApi("settings");
-  } catch (e) {
-    if (!isPreviewMode()) { stateMessage(e.message, true); return; }
-  }
-
-  const canSeeBonuses = currentUser.permissions.includes("bonuses");
-  const activeBgTheme = document.documentElement.getAttribute("data-bg-theme");
-
-  setView(`
-    ${s ? `
-      <div class="settings-row">
-        <span class="label">${t("settings_bonus_max_percent")}</span>
-        <span class="value">${(s.bonus_max_percent * 100).toFixed(0)}%</span>
+// 3. XODIMLAR BO'LIMI (EMPLOYEES)
+function viewEmployees() {
+  const emps = DEMO_DATA.employees;
+  const html = `
+    <div class="view-header">
+      <div class="view-title-box">
+        <h2>Xodimlar Ro'yxati</h2>
+        <p>Darchalar, oklad va umumiy KPI ko'rsatkichlari</p>
       </div>
-      <div class="settings-row">
-        <span class="label">${t("settings_monthly_norm")}</span>
-        <span class="value">${escapeHtml(t("bonus_norm_value", { norm: s.monthly_conversation_norm }))}</span>
+      <button class="action-btn-pill" onclick="showToast('Yangi xodim qo\'shish oynasi ochildi', 'person_add')">
+        <span class="material-symbols-outlined">person_add</span> Xodim Qo'shish
+      </button>
+    </div>
+
+    <ul class="item-list">
+      ${emps.map((e) => `
+        <li class="item-card glass-card">
+          <div class="score-circle ${e.score >= 85 ? "good" : e.score >= 60 ? "mid" : "bad"}">${e.score}</div>
+          <div class="item-info">
+            <div class="item-title">
+              <span>${e.name}</span>
+              <span class="item-badge-pill">${e.pos}</span>
+            </div>
+            <div class="item-subtitle">
+              ${e.ws} (${e.mic}) · Oklad: ${e.salary} so'm · Jami suhbatlar: ${e.total} ta
+            </div>
+          </div>
+          <button class="action-btn-pill" onclick="showToast('${e.name} bo\\'yicha oylik hisobot ochildi', 'receipt_long')">
+            Hisobot
+          </button>
+        </li>
+      `).join("")}
+    </ul>
+  `;
+  setView(html);
+}
+
+// 4. DINAMIKA & TAHLIL (ANALYTICS)
+function viewAnalytics() {
+  const html = `
+    <div class="view-header">
+      <div class="view-title-box">
+        <h2>Dinamika va Tahliliy Ko'rsatkichlar</h2>
+        <p>Haftalik sifat trendlari va xatoliklar taqsimoti</p>
       </div>
-    ` : `<div class="state-message">${t("data_telegram_only")}</div>`}
-    ${canSeeBonuses ? settingsToggleRowHtml(
-      "bonuses-row", "toggle-bonuses-btn", t("settings_show_bonuses"), "bonuses-slot", ""
-    ) : ""}
-    ${settingsToggleRowHtml("language-row", "toggle-language-btn", t("settings_language"), "language-slot", `
-      <div class="lang-btn-row">
-        <button class="lang-option${(currentUser.language || "uz") === "uz" ? " selected" : ""}" data-lang="uz">🇺🇿 O'zbekcha</button>
-        <button class="lang-option${currentUser.language === "ru" ? " selected" : ""}" data-lang="ru">🇷🇺 Русский</button>
+    </div>
+
+    <div class="analytics-grid-2">
+      <div class="chart-card glass-card">
+        <div class="chart-card-title">
+          <span>7 Kunlik Sifat Grafigi (O'rtacha Ball)</span>
+          <span class="material-symbols-outlined">show_chart</span>
+        </div>
+        <div class="bar-chart-container">
+          <div class="bar-col"><div class="bar-val">82</div><div class="bar-fill" style="height:82%;"></div><div class="bar-label">Dush</div></div>
+          <div class="bar-col"><div class="bar-val">85</div><div class="bar-fill" style="height:85%;"></div><div class="bar-label">Sesh</div></div>
+          <div class="bar-col"><div class="bar-val">79</div><div class="bar-fill" style="height:79%;"></div><div class="bar-label">Chor</div></div>
+          <div class="bar-col"><div class="bar-val">88</div><div class="bar-fill" style="height:88%;"></div><div class="bar-label">Pay</div></div>
+          <div class="bar-col"><div class="bar-val">91</div><div class="bar-fill" style="height:91%;"></div><div class="bar-label">Juma</div></div>
+          <div class="bar-col"><div class="bar-val">94</div><div class="bar-fill" style="height:94%;"></div><div class="bar-label">Shan</div></div>
+          <div class="bar-col"><div class="bar-val">88</div><div class="bar-fill" style="height:88%; background:var(--accent);"></div><div class="bar-label">Bugun</div></div>
+        </div>
       </div>
-    `)}
-    ${settingsToggleRowHtml("background-row", "toggle-background-btn", t("settings_background"), "background-slot", `
-      <div class="theme-group-label">${t("theme_group_light")}</div>
-      <div class="theme-swatch-grid">${themeSwatchButtonsHtml(LIGHT_BG_COLORS, activeBgTheme)}</div>
-      <div class="theme-group-label">${t("theme_group_dark")}</div>
-      <div class="theme-swatch-grid">${themeSwatchButtonsHtml(DARK_BG_COLORS, activeBgTheme)}</div>
-      <div class="theme-group-label">${t("theme_group_patterns")}</div>
-      <div class="theme-swatch-grid">${themeSwatchButtonsHtml(PATTERN_BG_THEMES, activeBgTheme)}</div>
-    `)}
-  `);
 
-  const wireToggleSlot = (btnId, slotId) => {
-    const toggleBtn = document.getElementById(btnId);
-    const slot = document.getElementById(slotId);
-    if (!toggleBtn || !slot) return;
-    toggleBtn.addEventListener("click", () => slot.classList.toggle("hidden"));
-  };
-  wireToggleSlot("toggle-language-btn", "language-slot");
-  wireToggleSlot("toggle-background-btn", "background-slot");
+      <div class="chart-card glass-card">
+        <div class="chart-card-title">
+          <span>Mezonlar Bo'yicha O'rtacha Natija</span>
+          <span class="material-symbols-outlined">pie_chart</span>
+        </div>
+        <div class="criteria-progress-list">
+          <div class="crit-item">
+            <div class="crit-header"><span>Salomlashish va odob</span><span>92%</span></div>
+            <div class="crit-bar-bg"><div class="crit-bar-fill good" style="width:92%"></div></div>
+          </div>
+          <div class="crit-item">
+            <div class="crit-header"><span>Mijozni tinglash</span><span>88%</span></div>
+            <div class="crit-bar-bg"><div class="crit-bar-fill good" style="width:88%"></div></div>
+          </div>
+          <div class="crit-item">
+            <div class="crit-header"><span>Ma'lumot to'g'riligi</span><span>84%</span></div>
+            <div class="crit-bar-bg"><div class="crit-bar-fill mid" style="width:84%"></div></div>
+          </div>
+          <div class="crit-item">
+            <div class="crit-header"><span>Muammo hal qilish</span><span>89%</span></div>
+            <div class="crit-bar-bg"><div class="crit-bar-fill good" style="width:89%"></div></div>
+          </div>
+          <div class="crit-item">
+            <div class="crit-header"><span>Xayrlashish odobi</span><span>86%</span></div>
+            <div class="crit-bar-bg"><div class="crit-bar-fill good" style="width:86%"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
 
-  document.querySelectorAll(".lang-option").forEach((langBtn) => {
-    langBtn.addEventListener("click", async () => {
-      const lang = langBtn.dataset.lang;
-      if (lang === (currentUser.language || "uz")) return;
-      langBtn.disabled = true;
-      try {
-        // Preview rejimida (Telegram tashqarisida) haqiqiy bot_users
-        // yozuvi yo'q — shuning uchun serverga saqlashga urinmasdan,
-        // faqat mahalliy (shu sessiya uchun) qo'llanadi.
-        if (!isPreviewMode()) {
-          await callApi("set_language", { language: lang });
-        }
-        currentUser.language = lang;
-        refreshUiTexts();
-        await viewSettings(); // butun bo'limni yangi tilda qayta chizadi
-        document.getElementById("language-slot")?.classList.remove("hidden");
-      } catch (e) {
-        alert(e.message);
-        langBtn.disabled = false;
-      }
-    });
-  });
-
-  document.querySelectorAll(".theme-swatch").forEach((swatchBtn) => {
-    swatchBtn.addEventListener("click", () => {
-      const theme = swatchBtn.dataset.theme;
-      applyBgTheme(theme);
-      cloudStorageSet(BG_THEME_KEY, theme);
-      document.querySelectorAll(".theme-swatch").forEach((b) => b.classList.toggle("selected", b === swatchBtn));
-    });
-  });
-
-  if (canSeeBonuses) {
-    const btn = document.getElementById("toggle-bonuses-btn");
-    const slot = document.getElementById("bonuses-slot");
-    let loaded = false;
-    btn.addEventListener("click", async () => {
-      const willShow = slot.classList.contains("hidden");
-      slot.classList.toggle("hidden", !willShow);
-      if (!willShow || loaded) return;
-      btn.disabled = true;
-      slot.innerHTML = `<div class="state-message">${t("loading")}</div>`;
-      try {
-        const { bonuses, conversations_norm } = await callApi("bonuses");
-        slot.innerHTML = bonusListHtml(bonuses, conversations_norm);
-        loaded = true;
-      } catch (e) {
-        slot.innerHTML = `<div class="state-message error">${escapeHtml(e.message)}</div>`;
-      }
-      btn.disabled = false;
-    });
-  }
+    <div class="chart-card glass-card">
+      <div class="chart-card-title">
+        <span>Eng Ko'p Uchraydigan Xatolar (Haftalik Top-3)</span>
+        <span class="material-symbols-outlined">warning</span>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 12px; background:rgba(239,68,68,0.1); border-radius:8px;">
+          <span>1. Davlat boji to'lovi muddatlarini noto'g'ri aytish</span>
+          <span style="font-weight:800; color:var(--score-bad);">14 marta</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 12px; background:rgba(245,158,11,0.1); border-radius:8px;">
+          <span>2. Xayrlashishda xushmuomala yakun qilmaslik</span>
+          <span style="font-weight:800; color:var(--score-mid);">9 marta</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 12px; background:rgba(56,189,248,0.1); border-radius:8px;">
+          <span>3. Mijoz gapini shoshirib bo'lish</span>
+          <span style="font-weight:800; color:var(--primary);">6 marta</span>
+        </div>
+      </div>
+    </div>
+  `;
+  setView(html);
 }
 
-// ---- Intizom AI (matn/ovoz/rasm suhbati) — TZ 12-bo'lim ----------------
+// 5. JONLI RADAR & ALERTS (LIVE RADAR)
+function viewLiveRadar() {
+  const alerts = DEMO_DATA.alerts;
+  const html = `
+    <div class="view-header">
+      <div class="view-title-box">
+        <h2>Jonli Radar va Xavfsizlik Signallari</h2>
+        <p>Real vaqtli monitoring va ziddiyatli suhbatlar ogohlantirishlari</p>
+      </div>
+    </div>
 
-let aiChatMessages = []; // { role: 'user'|'assistant', text, imagePreview?, audioNote? }
-let aiChatHistoryLoaded = false;
+    <div class="radar-pulse-box glass-card">
+      <div>
+        <h4 style="font-size:15px; font-weight:800;">Jonli Sifat Radari Faol</h4>
+        <p style="font-size:12px; color:var(--text-muted);">Barcha 4 ta darcha mikrofonlari real vaqtda tahlil qilinmoqda.</p>
+      </div>
+    </div>
 
-function chatBubbleHtml(msg, index) {
-  const cls = msg.role === "user" ? "chat-bubble user" : "chat-bubble assistant";
-  let media = "";
-  if (msg.imagePreview) media += `<img src="${msg.imagePreview}" class="chat-image" alt="rasm" />`;
-  if (msg.audioNote) media += `<div class="chat-audio-note"><span class="material-symbols-outlined">mic</span>${t("chat_voice_note")}</div>`;
-  const textHtml = msg.text ? `<div class="chat-text">${escapeHtml(msg.text)}</div>` : "";
-  // "so'ralganda ovozli javob" — AI xabarlariga 🔊 tugma, matnni ovozga
-  // aylantirib eshittiradi (avtomatik emas, faqat bosilganda). Tugma
-  // o'zi play/pauza almashtiradi; "to'xtatish" tugmasi faqat o'ynalayotgan
-  // paytda ko'rinadi (boshida "hidden").
-  const ttsControls = msg.role === "assistant" && msg.text && !msg.pending
-    ? `<div class="chat-tts-row">
-         <button class="chat-speak-btn" data-index="${index}" aria-label="${t("aria_tts_toggle")}">
-           <span class="material-symbols-outlined">volume_up</span>
-         </button>
-         <button class="chat-stop-btn hidden" data-index="${index}" aria-label="${t("aria_tts_stop")}">
-           <span class="material-symbols-outlined">stop</span>
-         </button>
-       </div>`
-    : "";
-  return `<div class="${cls}">${media}${textHtml}${ttsControls}</div>`;
+    <h3 style="margin-bottom:12px; font-size:16px;">So'nggi Signallar Oqimi</h3>
+    <div class="alert-feed-list">
+      ${alerts.map((a) => `
+        <div class="alert-feed-item glass-card ${a.type === "critical" ? "critical" : ""}">
+          <span class="material-symbols-outlined" style="color:${a.type === "critical" ? "#ef4444" : "#f59e0b"}; font-size:24px;">
+            ${a.type === "critical" ? "error" : "notifications"}
+          </span>
+          <div style="flex:1;">
+            <div style="display:flex; justify-content:space-between;">
+              <span style="font-weight:700; font-size:13px;">${a.title}</span>
+              <span style="font-size:11px; color:var(--text-muted);">${a.time}</span>
+            </div>
+            <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">${a.desc}</div>
+          </div>
+          <button class="action-btn-pill" onclick="showToast('Ogohlantirish ko\\'rib chiqildi', 'done')">
+            Ko'rildi
+          </button>
+        </div>
+      `).join("")}
+    </div>
+  `;
+  setView(html);
 }
 
-function fileOrBlobToDataUrl(fileOrBlob) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = reject;
-    reader.readAsDataURL(fileOrBlob);
-  });
+// 6. KAMERA BO'LIMI (CAMERA LIVE STREAM)
+function viewCamera() {
+  const html = `
+    <div class="view-header">
+      <div class="view-title-box">
+        <h2>Jonli Kuzatuv Kameralari (CCTV)</h2>
+        <p>Hikvision ISAPI / RTSP Onlayn Oqim Ko'rinishi</p>
+      </div>
+      <button class="action-btn-pill" onclick="showToast('Kameralar oqimi yangilandi', 'videocam')">
+        <span class="material-symbols-outlined">sync</span> Oqimni Yangilash
+      </button>
+    </div>
+
+    <div class="camera-grid-2">
+      <div class="camera-feed-card">
+        <div class="camera-overlay-tag"><span class="pulse-dot"></span> 1-Darcha (Dilnoza)</div>
+        <img class="camera-video-mock" src="https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=600&q=80" alt="Camera 1" />
+        <div class="camera-timestamp">2026-08-15 10:48:22 CAM-01</div>
+      </div>
+      <div class="camera-feed-card">
+        <div class="camera-overlay-tag"><span class="pulse-dot"></span> 2-Darcha (Alisher)</div>
+        <img class="camera-video-mock" src="https://images.unsplash.com/photo-1497215728101-856f4ea42174?auto=format&fit=crop&w=600&q=80" alt="Camera 2" />
+        <div class="camera-timestamp">2026-08-15 10:48:22 CAM-02</div>
+      </div>
+      <div class="camera-feed-card">
+        <div class="camera-overlay-tag"><span class="pulse-dot"></span> 3-Darcha (Jasur)</div>
+        <img class="camera-video-mock" src="https://images.unsplash.com/photo-1577495508048-b635879837f1?auto=format&fit=crop&w=600&q=80" alt="Camera 3" />
+        <div class="camera-timestamp">2026-08-15 10:48:22 CAM-03</div>
+      </div>
+      <div class="camera-feed-card">
+        <div class="camera-overlay-tag"><span class="pulse-dot"></span> Umumiy Kutish Zali</div>
+        <img class="camera-video-mock" src="https://images.unsplash.com/photo-1524758631624-e2822e304c36?auto=format&fit=crop&w=600&q=80" alt="Camera 4" />
+        <div class="camera-timestamp">2026-08-15 10:48:22 CAM-HALL</div>
+      </div>
+    </div>
+  `;
+  setView(html);
 }
 
-async function viewAiChat() {
-  setView(`
-    <div class="chat-container">
-      <div class="chat-messages" id="chat-messages"></div>
-      <div id="chat-pending-row" class="chat-pending-row hidden"></div>
-      <div class="chat-input-row">
-        <input type="file" id="chat-image-input" accept="image/*" class="hidden" />
-        <button id="chat-image-btn" class="icon-btn" aria-label="${t("aria_image")}">
-          <span class="material-symbols-outlined">image</span>
-        </button>
-        <input type="text" id="chat-text-input" placeholder="${escapeHtml(t("chat_placeholder"))}" autocomplete="off" />
-        <button id="chat-mic-btn" class="icon-btn" aria-label="${t("aria_voice")}">
+// 7. INTIZOM AI CHAT
+let chatMessages = [
+  { role: "assistant", text: "Assalomu alaykum! Men Intizom AI yordamchisiman. Xodimlaringiz sifati, bugungi xatolar yoki tavsiyalar haqida so'rang. Masalan: «Jasur Bekchanov nega past ball oldi?»" },
+];
+
+function viewAiChat() {
+  const html = `
+    <div class="view-header" style="margin-bottom:10px;">
+      <div class="view-title-box">
+        <h2>Intizom AI Maslahatchisi</h2>
+        <p>Ovozli va matnli tahlil yordamchisi</p>
+      </div>
+    </div>
+
+    <div class="chat-container glass-card">
+      <div class="chat-messages-area" id="chat-box">
+        ${chatMessages.map((m) => `
+          <div class="chat-bubble ${m.role}">
+            ${m.text}
+          </div>
+        `).join("")}
+      </div>
+
+      <div class="chat-quick-chips">
+        <button class="chat-chip" onclick="sendQuickPrompt('Bugun kim eng ko\\'p xato qildi?')">⚡ Bugungi xatolar</button>
+        <button class="chat-chip" onclick="sendQuickPrompt('Eng xushmuomala xodim kim?')">🏆 Eng yaxshi xodim</button>
+        <button class="chat-chip" onclick="sendQuickPrompt('Oylik bonus hisobotini chiqar')">💰 Bonuslar hisobi</button>
+      </div>
+
+      <div class="chat-input-bar">
+        <button class="icon-btn" onclick="showToast('Ovozli xabar yozish faollashdi...', 'mic')">
           <span class="material-symbols-outlined">mic</span>
         </button>
-        <button id="chat-send-btn" class="send-btn" aria-label="${t("aria_send")}">
+        <input type="text" id="chat-input" class="chat-input-field" placeholder="Xodimlar haqida savol bering..." onkeypress="handleChatEnter(event)" />
+        <button class="chat-send-btn" onclick="submitChatMessage()">
           <span class="material-symbols-outlined">send</span>
         </button>
       </div>
     </div>
-  `);
-
-  const messagesEl = document.getElementById("chat-messages");
-
-  if (!aiChatHistoryLoaded) {
-    messagesEl.innerHTML = `<div class="state-message">${t("chat_history_loading")}</div>`;
-    try {
-      const { messages } = await callApi("ai_chat_history");
-      aiChatMessages = messages.map((m) => ({ role: m.role, text: m.text }));
-    } catch (e) {
-      // Tarix yuklanmasa ham, yangi suhbatni boshlashga xalaqit bermaydi.
-    }
-    aiChatHistoryLoaded = true;
-  }
-
-  if (!aiChatMessages.length) {
-    // ESLATMA: "local: true" — bu xabarni AI aslida aytmagan (mahalliy,
-    // qattiq yozilgan salomlashish), shuning uchun Gemini'ga tarix
-    // sifatida yuborilmaydi (sendChatMessage'dagi filterga qarang).
-    // Aks holda Gemini API "birinchi xabar 'user' rolida bo'lishi kerak"
-    // qoidasini buzib, xato qaytarishi mumkin edi.
-    aiChatMessages.push({
-      role: "assistant",
-      local: true,
-      text: t("chat_greeting"),
-    });
-  }
-
-  const textInput = document.getElementById("chat-text-input");
-  const sendBtn = document.getElementById("chat-send-btn");
-  const micBtn = document.getElementById("chat-mic-btn");
-  const imageBtn = document.getElementById("chat-image-btn");
-  const imageInput = document.getElementById("chat-image-input");
-  const pendingRow = document.getElementById("chat-pending-row");
-
-  let pendingImage = null; // { base64, mime, previewUrl }
-  let pendingAudio = null; // { base64, mime }
-  let mediaRecorder = null;
-  let recordedChunks = [];
-  let isRecording = false;
-
-  function renderMessages() {
-    messagesEl.innerHTML = aiChatMessages.map((m, i) => chatBubbleHtml(m, i)).join("");
-    messagesEl.scrollTop = messagesEl.scrollHeight;
-  }
-
-  // Bir vaqtning o'zida faqat bitta AI ovozli javobi o'ynaydi. Foydalanuvchi
-  // tugmani qayta bossa — pauza/davom ettirish; alohida "to'xtatish"
-  // tugmasi butunlay to'xtatib, boshiga qaytaradi.
-  let currentTts = { audio: null, index: null };
-
-  function ttsButtons(index) {
-    return {
-      play: messagesEl.querySelector(`.chat-speak-btn[data-index="${index}"]`),
-      stop: messagesEl.querySelector(`.chat-stop-btn[data-index="${index}"]`),
-    };
-  }
-
-  function setPlayIcon(index, iconName) {
-    const { play } = ttsButtons(index);
-    if (play) play.innerHTML = `<span class="material-symbols-outlined">${iconName}</span>`;
-  }
-
-  function stopCurrentTts() {
-    if (currentTts.audio) {
-      currentTts.audio.pause();
-      currentTts.audio.currentTime = 0;
-    }
-    if (currentTts.index !== null) {
-      setPlayIcon(currentTts.index, "volume_up");
-      const { stop } = ttsButtons(currentTts.index);
-      if (stop) stop.classList.add("hidden");
-    }
-    currentTts = { audio: null, index: null };
-  }
-
-  async function playAudioData(index, base64, mime, isAutoplay = false) {
-    stopCurrentTts();
-    try {
-      const audio = new Audio(`data:${mime};base64,${base64}`);
-      currentTts = { audio, index };
-      audio.onended = () => stopCurrentTts();
-      audio.onerror = () => stopCurrentTts();
-      await audio.play();
-      setPlayIcon(index, "pause");
-      const { stop, play } = ttsButtons(index);
-      if (stop) stop.classList.remove("hidden");
-      if (play) play.classList.remove("tts-ready-pulse");
-    } catch (e) {
-      // Ba'zi brauzerlar/WebView'lar avtomatik ijroni bloklaydi (odatda
-      // iOS'da). Audio obyektini currentTts'da saqlab qolamiz — keyingi
-      // bosishda (haqiqiy foydalanuvchi bosishi bilan) muvaffaqiyatli
-      // ijro etiladi. Buni sezilarli qilish uchun tugmani "yonib turadigan"
-      // holatga o'tkazamiz — aks holda ovoz kelgani sezilmasdan qolardi
-      // (aynan shu muammo xabar qilingan edi).
-      setPlayIcon(index, "volume_up");
-      if (isAutoplay) {
-        const { play } = ttsButtons(index);
-        if (play) play.classList.add("tts-ready-pulse");
-      }
-    }
-  }
-
-  async function toggleTts(index) {
-    const msg = aiChatMessages[index];
-    if (!msg || !msg.text) return;
-
-    // Xuddi shu xabar allaqachon yuklangan bo'lsa (pauzada ham) — qayta
-    // so'ramasdan play/pauza almashtiramiz.
-    if (currentTts.index === index && currentTts.audio) {
-      if (currentTts.audio.paused) {
-        currentTts.audio.play();
-        setPlayIcon(index, "pause");
-      } else {
-        currentTts.audio.pause();
-        setPlayIcon(index, "play_arrow");
-      }
-      return;
-    }
-
-    // Agar bu xabar uchun ovoz allaqachon serverdan kelgan bo'lsa (ovozli
-    // xabarga avtomatik ovozli javob), qayta so'ramasdan shuni ishlatamiz.
-    if (msg.autoAudio) {
-      playAudioData(index, msg.autoAudio.base64, msg.autoAudio.mime);
-      return;
-    }
-
-    setPlayIcon(index, "hourglass_top");
-    try {
-      const { audio_base64, mime } = await callApi("tts", { text: msg.text });
-      await playAudioData(index, audio_base64, mime);
-    } catch (e) {
-      setPlayIcon(index, "volume_up");
-    }
-  }
-
-  // Xabarlar har safar qayta chizilgani uchun, tugmalarga alohida emas,
-  // konteynerning o'ziga (delegation) bitta marta ulash yetarli.
-  messagesEl.addEventListener("click", (e) => {
-    const playBtn = e.target.closest(".chat-speak-btn");
-    if (playBtn) {
-      toggleTts(Number(playBtn.dataset.index));
-      return;
-    }
-    const stopBtn = e.target.closest(".chat-stop-btn");
-    if (stopBtn) {
-      stopCurrentTts();
-    }
-  });
-
-  function renderPending() {
-    const chips = [];
-    if (pendingImage) chips.push(`<span class="chat-chip">🖼️ ${t("chat_image_chip")} <button type="button" data-clear="image">✕</button></span>`);
-    if (pendingAudio) chips.push(`<span class="chat-chip">🎤 ${t("chat_audio_chip")} <button type="button" data-clear="audio">✕</button></span>`);
-    pendingRow.innerHTML = chips.join("");
-    pendingRow.classList.toggle("hidden", chips.length === 0);
-    pendingRow.querySelectorAll("button[data-clear]").forEach((b) => {
-      b.addEventListener("click", () => {
-        if (b.dataset.clear === "image") pendingImage = null;
-        if (b.dataset.clear === "audio") pendingAudio = null;
-        renderPending();
-      });
-    });
-  }
-
-  imageBtn.addEventListener("click", () => imageInput.click());
-  imageInput.addEventListener("change", async () => {
-    const file = imageInput.files[0];
-    imageInput.value = "";
-    if (!file) return;
-    const dataUrl = await fileOrBlobToDataUrl(file);
-    pendingImage = { base64: dataUrl.split(",")[1], mime: file.type, previewUrl: dataUrl };
-    renderPending();
-  });
-
-  // Gemini rasman qo'llab-quvvatlaydigan audio formatlariga (wav/mp3/ogg/
-  // aac/flac) yaqinroq variantni tanlaymiz — ba'zi WebView'lar standart
-  // "audio/webm" formatini beradi, bu Gemini'da har doim ham to'g'ri
-  // tushunilmasligi mumkin edi (topilgan muammo).
-  const PREFERRED_MIME_TYPES = ["audio/ogg;codecs=opus", "audio/ogg", "audio/mp4", "audio/webm"];
-  function pickRecorderMimeType() {
-    for (const type of PREFERRED_MIME_TYPES) {
-      if (window.MediaRecorder?.isTypeSupported?.(type)) return type;
-    }
-    return undefined; // brauzerning standart formati
-  }
-
-  micBtn.addEventListener("click", async () => {
-    if (!isRecording) {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        const mimeType = pickRecorderMimeType();
-        mediaRecorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
-        recordedChunks = [];
-        mediaRecorder.ondataavailable = (e) => {
-          if (e.data.size > 0) recordedChunks.push(e.data);
-        };
-        mediaRecorder.start();
-        isRecording = true;
-        micBtn.classList.add("recording");
-      } catch (e) {
-        stateMessageInChat(t("chat_mic_denied"));
-      }
-      return;
-    }
-
-    isRecording = false;
-    micBtn.classList.remove("recording");
-    const stoppedPromise = new Promise((resolve) => { mediaRecorder.onstop = resolve; });
-    mediaRecorder.stop();
-    mediaRecorder.stream.getTracks().forEach((t) => t.stop());
-    await stoppedPromise;
-
-    const blob = new Blob(recordedChunks, { type: mediaRecorder.mimeType || "audio/webm" });
-    const dataUrl = await fileOrBlobToDataUrl(blob);
-    pendingAudio = { base64: dataUrl.split(",")[1], mime: blob.type || "audio/webm" };
-    renderPending();
-  });
-
-  function stateMessageInChat(text) {
-    aiChatMessages.push({ role: "assistant", text });
-    renderMessages();
-  }
-
-  async function sendChatMessage() {
-    const text = textInput.value.trim();
-    if (!text && !pendingImage && !pendingAudio) return;
-
-    const historyForApi = aiChatMessages
-      .filter((m) => !m.pending && !m.local)
-      .map((m) => ({ role: m.role, text: m.text }));
-
-    const userMsg = { role: "user", text };
-    if (pendingImage) userMsg.imagePreview = pendingImage.previewUrl;
-    if (pendingAudio) userMsg.audioNote = true;
-    aiChatMessages.push(userMsg);
-
-    const payload = { message: text, history: historyForApi };
-    if (pendingImage) {
-      payload.image_base64 = pendingImage.base64;
-      payload.image_mime = pendingImage.mime;
-    }
-    if (pendingAudio) {
-      payload.audio_base64 = pendingAudio.base64;
-      payload.audio_mime = pendingAudio.mime;
-    }
-
-    textInput.value = "";
-    pendingImage = null;
-    pendingAudio = null;
-    renderPending();
-
-    aiChatMessages.push({ role: "assistant", text: "…", pending: true });
-    renderMessages();
-    sendBtn.disabled = true;
-
-    const wasVoiceRequest = !!payload.audio_base64;
-    let playAfterRender = null;
-
-    try {
-      const { reply, reply_audio_base64, reply_audio_mime } = await callApi("ai_chat", payload);
-      const assistantMsg = { role: "assistant", text: reply };
-      if (reply_audio_base64) {
-        assistantMsg.autoAudio = { base64: reply_audio_base64, mime: reply_audio_mime };
-      }
-      aiChatMessages[aiChatMessages.length - 1] = assistantMsg;
-      // "Ovozli xabar so'ralganda ovozli fayl kelsin" — foydalanuvchi
-      // ovozli xabar yuborgan bo'lsa, javobni avtomatik ijro etamiz
-      // (tugma bosishini kutmasdan).
-      if (wasVoiceRequest && reply_audio_base64) {
-        playAfterRender = () => playAudioData(aiChatMessages.length - 1, reply_audio_base64, reply_audio_mime, true);
-      }
-    } catch (e) {
-      aiChatMessages[aiChatMessages.length - 1] = { role: "assistant", text: t("chat_error", { message: e.message }) };
-    }
-    sendBtn.disabled = false;
-    renderMessages();
-    if (playAfterRender) playAfterRender();
-  }
-
-  sendBtn.addEventListener("click", sendChatMessage);
-  textInput.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") sendChatMessage();
-  });
-
-  renderMessages();
-  renderPending();
+  `;
+  setView(html);
 }
+
+function handleChatEnter(e) {
+  if (e.key === "Enter") submitChatMessage();
+}
+
+function submitChatMessage() {
+  const input = document.getElementById("chat-input");
+  const text = input.value.trim();
+  if (!text) return;
+  sendUserMessage(text);
+  input.value = "";
+}
+
+function sendQuickPrompt(prompt) {
+  sendUserMessage(prompt);
+}
+
+function sendUserMessage(text) {
+  chatMessages.push({ role: "user", text });
+  viewAiChat();
+
+  setTimeout(() => {
+    let reply = "Xodimlaringiz tahlili bo'yicha ma'lumot tayyorlandi.";
+    if (text.includes("xato")) {
+      reply = "Bugun eng ko'p xatoga 3-darcha xodimi Jasur Bekchanov yo'l qo'ydi (48 ball). Asosiy sabab: salomlashmadi va mijoz gapini bo'ldi.";
+    } else if (text.includes("yaxshi") || text.includes("xushmuomala")) {
+      reply = "Bugungi eng xushmuomala xodim — 4-darcha operatori Nigora Umarova (96 ball). Barcha 5 ta mezon bo'yicha a'lo baholandi.";
+    } else if (text.includes("bonus")) {
+      reply = "Joriy oy uchun bonus hisobi: Nigora Umarova (500,000 so'm, 100%), Dilnoza Karimova (420,000 so'm, 93%).";
+    } else {
+      reply = `«${text}» bo'yicha suhbatlar bazasidan ma'lumot olindi. Xodimlar intizomi umumiy 88.4% darajasida barqaror.`;
+    }
+    chatMessages.push({ role: "assistant", text: reply });
+    viewAiChat();
+    const chatBox = document.getElementById("chat-box");
+    if (chatBox) chatBox.scrollTop = chatBox.scrollHeight;
+  }, 500);
+}
+
+// 8. SOZLAMALAR BO'LIMI (SETTINGS)
+function viewSettings() {
+  const activeTheme = document.documentElement.getAttribute("data-bg-theme") || "theme-emerald";
+
+  const html = `
+    <div class="view-header">
+      <div class="view-title-box">
+        <h2>Tizim Sozlamalari</h2>
+        <p>Pinterest estetik fonlari va bonus parametrlari</p>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="glass-card" style="padding:18px;">
+        <h3 style="font-size:15px; font-weight:700; margin-bottom:4px;">🎨 Pinterest Estetik Fonlari</h3>
+        <p style="font-size:12px; color:var(--text-muted); margin-bottom:12px;">Istalgan fonni tanlang — har bir fonda kinetik "INTIZOM" yozuvlari harakatda bo'ladi:</p>
+
+        <div class="theme-swatch-grid">
+          ${PINTEREST_THEMES.map((t) => `
+            <div class="theme-swatch-card glass-card ${activeTheme === t.key ? "active" : ""}" onclick="selectTheme('${t.key}')">
+              <div class="swatch-circle" style="background:${t.color};"></div>
+              <span>${t.label_uz}</span>
+            </div>
+          `).join("")}
+        </div>
+      </div>
+
+      <div class="glass-card" style="padding:18px;">
+        <h3 style="font-size:15px; font-weight:700; margin-bottom:10px;">💰 Bonus va KPI Mezonlari</h3>
+        <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--card-border); font-size:13px;">
+          <span>Maksimal bonus foizi:</span>
+          <b>10% (Okladga nisbatan)</b>
+        </div>
+        <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--card-border); font-size:13px;">
+          <span>Oylik suhbat normasi:</span>
+          <b>120 ta suhbat</b>
+        </div>
+        <div style="display:flex; justify-content:space-between; padding:8px 0; font-size:13px;">
+          <span>Lokal PII Maskalash (O'RQ-547):</span>
+          <b style="color:var(--score-good);">● Faol (Himoyalangan)</b>
+        </div>
+      </div>
+    </div>
+  `;
+  setView(html);
+}
+
+function selectTheme(themeKey) {
+  applyTheme(themeKey);
+  viewSettings();
+  showToast(`"${PINTEREST_THEMES.find(x => x.key === themeKey)?.label_uz}" foni o'rnatildi`, "palette");
+}
+
+// =========================================================================
+// ROUTING
+// =========================================================================
 
 const VIEWS = {
   reports: viewReports,
-  history: viewHistory,
   attendance: viewAttendance,
   employees: viewEmployees,
   ai_chat: viewAiChat,
   camera: viewCamera,
   settings: viewSettings,
+  analytics: viewAnalytics,
+  live_radar: viewLiveRadar,
 };
 
-// ---- Yon panel (sidebar) / navigatsiya ---------------------------------
+function navigateTo(key) {
+  if (!VIEWS[key]) key = "reports";
+  location.hash = key;
+  document.querySelectorAll(".sidebar-nav-btn").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.key === key);
+  });
+  VIEWS[key]();
+}
 
-const sidebar = document.getElementById("sidebar");
-const sidebarOverlay = document.getElementById("sidebar-overlay");
-const menuBtn = document.getElementById("menu-btn");
-const sidebarClose = document.getElementById("sidebar-close");
-const profileBtn = document.getElementById("profile-btn");
-const profileDropdown = document.getElementById("profile-dropdown");
+function renderSidebar() {
+  const coreNav = document.getElementById("sidebar-nav-core");
+  const advNav = document.getElementById("sidebar-nav-advanced");
+
+  coreNav.innerHTML = CORE_NAV_ITEMS.map((item) => `
+    <button data-key="${item.key}" class="sidebar-nav-btn" onclick="handleNavClick('${item.key}')">
+      <span class="material-symbols-outlined">${item.icon}</span>
+      <span>${item.label_uz}</span>
+    </button>
+  `).join("");
+
+  advNav.innerHTML = ADVANCED_NAV_ITEMS.map((item) => `
+    <button data-key="${item.key}" class="sidebar-nav-btn" onclick="handleNavClick('${item.key}')">
+      <span class="material-symbols-outlined">${item.icon}</span>
+      <span>${item.label_uz}</span>
+    </button>
+  `).join("");
+}
+
+function handleNavClick(key) {
+  navigateTo(key);
+  closeSidebar();
+}
 
 function openSidebar() {
-  sidebarOverlay.classList.remove("hidden");
-  requestAnimationFrame(() => sidebarOverlay.classList.add("visible"));
-  sidebar.classList.add("open");
+  document.getElementById("sidebar").classList.add("open");
+  document.getElementById("sidebar-overlay").classList.remove("hidden");
+  setTimeout(() => document.getElementById("sidebar-overlay").classList.add("visible"), 10);
 }
 
 function closeSidebar() {
-  sidebarOverlay.classList.remove("visible");
-  sidebar.classList.remove("open");
-  setTimeout(() => sidebarOverlay.classList.add("hidden"), 250);
+  document.getElementById("sidebar").classList.remove("open");
+  document.getElementById("sidebar-overlay").classList.remove("visible");
+  setTimeout(() => document.getElementById("sidebar-overlay").classList.add("hidden"), 200);
 }
 
-menuBtn.addEventListener("click", openSidebar);
-sidebarClose.addEventListener("click", closeSidebar);
-sidebarOverlay.addEventListener("click", closeSidebar);
+function init() {
+  initTheme();
+  renderSidebar();
 
-profileBtn.addEventListener("click", (e) => {
-  e.stopPropagation();
-  profileDropdown.classList.toggle("hidden");
-});
-document.addEventListener("click", (e) => {
-  if (!profileDropdown.contains(e.target) && e.target !== profileBtn) {
-    profileDropdown.classList.add("hidden");
-  }
-});
+  document.getElementById("menu-btn").addEventListener("click", openSidebar);
+  document.getElementById("sidebar-close").addEventListener("click", closeSidebar);
+  document.getElementById("sidebar-overlay").addEventListener("click", closeSidebar);
 
-function renderSidebarNav() {
-  const nav = document.getElementById("sidebar-nav");
-  const allowed = NAV_ITEMS.filter((item) => currentUser.permissions.includes(item.key));
-  nav.innerHTML = allowed.map((item) => {
-    const mainBtn = `
-      <button data-key="${item.key}" class="sidebar-nav-btn">
-        <span class="material-symbols-outlined">${item.icon}</span>
-        <span>${t("nav_" + item.key)}</span>
-      </button>
-    `;
-    if (item.key !== "reports") return mainBtn;
-    // "Yozuvlar tarixi" — Hisobotlar qatori YONIDA (dashboard ichida emas,
-    // aynan shu yon menyu qatorida) alohida uchta-chiziq tugmasi.
-    return `
-      <div class="sidebar-nav-row">
-        ${mainBtn}
-        <button id="sidebar-history-btn" class="icon-btn" aria-label="${t("nav_history")}">
-          <span class="material-symbols-outlined">menu</span>
-        </button>
-      </div>
-    `;
-  }).join("");
-
-  nav.querySelectorAll("button[data-key]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      navigateTo(btn.dataset.key);
-      closeSidebar();
-    });
+  document.getElementById("modal-close-btn").addEventListener("click", closeModal);
+  document.getElementById("modal-overlay").addEventListener("click", (e) => {
+    if (e.target.id === "modal-overlay") closeModal();
   });
 
-  const historyBtn = document.getElementById("sidebar-history-btn");
-  if (historyBtn) {
-    historyBtn.addEventListener("click", () => {
-      navigateTo("history");
-      closeSidebar();
-    });
-  }
-
-  return allowed;
-}
-
-function setActiveNav(key) {
-  document.querySelectorAll("#sidebar-nav button").forEach((btn) => {
-    btn.classList.toggle("active", btn.dataset.key === key);
+  document.getElementById("profile-btn").addEventListener("click", (e) => {
+    e.stopPropagation();
+    document.getElementById("profile-dropdown").classList.toggle("hidden");
   });
-}
 
-// "Dashboardning asosiy qismida ma'lumot bo'lmasin, keyinchalik reklama
-// joylashtirish uchun bo'sh qolsin" (rahbar so'rovi) — shuning uchun
-// ilova ochilganda avtomatik ravishda "Hisobotlar" emas, shu bo'sh sahifa
-// ko'rsatiladi. Statistikaning o'zi yo'qolmaydi — sidebar'dan
-// "Hisobotlar"ni bosib istalgan vaqt ko'rish mumkin.
-function renderHomeView() {
-  setActiveNav(null);
-  document.getElementById("view").innerHTML = `
-    <div class="home-view">
-      <h2>${escapeHtml(t("welcome", { name: currentUser.full_name }))}</h2>
-      <p>${t("welcome_hint")}</p>
-      <div class="home-ad-slot" aria-hidden="true"></div>
-    </div>
-  `;
-}
-
-// Til almashtirilganda sarlavha/sidebar/dropdown matnlarini darhol yangi
-// tilda ko'rsatish uchun (TZ 24-bo'lim).
-function refreshUiTexts() {
-  if (!currentUser) return [];
-  const roleLabel = t("role_" + currentUser.role);
-  document.getElementById("sidebar-whoami").textContent = `${currentUser.full_name} (${roleLabel})`;
-  document.getElementById("dropdown-name").textContent = currentUser.full_name;
-  document.getElementById("dropdown-role").textContent = roleLabel;
-  const allowed = renderSidebarNav();
-  setActiveNav(location.hash.replace("#", ""));
-  return allowed;
-}
-
-async function navigateTo(key) {
-  location.hash = key;
-  setActiveNav(key);
-  try {
-    await VIEWS[key]();
-  } catch (e) {
-    stateMessage(e.message, true);
-  }
-}
-
-// Telegram tashqarisida (oddiy brauzerda) ochilganda — haqiqiy autentifikatsiya
-// (initData) mavjud emas, shuning uchun HAQIQIY ma'lumot yuklab bo'lmaydi.
-// Lekin bu — dizayn/joylashuvni (jumladan Fon/Til tanlovini) ko'rib chiqish
-// uchun butunlay ishlamay qolishga arzimaydi: shunday holatda ko'rib chiqish
-// (preview) rejimi yoqiladi — barcha sahifalar navigatsiyasi ishlaydi, lekin
-// haqiqiy ma'lumot kerak bo'lgan joyларda soxta raqamlar EMAS, balki ochiq
-// "bu yerda haqiqiy ma'lumot faqat Telegram ichida yuklanadi" xabari chiqadi.
-function isPreviewMode() {
-  return !tg || !tg.initData;
-}
-
-async function init() {
-  applyTelegramTheme();
-  loadSavedBgTheme();
-
-  if (isPreviewMode()) {
-    currentUser = {
-      full_name: t("preview_user"),
-      role: "manager",
-      permissions: ["reports", "attendance", "employees", "bonuses", "camera", "settings", "ai_chat"],
-      language: "uz",
-    };
-    document.getElementById("app").insertAdjacentHTML("afterbegin", `
-      <div class="preview-banner">${t("preview_banner")}</div>
-    `);
-  } else {
-    try {
-      currentUser = await callApi("whoami");
-    } catch (e) {
-      stateMessage(e.message, true);
-      return;
+  document.addEventListener("click", (e) => {
+    const dd = document.getElementById("profile-dropdown");
+    if (!dd.contains(e.target) && e.target.id !== "profile-btn") {
+      dd.classList.add("hidden");
     }
-  }
+  });
 
-  document.getElementById("avatar-letter").textContent =
-    (currentUser.full_name || "?").trim().charAt(0).toUpperCase();
+  document.getElementById("theme-quick-btn").addEventListener("click", () => {
+    navigateTo("settings");
+  });
 
-  const allowed = refreshUiTexts();
-  if (!allowed.length) {
-    stateMessage(t("no_sections"));
-    return;
-  }
+  document.getElementById("radar-quick-btn").addEventListener("click", () => {
+    navigateTo("live_radar");
+  });
 
-  const initialKey = location.hash.replace("#", "");
-  if (initialKey && allowed.some((a) => a.key === initialKey)) {
-    navigateTo(initialKey);
-  } else {
-    renderHomeView();
-  }
+  document.getElementById("dropdown-settings-btn").addEventListener("click", () => {
+    document.getElementById("profile-dropdown").classList.add("hidden");
+    navigateTo("settings");
+  });
+
+  document.getElementById("sidebar-whoami").textContent = `${currentUser.full_name} (Boshqaruvchi)`;
+  document.getElementById("dropdown-name").textContent = currentUser.full_name;
+  document.getElementById("dropdown-role").textContent = "Boshqaruvchi";
+  document.getElementById("avatar-letter").textContent = currentUser.full_name.charAt(0);
+  document.getElementById("dropdown-avatar-circle").textContent = currentUser.full_name.charAt(0);
+
+  const initialKey = location.hash.replace("#", "") || "reports";
+  navigateTo(initialKey);
 
   window.addEventListener("hashchange", () => {
     const key = location.hash.replace("#", "");
@@ -1258,12 +777,4 @@ async function init() {
   });
 }
 
-if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("./service-worker.js").catch(() => {});
-}
-
-if (tg && tg.onEvent) {
-  tg.onEvent("themeChanged", applyTelegramTheme);
-}
-
-init();
+document.addEventListener("DOMContentLoaded", init);

@@ -1,66 +1,152 @@
 <!DOCTYPE html>
-<html lang="uz">
+<html lang="uz" data-theme="dark" data-bg-theme="theme-emerald">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-<title>Xodim Intizom</title>
-<meta name="theme-color" content="#2563eb" />
-<link rel="manifest" href="./manifest.json" />
-<script src="https://telegram.org/js/telegram-web-app.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL@20..48,100..700,0..1&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="./style.css" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Intizom AI — Sifat va Muomala Boshqaruvi</title>
+  <meta name="theme-color" content="#0b1522" />
+  <link rel="manifest" href="./manifest.json" />
+  
+  <!-- Optimized Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;700;800&family=Plus+Jakarta+Sans:wght@500;600;700&family=Material+Symbols+Outlined:opsz,wght,FILL@20..48,100..700,0..1&display=swap" rel="stylesheet" />
+  
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="stylesheet" href="./style.css" />
 </head>
 <body>
   <div id="app">
-    <div class="floating-bg" aria-hidden="true">
-      <div class="floating-text floating-text-1">intizom xodim nazorat intizom</div>
-      <div class="floating-text floating-text-2">nazorat intizom xodim nazorat</div>
-      <div class="floating-text floating-text-3">xodim nazorat intizom xodim</div>
-      <div class="floating-text floating-text-4">intizom xodim nazorat intizom</div>
-      <div class="floating-text floating-text-5">nazorat intizom xodim nazorat</div>
-      <div class="floating-text floating-text-6">xodim nazorat intizom xodim</div>
-      <div class="floating-text floating-text-7">intizom xodim nazorat intizom</div>
-      <div class="floating-text floating-text-8">nazorat intizom xodim nazorat</div>
-      <div class="floating-text floating-text-9">xodim nazorat intizom xodim</div>
-      <div class="floating-text floating-text-10">intizom xodim nazorat intizom</div>
+    <!-- Yuqori tezlikdagi GPU-tezlashtirilgan Kinetik Fon va "INTIZOM" So'zlari Oqimi -->
+    <div class="kinetic-bg" aria-hidden="true">
+      <div class="kinetic-stream stream-1">
+        <span class="stream-content">INTIZOM • MUOMALA • NAZORAT • SIFAT • ADOLAT • SAMARADORLIK • INTIZOM • MUOMALA • NAZORAT • SIFAT • ADOLAT • SAMARADORLIK • </span>
+        <span class="stream-content">INTIZOM • MUOMALA • NAZORAT • SIFAT • ADOLAT • SAMARADORLIK • INTIZOM • MUOMALA • NAZORAT • SIFAT • ADOLAT • SAMARADORLIK • </span>
+      </div>
+      <div class="kinetic-stream stream-2">
+        <span class="stream-content">XUSH MUOMALA • ODOB-AXLOQ • INTIZOM AI • MIJOZ ROZILIGI • XOLIS BAHO • SAMARADORLIK • XUSH MUOMALA • ODOB-AXLOQ • INTIZOM AI • MIJOZ ROZILIGI • </span>
+        <span class="stream-content">XUSH MUOMALA • ODOB-AXLOQ • INTIZOM AI • MIJOZ ROZILIGI • XOLIS BAHO • SAMARADORLIK • XUSH MUOMALA • ODOB-AXLOQ • INTIZOM AI • MIJOZ ROZILIGI • </span>
+      </div>
+      <div class="kinetic-stream stream-3">
+        <span class="stream-content">INTIZOM • DARCHA NAZORATI • AUDIT 24/7 • ISHONCH • TARTIB • INTIZOM • DARCHA NAZORATI • AUDIT 24/7 • ISHONCH • TARTIB • </span>
+        <span class="stream-content">INTIZOM • DARCHA NAZORATI • AUDIT 24/7 • ISHONCH • TARTIB • INTIZOM • DARCHA NAZORATI • AUDIT 24/7 • ISHONCH • TARTIB • </span>
+      </div>
+      <div class="kinetic-stream stream-4">
+        <span class="stream-content">AI TAHLIL • SIFAT SERTIFIKATI • XODIM RIVOJI • INTIZOM • PROFESSIONALIZM • AI TAHLIL • SIFAT SERTIFIKATI • XODIM RIVOJI • INTIZOM • </span>
+        <span class="stream-content">AI TAHLIL • SIFAT SERTIFIKATI • XODIM RIVOJI • INTIZOM • PROFESSIONALIZM • AI TAHLIL • SIFAT SERTIFIKATI • XODIM RIVOJI • INTIZOM • </span>
+      </div>
+      <div class="kinetic-stream stream-5">
+        <span class="stream-content">INTIZOM • HARAKAT • SIFAT • ADOLAT • MUOMALA • INTIZOM • HARAKAT • SIFAT • ADOLAT • MUOMALA • </span>
+        <span class="stream-content">INTIZOM • HARAKAT • SIFAT • ADOLAT • MUOMALA • INTIZOM • HARAKAT • SIFAT • ADOLAT • MUOMALA • </span>
+      </div>
     </div>
 
-    <header class="topbar">
-      <button id="menu-btn" class="icon-btn" aria-label="Menyu">
-        <span class="material-symbols-outlined">menu</span>
-      </button>
-      <h1 id="app-title">Xodim Intizom</h1>
-      <button id="profile-btn" class="avatar-btn" aria-label="Profil">
-        <span id="avatar-letter">?</span>
-      </button>
+    <!-- Markaziy Yengil Intizom Suv Belgisi (Watermark) -->
+    <div class="center-intizom-kinetic" aria-hidden="true">
+      <div class="intizom-text-badge">INTIZOM</div>
+    </div>
+
+    <!-- Header Topbar -->
+    <header class="topbar glass-card">
+      <div class="topbar-left">
+        <button id="menu-btn" class="icon-btn" aria-label="Menyu">
+          <span class="material-symbols-outlined">menu_open</span>
+        </button>
+        <div class="brand-block">
+          <h1 id="app-title">INTIZOM <span class="brand-badge">AI</span></h1>
+          <div class="live-pill"><span class="pulse-dot"></span> <span id="live-indicator-text">Jonli Tizim</span></div>
+        </div>
+      </div>
+
+      <div class="topbar-right">
+        <button id="radar-quick-btn" class="icon-btn alert-badge-btn" aria-label="Jonli Radar" title="Jonli Radar va Xabarlar">
+          <span class="material-symbols-outlined">notifications_active</span>
+          <span id="unread-alert-count" class="alert-count">3</span>
+        </button>
+        <button id="theme-quick-btn" class="icon-btn" aria-label="Fon mavzusi" title="Pinterest fonlarini almashtirish">
+          <span class="material-symbols-outlined">palette</span>
+        </button>
+        <button id="profile-btn" class="avatar-btn" aria-label="Profil">
+          <span id="avatar-letter">Q</span>
+        </button>
+      </div>
     </header>
 
+    <!-- Sidebar Overlay & Aside -->
     <div id="sidebar-overlay" class="overlay hidden"></div>
 
-    <aside id="sidebar" class="sidebar">
+    <aside id="sidebar" class="sidebar glass-card">
       <div class="sidebar-header">
-        <div class="sidebar-icon"><span class="material-symbols-outlined">shield_person</span></div>
-        <div>
-          <h3>Xodim Intizom</h3>
+        <div class="sidebar-icon">
+          <span class="material-symbols-outlined">verified_user</span>
+        </div>
+        <div class="sidebar-title-box">
+          <h3>INTIZOM AI</h3>
           <p id="sidebar-whoami">Yuklanmoqda...</p>
         </div>
         <button id="sidebar-close" class="icon-btn" aria-label="Yopish">
           <span class="material-symbols-outlined">close</span>
         </button>
       </div>
-      <nav id="sidebar-nav"></nav>
+
+      <!-- Menyu guruhlari -->
+      <div class="sidebar-scroll">
+        <div class="nav-group-title">ASOSIY BO'LIMLAR</div>
+        <nav id="sidebar-nav-core" class="sidebar-nav"></nav>
+
+        <div class="nav-group-title">QO'SHIMCHA TAHLIL</div>
+        <nav id="sidebar-nav-advanced" class="sidebar-nav"></nav>
+      </div>
+
+      <div class="sidebar-footer">
+        <div class="sidebar-footer-info">
+          <span class="version-label">v2.5 Antigravity Lite</span>
+          <span class="status-online">● 60 FPS Faol</span>
+        </div>
+      </div>
     </aside>
 
-    <div id="profile-dropdown" class="dropdown hidden">
+    <!-- Profil oynasi Dropdown -->
+    <div id="profile-dropdown" class="dropdown glass-card hidden">
       <div class="dropdown-header">
-        <p id="dropdown-name" class="dropdown-name">—</p>
-        <p id="dropdown-role" class="dropdown-role">—</p>
+        <div class="dropdown-avatar" id="dropdown-avatar-circle">Q</div>
+        <div>
+          <p id="dropdown-name" class="dropdown-name">Quddusxon</p>
+          <p id="dropdown-role" class="dropdown-role">Boshqaruvchi</p>
+        </div>
+      </div>
+      <div class="dropdown-divider"></div>
+      <div class="dropdown-quick-stats">
+        <div class="d-stat"><span>Bugungi tahlillar:</span> <b>48 ta</b></div>
+        <div class="d-stat"><span>O'rtacha sifat:</span> <b>88.4 / 100</b></div>
+      </div>
+      <div class="dropdown-divider"></div>
+      <button id="dropdown-settings-btn" class="dropdown-item-btn">
+        <span class="material-symbols-outlined">tune</span> Sozlamalar va Fonlar
+      </button>
+    </div>
+
+    <!-- Asosiy Ko'rinish (View Slot) -->
+    <main id="view" class="main-content">
+      <div class="state-message">
+        <div class="spinner"></div>
+        <span>Yuklanmoqda...</span>
+      </div>
+    </main>
+
+    <!-- Modal / Dialog konteyneri -->
+    <div id="modal-overlay" class="modal-overlay hidden">
+      <div id="modal-card" class="modal-card glass-card">
+        <div class="modal-header">
+          <h3 id="modal-title">Batafsil</h3>
+          <button id="modal-close-btn" class="icon-btn"><span class="material-symbols-outlined">close</span></button>
+        </div>
+        <div id="modal-body" class="modal-body"></div>
       </div>
     </div>
 
-    <main id="view">
-      <div class="state-message">Yuklanmoqda...</div>
-    </main>
+    <!-- Quick Toast Notification -->
+    <div id="toast-container" class="toast-container"></div>
   </div>
 
   <script src="./app.js"></script>
