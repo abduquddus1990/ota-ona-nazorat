@@ -1,0 +1,164 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+:root {
+    --bg-primary: #090d16;
+    --bg-surface: #111827;
+    --bg-card: rgba(17, 24, 39, 0.85);
+    --border-subtle: rgba(255, 255, 255, 0.08);
+    --border-active: rgba(16, 185, 129, 0.4);
+    --accent-emerald: #10b981;
+    --accent-sky: #0ea5e9;
+    --accent-amber: #f59e0b;
+    --accent-rose: #f43f5e;
+    --accent-violet: #8b5cf6;
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+}
+
+body {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    min-height: 100vh;
+    padding-bottom: 90px;
+    user-select: none;
+    overflow-x: hidden;
+}
+
+/* Glassmorphism Card Effect */
+.glass-card {
+    background: var(--bg-card);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--border-subtle);
+    border-radius: 1.25rem;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-card:hover {
+    border-color: var(--border-active);
+    transform: translateY(-1px);
+}
+
+/* Tab Animation */
+.tab-content {
+    display: none;
+    animation: fadeIn 0.25s ease-in-out;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Bottom Navigation Bar */
+.bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    max-width: 480px;
+    margin: 0 auto;
+    background: rgba(9, 13, 22, 0.95);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid var(--border-subtle);
+    z-index: 1000;
+    display: flex;
+    justify-content: space-around;
+    padding: 8px 12px 14px 12px;
+}
+
+.nav-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    padding: 6px 10px;
+    border-radius: 12px;
+}
+
+.nav-btn svg {
+    width: 22px;
+    height: 22px;
+    margin-bottom: 3px;
+    transition: transform 0.2s ease;
+}
+
+.nav-btn.active {
+    color: var(--accent-emerald);
+    background: rgba(16, 185, 129, 0.1);
+}
+
+.nav-btn.active svg {
+    transform: scale(1.1);
+}
+
+/* Leaflet Map Customization */
+#map {
+    height: 240px;
+    width: 100%;
+    border-radius: 1rem;
+    z-index: 10;
+}
+
+/* Radar Pulse Marker */
+.radar-pin {
+    width: 14px;
+    height: 14px;
+    background: #10b981;
+    border: 2px solid #ffffff;
+    border-radius: 50%;
+    position: relative;
+}
+
+.radar-pin::after {
+    content: '';
+    position: absolute;
+    top: -8px;
+    left: -8px;
+    width: 30px;
+    height: 30px;
+    background: rgba(16, 185, 129, 0.4);
+    border-radius: 50%;
+    animation: radarRipple 2s infinite;
+}
+
+@keyframes radarRipple {
+    0% { transform: scale(0.5); opacity: 1; }
+    100% { transform: scale(2.2); opacity: 0; }
+}
+
+/* Progress Bars */
+.progress-bar-bg {
+    background-color: rgba(255, 255, 255, 0.06);
+    border-radius: 9999px;
+    height: 8px;
+    overflow: hidden;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    border-radius: 9999px;
+    transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
