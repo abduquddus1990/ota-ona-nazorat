@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.env
+.venv/
+venv/
+ENV/
+
+# Android / Kotlin
+*.iml
+.gradle
+/local.properties
+/.idea/
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+*.apk
+*.aab
+
+# Node / Web
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# System
+Thumbs.db
