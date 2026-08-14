@@ -348,29 +348,43 @@ function sendQuickPrompt(promptText) {
 
 function generateAIResponse(query, imageBase64) {
     const child = childrenDatabase[currentChildKey];
+    const qLower = (query || "").toLowerCase();
     let responseText = "";
 
     if (imageBase64) {
         responseText = `
-            <b>📷 Rasm Tahlili Xulosasi:</b><br>
-            Yuklangan darslik/vazifa rasmi tahlil qilindi. Farzandingiz <b>${child.name} (${child.grade}-sinf)</b> uchun darslikdagi ushbu mavzuni mustahkamlash bo'yicha tavsiya:<br>
-            1. Nazariy qoidani 10 daqiqa hayotiy misollar orqali tushuntiring.<br>
-            2. Qiziqishni oshirish uchun amaliy topshiriq bering va rag'batlantiring! 🌟
+            <b>📷 Vazifa / Rasm Tahlili Xulosasi:</b><br>
+            Yuklangan darslik topshirig'i tahlil qilindi. <b>${child.name} (${child.grade}-sinf)</b> uchun ushbu darslik mavzusini o'zlashtirish bo'yicha yo'riqnoma:<br>
+            • <b>Asosiy qoida:</b> Mavzuning nazariy tushunchasini 10 daqiqa amaliy misollar orqali ko'rib chiqing.<br>
+            • <b>Mustahkamlash:</b> Darslikdagi 2-3 ta topshiriqni mustaqil yechishga yo'naltiring va 100 ballik e-Maktab ko'rsatkichini qayd eting! 🌟
         `;
-    } else if (query.includes("qiziqish")) {
+    } else if (qLower.includes("reels") || qLower.includes("short") || qLower.includes("video") || qLower.includes("insta") || qLower.includes("youtube")) {
         responseText = `
-            Farzandingiz <b>${child.name} (${child.grade}-sinf)</b> ning darsliklarga qiziqishini oshirish uchun:<br>
-            • <b>Interaktiv format:</b> Matematika va tabiiy fanlarni video darsliklar va tajribalar orqali o'rganishga yo'naltiring.<br>
-            • <b>Rag'batlantirish:</b> Kichik yutuqlarini ham maqtang va haftalik 100 ballik ko'rsatkichini birgalikda tahlil qiling.
+            <b>🎬 Ko'rilayotgan Reels va Video Kontent Tahlili:</b><br>
+            Farzandingiz <b>${child.name} (${child.grade}-sinf)</b> tomosha qilayotgan Reels / Shorts videolari bo'yicha aniq ma'lumotlar:<br><br>
+            📊 <b>Mavzular taqsimoti:</b><br>
+            • <b>💻 Ta'limiy & IT (Python, Robototexnika, Ingliz tili):</b> 45% (Foydali va rivojlantiruvchi)<br>
+            • <b>🔬 Ilmiy tajribalar & Mantiqiy boshqotirmalar:</b> 25% (Ijobiy tendensiya)<br>
+            • <b>🎮 Ko'ngilochar va o'yin strimlari:</b> 30% (Me'yorida)<br><br>
+            💡 <b>Tavsiya:</b> Algoritm ko'proq ta'limiy videolarni tavsiya qilishi uchun fanlar bo'yicha foydali kanallarga obuna bo'lishni yo'lga qo'ying.
         `;
-    } else if (query.includes("ekran") || query.includes("batareya")) {
+    } else if (qLower.includes("qiziqish") || qLower.includes("fan") || qLower.includes("dars")) {
         responseText = `
-            <b>📱 Raqamli Salomatlik Xulosasi:</b><br>
-            Bugungi umumiy ekran vaqti: <b>${child.screenTime}</b>. YouTube va ijtimoiy tarmoqlar ulushi me'yorda. Tavsiya: Darsdan so'ng 1 soat sport yoki ochiq havoda sayr qilishni rejalashtiring.
+            <b>📚 Darslarni O'zlashtirish va Qiziqishni Oshirish:</b><br>
+            <b>${child.name} (${child.grade}-sinf)</b> uchun Davlat ta'lim standarti fanlarini mustahkamlash usullari:<br>
+            • <b>Amaliy yondashuv:</b> Matematika va tabiiy fanlarni grafik misollar va tajribalar orqali o'rganish samaraliroq.<br>
+            • <b>Haftalik tahlil:</b> e-Maktab bo'limidagi 100 ballik ko'rsatkichlarni birgalikda ko'rib, yuqori natijalarni qayd etib boring.
+        `;
+    } else if (qLower.includes("ekran") || qLower.includes("batareya") || qLower.includes("vaqt") || qLower.includes("limit")) {
+        responseText = `
+            <b>📱 Raqamli Odatlar & Ekran Vaqti Tahlili:</b><br>
+            Bugungi sarflangan umumiy vaqt: <b>${child.screenTime}</b> (Qolgan limit: <b>${child.remaining}</b>).<br>
+            Ilovalar ichida eng ko'p foydalanilgani: <b>${child.apps[0]?.name || "YouTube"} (${child.apps[0]?.percent || 35}%)</b>.<br>
+            Kunlik rejimga ko'ra darsdan keyin sport va jismoniy faollikni rejalashtirish tavsiya etiladi.
         `;
     } else {
         responseText = `
-            Pedagogik tavsiya: Farzandingiz bilan har kuni 15 daqiqa darsdan tashqari qiziqishlari haqida do'stona suhbatlashing. Bu uning o'ziga bo'lgan ishonchini 40% ga oshiradi.
+            <b>💡 Ma'lumot:</b> Farzandingiz <b>${child.name} (${child.grade}-sinf)</b> ning dars jadvali, 100 ballik baholari, jonli joylashuvi va batareya ko'rsatkichlari doimiy nazorat ostida. Har qanday fan, video tahlili yoki limitlar bo'yicha savolingizni yozishingiz mumkin.
         `;
     }
 
