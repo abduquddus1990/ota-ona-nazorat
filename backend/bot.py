@@ -20,7 +20,7 @@ logger = logging.getLogger("ParentalGuardBot")
 
 # Bot Token va Konfiguratsiya
 BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "8992925094:AAE5K1N8VVxiCh9P6H1j7hCrYoTeIBmC8r0")
-MINI_APP_URL = os.getenv("MINI_APP_URL", "https://your-domain.vercel.app")
+MINI_APP_URL = os.getenv("MINI_APP_URL", "https://abduquddus1990.github.io/ota-ona-nazorat/")
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
@@ -123,9 +123,10 @@ async def handle_screenshot(message: types.Message):
         for app in result.get("apps", [])
     ])
 
+    total_time = result.get("total_screen_time", "Nomalum")
     reply_text = (
         f"✅ **Ilovalardan Foydalanish Tahlili Qabul Qilindi:**\n\n"
-        f"⏳ **Umumiy ekran vaqti:** {result.get('total_screen_time', 'Noma\'lum')}\n\n"
+        f"⏳ **Umumiy ekran vaqti:** {total_time}\n\n"
         f"📱 **Ilovalar Reytingi:**\n{apps_text}\n\n"
         f"📊 Ma'lumotlar ota-onangizning boshqaruv paneliga sinxronlashtirildi."
     )
