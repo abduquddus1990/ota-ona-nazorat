@@ -6,7 +6,7 @@
 :root {
     --bg-primary: #090d16;
     --bg-surface: #111827;
-    --bg-card: rgba(17, 24, 39, 0.85);
+    --bg-card: rgba(17, 24, 39, 0.88);
     --border-subtle: rgba(255, 255, 255, 0.08);
     --border-active: rgba(16, 185, 129, 0.4);
     --accent-primary: #10b981;
@@ -21,7 +21,7 @@
 body[data-theme="aurora"] {
     --bg-primary: #05131e;
     --bg-surface: #0a253a;
-    --bg-card: rgba(10, 37, 58, 0.85);
+    --bg-card: rgba(10, 37, 58, 0.88);
     --border-active: rgba(14, 165, 233, 0.4);
     --accent-primary: #0ea5e9;
     --wallpaper-gradient: radial-gradient(circle at 50% 0%, rgba(14, 165, 233, 0.25), rgba(16, 185, 129, 0.15) 50%, transparent 80%);
@@ -31,7 +31,7 @@ body[data-theme="aurora"] {
 body[data-theme="nebula"] {
     --bg-primary: #0d0818;
     --bg-surface: #1b1030;
-    --bg-card: rgba(27, 16, 48, 0.85);
+    --bg-card: rgba(27, 16, 48, 0.88);
     --border-active: rgba(168, 85, 247, 0.4);
     --accent-primary: #a855f7;
     --wallpaper-gradient: radial-gradient(circle at 50% 0%, rgba(168, 85, 247, 0.25), rgba(236, 72, 153, 0.15) 50%, transparent 80%);
@@ -41,7 +41,7 @@ body[data-theme="nebula"] {
 body[data-theme="sunset"] {
     --bg-primary: #180a0a;
     --bg-surface: #2b1212;
-    --bg-card: rgba(43, 18, 18, 0.85);
+    --bg-card: rgba(43, 18, 18, 0.88);
     --border-active: rgba(249, 115, 22, 0.4);
     --accent-primary: #f97316;
     --wallpaper-gradient: radial-gradient(circle at 50% 0%, rgba(249, 115, 22, 0.25), rgba(239, 68, 68, 0.15) 50%, transparent 80%);
@@ -51,7 +51,7 @@ body[data-theme="sunset"] {
 body[data-theme="emerald"] {
     --bg-primary: #06140d;
     --bg-surface: #0b291a;
-    --bg-card: rgba(11, 41, 26, 0.85);
+    --bg-card: rgba(11, 41, 26, 0.88);
     --border-active: rgba(16, 185, 129, 0.4);
     --accent-primary: #10b981;
     --wallpaper-gradient: radial-gradient(circle at 50% 0%, rgba(16, 185, 129, 0.25), transparent 75%);
@@ -61,7 +61,7 @@ body[data-theme="emerald"] {
 body[data-theme="sakura"] {
     --bg-primary: #170912;
     --bg-surface: #2b1122;
-    --bg-card: rgba(43, 17, 34, 0.85);
+    --bg-card: rgba(43, 17, 34, 0.88);
     --border-active: rgba(244, 63, 94, 0.4);
     --accent-primary: #f43f5e;
     --wallpaper-gradient: radial-gradient(circle at 50% 0%, rgba(244, 63, 94, 0.2), rgba(217, 70, 239, 0.1) 60%, transparent 80%);
@@ -71,7 +71,7 @@ body[data-theme="sakura"] {
 body[data-theme="gold"] {
     --bg-primary: #12100a;
     --bg-surface: #242013;
-    --bg-card: rgba(36, 32, 19, 0.85);
+    --bg-card: rgba(36, 32, 19, 0.88);
     --border-active: rgba(234, 179, 8, 0.4);
     --accent-primary: #eab308;
     --wallpaper-gradient: radial-gradient(circle at 50% 0%, rgba(234, 179, 8, 0.2), transparent 75%);
@@ -81,7 +81,7 @@ body[data-theme="gold"] {
 body[data-theme="minimal"] {
     --bg-primary: #0f172a;
     --bg-surface: #1e293b;
-    --bg-card: rgba(30, 41, 59, 0.85);
+    --bg-card: rgba(30, 41, 59, 0.88);
     --border-active: rgba(148, 163, 184, 0.4);
     --accent-primary: #38bdf8;
     --wallpaper-gradient: none;
@@ -91,13 +91,13 @@ body[data-theme="minimal"] {
 body[data-theme="cyberpunk"] {
     --bg-primary: #05050d;
     --bg-surface: #0f1026;
-    --bg-card: rgba(15, 16, 38, 0.9);
+    --bg-card: rgba(15, 16, 38, 0.92);
     --border-active: rgba(6, 182, 212, 0.4);
     --accent-primary: #06b6d4;
     --wallpaper-gradient: radial-gradient(circle at 50% 0%, rgba(6, 182, 212, 0.25), rgba(217, 70, 239, 0.15) 60%, transparent 80%);
 }
 
-/* Theme 9: Kumushsifat (Metallic Silver Light) 🌟 */
+/* Theme 9: Metallic Silver Light 🌟 */
 body[data-theme="silver"] {
     --bg-primary: #e2e8f0;
     --bg-surface: #f8fafc;
@@ -111,7 +111,7 @@ body[data-theme="silver"] {
     --wallpaper-gradient: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 50%, #cbd5e1 100%);
 }
 
-/* Theme 10: Havorangsifat (Sky Breeze Light Cyan) 🌟 */
+/* Theme 10: Sky Breeze Cyan 🌟 */
 body[data-theme="sky"] {
     --bg-primary: #f0f9ff;
     --bg-surface: #e0f2fe;
@@ -139,13 +139,13 @@ body {
     background-attachment: fixed;
     color: var(--text-primary);
     min-height: 100vh;
-    padding-bottom: 90px;
+    padding-bottom: 95px;
     user-select: none;
     overflow-x: hidden;
-    transition: background-color 0.4s ease, background-image 0.4s ease, color 0.4s ease;
+    transition: background-color 0.35s ease, background-image 0.35s ease, color 0.35s ease;
 }
 
-/* Light Theme Card Overrides */
+/* Light Theme Overrides */
 body[data-theme="silver"] .glass-card,
 body[data-theme="sky"] .glass-card {
     box-shadow: 0 4px 20px 0 rgba(0, 0, 0, 0.08);
@@ -164,7 +164,7 @@ body[data-theme="silver"] .bg-slate-900\/60,
 body[data-theme="sky"] .bg-slate-900\/60,
 body[data-theme="silver"] .bg-slate-900\/50,
 body[data-theme="sky"] .bg-slate-900\/50 {
-    background-color: rgba(241, 245, 249, 0.9) !important;
+    background-color: rgba(241, 245, 249, 0.92) !important;
 }
 
 body[data-theme="silver"] .border-slate-800,
@@ -181,8 +181,8 @@ body[data-theme="sky"] .bottom-nav {
 /* Glassmorphism Card Effect */
 .glass-card {
     background: var(--bg-card);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
     border: 1px solid var(--border-subtle);
     border-radius: 1.25rem;
     box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
@@ -219,7 +219,7 @@ body[data-theme="sky"] .bottom-nav {
     display: none;
     overflow-y: auto;
     padding: 16px;
-    padding-bottom: 80px;
+    padding-bottom: 90px;
     animation: slideUp 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -353,4 +353,138 @@ body[data-theme="sky"] .progress-bar-bg {
 .theme-card.active {
     border-color: var(--accent-primary);
     box-shadow: 0 0 12px rgba(16, 185, 129, 0.4);
+}
+
+/* ==========================================================================
+   AI CHAT & AUDIO VISUALIZER
+   ========================================================================== */
+.ai-chat-container {
+    max-height: 280px;
+    overflow-y: auto;
+    scroll-behavior: smooth;
+}
+
+.chat-bubble-user {
+    background: rgba(16, 185, 129, 0.15);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    border-radius: 14px 14px 2px 14px;
+    color: var(--text-primary);
+    padding: 8px 12px;
+    max-width: 85%;
+    align-self: flex-end;
+    font-size: 12px;
+}
+
+.chat-bubble-ai {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: 14px 14px 14px 2px;
+    color: var(--text-primary);
+    padding: 10px 14px;
+    max-width: 90%;
+    align-self: flex-start;
+    font-size: 12px;
+    line-height: 1.45;
+}
+
+/* Voice Recording Pulsing Button */
+.voice-record-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #10b981, #059669);
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.voice-record-btn.recording {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    animation: voicePulse 1.2s infinite;
+}
+
+@keyframes voicePulse {
+    0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+    70% { transform: scale(1.1); box-shadow: 0 0 0 14px rgba(239, 68, 68, 0); }
+    100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+/* Waveform Bars */
+.waveform-bars {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    height: 24px;
+}
+
+.waveform-bar {
+    width: 3px;
+    background: #10b981;
+    border-radius: 2px;
+    animation: waveAnim 1s ease-in-out infinite alternate;
+}
+
+@keyframes waveAnim {
+    0% { height: 4px; }
+    100% { height: 22px; }
+}
+
+/* 100-Point Grade Score Card */
+.score-badge-100 {
+    font-size: 28px;
+    font-weight: 800;
+    line-height: 1;
+    background: linear-gradient(135deg, #10b981, #38bdf8);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+/* Period Pills */
+.period-pill {
+    padding: 6px 14px;
+    border-radius: 9999px;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    border: 1px solid var(--border-subtle);
+    background: transparent;
+    color: var(--text-muted);
+    transition: all 0.2s ease;
+}
+
+.period-pill.active {
+    background: var(--accent-primary);
+    color: #ffffff;
+    border-color: var(--accent-primary);
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.35);
+}
+
+/* Sticky High-Contrast Subject List */
+.subject-sticky-container {
+    max-height: 380px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.subject-item-card {
+    background: rgba(15, 23, 42, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 10px 14px;
+    transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+body[data-theme="silver"] .subject-item-card,
+body[data-theme="sky"] .subject-item-card {
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+.subject-item-card:hover {
+    border-color: var(--accent-primary);
+    transform: translateY(-1px);
 }

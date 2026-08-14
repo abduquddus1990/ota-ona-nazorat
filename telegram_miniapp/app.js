@@ -1,270 +1,433 @@
 /**
- * Shield Parental Guard | Multi-Child, Multi-Language & Aesthetic Themes Engine
+ * SHIELD PARENTAL GUARD — ADVANCED AI & E-MAKTAB DASHBOARD
+ * Core Frontend Logic (Bilingual UZ/RU, 100-Point Grading, 1-11 Class DTS, AI Voice/Text/Image)
  */
 
-// 1. Lug'at va Tarjimalar (Bilingual Localization: UZ / RU)
-const i18n = {
-    uz: {
-        appName: "Zero-Trust Himoya",
-        parentBadge: "Ota-ona",
-        totalScreenTime: "Bugungi Umumiy Ekran Vaqti",
-        dailyLimit: "Kunlik limit",
-        remaining: "Qoldi",
-        inNorm: "Me'yorda",
-        viewRadar: "📍 Radarda Ko'rish",
-        appUsageTitle: "📱 Ilovalardan Foydalanish Reytingi",
-        appUsageSubtitle: "Android Batareya va Raqamli Qulaylik tahlili",
-        voiceAlertBtn: "🎙️ Ovozli Radar",
-        voiceAlertSub: "Lokatsiya so'rovi",
-        voiceAlertSentTitle: "🎙️ Ovozli Radar So'rovi",
-        voiceAlertSentMsg: "Farzandingizga ovozli ogohlantirish yuborildi: 'Ota-onangiz joylashuvingizni so'ramoqda.'",
-        radarTitle: "Jonli Geolokatsiya (Radar)",
-        gpsLive: "GPS Jonli",
-        geofenceTitle: "🛡️ Xavfsiz Hududlar Holati",
-        sendVoicePrompt: "🎙️ Farzandga Ovozli Lokatsiya Ogohlantirishini Yuborish",
-        aiPedagogyTitle: "🧠 Gemini AI Pedagogik Tahlili",
-        aiTodaySummary: "Bugungi xulosa",
-        aiVectorTitle: "✨ Iqtidorlar va Qiziqishlar Matritsasi",
-        reelsDigestTitle: "🎬 Tahlil Qilingan Media & Mavzular",
-        gpaAvg: "O'rtacha Baho",
-        attendance: "Davomat",
-        todayLessons: "📚 Bugungi Darslar va Baholar",
-        settingsTitle: "⚙️ Tizim Sozlamalari",
-        themeSelect: "🎨 Fon va Dizaynni Tanlash (Pinterest)",
-        themeSub: "8 xil eksklyuziv estetika fonlari",
-        langSelect: "🌐 Tilni O'zgartirish (Язык)",
-        langSub: "O'zbekcha / Русский",
-        plansSelect: "💎 Tariflar va Obuna",
-        plansSub: "Bepul va Premium imkoniyatlar",
-        pairingSelect: "🛡️ Farzandni Bog'lash & Face ID",
-        pairingSub: "Biometrik tasdiq va QR kod",
-        backBtn: "← Orqaga",
-        copyLink: "📋 Havolani Nusxalash",
-        linkCopied: "🔗 Havola nusxalandi!",
-        consentNotice: "Farzand dumaloq videoda 'nazorat_bot o'rnatilishiga roziman' deb aytishi shart."
-    },
-    ru: {
-        appName: "Zero-Trust Защита",
-        parentBadge: "Родитель",
-        totalScreenTime: "Общее Экранное Время",
-        dailyLimit: "Дневной лимит",
-        remaining: "Осталось",
-        inNorm: "В норме",
-        viewRadar: "📍 Смотреть на Радаре",
-        appUsageTitle: "📱 Рейтинг Использования Приложений",
-        appUsageSubtitle: "Анализ батареи и Цифрового Благополучия",
-        voiceAlertBtn: "🎙️ Голосовой Радар",
-        voiceAlertSub: "Запрос локации",
-        voiceAlertSentTitle: "🎙️ Голосовой Радар",
-        voiceAlertSentMsg: "Ребёнку отправлено голосовое уведомление: 'Родители запросили вашу локацию.'",
-        radarTitle: "Живая Геолокация (Радар)",
-        gpsLive: "GPS Онлайн",
-        geofenceTitle: "🛡️ Статус Безопасных Зон",
-        sendVoicePrompt: "🎙️ Отправить голосовой запрос локации ребёнку",
-        aiPedagogyTitle: "🧠 Педагогический Анализ Gemini AI",
-        aiTodaySummary: "Итог дня",
-        aiVectorTitle: "✨ Матрица Способностей и Интересов",
-        reelsDigestTitle: "🎬 Анализ Просмотренных Reels & Медиа",
-        gpaAvg: "Средний Балл",
-        attendance: "Посещаемость",
-        todayLessons: "📚 Уроки и Оценки на Сегодня",
-        settingsTitle: "⚙️ Настройки Системы",
-        themeSelect: "🎨 Выбор Фона и Темы (Pinterest)",
-        themeSub: "8 эксклюзивных эстетичных фонов",
-        langSelect: "🌐 Выбор Языка (Til)",
-        langSub: "Русский / O'zbekcha",
-        plansSelect: "💎 Тарифы и Подписка",
-        plansSub: "Бесплатные и Премиум функции",
-        pairingSelect: "🛡️ Привязка Ребёнка и Face ID",
-        pairingSub: "Биометрическое согласие и QR",
-        backBtn: "← Назад",
-        copyLink: "📋 Копировать Ссылку",
-        linkCopied: "🔗 Ссылка скопирована!",
-        consentNotice: "Ребёнок в видеосообщении должен сказать: 'Я согласен на установку nazorat_bot'."
-    }
+// 1. O'ZBEKISTON DTS BO'YICHA 1-11 SINF DARSLIKLARI BAZASI
+const CURRICULUM_DATABASE = {
+    1: ["Ona tili va o'qish savodxonligi", "Matematika", "Tabiiy fanlar (Science)", "Tasviriy san'at", "Musiqa", "Texnologiya", "Jismoniy tarbiya", "Ingliz tili", "Tarbiya"],
+    2: ["Ona tili va o'qish savodxonligi", "Matematika", "Tabiiy fanlar (Science)", "Tasviriy san'at", "Musiqa", "Texnologiya", "Jismoniy tarbiya", "Ingliz tili", "Tarbiya"],
+    3: ["Ona tili va o'qish savodxonligi", "Matematika", "Tabiiy fanlar (Science)", "Tasviriy san'at", "Musiqa", "Texnologiya", "Jismoniy tarbiya", "Ingliz tili", "Tarbiya"],
+    4: ["Ona tili va o'qish savodxonligi", "Matematika", "Tabiiy fanlar (Science)", "Tasviriy san'at", "Musiqa", "Texnologiya", "Jismoniy tarbiya", "Ingliz tili", "Tarbiya"],
+    5: ["Ona tili", "Adabiyot", "Matematika", "Tarixdan hikoyalar", "Tabiiy fanlar (Science)", "Chet tili (Ingliz tili)", "Informatika va axborot texnologiyalari", "Tasviriy san'at", "Texnologiya", "Musiqa", "Jismoniy tarbiya", "Tarbiya"],
+    6: ["Ona tili", "Adabiyot", "Matematika", "Qadimgi dunyo tarixi", "Biologiya (Botanika)", "Geografiya", "Chet tili (Ingliz tili)", "Informatika", "Tasviriy san'at", "Texnologiya", "Musiqa", "Jismoniy tarbiya", "Tarbiya"],
+    7: ["Ona tili", "Adabiyot", "Algebra", "Geometriya", "Fizika", "Kimyo", "Biologiya (Zoologiya)", "O'zbekiston tarixi", "Jahon tarixi", "Geografiya", "Informatika", "Chet tili", "Texnologiya", "Jismoniy tarbiya", "Tarbiya"],
+    8: ["Ona tili", "Adabiyot", "Algebra", "Geometriya", "Fizika", "Kimyo", "Biologiya (Odam va salomatligi)", "O'zbekiston tarixi", "Jahon tarixi", "Geografiya", "Davlat va huquq asoslari", "Informatika", "Chet tili", "Tarbiya"],
+    9: ["Ona tili", "Adabiyot", "Algebra", "Geometriya", "Fizika", "Kimyo", "Biologiya (Sitologiya va genetika)", "O'zbekiston tarixi", "Jahon tarixi", "Geografiya", "Konstitutsiya asoslari", "Informatika", "Chet tili", "Tarbiya"],
+    10: ["Ona tili", "Adabiyot", "Algebra", "Geometriya", "Fizika", "Kimyo", "Biologiya", "O'zbekiston tarixi", "Jahon tarixi", "Davlat va huquq asoslari", "Informatika", "Chet tili", "Astronomiya", "ChaQBT", "Jismoniy tarbiya"],
+    11: ["Ona tili", "Adabiyot", "Algebra", "Geometriya", "Fizika", "Kimyo", "Biologiya", "O'zbekiston tarixi", "Jahon tarixi", "Davlat va huquq asoslari", "Informatika", "Chet tili", "Astronomiya", "ChaQBT", "Jismoniy tarbiya"]
 };
 
-// 2. Ko'p Farzandlar Ma'lumotlar Bazasi (Multi-Child Database)
-const childrenDatabase = {
+// 2. KO'P FARZANDLIK TIZIMI MA'LUMOTLAR BAZASI
+let childrenDatabase = {
     "child_1": {
-        name: "Aliyor (14 yosh)",
-        name_ru: "Алиёр (14 лет)",
+        name: "Aliyor Valijonov",
+        username: "@aliyor_v",
+        grade: 5,
         battery: 84,
         screenTime: "3s 45d",
-        screenTime_ru: "3ч 45м",
-        limit: "4s 00d",
-        remaining: "15d",
-        remaining_ru: "15м",
+        remaining: "1s 15d",
         location: {
-            lat: 41.2995,
-            lng: 69.2401,
-            address_uz: "Yunusobod, 244-Maktab hududida",
-            address_ru: "Юнусабад, территория школы №244",
-            geofences_uz: [
-                { name: "🏠 Uy (Yunusobod 4)", status: "Tashqarisida", color: "text-slate-400" },
-                { name: "🏫 244-Maktab (Xavfsiz)", status: "Ichida (Faol)", color: "text-emerald-400" },
-                { name: "⚽ Futbol to'garagi", status: "Kutilmoqda (16:00)", color: "text-amber-400" }
-            ],
-            geofences_ru: [
-                { name: "🏠 Дом (Юнусабад 4)", status: "Снаружи", color: "text-slate-400" },
-                { name: "🏫 Школа №244 (Безопасно)", status: "Внутри (Активно)", color: "text-emerald-400" },
-                { name: "⚽ Секция футбола", status: "Ожидается (16:00)", color: "text-amber-400" }
+            lat: 41.3145,
+            lng: 69.2812,
+            address: "Yunusobod 4-mavze, 24-maktab",
+            geofences: [
+                { name: "🏠 Uy (Yunusobod)", status: "Tashqarisida", color: "text-slate-400" },
+                { name: "🏫 24-Maktab", status: "Ichida (Faol)", color: "text-emerald-400" }
             ]
         },
-        apps_uz: [
-            { name: "YouTube (Shorts/Dars)", time: "1s 50d", percent: 48, category: "Ta'lim / Video", color: "bg-red-500", tagColor: "text-red-400 bg-red-500/10" },
-            { name: "Instagram (Reels)", time: "1s 05d", percent: 28, category: "Ijtimoiy", color: "bg-pink-500", tagColor: "text-pink-400 bg-pink-500/10" },
-            { name: "Telegram Messenger", time: "35d", percent: 15, category: "Muloqot", color: "bg-sky-500", tagColor: "text-sky-400 bg-sky-500/10" },
-            { name: "Duolingo", time: "15d", percent: 6, category: "Til", color: "bg-emerald-500", tagColor: "text-emerald-400 bg-emerald-500/10" }
+        apps: [
+            { name: "YouTube", time: "1s 20d", percent: 35, category: "Ta'lim / Video", color: "bg-red-500", icon: "▶️" },
+            { name: "Instagram (Reels)", time: "55d", percent: 24, category: "Ijtimoiy Tarmoq", color: "bg-pink-500", icon: "📸" },
+            { name: "Telegram", time: "45d", percent: 20, category: "Muloqot", color: "bg-sky-500", icon: "💬" },
+            { name: "Duolingo", time: "30d", percent: 13, category: "Til O'rganish", color: "bg-emerald-500", icon: "🦉" },
+            { name: "PUBG Mobile", time: "15d", percent: 8, category: "O'yin", color: "bg-amber-500", icon: "🎮" }
         ],
-        apps_ru: [
-            { name: "YouTube (Shorts/Уроки)", time: "1ч 50м", percent: 48, category: "Обучение / Видео", color: "bg-red-500", tagColor: "text-red-400 bg-red-500/10" },
-            { name: "Instagram (Reels)", time: "1ч 05м", percent: 28, category: "Соцсеть", color: "bg-pink-500", tagColor: "text-pink-400 bg-pink-500/10" },
-            { name: "Telegram Messenger", time: "35м", percent: 15, category: "Общение", color: "bg-sky-500", tagColor: "text-sky-400 bg-sky-500/10" },
-            { name: "Duolingo", time: "15м", percent: 6, category: "Языки", color: "bg-emerald-500", tagColor: "text-emerald-400 bg-emerald-500/10" }
-        ],
-        ai_uz: {
-            advice: "Farzandingiz bugun robototexnika va fizika darslarini qiziqish bilan ko'rdi. Kechki ovqatda u bilan yangi texnologiyalar haqida suhbatlashish tavsiya etiladi.",
-            vectors: [
-                { topic: "Dasturlash va IT", percent: 88, color: "bg-emerald-500" },
-                { topic: "Fizika va Matematika", percent: 74, color: "bg-sky-500" },
-                { topic: "Trendlar / O'yinlar", percent: 38, color: "bg-amber-500" }
-            ],
-            digest: [
-                { title: "Python dasturlash asoslari", channel: "CodeUz", category: "Darslik", badge: "Ijobiy" },
-                { title: "Jeyms Vebb kosmik teleskopi", channel: "ScienceTV", category: "Fanga qiziqish", badge: "Ijobiy" }
-            ]
-        },
-        ai_ru: {
-            advice: "Ребёнок сегодня с интересом изучал уроки по робототехнике и физике. Рекомендуется за ужином обсудить с ним современные технологии.",
-            vectors: [
-                { topic: "Программирование и IT", percent: 88, color: "bg-emerald-500" },
-                { topic: "Физика и Математика", percent: 74, color: "bg-sky-500" },
-                { topic: "Тренды и Игры", percent: 38, color: "bg-amber-500" }
-            ],
-            digest: [
-                { title: "Основы Python с нуля", channel: "CodeUz", category: "Урок", badge: "Позитивно" },
-                { title: "Телескоп Джеймс Уэбб", channel: "ScienceTV", category: "Наука", badge: "Позитивно" }
-            ]
-        },
-        gpa: "4.9",
-        attendance: "100%",
-        lessons_uz: [
-            { subject: "Algebra", time: "08:30 - 09:15", grade: "5", room: "302-xona" },
-            { subject: "Fizika", time: "09:25 - 10:10", grade: "5", room: "Fizika lab." },
-            { subject: "Ona tili", time: "10:20 - 11:05", grade: "4", room: "204-xona" }
-        ],
-        lessons_ru: [
-            { subject: "Алгебра", time: "08:30 - 09:15", grade: "5", room: "Кабинет 302" },
-            { subject: "Физика", time: "09:25 - 10:10", grade: "5", room: "Физ. лаб." },
-            { subject: "Родной язык", time: "10:20 - 11:05", grade: "4", room: "Кабинет 204" }
+        interests: [
+            { topic: "Dasturlash va IT", percent: 85, color: "bg-emerald-500" },
+            { topic: "Robototexnika va Fizika", percent: 72, color: "bg-sky-500" },
+            { topic: "Ingliz tili muloqoti", percent: 65, color: "bg-purple-500" }
         ]
     },
     "child_2": {
-        name: "Madina (10 yosh)",
-        name_ru: "Мадина (10 лет)",
+        name: "Madina Valijonova",
+        username: "@madina_v",
+        grade: 3,
         battery: 92,
         screenTime: "2s 10d",
-        screenTime_ru: "2ч 10м",
-        limit: "3s 00d",
         remaining: "50d",
-        remaining_ru: "50м",
         location: {
             lat: 41.3110,
             lng: 69.2797,
-            address_uz: "Mirzo Ulug'bek, San'at Maktabi",
-            address_ru: "Мирзо Улугбек, Школа Искусств",
-            geofences_uz: [
+            address: "Mirzo Ulug'bek, San'at Maktabi",
+            geofences: [
                 { name: "🏠 Uy", status: "Tashqarisida", color: "text-slate-400" },
                 { name: "🎨 San'at Maktabi", status: "Ichida (Faol)", color: "text-emerald-400" }
-            ],
-            geofences_ru: [
-                { name: "🏠 Дом", status: "Снаружи", color: "text-slate-400" },
-                { name: "🎨 Школа Искусств", status: "Внутри (Активно)", color: "text-emerald-400" }
             ]
         },
-        apps_uz: [
-            { name: "YouTube (Rasm chizish)", time: "1s 10d", percent: 55, category: "San'at", color: "bg-red-500", tagColor: "text-red-400 bg-red-500/10" },
-            { name: "Duolingo English", time: "35d", percent: 27, category: "Til", color: "bg-emerald-500", tagColor: "text-emerald-400 bg-emerald-500/10" },
-            { name: "Telegram", time: "25d", percent: 18, category: "Muloqot", color: "bg-sky-500", tagColor: "text-sky-400 bg-sky-500/10" }
+        apps: [
+            { name: "YouTube Kids", time: "1s 10d", percent: 54, category: "Multfilm / Ta'lim", color: "bg-amber-500", icon: "🧸" },
+            { name: "Picsart (Rasm chizish)", time: "40d", percent: 30, category: "San'at va Ijod", color: "bg-purple-500", icon: "🎨" },
+            { name: "Telegram", time: "20d", percent: 16, category: "Oila guruhi", color: "bg-sky-500", icon: "💬" }
         ],
-        apps_ru: [
-            { name: "YouTube (Рисование)", time: "1ч 10м", percent: 55, category: "Искусство", color: "bg-red-500", tagColor: "text-red-400 bg-red-500/10" },
-            { name: "Duolingo English", time: "35м", percent: 27, category: "Языки", color: "bg-emerald-500", tagColor: "text-emerald-400 bg-emerald-500/10" },
-            { name: "Telegram", time: "25м", percent: 18, category: "Общение", color: "bg-sky-500", tagColor: "text-sky-400 bg-sky-500/10" }
-        ],
-        ai_uz: {
-            advice: "Madinada akvarel va rangtasvir san'atiga qobiliyat yuqori. Birgalikda yangi mo'yqalamlar to'plamini tanlash tavsiya etiladi.",
-            vectors: [
-                { topic: "Tasviriy San'at va Dizayn", percent: 92, color: "bg-pink-500" },
-                { topic: "Chet Tillari", percent: 78, color: "bg-emerald-500" }
-            ],
-            digest: [
-                { title: "Akvarel bo'yoqlari bilan ishlash", channel: "ArtClass", category: "San'at", badge: "A'lo" }
+        interests: [
+            { topic: "Tasviriy San'at va Rassomlik", percent: 92, color: "bg-pink-500" },
+            { topic: "Ertaklar va O'qish", percent: 80, color: "bg-emerald-500" }
+        ]
+    },
+    "child_3": {
+        name: "Temur Valijonov",
+        username: "@temur_v",
+        grade: 9,
+        battery: 76,
+        screenTime: "4s 15d",
+        remaining: "45d",
+        location: {
+            lat: 41.3200,
+            lng: 69.2850,
+            address: "Shayxontohur, O'quv Markazi",
+            geofences: [
+                { name: "🏠 Uy", status: "Tashqarisida", color: "text-slate-400" },
+                { name: "💻 IT O'quv Markazi", status: "Ichida (Faol)", color: "text-emerald-400" }
             ]
         },
-        ai_ru: {
-            advice: "У Мадины высокая склонность к акварели и рисованию. Рекомендуется вместе выбрать набор новых кистей.",
-            vectors: [
-                { topic: "Изобразительное искусство", percent: 92, color: "bg-pink-500" },
-                { topic: "Иностранные языки", percent: 78, color: "bg-emerald-500" }
-            ],
-            digest: [
-                { title: "Уроки акварели для детей", channel: "ArtClass", category: "Искусство", badge: "Отлично" }
-            ]
-        },
-        gpa: "5.0",
-        attendance: "100%",
-        lessons_uz: [
-            { subject: "Tasviriy san'at", time: "09:00 - 09:45", grade: "5", room: "San'at zali" },
-            { subject: "Matematika", time: "09:55 - 10:40", grade: "5", room: "105-xona" }
+        apps: [
+            { name: "VS Code / GitHub", time: "2s 10d", percent: 51, category: "Dasturlash", color: "bg-sky-500", icon: "💻" },
+            { name: "Telegram", time: "1s 15d", percent: 30, category: "Guruhlar", color: "bg-sky-500", icon: "💬" },
+            { name: "YouTube", time: "50d", percent: 19, category: "Darsliklar", color: "bg-red-500", icon: "▶️" }
         ],
-        lessons_ru: [
-            { subject: "ИЗО", time: "09:00 - 09:45", grade: "5", room: "Арт-зал" },
-            { subject: "Математика", time: "09:55 - 10:40", grade: "5", room: "Кабинет 105" }
+        interests: [
+            { topic: "Frontend & Backend Development", percent: 94, color: "bg-emerald-500" },
+            { topic: "Matematika va Algoritmlar", percent: 88, color: "bg-sky-500" }
         ]
     }
 };
 
-// 3. Global App State
+let currentChildKey = "child_1";
 let currentLang = localStorage.getItem('app_lang') || 'uz';
-let currentChildKey = 'child_1';
 let currentTheme = localStorage.getItem('app_theme') || 'default';
-let mapInstance = null;
-let parentMarker = null;
-let childMarker = null;
+let activeSchoolPeriod = 'weekly'; // 'weekly', 'monthly', 'quarterly'
+let isRecordingVoice = false;
+let uploadedImageBase64 = null;
 
-// 4. Initsializatsiya
+let mapInstance = null;
+let childMarker = null;
+let parentMarker = null;
+
+// Telegram WebApp Setup
 const tg = window.Telegram?.WebApp;
 if (tg) {
     tg.ready();
     tg.expand();
-    const user = tg.initDataUnsafe?.user;
-    if (user) {
-        document.getElementById('parentNameBadge').innerText = `${user.first_name || 'Ota-ona'}`;
+}
+
+// ============================================================================
+// 3. 100-BALLIK E-MAKTAB BAHOLARI GENERATORI & KO'RSATISH
+// ============================================================================
+function getSubjectScore(subjectName, gradeNum, period) {
+    let hash = 0;
+    const key = subjectName + gradeNum + period + currentChildKey;
+    for (let i = 0; i < key.length; i++) {
+        hash = (hash << 5) - hash + key.charCodeAt(i);
+        hash |= 0;
+    }
+    const baseScore = 75 + Math.abs(hash % 24); // 75 dan 98 ball oralig'ida
+    return Math.min(100, Math.max(60, baseScore));
+}
+
+function renderSchoolCurriculum() {
+    const child = childrenDatabase[currentChildKey];
+    const grade = child.grade || 5;
+    const subjects = CURRICULUM_DATABASE[grade] || CURRICULUM_DATABASE[5];
+    
+    document.getElementById('curriculumClassTitle').innerText = `📚 ${grade}-Sinf Davlat Darsliklari & Baholari`;
+    document.getElementById('childClassBadge').innerText = `${grade}-sinf DTS Darsliklari`;
+
+    let totalScore = 0;
+    const listContainer = document.getElementById('subjectsGradeList');
+
+    listContainer.innerHTML = subjects.map((subject, index) => {
+        const score = getSubjectScore(subject, grade, activeSchoolPeriod);
+        totalScore += score;
+
+        let badgeColor = "text-emerald-400 bg-emerald-500/10 border-emerald-500/30";
+        let statusLabel = "A'lo";
+        if (score < 71) {
+            badgeColor = "text-amber-400 bg-amber-500/10 border-amber-500/30";
+            statusLabel = "Qoniqarli";
+        } else if (score < 86) {
+            badgeColor = "text-sky-400 bg-sky-500/10 border-sky-500/30";
+            statusLabel = "Yaxshi";
+        }
+
+        return `
+            <div class="subject-item-card flex items-center justify-between">
+                <div class="space-y-1 flex-1 pr-3">
+                    <div class="flex items-center gap-2">
+                        <span class="text-[11px] font-bold text-white">${index + 1}. ${subject}</span>
+                    </div>
+                    <div class="progress-bar-bg">
+                        <div class="progress-bar-fill bg-gradient-to-r from-emerald-500 to-sky-400" style="width: ${score}%;"></div>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <div class="text-xs font-black text-white">${score} <span class="text-[9px] text-slate-400">/ 100</span></div>
+                    <span class="text-[9px] font-bold px-1.5 py-0.5 rounded border ${badgeColor}">${statusLabel}</span>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    const overallAvg = (totalScore / subjects.length).toFixed(1);
+    document.getElementById('overallGradeScore').innerText = overallAvg;
+    
+    const periodNames = {
+        'weekly': 'Haftalik baholash (Oxirgi 7 kun)',
+        'monthly': 'Oylik umumiy ko\'rsatkich',
+        'quarterly': 'I-Chorak yakuniy baholari'
+    };
+    document.getElementById('activePeriodLabel').innerText = periodNames[activeSchoolPeriod];
+
+    let overallLabel = "A'lo (Top 5%)";
+    if (overallAvg < 71) overallLabel = "O'rtacha daraja";
+    else if (overallAvg < 86) overallLabel = "Yaxshi (Ijobiy)";
+    document.getElementById('overallGradeLabel').innerText = overallLabel;
+}
+
+function setSchoolPeriod(period) {
+    activeSchoolPeriod = period;
+    document.querySelectorAll('.period-pill').forEach(p => p.classList.remove('active'));
+    const btn = document.getElementById(`period-${period}`);
+    if (btn) btn.classList.add('active');
+    renderSchoolCurriculum();
+}
+
+// ============================================================================
+// 4. FARZAND PROFILINI KIRITISH & TAHRIRLASH (CHILD MANAGER)
+// ============================================================================
+function openChildProfileModal() {
+    const child = childrenDatabase[currentChildKey];
+    document.getElementById('profileFullName').value = child.name;
+    document.getElementById('profileUsername').value = child.username;
+    document.getElementById('profileClassSelect').value = child.grade || 5;
+    openSubpage('modal-child-profile');
+}
+
+function saveChildProfile() {
+    const fullName = document.getElementById('profileFullName').value.trim() || "Farzand";
+    const username = document.getElementById('profileUsername').value.trim() || "@farzand";
+    const grade = parseInt(document.getElementById('profileClassSelect').value) || 5;
+
+    childrenDatabase[currentChildKey].name = fullName;
+    childrenDatabase[currentChildKey].username = username;
+    childrenDatabase[currentChildKey].grade = grade;
+
+    // Dropdown nomini yangilash
+    const select = document.getElementById('childSelector');
+    if (select.querySelector(`option[value="${currentChildKey}"]`)) {
+        select.querySelector(`option[value="${currentChildKey}"]`).innerText = `${fullName} (${grade}-sinf)`;
+    }
+
+    renderActiveChild();
+    renderSchoolCurriculum();
+    closeSubpage();
+
+    alert(`✅ Farzand ma'lumotlari saqlandi!\n${grade}-sinf Davlat darsliklari va 100 ballik baholar e-Maktab bo'limiga o'rnatildi.`);
+}
+
+function switchChild(childKey) {
+    currentChildKey = childKey;
+    renderActiveChild();
+    renderSchoolCurriculum();
+    if (mapInstance) updateMapCoordinates();
+}
+
+function renderActiveChild() {
+    const child = childrenDatabase[currentChildKey];
+    document.getElementById('totalScreenTime').innerText = child.screenTime;
+    document.getElementById('batteryBadge').innerText = `${child.battery}%`;
+    document.getElementById('remainingTime').innerText = child.remaining;
+    document.getElementById('childSelector').value = currentChildKey;
+
+    // Ilovalar Reytingi
+    const appList = document.getElementById('appUsageList');
+    if (appList) {
+        appList.innerHTML = child.apps.map(app => `
+            <div class="space-y-1">
+                <div class="flex items-center justify-between text-xs">
+                    <div class="flex items-center gap-2">
+                        <span class="text-sm">${app.icon}</span>
+                        <span class="font-bold text-white">${app.name}</span>
+                        <span class="text-[10px] text-slate-400 bg-slate-800/60 px-1.5 py-0.2 rounded">${app.category}</span>
+                    </div>
+                    <span class="font-mono text-slate-300">${app.time} <b class="text-emerald-400">(${app.percent}%)</b></span>
+                </div>
+                <div class="progress-bar-bg">
+                    <div class="progress-bar-fill ${app.color}" style="width: ${app.percent}%;"></div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    // Geofences
+    const geofenceList = document.getElementById('geofenceZoneList');
+    if (geofenceList) {
+        geofenceList.innerHTML = child.location.geofences.map(g => `
+            <div class="flex items-center justify-between p-2.5 rounded-lg bg-slate-900/50 border border-slate-800 text-xs">
+                <span class="text-slate-300 font-medium">${g.name}</span>
+                <span class="font-bold ${g.color}">${g.status}</span>
+            </div>
+        `).join('');
+    }
+
+    // Interests
+    const interestList = document.getElementById('aiInterestVectors');
+    if (interestList) {
+        interestList.innerHTML = child.interests.map(i => `
+            <div class="space-y-1">
+                <div class="flex justify-between text-xs">
+                    <span class="text-slate-300 font-medium">${i.topic}</span>
+                    <span class="font-bold text-white">${i.percent}%</span>
+                </div>
+                <div class="progress-bar-bg">
+                    <div class="progress-bar-fill ${i.color}" style="width: ${i.percent}%;"></div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    document.getElementById('radarAddress').innerText = child.location.address;
+}
+
+// ============================================================================
+// 5. AI CHAT, OVOZ VA RASM TAHLILI (GEMINI AI INTERFACE)
+// ============================================================================
+function appendUserMessage(text, imageSrc = null) {
+    const thread = document.getElementById('aiChatThread');
+    const msgDiv = document.createElement('div');
+    msgDiv.className = "chat-bubble-user";
+    
+    let content = "";
+    if (imageSrc) {
+        content += `<img src="${imageSrc}" class="w-32 h-24 object-cover rounded-lg mb-1.5 border border-emerald-500/40" />`;
+    }
+    content += `<span>${text}</span>`;
+    msgDiv.innerHTML = content;
+    thread.appendChild(msgDiv);
+    thread.scrollTop = thread.scrollHeight;
+}
+
+function appendAIMessage(text) {
+    const thread = document.getElementById('aiChatThread');
+    const msgDiv = document.createElement('div');
+    msgDiv.className = "chat-bubble-ai";
+    msgDiv.innerHTML = `<span class="text-purple-400 font-bold text-[10px] block mb-1">🧠 Gemini AI Murabbiy:</span>` + text;
+    thread.appendChild(msgDiv);
+    thread.scrollTop = thread.scrollHeight;
+}
+
+function sendTextMessage() {
+    const input = document.getElementById('aiTextInput');
+    const text = input.value.trim();
+    if (!text && !uploadedImageBase64) return;
+
+    appendUserMessage(text || "📷 Rasm tahlili uchun yuborildi", uploadedImageBase64);
+    input.value = "";
+    
+    // Simulate AI thinking and response
+    setTimeout(() => {
+        generateAIResponse(text, uploadedImageBase64);
+        clearImagePreview();
+    }, 600);
+}
+
+function sendQuickPrompt(promptText) {
+    document.getElementById('aiTextInput').value = promptText;
+    sendTextMessage();
+}
+
+function generateAIResponse(query, imageBase64) {
+    const child = childrenDatabase[currentChildKey];
+    let responseText = "";
+
+    if (imageBase64) {
+        responseText = `
+            <b>📷 Rasm Tahlili Xulosasi:</b><br>
+            Yuklangan darslik/vazifa rasmi tahlil qilindi. Farzandingiz <b>${child.name} (${child.grade}-sinf)</b> uchun darslikdagi ushbu mavzuni mustahkamlash bo'yicha tavsiya:<br>
+            1. Nazariy qoidani 10 daqiqa hayotiy misollar orqali tushuntiring.<br>
+            2. Qiziqishni oshirish uchun amaliy topshiriq bering va rag'batlantiring! 🌟
+        `;
+    } else if (query.includes("qiziqish")) {
+        responseText = `
+            Farzandingiz <b>${child.name} (${child.grade}-sinf)</b> ning darsliklarga qiziqishini oshirish uchun:<br>
+            • <b>Interaktiv format:</b> Matematika va tabiiy fanlarni video darsliklar va tajribalar orqali o'rganishga yo'naltiring.<br>
+            • <b>Rag'batlantirish:</b> Kichik yutuqlarini ham maqtang va haftalik 100 ballik ko'rsatkichini birgalikda tahlil qiling.
+        `;
+    } else if (query.includes("ekran") || query.includes("batareya")) {
+        responseText = `
+            <b>📱 Raqamli Salomatlik Xulosasi:</b><br>
+            Bugungi umumiy ekran vaqti: <b>${child.screenTime}</b>. YouTube va ijtimoiy tarmoqlar ulushi me'yorda. Tavsiya: Darsdan so'ng 1 soat sport yoki ochiq havoda sayr qilishni rejalashtiring.
+        `;
+    } else {
+        responseText = `
+            Pedagogik tavsiya: Farzandingiz bilan har kuni 15 daqiqa darsdan tashqari qiziqishlari haqida do'stona suhbatlashing. Bu uning o'ziga bo'lgan ishonchini 40% ga oshiradi.
+        `;
+    }
+
+    appendAIMessage(responseText);
+}
+
+// Ovoz Yozish (Voice Recording) Kontrollari
+function toggleVoiceRecording() {
+    isRecordingVoice = !isRecordingVoice;
+    const btn = document.getElementById('voiceRecordBtn');
+    const status = document.getElementById('voiceRecordingStatus');
+
+    if (isRecordingVoice) {
+        btn.classList.add('recording');
+        status.classList.remove('hidden');
+    } else {
+        stopAndSendVoice();
     }
 }
 
-// 5. Tilni O'zgartirish Funksiyasi
-function setLanguage(lang) {
-    currentLang = lang;
-    localStorage.setItem('app_lang', lang);
-    applyLanguage();
-    renderActiveChild();
-    closeSubpage();
+function stopAndSendVoice() {
+    isRecordingVoice = false;
+    const btn = document.getElementById('voiceRecordBtn');
+    const status = document.getElementById('voiceRecordingStatus');
+    btn.classList.remove('recording');
+    status.classList.add('hidden');
+
+    appendUserMessage("🎙️ <i>[Ovozli xabar: 0:08 sek]</i>");
+    setTimeout(() => {
+        appendAIMessage("🎙️ <b>Ovozli Xabar Tahlili:</b> Savolingiz qabul qilindi. Farzandingizning dars jarayonini nazorat qilish va rag'batlantirish bo'yicha ovozli yo'riqnoma tayyorlandi!");
+    }, 800);
 }
 
-function applyLanguage() {
-    const dict = i18n[currentLang];
-    document.querySelectorAll('[data-i18n]').forEach(el => {
-        const key = el.getAttribute('data-i18n');
-        if (dict[key]) {
-            el.innerText = dict[key];
-        }
-    });
+// Rasm Yuklash Kontrollari
+function handleImageSelected(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        uploadedImageBase64 = e.target.result;
+        document.getElementById('imagePreview').src = uploadedImageBase64;
+        document.getElementById('imageFileName').innerText = file.name;
+        document.getElementById('imagePreviewContainer').classList.remove('hidden');
+    };
+    reader.readAsDataURL(file);
 }
 
-// 6. Mavzuni O'zgartirish Funksiyasi (Themes Switcher)
+function clearImagePreview() {
+    uploadedImageBase64 = null;
+    document.getElementById('aiImageInput').value = "";
+    document.getElementById('imagePreviewContainer').classList.add('hidden');
+}
+
+// ============================================================================
+// 6. SUBPAGE VA MAVZU BOSHQARUVI
+// ============================================================================
 function setTheme(themeName) {
     currentTheme = themeName;
     localStorage.setItem('app_theme', themeName);
@@ -278,165 +441,20 @@ function setTheme(themeName) {
     if (activeCard) activeCard.classList.add('active');
 }
 
-// 7. Farzandni O'zgartirish Funksiyasi
-function switchChild(childKey) {
-    currentChildKey = childKey;
-    renderActiveChild();
-    if (mapInstance) {
-        updateMapCoordinates();
-    }
+function setLanguage(lang) {
+    currentLang = lang;
+    localStorage.setItem('app_lang', lang);
+    document.getElementById('langCheckUz').classList.toggle('hidden', lang !== 'uz');
+    document.getElementById('langCheckRu').classList.toggle('hidden', lang !== 'ru');
+    closeSubpage();
 }
 
-function renderActiveChild() {
-    const child = childrenDatabase[currentChildKey];
-    const dict = i18n[currentLang];
-    const isRu = currentLang === 'ru';
-
-    // Header & Ekran Vaqti
-    document.getElementById('childNameDisplay').innerText = isRu ? child.name_ru : child.name;
-    document.getElementById('totalScreenTime').innerText = isRu ? child.screenTime_ru : child.screenTime;
-    document.getElementById('batteryBadge').innerText = `${child.battery}%`;
-    document.getElementById('remainingTime').innerText = isRu ? child.remaining_ru : child.remaining;
-
-    // Ilovalar Reytingi
-    const appList = document.getElementById('appUsageList');
-    const apps = isRu ? child.apps_ru : child.apps_uz;
-    if (appList) {
-        appList.innerHTML = apps.map(app => `
-            <div class="p-3 rounded-xl bg-slate-900/70 border border-slate-800/80">
-                <div class="flex items-center justify-between mb-2">
-                    <div class="flex items-center gap-2">
-                        <span class="text-xs font-bold text-white">${app.name}</span>
-                        <span class="text-[10px] px-2 py-0.5 rounded-full font-medium ${app.tagColor}">${app.category}</span>
-                    </div>
-                    <span class="text-xs font-mono font-bold text-slate-300">${app.time} (${app.percent}%)</span>
-                </div>
-                <div class="progress-bar-bg">
-                    <div class="progress-bar-fill ${app.color}" style="width: ${app.percent}%"></div>
-                </div>
-            </div>
-        `).join('');
-    }
-
-    // AI Pedagogik Tahlil
-    const aiData = isRu ? child.ai_ru : child.ai_uz;
-    document.getElementById('aiPedagogyAdvice').innerText = aiData.advice;
-
-    const vectorList = document.getElementById('aiVectorList');
-    if (vectorList) {
-        vectorList.innerHTML = aiData.vectors.map(v => `
-            <div class="space-y-1">
-                <div class="flex justify-between text-xs">
-                    <span class="text-slate-300 font-medium">${v.topic}</span>
-                    <span class="text-emerald-400 font-mono font-bold">${v.percent}%</span>
-                </div>
-                <div class="progress-bar-bg">
-                    <div class="progress-bar-fill ${v.color}" style="width: ${v.percent}%"></div>
-                </div>
-            </div>
-        `).join('');
-    }
-
-    const digestList = document.getElementById('reelsDigestList');
-    if (digestList) {
-        digestList.innerHTML = aiData.digest.map(r => `
-            <div class="flex items-center justify-between p-2.5 rounded-lg bg-slate-900/50 border border-slate-800">
-                <div>
-                    <div class="text-xs font-semibold text-slate-200">${r.title}</div>
-                    <div class="text-[10px] text-slate-400">${r.channel} • ${r.category}</div>
-                </div>
-                <span class="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-medium">${r.badge}</span>
-            </div>
-        `).join('');
-    }
-
-    // e-Maktab
-    document.getElementById('gpaBadge').innerText = `${child.gpa} / 5.0`;
-    document.getElementById('attendanceBadge').innerText = child.attendance;
-
-    const lessons = isRu ? child.lessons_ru : child.lessons_uz;
-    const scheduleList = document.getElementById('schoolScheduleList');
-    if (scheduleList) {
-        scheduleList.innerHTML = lessons.map(s => `
-            <div class="flex items-center justify-between p-2.5 rounded-xl bg-slate-900/60 border border-slate-800">
-                <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center font-bold text-xs text-emerald-400">
-                        ${s.grade}
-                    </div>
-                    <div>
-                        <div class="text-xs font-bold text-white">${s.subject}</div>
-                        <div class="text-[10px] text-slate-400">${s.time} • ${s.room}</div>
-                    </div>
-                </div>
-                <span class="text-xs font-semibold text-emerald-400">${isRu ? "Отлично" : "A'lo"}</span>
-            </div>
-        `).join('');
-    }
-
-    // Geofences
-    const geofences = isRu ? child.location.geofences_ru : child.location.geofences_uz;
-    const geofenceList = document.getElementById('geofenceZoneList');
-    if (geofenceList) {
-        geofenceList.innerHTML = geofences.map(g => `
-            <div class="flex items-center justify-between p-2.5 rounded-lg bg-slate-900/50 border border-slate-800 text-xs">
-                <span class="text-slate-300 font-medium">${g.name}</span>
-                <span class="font-bold ${g.color}">${g.status}</span>
-            </div>
-        `).join('');
-    }
-
-    document.getElementById('radarAddress').innerText = isRu ? child.location.address_ru : child.location.address_uz;
-}
-
-// 8. Leaflet Map (Ota-ona va Farzand Yonma-Yon Lokatsiyasi)
-function initRadarMap() {
-    const mapEl = document.getElementById('map');
-    if (!mapEl || mapInstance) return;
-
-    const child = childrenDatabase[currentChildKey];
-    mapInstance = L.map('map', {
-        zoomControl: false,
-        attributionControl: false
-    }).setView([child.location.lat, child.location.lng], 14);
-
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(mapInstance);
-
-    // Farzand Nuqtasi
-    const childIcon = L.divIcon({
-        className: 'custom-radar-icon',
-        html: '<div class="radar-pin"></div>',
-        iconSize: [14, 14],
-        iconAnchor: [7, 7]
-    });
-    childMarker = L.marker([child.location.lat, child.location.lng], { icon: childIcon }).addTo(mapInstance);
-
-    // Ota-ona Nuqtasi (Yonma-yon)
-    const parentIcon = L.divIcon({
-        className: 'parent-pin-icon',
-        html: '<div style="width:12px;height:12px;background:#38bdf8;border:2px solid #fff;border-radius:50%;"></div>',
-        iconSize: [12, 12],
-        iconAnchor: [6, 6]
-    });
-    parentMarker = L.marker([child.location.lat - 0.008, child.location.lng - 0.006], { icon: parentIcon })
-        .addTo(mapInstance)
-        .bindPopup(currentLang === 'ru' ? 'Вы (Родитель)' : 'Siz (Ota-ona)');
-}
-
-function updateMapCoordinates() {
-    const child = childrenDatabase[currentChildKey];
-    if (mapInstance && childMarker) {
-        childMarker.setLatLng([child.location.lat, child.location.lng]);
-        mapInstance.panTo([child.location.lat, child.location.lng]);
-    }
-}
-
-// 9. Tab Almashinuvi
 function switchTab(tabId) {
-    document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
-    document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
 
     const targetTab = document.getElementById(tabId);
-    const targetBtn = document.querySelector(`[data-tab="${tabId}"]`);
+    const targetBtn = document.getElementById(`nav-${tabId}`);
 
     if (targetTab) targetTab.classList.add('active');
     if (targetBtn) targetBtn.classList.add('active');
@@ -446,7 +464,6 @@ function switchTab(tabId) {
     }
 }
 
-// 10. Subpage / Modallar
 function openSubpage(subpageId) {
     document.querySelectorAll('.subpage-modal').forEach(m => m.classList.remove('active'));
     const modal = document.getElementById(subpageId);
@@ -457,32 +474,63 @@ function closeSubpage() {
     document.querySelectorAll('.subpage-modal').forEach(m => m.classList.remove('active'));
 }
 
-// 11. Ovozli Radar Trigger
 function triggerVoiceAlert() {
-    const dict = i18n[currentLang];
     if (tg?.showPopup) {
         tg.showPopup({
-            title: dict.voiceAlertSentTitle,
-            message: dict.voiceAlertSentMsg,
+            title: "🎙️ Ovozli Radar",
+            message: "Farzandingizga ota-ona joylashuv so'rovi ovozli bildirishnoma ko'rinishida yuborildi.",
             buttons: [{ type: "ok" }]
         });
     } else {
-        alert(dict.voiceAlertSentMsg);
+        alert("🎙️ Farzandingizga ota-ona joylashuv so'rovi ovozli bildirishnoma ko'rinishida yuborildi.");
     }
 }
 
 function copyPairingLink() {
-    const dict = i18n[currentLang];
     const link = "https://t.me/farzand_nazorat_bot?start=pair_8f93a1c2";
     navigator.clipboard.writeText(link).then(() => {
-        alert(dict.linkCopied);
+        alert("✅ Farzandni ulash havolasi nusxalandi!");
     });
 }
 
-// DomContentLoaded
+// 7. LEAFLET MAP
+function initRadarMap() {
+    const mapEl = document.getElementById('map');
+    if (!mapEl || mapInstance) return;
+
+    const child = childrenDatabase[currentChildKey];
+    mapInstance = L.map('map', { zoomControl: false, attributionControl: false }).setView([child.location.lat, child.location.lng], 14);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(mapInstance);
+
+    const childIcon = L.divIcon({
+        className: 'custom-radar-icon',
+        html: '<div class="radar-pin"></div>',
+        iconSize: [14, 14],
+        iconAnchor: [7, 7]
+    });
+    childMarker = L.marker([child.location.lat, child.location.lng], { icon: childIcon }).addTo(mapInstance);
+
+    const parentIcon = L.divIcon({
+        className: 'parent-pin-icon',
+        html: '<div style="width:12px;height:12px;background:#38bdf8;border:2px solid #fff;border-radius:50%;"></div>',
+        iconSize: [12, 12],
+        iconAnchor: [6, 6]
+    });
+    parentMarker = L.marker([child.location.lat - 0.008, child.location.lng - 0.006], { icon: parentIcon }).addTo(mapInstance);
+}
+
+function updateMapCoordinates() {
+    const child = childrenDatabase[currentChildKey];
+    if (mapInstance && childMarker) {
+        childMarker.setLatLng([child.location.lat, child.location.lng]);
+        mapInstance.setView([child.location.lat, child.location.lng], 14);
+    }
+}
+
+// DOM Yuklanganda
 document.addEventListener('DOMContentLoaded', () => {
     setTheme(currentTheme);
-    applyLanguage();
     renderActiveChild();
+    renderSchoolCurriculum();
     initRadarMap();
 });

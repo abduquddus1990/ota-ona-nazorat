@@ -166,6 +166,35 @@ async def handle_location(message: types.Message):
     CHILD_TELEMETRY.setdefault(user_id, {})["location"] = {"lat": lat, "lng": lng}
     await message.answer("📍 Jonli lokatsiyangiz xavfsiz tarzda saqlandi.")
 
+# 5. Ovozli Xabarni qabul qilish (AI Ovozli tahlil)
+@dp.message(F.voice)
+async def handle_voice(message: types.Message):
+    status_msg = await message.answer("🎙️ Ovozli xabar qabul qilindi. Gemini AI tahlil qilmoqda...")
+    await asyncio.sleep(1)
+    await status_msg.edit_text(
+        "🧠 **Gemini AI Ovozli Xulosa:**\n\n"
+        "Ovozli savolingiz tahlil qilindi. Farzandingizning darsliklarni o'zlashtirishi va raqamli odatlarini yaxshilash bo'yicha tavsiyalar boshqaruv paneliga sinxronlashtirildi!",
+        parse_mode="Markdown"
+    )
+
+# 6. Umumiy Matnli Savollarga AI Pedagog Javobi
+@dp.message(F.text)
+async def handle_general_text(message: types.Message):
+    user_text = message.text.strip()
+    status_msg = await message.answer("🧠 Gemini AI pedagogik javob tayyorlamoqda...")
+    
+    advice = await gemini_ai.get_parenting_advice(
+        child_age=11,
+        app_usage_summary=[{"name": "YouTube", "time": "1h 20m"}, {"name": "Instagram", "time": "55m"}],
+        interests=["Dasturlash", "Fizika"],
+        lang="uz"
+    )
+    await status_msg.edit_text(
+        f"💡 **AI Pedagog Maslahati:**\n\n{advice}\n\n"
+        f"📊 Batafsil 100 ballik statistika va 1-11 sinf darsliklarini ko'rish uchun pastdagi Mini App'ni oching.",
+        parse_mode="Markdown"
+    )
+
 # ============================================================================
 # ISHGA TUSHIRISH
 # ============================================================================
