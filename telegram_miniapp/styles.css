@@ -1,7 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
 /* ==========================================================================
-   THEME PALETTES (8-10 PINTEREST-INSPIRED AESTHETIC THEMES)
+   THEME PALETTES (10 PINTEREST-INSPIRED AESTHETIC THEMES)
    ========================================================================== */
 :root {
     --bg-primary: #090d16;
@@ -97,6 +97,34 @@ body[data-theme="cyberpunk"] {
     --wallpaper-gradient: radial-gradient(circle at 50% 0%, rgba(6, 182, 212, 0.25), rgba(217, 70, 239, 0.15) 60%, transparent 80%);
 }
 
+/* Theme 9: Kumushsifat (Metallic Silver Light) 🌟 */
+body[data-theme="silver"] {
+    --bg-primary: #e2e8f0;
+    --bg-surface: #f8fafc;
+    --bg-card: rgba(255, 255, 255, 0.95);
+    --border-subtle: rgba(15, 23, 42, 0.12);
+    --border-active: rgba(71, 85, 105, 0.5);
+    --accent-primary: #0f172a;
+    --text-primary: #0f172a;
+    --text-secondary: #334155;
+    --text-muted: #64748b;
+    --wallpaper-gradient: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 50%, #cbd5e1 100%);
+}
+
+/* Theme 10: Havorangsifat (Sky Breeze Light Cyan) 🌟 */
+body[data-theme="sky"] {
+    --bg-primary: #f0f9ff;
+    --bg-surface: #e0f2fe;
+    --bg-card: rgba(255, 255, 255, 0.95);
+    --border-subtle: rgba(14, 165, 233, 0.2);
+    --border-active: rgba(2, 132, 199, 0.5);
+    --accent-primary: #0284c7;
+    --text-primary: #0c4a6e;
+    --text-secondary: #0369a1;
+    --text-muted: #38bdf8;
+    --wallpaper-gradient: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 50%, #bae6fd 100%);
+}
+
 * {
     margin: 0;
     padding: 0;
@@ -114,7 +142,40 @@ body {
     padding-bottom: 90px;
     user-select: none;
     overflow-x: hidden;
-    transition: background-color 0.4s ease, background-image 0.4s ease;
+    transition: background-color 0.4s ease, background-image 0.4s ease, color 0.4s ease;
+}
+
+/* Light Theme Card Overrides */
+body[data-theme="silver"] .glass-card,
+body[data-theme="sky"] .glass-card {
+    box-shadow: 0 4px 20px 0 rgba(0, 0, 0, 0.08);
+}
+
+body[data-theme="silver"] .text-white,
+body[data-theme="sky"] .text-white {
+    color: var(--text-primary) !important;
+}
+
+body[data-theme="silver"] .bg-slate-900,
+body[data-theme="sky"] .bg-slate-900,
+body[data-theme="silver"] .bg-slate-900\/70,
+body[data-theme="sky"] .bg-slate-900\/70,
+body[data-theme="silver"] .bg-slate-900\/60,
+body[data-theme="sky"] .bg-slate-900\/60,
+body[data-theme="silver"] .bg-slate-900\/50,
+body[data-theme="sky"] .bg-slate-900\/50 {
+    background-color: rgba(241, 245, 249, 0.9) !important;
+}
+
+body[data-theme="silver"] .border-slate-800,
+body[data-theme="sky"] .border-slate-800 {
+    border-color: rgba(148, 163, 184, 0.3) !important;
+}
+
+body[data-theme="silver"] .bottom-nav,
+body[data-theme="sky"] .bottom-nav {
+    background: rgba(255, 255, 255, 0.96);
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
 }
 
 /* Glassmorphism Card Effect */
@@ -132,7 +193,7 @@ body {
     border-color: var(--border-active);
 }
 
-/* 3D Smooth Page Flip / Slide Transition (Yengil va Tezkor) */
+/* 3D Smooth Page Flip / Slide Transition */
 .tab-content {
     display: none;
     opacity: 0;
@@ -262,6 +323,11 @@ body {
     border-radius: 9999px;
     height: 8px;
     overflow: hidden;
+}
+
+body[data-theme="silver"] .progress-bar-bg,
+body[data-theme="sky"] .progress-bar-bg {
+    background-color: rgba(0, 0, 0, 0.08);
 }
 
 .progress-bar-fill {
