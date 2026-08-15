@@ -19,7 +19,7 @@
 <body class="p-3 max-w-md mx-auto relative antialiased">
 
     <!-- ==================================================================== -->
-    <!-- HEADER: Farzand Tanlash (Multi-Child Selector) & Ota-ona Statusi -->
+    <!-- HEADER: Farzand Tanlash & Plan Statusi (Multi-Child & Plan Badge) -->
     <!-- ==================================================================== -->
     <header class="glass-card p-3 mb-3 flex items-center justify-between">
         <div class="flex items-center gap-2.5">
@@ -50,8 +50,9 @@
         </div>
 
         <div class="flex items-center gap-2">
-            <button onclick="openChildProfileModal()" class="p-1.5 rounded-lg bg-slate-800/60 border border-slate-700/50 text-slate-300 hover:text-emerald-400 text-xs transition" title="Farzand ma'lumotlarini kiritish">
-                👶 Profil
+            <!-- Plan Badge (Free / Pro) -->
+            <button onclick="openSubpage('modal-plans')" id="headerPlanBadge" class="px-2 py-1 rounded-full bg-amber-500/20 border border-amber-500/30 text-amber-300 text-[10px] font-bold">
+                💎 Pro
             </button>
             <div class="px-2 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-bold" id="batteryBadge">
                 84%
@@ -60,7 +61,7 @@
     </header>
 
     <!-- ==================================================================== -->
-    <!-- TAB 1: 📊 DASHBOARD (ILOMALAR REYTINGI & BATALON) -->
+    <!-- TAB 1: 📊 DASHBOARD (EKRAN VAQTI & ILOVALAR REYTINGI) -->
     <!-- ==================================================================== -->
     <main id="tab-dashboard" class="tab-content active space-y-3">
         <!-- 1. Ekran Vaqti & Limit Bloki -->
@@ -72,7 +73,7 @@
                 </div>
                 <div class="text-right">
                     <span class="text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20" id="screenStatus" data-i18n="normalStatus">Normal</span>
-                    <div class="text-[11px] text-slate-400 mt-1" data-i18n="limitRemain">Qoldi: <b class="text-slate-200" id="remainingTime">1s 15d</b></div>
+                    <div class="text-[11px] text-slate-400 mt-1"><span data-i18n="limitRemain">Qoldi:</span> <b class="text-slate-200" id="remainingTime">1s 15d</b></div>
                 </div>
             </div>
 
@@ -87,7 +88,7 @@
                 <h3 class="text-xs font-bold text-white flex items-center gap-1.5" data-i18n="appRankings">
                     📱 Ilovalardan Foydalanish Reytingi
                 </h3>
-                <span class="text-[10px] text-slate-400" data-i18n="autoSynced">Batareya / OCR</span>
+                <span class="text-[10px] text-slate-400" data-i18n="autoSynced">Avtomatik</span>
             </div>
 
             <div class="space-y-3" id="appUsageList">
@@ -97,13 +98,16 @@
     </main>
 
     <!-- ==================================================================== -->
-    <!-- TAB 2: 📍 JONLI RADAR (LOKATSIYA & OVOZLI RADAR) -->
+    <!-- TAB 2: 📍 JONLI RADAR (LOKATSIYA & XARITA — BARCHA UCHUN BEPUL) -->
     <!-- ==================================================================== -->
     <main id="tab-radar" class="tab-content space-y-3">
         <section class="glass-card p-4 space-y-3">
             <div class="flex items-center justify-between">
                 <div>
-                    <h2 class="text-xs font-bold text-white" data-i18n="liveRadar">📍 Jonli Oila Radari</h2>
+                    <h2 class="text-xs font-bold text-white flex items-center gap-1.5">
+                        <span data-i18n="liveRadar">📍 Jonli Oila Radari</span>
+                        <span class="text-[9px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.2 rounded font-bold" data-i18n="freeForLife">Bepul</span>
+                    </h2>
                     <div class="text-[10px] text-slate-400" id="radarAddress">Yunusobod 4-mavze, 24-maktab</div>
                 </div>
                 <button onclick="triggerVoiceAlert()" class="px-2.5 py-1.5 bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold rounded-lg hover:bg-emerald-500/30 transition flex items-center gap-1">
@@ -123,26 +127,26 @@
     </main>
 
     <!-- ==================================================================== -->
-    <!-- TAB 3: 🧠 AI MURABBIY (MATN, OVOZ VA RASM TAHLILI) -->
+    <!-- TAB 3: 🧠 AI MURABBIY (PRO: MATN, OVOZ VA RASM TAHLILI) -->
     <!-- ==================================================================== -->
     <main id="tab-ai" class="tab-content space-y-3">
-        <!-- 1. AI Interaktiv Muloqot Majmuasi -->
+        <!-- AI Interaktiv Muloqot Majmuasi -->
         <section class="glass-card p-3.5 space-y-3">
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2">
                     <span class="text-xl">🧠</span>
                     <div>
-                        <h2 class="text-xs font-bold text-white">Gemini AI Pedagog & Psixolog</h2>
-                        <div class="text-[10px] text-emerald-400">Ovozli, Matnli va Rasm orqali maslahat</div>
+                        <h2 class="text-xs font-bold text-white" data-i18n="aiTitle">Gemini AI Dars & Qiziqish Murabbiyi</h2>
+                        <div class="text-[10px] text-emerald-400" data-i18n="aiSub">Ovozli, Matnli va Rasm orqali tavsiyalar</div>
                     </div>
                 </div>
-                <span class="text-[10px] bg-purple-500/10 text-purple-400 border border-purple-500/20 px-2 py-0.5 rounded-full font-mono">Gemini 1.5 Pro</span>
+                <span class="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold">PRO 💎</span>
             </div>
 
             <!-- AI Chat Tarixi Oynasi -->
             <div id="aiChatThread" class="ai-chat-container space-y-2 p-2 rounded-xl bg-slate-900/60 border border-slate-800 flex flex-col">
-                <div class="chat-bubble-ai">
-                    Assalomu alaykum! Men sizning sun'iy intellekt tarbiyachi murabbiyingizman. Farzandingizning darslari, qiziqishlari, darslikdagi qiyin masalalari rasmi yoki ruhiy holati bo'yicha savol bering, ovoz yozing yoki rasm yuklang! 🌟
+                <div class="chat-bubble-ai" id="aiWelcomeBubble">
+                    Assalomu alaykum! Men farzandingizning darsliklarini o'zlashtirishi, qiziqishlari va raqamli odatlarini tahlil qiluvchi AI yordamchisiman. Darslik topshirig'i rasmini yuklang, savol yozing yoki ovozli xabar qoldiring! 🌟
                 </div>
             </div>
 
@@ -152,7 +156,7 @@
                     <img id="imagePreview" src="" class="w-10 h-10 object-cover rounded-lg border border-slate-600" />
                     <div class="text-[10px] text-slate-300">
                         <div class="font-bold text-white" id="imageFileName">vazifa_rasmi.jpg</div>
-                        <div>Tahlil uchun tayyor</div>
+                        <div data-i18n="readyForAnalysis">Tahlil uchun tayyor</div>
                     </div>
                 </div>
                 <button onclick="clearImagePreview()" class="text-slate-400 hover:text-red-400 text-xs px-2">✕</button>
@@ -160,44 +164,40 @@
 
             <!-- Tezkor Savol Tugmalari (Prompt Chips) -->
             <div class="flex gap-1.5 overflow-x-auto pb-1 text-[10px]">
-                <button onclick="sendQuickPrompt('Farzandim 5-sinf darslariga qiziqishini qanday oshirsam bo\'ladi?')" class="whitespace-nowrap px-2.5 py-1 rounded-full bg-slate-800/80 border border-slate-700/60 text-slate-300 hover:text-emerald-400 transition">
+                <button onclick="sendQuickPrompt('Farzandim darslariga qiziqishini qanday oshirsam bo\'ladi?')" class="whitespace-nowrap px-2.5 py-1 rounded-full bg-slate-800/80 border border-slate-700/60 text-slate-300 hover:text-emerald-400 transition" data-i18n="chip1">
                     💡 Darsga qiziqishni oshirish
                 </button>
-                <button onclick="sendQuickPrompt('Ekran vaqti me\'yori va batareya tahlili bo\'yicha maslahat')" class="whitespace-nowrap px-2.5 py-1 rounded-full bg-slate-800/80 border border-slate-700/60 text-slate-300 hover:text-emerald-400 transition">
-                    📱 Ekran vaqti tahlili
+                <button onclick="sendQuickPrompt('Ko\'rilgan Reels va video kontentlar tahlili')" class="whitespace-nowrap px-2.5 py-1 rounded-full bg-slate-800/80 border border-slate-700/60 text-slate-300 hover:text-emerald-400 transition" data-i18n="chip2">
+                    🎬 Reels & Video tahlili
                 </button>
-                <button onclick="sendQuickPrompt('Farzandim bilan do\'stona muloqot o\'rnatish sirlari')" class="whitespace-nowrap px-2.5 py-1 rounded-full bg-slate-800/80 border border-slate-700/60 text-slate-300 hover:text-emerald-400 transition">
-                    🤝 Do'stona muloqot
+                <button onclick="sendQuickPrompt('Ekran vaqti me\'yori va batareya tahlili')" class="whitespace-nowrap px-2.5 py-1 rounded-full bg-slate-800/80 border border-slate-700/60 text-slate-300 hover:text-emerald-400 transition" data-i18n="chip3">
+                    📱 Ekran vaqti tahlili
                 </button>
             </div>
 
             <!-- Input & Ovoz/Rasm Yuklash Kontrollari -->
             <div class="flex items-center gap-2 pt-1 border-t border-slate-800">
-                <!-- Rasm Yuklash Input (Hidden) -->
                 <input type="file" id="aiImageInput" accept="image/*" class="hidden" onchange="handleImageSelected(event)">
-                <button onclick="document.getElementById('aiImageInput').click()" class="p-2 rounded-xl bg-slate-800/70 border border-slate-700 text-slate-300 hover:text-purple-400 hover:border-purple-500/40 transition" title="Darslik yoki vazifa rasmini yuklash">
+                <button onclick="document.getElementById('aiImageInput').click()" class="p-2 rounded-xl bg-slate-800/70 border border-slate-700 text-slate-300 hover:text-purple-400 hover:border-purple-500/40 transition" title="Darslik rasmini yuklash">
                     📷
                 </button>
 
-                <!-- Matnli Input -->
                 <input type="text" id="aiTextInput" placeholder="Savol yoki vazifani yozing..." class="flex-1 bg-slate-900/80 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition" onkeypress="if(event.key==='Enter') sendTextMessage()">
 
-                <!-- Ovoz Yozish Tugmasi -->
                 <button id="voiceRecordBtn" onclick="toggleVoiceRecording()" class="voice-record-btn" title="Ovoz yozish">
                     🎙️
                 </button>
 
-                <!-- Yuborish Tugmasi -->
                 <button onclick="sendTextMessage()" class="p-2 rounded-xl bg-emerald-500 text-white font-bold hover:bg-emerald-600 transition" title="Yuborish">
                     ➤
                 </button>
             </div>
 
-            <!-- Ovoz Yozish Holati (Recording Indicator) -->
+            <!-- Ovoz Yozish Holati -->
             <div id="voiceRecordingStatus" class="hidden p-2 rounded-lg bg-red-500/10 border border-red-500/30 flex items-center justify-between">
                 <div class="flex items-center gap-2">
                     <span class="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping"></span>
-                    <span class="text-[11px] font-bold text-red-400">Ovoz yozilmoqda...</span>
+                    <span class="text-[11px] font-bold text-red-400" data-i18n="recordingVoice">Ovoz yozilmoqda...</span>
                 </div>
                 <div class="waveform-bars">
                     <span class="waveform-bar" style="animation-delay: 0.1s"></span>
@@ -206,17 +206,17 @@
                     <span class="waveform-bar" style="animation-delay: 0.4s"></span>
                     <span class="waveform-bar" style="animation-delay: 0.15s"></span>
                 </div>
-                <button onclick="stopAndSendVoice()" class="text-[10px] bg-red-500 text-white px-2 py-0.5 rounded font-bold">
+                <button onclick="stopAndSendVoice()" class="text-[10px] bg-red-500 text-white px-2 py-0.5 rounded font-bold" data-i18n="readyBtn">
                     Tayyor
                 </button>
             </div>
         </section>
 
-        <!-- 2. Farzand Qiziqishlari Vektorlari -->
+        <!-- Farzand Qiziqishlari Vektorlari -->
         <section class="glass-card p-3.5 space-y-2.5">
             <h3 class="text-xs font-bold text-white flex items-center justify-between">
-                <span>🎯 Farzand Qiziqishlari Vektorlari</span>
-                <span class="text-[10px] text-slate-400">AI Xulosasi</span>
+                <span data-i18n="interestVectors">🎯 Farzand Qiziqishlari Vektorlari</span>
+                <span class="text-[10px] text-slate-400" data-i18n="aiAnalysis">AI Xulosasi</span>
             </h3>
             <div class="space-y-2" id="aiInterestVectors">
                 <!-- JS orqali to'ldiriladi -->
@@ -225,17 +225,17 @@
     </main>
 
     <!-- ==================================================================== -->
-    <!-- TAB 4: 📚 E-MAKTAB (100 BALLIK SHKALA & 1-11 SINF DARSLIKLARI) -->
+    <!-- TAB 4: 📚 E-MAKTAB (PRO: 100 BALLIK SHKALA & 1-11 SINF DARSLIKLARI) -->
     <!-- ==================================================================== -->
     <main id="tab-school" class="tab-content space-y-3">
         <!-- 1. Davr Tanlash & 100 Ballik Umumiy GPA -->
         <section class="glass-card p-4 space-y-3">
             <div class="flex items-center justify-between">
                 <div>
-                    <h2 class="text-xs font-bold text-slate-400">O'zlashtirish Ko'rsatkichi</h2>
+                    <h2 class="text-xs font-bold text-slate-400" data-i18n="gpaTitle">O'zlashtirish Ko'rsatkichi</h2>
                     <div class="flex items-baseline gap-1 mt-0.5">
                         <span class="score-badge-100" id="overallGradeScore">92.4</span>
-                        <span class="text-xs font-bold text-slate-400">/ 100 ball</span>
+                        <span class="text-xs font-bold text-slate-400" data-i18n="maxScore">/ 100 ball</span>
                     </div>
                 </div>
                 <div class="text-right">
@@ -246,9 +246,9 @@
 
             <!-- Davrni Tanlash (Haftalik / Oylik / Choraklik) -->
             <div class="flex items-center justify-between bg-slate-900/60 p-1 rounded-full border border-slate-800">
-                <button onclick="setSchoolPeriod('weekly')" id="period-weekly" class="period-pill active flex-1 text-center">Haftalik</button>
-                <button onclick="setSchoolPeriod('monthly')" id="period-monthly" class="period-pill flex-1 text-center">Oylik</button>
-                <button onclick="setSchoolPeriod('quarterly')" id="period-quarterly" class="period-pill flex-1 text-center">Choraklik</button>
+                <button onclick="setSchoolPeriod('weekly')" id="period-weekly" class="period-pill active flex-1 text-center" data-i18n="periodWeekly">Haftalik</button>
+                <button onclick="setSchoolPeriod('monthly')" id="period-monthly" class="period-pill flex-1 text-center" data-i18n="periodMonthly">Oylik</button>
+                <button onclick="setSchoolPeriod('quarterly')" id="period-quarterly" class="period-pill flex-1 text-center" data-i18n="periodQuarterly">Choraklik</button>
             </div>
         </section>
 
@@ -259,9 +259,9 @@
                     <h3 class="text-xs font-bold text-white flex items-center gap-1.5" id="curriculumClassTitle">
                         📚 5-Sinf Davlat Darsliklari & Baholari
                     </h3>
-                    <div class="text-[10px] text-slate-400">O'zbekiston DTS Ta'lim Standarti</div>
+                    <div class="text-[10px] text-slate-400" data-i18n="curriculumSub">O'zbekiston DTS Ta'lim Standarti</div>
                 </div>
-                <button onclick="openChildProfileModal()" class="text-[10px] text-sky-400 bg-sky-500/10 border border-sky-500/20 px-2 py-1 rounded-lg hover:bg-sky-500/20 transition">
+                <button onclick="openChildProfileModal()" class="text-[10px] text-sky-400 bg-sky-500/10 border border-sky-500/20 px-2 py-1 rounded-lg hover:bg-sky-500/20 transition" data-i18n="changeGradeBtn">
                     Sinfni o'zgartirish ✎
                 </button>
             </div>
@@ -300,8 +300,8 @@
                     👶
                 </div>
                 <div>
-                    <div class="text-xs font-bold text-white">Farzand Ma'lumotlari & Sinfi</div>
-                    <div class="text-[10px] text-slate-400">Ism, Username va 1-11 Sinf Darsliklari</div>
+                    <div class="text-xs font-bold text-white" data-i18n="profileTitle">Farzand Ma'lumotlari & Sinfi</div>
+                    <div class="text-[10px] text-slate-400" data-i18n="profileSub">Ism, Username va 1-11 Sinf Darsliklari</div>
                 </div>
             </div>
             <span class="text-slate-500 text-sm">›</span>
@@ -321,7 +321,7 @@
             <span class="text-slate-500 text-sm">›</span>
         </div>
 
-        <!-- 4. Tariflar va Obuna -->
+        <!-- 4. Tariflar va Obuna (Free / Family Pro) -->
         <div onclick="openSubpage('modal-plans')" class="glass-card p-3.5 flex items-center justify-between cursor-pointer hover:border-emerald-500/40 transition">
             <div class="flex items-center gap-3">
                 <div class="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 text-lg">
@@ -329,21 +329,21 @@
                 </div>
                 <div>
                     <div class="text-xs font-bold text-white" data-i18n="plansSelect">Tariflar va Obuna</div>
-                    <div class="text-[10px] text-slate-400" data-i18n="plansSub">Free / Family Premium</div>
+                    <div class="text-[10px] text-slate-400" data-i18n="plansSub">Free (Lokatsiya) / Family Pro (AI)</div>
                 </div>
             </div>
             <span class="text-slate-500 text-sm">›</span>
         </div>
 
-        <!-- 5. Juftlash va Biometriya -->
+        <!-- 5. Juftlash va Android Ilova -->
         <div onclick="openSubpage('modal-pairing')" class="glass-card p-3.5 flex items-center justify-between cursor-pointer hover:border-emerald-500/40 transition">
             <div class="flex items-center gap-3">
                 <div class="w-9 h-9 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 text-lg">
                     🛡️
                 </div>
                 <div>
-                    <div class="text-xs font-bold text-white" data-i18n="pairingSelect">Juftlash & Face ID Xavfsizlik</div>
-                    <div class="text-[10px] text-slate-400" data-i18n="pairingSub">Biometrik tasdiq va QR kod</div>
+                    <div class="text-xs font-bold text-white" data-i18n="pairingSelect">Farzandni Ulash & Android Ilova</div>
+                    <div class="text-[10px] text-slate-400" data-i18n="pairingSub">Oila kodi va avtomatik juftlash</div>
                 </div>
             </div>
             <span class="text-slate-500 text-sm">›</span>
@@ -351,47 +351,47 @@
     </main>
 
     <!-- ==================================================================== -->
-    <!-- SUBPAGE MODALS (ICHKI SAHIFALAR) -->
+    <!-- SUBPAGE MODALS -->
     <!-- ==================================================================== -->
 
-    <!-- 👶 MODAL: FARZAND PROFILINI KIRITISH & TAHRIRLASH -->
+    <!-- 👶 MODAL: FARZAND PROFILINI TAHRIRLASH -->
     <div id="modal-child-profile" class="subpage-modal space-y-4">
         <div class="flex items-center justify-between pb-3 border-b border-slate-800">
-            <button onclick="closeSubpage()" class="text-xs font-bold text-emerald-400">← Orqaga</button>
-            <h2 class="text-xs font-bold text-white">Farzand Ma'lumotlari</h2>
+            <button onclick="closeSubpage()" class="text-xs font-bold text-emerald-400" data-i18n="backBtn">← Orqaga</button>
+            <h2 class="text-xs font-bold text-white" data-i18n="profileTitle">Farzand Ma'lumotlari</h2>
             <span class="w-8"></span>
         </div>
 
         <div class="space-y-3">
             <div class="glass-card p-4 space-y-3">
                 <div>
-                    <label class="text-[11px] font-bold text-slate-300 block mb-1">Ism va Familiyasi</label>
-                    <input type="text" id="profileFullName" placeholder="Masalan: Aliyor Valijonov" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+                    <label class="text-[11px] font-bold text-slate-300 block mb-1" data-i18n="nameLabel">Ism va Familiyasi</label>
+                    <input type="text" id="profileFullName" placeholder="Aliyor Valijonov" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
                 </div>
 
                 <div>
-                    <label class="text-[11px] font-bold text-slate-300 block mb-1">Telegram Usernamesi</label>
+                    <label class="text-[11px] font-bold text-slate-300 block mb-1" data-i18n="usernameLabel">Telegram Usernamesi</label>
                     <input type="text" id="profileUsername" placeholder="@aliyor_valijonov" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
                 </div>
 
                 <div>
-                    <label class="text-[11px] font-bold text-slate-300 block mb-1">Sinfi (O'zbekiston Maktab Darsliklari)</label>
+                    <label class="text-[11px] font-bold text-slate-300 block mb-1" data-i18n="classLabel">Sinfi (1-11 Sinf DTS)</label>
                     <select id="profileClassSelect" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
-                        <option value="1">1-sinf (Boshlang'ich)</option>
-                        <option value="2">2-sinf (Boshlang'ich)</option>
-                        <option value="3">3-sinf (Boshlang'ich)</option>
-                        <option value="4">4-sinf (Boshlang'ich)</option>
-                        <option value="5" selected>5-sinf (O'rta ta'lim)</option>
-                        <option value="6">6-sinf (O'rta ta'lim)</option>
-                        <option value="7">7-sinf (O'rta ta'lim)</option>
-                        <option value="8">8-sinf (O'rta ta'lim)</option>
-                        <option value="9">9-sinf (O'rta ta'lim)</option>
-                        <option value="10">10-sinf (Yuqori sinf)</option>
-                        <option value="11">11-sinf (Bitiruvchi sinf)</option>
+                        <option value="1">1-sinf / 1-класс</option>
+                        <option value="2">2-sinf / 2-класс</option>
+                        <option value="3">3-sinf / 3-класс</option>
+                        <option value="4">4-sinf / 4-класс</option>
+                        <option value="5" selected>5-sinf / 5-класс</option>
+                        <option value="6">6-sinf / 6-класс</option>
+                        <option value="7">7-sinf / 7-класс</option>
+                        <option value="8">8-sinf / 8-класс</option>
+                        <option value="9">9-sinf / 9-класс</option>
+                        <option value="10">10-sinf / 10-класс</option>
+                        <option value="11">11-sinf / 11-класс</option>
                     </select>
                 </div>
 
-                <button onclick="saveChildProfile()" class="w-full py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs rounded-xl transition shadow-lg shadow-emerald-500/20">
+                <button onclick="saveChildProfile()" class="w-full py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs rounded-xl transition shadow-lg shadow-emerald-500/20" data-i18n="saveProfileBtn">
                     💾 Saqlash va Darsliklarni Yangilash
                 </button>
             </div>
@@ -408,7 +408,7 @@
 
         <div class="grid grid-cols-2 gap-3">
             <div onclick="setTheme('default')" data-theme-name="default" class="theme-card active bg-gradient-to-br from-slate-900 to-slate-950 border-slate-800 text-emerald-400">
-                Cyber Dark (Standart)
+                Cyber Dark
             </div>
             <div onclick="setTheme('aurora')" data-theme-name="aurora" class="theme-card bg-gradient-to-br from-sky-950 to-emerald-950 border-sky-800 text-sky-400">
                 Aurora Borealis
@@ -473,49 +473,51 @@
         </div>
     </div>
 
-    <!-- 💎 MODAL: TARIFLAR VA OBUNA -->
+    <!-- 💎 MODAL: TARIFLAR VA OBUNA (FREE VS PRO) -->
     <div id="modal-plans" class="subpage-modal space-y-4">
         <div class="flex items-center justify-between pb-3 border-b border-slate-800">
             <button onclick="closeSubpage()" class="text-xs font-bold text-emerald-400" data-i18n="backBtn">← Orqaga</button>
-            <h2 class="text-xs font-bold text-white" data-i18n="plansSelect">Tarif Rejalari</h2>
+            <h2 class="text-xs font-bold text-white" data-i18n="plansSelect">Tarif Rejalari / Тарифы</h2>
             <span class="w-8"></span>
         </div>
 
         <div class="space-y-3">
+            <!-- Free Basic Plan -->
             <div class="glass-card p-4 border-emerald-500/40 relative overflow-hidden">
                 <div class="flex justify-between items-start">
                     <div>
-                        <span class="text-[9px] font-bold text-emerald-400 bg-emerald-500/20 px-2 py-0.5 rounded-full">Hozirgi Tarif</span>
-                        <h3 class="text-sm font-bold text-white mt-1">Free Basic</h3>
-                        <p class="text-[11px] text-slate-400 mt-1">1 ta farzand, batareya tahlili va e-Maktab</p>
+                        <span class="text-[9px] font-bold text-emerald-400 bg-emerald-500/20 px-2 py-0.5 rounded-full" data-i18n="freePlanBadge">Bepul Tarif (Free)</span>
+                        <h3 class="text-sm font-bold text-white mt-1" data-i18n="freePlanTitle">Free Basic</h3>
+                        <p class="text-[11px] text-slate-400 mt-1" data-i18n="freePlanDesc">📍 Jonli Lokatsiya & Radar (100% Bepul), 1 ta farzand, batareya va umumiy ekran vaqti</p>
                     </div>
                     <div class="text-right">
-                        <div class="text-base font-black text-white">0 so'm</div>
-                        <span class="text-[10px] text-slate-500">Doimiy bepul</span>
+                        <div class="text-base font-black text-white" data-i18n="freePrice">0 so'm</div>
+                        <span class="text-[10px] text-slate-500" data-i18n="foreverFree">Doimiy bepul</span>
                     </div>
                 </div>
             </div>
 
-            <div class="glass-card p-4 border-amber-500/30 relative overflow-hidden">
+            <!-- Family Pro Plan -->
+            <div class="glass-card p-4 border-amber-500/50 bg-amber-500/5 relative overflow-hidden">
                 <div class="flex justify-between items-start">
                     <div>
-                        <span class="text-[9px] font-bold text-amber-400 bg-amber-500/20 px-2 py-0.5 rounded-full">Premium Oilaviy</span>
-                        <h3 class="text-sm font-bold text-white mt-1">Family Pro 🛡️</h3>
-                        <p class="text-[11px] text-slate-400 mt-1">Cheksiz farzandlar, 100 ballik chuqur AI tahlil va real vaqtli video radar</p>
+                        <span class="text-[9px] font-bold text-amber-400 bg-amber-500/20 px-2 py-0.5 rounded-full" data-i18n="proPlanBadge">Premium Oilaviy</span>
+                        <h3 class="text-sm font-bold text-white mt-1" data-i18n="proPlanTitle">Family Pro 💎</h3>
+                        <p class="text-[11px] text-slate-300 mt-1" data-i18n="proPlanDesc">🧠 Gemini AI Murabbiy (Ovoz/Rasm/Matn), 📚 1-11 Sinf DTS e-Maktab 100 ballik tahlil, 🎬 Reels chuqur tahlili va cheksiz farzandlar</p>
                     </div>
                     <div class="text-right">
-                        <div class="text-base font-black text-amber-400">29,000</div>
-                        <span class="text-[10px] text-slate-500">so'm / oy</span>
+                        <div class="text-base font-black text-amber-400" data-i18n="proPrice">25,000</div>
+                        <span class="text-[10px] text-slate-400" data-i18n="perMonth">so'm / oy</span>
                     </div>
                 </div>
-                <button class="w-full mt-3 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-amber-500/20">
-                    Tarifni Faollashtirish
+                <button onclick="togglePlanUpgrade()" id="btnPlanToggle" class="w-full mt-3 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-amber-500/20" data-i18n="activateProBtn">
+                    💎 Family Pro'ni Faollashtirish
                 </button>
             </div>
         </div>
     </div>
 
-    <!-- 🛡️ MODAL: JUFTLASH VA FACE ID -->
+    <!-- 🛡️ MODAL: JUFTLASH VA ANDROID ILOVA (AUTO-ONBOARDING) -->
     <div id="modal-pairing" class="subpage-modal space-y-4">
         <div class="flex items-center justify-between pb-3 border-b border-slate-800">
             <button onclick="closeSubpage()" class="text-xs font-bold text-emerald-400" data-i18n="backBtn">← Orqaga</button>
@@ -524,24 +526,34 @@
         </div>
 
         <div class="glass-card p-4 space-y-3">
-            <h3 class="text-xs font-bold text-white">🔐 Face ID & Dumaloq Video Qoidasi:</h3>
-            <p class="text-[11px] text-slate-300 leading-relaxed">
-                Farzandning roziligi va xavfsizligini ta'minlash uchun, u botga ulanganida quyidagi so'zlarni aytib <b>Video Note (dumaloq video)</b> yuborishi shart:
-            </p>
+            <h3 class="text-xs font-bold text-white" data-i18n="autoPairTitle">🔑 Sizning Oila Kodingiz (Avtomatik):</h3>
             
-            <div class="p-3 rounded-xl bg-slate-900/80 border border-emerald-500/30 text-center space-y-1">
-                <div class="text-xs font-bold text-emerald-400">🇺🇿 "nazorat_bot o'rnatilishiga roziman"</div>
-                <div class="text-xs font-bold text-sky-400">🇷🇺 "Я согласен на установку nazorat_bot"</div>
+            <!-- 6 Xonali Oila Kodi -->
+            <div class="p-3 rounded-xl bg-slate-900/90 border border-emerald-500/40 text-center space-y-1">
+                <div class="text-2xl font-black text-emerald-400 tracking-wider font-mono" id="displayFamilyCode">849-210</div>
+                <div class="text-[10px] text-slate-400" data-i18n="familyCodeHint">Farzand telefonida kiritiladi yoki havolani yuboring</div>
             </div>
 
-            <button onclick="copyPairingLink()" class="w-full py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs rounded-xl transition">
+            <p class="text-[11px] text-slate-300 leading-relaxed" data-i18n="pairingInstruction">
+                Farzand hech qanday admin ishtirokisiz ulanadi:
+                <br>1. Ushbu havolani farzandingizga yuboring:
+            </p>
+
+            <button onclick="copyPairingLink()" class="w-full py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs rounded-xl transition" data-i18n="copyPairLinkBtn">
                 🔗 Ulash Havolasidan Nusxa Olish
             </button>
+
+            <div class="p-3 rounded-xl bg-slate-900/60 border border-slate-800 space-y-1">
+                <div class="text-xs font-bold text-sky-400">📱 Android Ilova orqali ulash:</div>
+                <div class="text-[10px] text-slate-400 leading-relaxed">
+                    Android ilovani farzand telefoniga o'rnating va yuqoridagi 6 xonali kodni kiriting.
+                </div>
+            </div>
         </div>
     </div>
 
     <!-- ==================================================================== -->
-    <!-- BOTTOM NAVIGATION BAR (5 TA ASOSIY BO'LIM) -->
+    <!-- BOTTOM NAVIGATION BAR (5 TA BO'LIM) -->
     <!-- ==================================================================== -->
     <nav class="bottom-nav">
         <button onclick="switchTab('tab-dashboard')" id="nav-tab-dashboard" class="nav-btn active">
@@ -556,21 +568,21 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
-            <span data-i18n="navRadar">Radar</span>
+            <span data-i18n="navRadar">Radar (Bepul)</span>
         </button>
 
         <button onclick="switchTab('tab-ai')" id="nav-tab-ai" class="nav-btn">
             <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
             </svg>
-            <span data-i18n="navAi">AI Murabbiy</span>
+            <span data-i18n="navAi">AI Murabbiy 💎</span>
         </button>
 
         <button onclick="switchTab('tab-school')" id="nav-tab-school" class="nav-btn">
             <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
             </svg>
-            <span data-i18n="navSchool">e-Maktab</span>
+            <span data-i18n="navSchool">e-Maktab 💎</span>
         </button>
 
         <button onclick="switchTab('tab-settings')" id="nav-tab-settings" class="nav-btn">

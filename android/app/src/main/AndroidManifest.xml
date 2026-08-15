@@ -33,6 +33,17 @@
         android:supportsRtl="true"
         android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
 
+        <!-- Asosiy Juftlash va Ruxsatlar Oynasi (Pairing Activity) -->
+        <activity
+            android:name=".PairingActivity"
+            android:exported="true"
+            android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
         <!-- Shaffof va O'ldirilmas Foreground Servis -->
         <service
             android:name=".services.PersistentGuardService"
