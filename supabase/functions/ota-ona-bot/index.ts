@@ -48,11 +48,12 @@ function getStartMenuText(userId: string | number, lang: string = "uz"): string 
   if (lang === "ru") {
     return `🛡️ *SHIELD PARENTAL GUARD — ЦЕНТР РОДИТЕЛЬСКОГО КОНТРОЛЯ*
 
-Добро пожаловать! Безопасность, школьные предметы и цифровые привычки вашего ребёнка под круглосуточной защитой 24/7.
+Добро пожаловать! Безопасность, школьные предметы и цифровые привычки вашего ребёнка под защитой 24/7.
 
-🔑 *Ваш постоянный семейный код:* \`${code}\`
-📍 *Онлайн-радар и локация:* **Бесплатно для всех!**
-💎 *AI-наставник и e-Maktab (100 баллов):* **Family Pro**
+🔑 *Ваш семейный код:* \`${code}\`
+📍 *Онлайн-радар и локация:* **Бесплатно**
+💎 *Pro Версия (AI & e-Maktab 100 баллов):* **10,000 сум/мес (за 1 ребёнка)**
+⚠️ *Примечание:* В будущем для бесплатной версии также может быть введена минимальная плата для поддержания серверов.
 
 Выберите нужный раздел:`;
   }
@@ -60,9 +61,10 @@ function getStartMenuText(userId: string | number, lang: string = "uz"): string 
 
 Assalomu alaykum! Farzandingizning xavfsizligi, darsliklari va raqamli odatlari 24/7 doimiy nazorat ostida.
 
-🔑 *Sizning doimiy oila kodingiz:* \`${code}\`
-📍 *Jonli lokatsiya va radar:* **Barcha uchun 100% BEPUL!**
-💎 *AI Murabbiy & 100 ballik e-Maktab:* **Family Pro**
+🔑 *Sizning oila kodingiz:* \`${code}\`
+📍 *Jonli lokatsiya va radar:* **100% BEPUL**
+💎 *Pro Versiya (AI & 100 ballik e-Maktab):* **10,000 so'm/oy (har bir bola uchun)**
+⚠️ *Eslatma:* Kelajakda sifat va barqarorlikni ta'minlash uchun bepul versiyaga ham ramziy to'lov kiritilishi mumkin.
 
 Quyidagi bo'limlardan birini tanlang:`;
 }
@@ -85,7 +87,7 @@ function getStartKeyboard(userId: string | number, lang: string = "uz"): any {
           { text: "🎬 Анализ Reels и Видео", callback_data: "action_reels" },
         ],
         [
-          { text: "👶 Список Детей", callback_data: "action_children" },
+          { text: "💡 Отзывы и Предложения", callback_data: "action_feedback" },
           { text: "🌐 Til / Язык (UZ/RU)", callback_data: "action_lang" },
         ],
       ],
@@ -104,7 +106,7 @@ function getStartKeyboard(userId: string | number, lang: string = "uz"): any {
         { text: "🎬 Reels & Video Tahlili", callback_data: "action_reels" },
       ],
       [
-        { text: "👶 Farzandlar Ro'yxati", callback_data: "action_children" },
+        { text: "💡 Taklif va Fikrlar", callback_data: "action_feedback" },
         { text: "🌐 Til / Язык (UZ/RU)", callback_data: "action_lang" },
       ],
     ],
@@ -186,6 +188,25 @@ function getChildrenInfoText(lang: string = "uz"): string {
 Batafsil tahlilni pastdagi Mini App orqali ko'ring 👇`;
 }
 
+function getFeedbackText(lang: string = "uz"): string {
+  if (lang === "ru") {
+    return `💡 *ОТЗЫВЫ И ПРЕДЛОЖЕНИЯ:*
+
+Ваше мнение очень важно для нас! Отправьте свои предложения по улучшению программы разработчикам:
+
+📬 *Официальная почта:* \`alhamdulillah@tmail.ton\`
+
+👉 [Написать письмо через Gmail](https://mail.google.com/mail/?view=cm&fs=1&to=alhamdulillah@tmail.ton&su=Shield+Parental+Guard+Taklif+va+Mulohaza)`;
+  }
+  return `💡 *TAKLIF VA FIKR-MULOHAZALAR:*
+
+Dasturni yanada yaxshilash bo'yicha takliflaringizni to'g'ridan-to'g'ri ishlab chiquvchilarga yuboring:
+
+📬 *Rasmiy qabul pochtasi:* \`alhamdulillah@tmail.ton\`
+
+👉 [Gmail orqali xat yozish](https://mail.google.com/mail/?view=cm&fs=1&to=alhamdulillah@tmail.ton&su=Shield+Parental+Guard+Taklif+va+Mulohaza)`;
+}
+
 serve(async (req) => {
   if (req.method === "GET") {
     return new Response(JSON.stringify({ status: "OK", service: "Shield Parental Guard Bot" }), {
@@ -209,6 +230,8 @@ serve(async (req) => {
         await sendMessage(chatId, getPairingText(chatId, lang));
       } else if (data === "action_reels") {
         await sendMessage(chatId, getReelsAnalysisText(lang));
+      } else if (data === "action_feedback") {
+        await sendMessage(chatId, getFeedbackText(lang));
       } else if (data === "action_children") {
         await sendMessage(chatId, getChildrenInfoText(lang));
       } else if (data === "action_lang") {

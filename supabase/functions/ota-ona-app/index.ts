@@ -842,6 +842,20 @@ body[data-theme="sky"] .subject-item-card {
             </div>
             <span class="text-slate-500 text-sm">›</span>
         </div>
+
+        <!-- 6. Takliflar va Fikr-mulohazalar (alhamdulillah@tmail.ton) -->
+        <div onclick="openSubpage('modal-feedback')" class="glass-card p-3.5 flex items-center justify-between cursor-pointer hover:border-emerald-500/40 transition">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center text-teal-400 text-lg">
+                    💡
+                </div>
+                <div>
+                    <div class="text-xs font-bold text-white" data-i18n="feedbackTitle">Taklif va Mulohazalar</div>
+                    <div class="text-[10px] text-slate-400" data-i18n="feedbackSub">alhamdulillah@tmail.ton orqali fikr yuborish</div>
+                </div>
+            </div>
+            <span class="text-slate-500 text-sm">›</span>
+        </div>
     </main>
 
     <!-- ==================================================================== -->
@@ -967,7 +981,7 @@ body[data-theme="sky"] .subject-item-card {
         </div>
     </div>
 
-    <!-- 💎 MODAL: TARIFLAR VA OBUNA (FREE VS PRO) -->
+    <!-- 💎 MODAL: TARIFLAR VA OBUNA (10,000 SO'M / HAR BIR BOLA UCHUN) -->
     <div id="modal-plans" class="subpage-modal space-y-4">
         <div class="flex items-center justify-between pb-3 border-b border-slate-800">
             <button onclick="closeSubpage()" class="text-xs font-bold text-emerald-400" data-i18n="backBtn">← Orqaga</button>
@@ -982,31 +996,109 @@ body[data-theme="sky"] .subject-item-card {
                     <div>
                         <span class="text-[9px] font-bold text-emerald-400 bg-emerald-500/20 px-2 py-0.5 rounded-full" data-i18n="freePlanBadge">Bepul Tarif (Free)</span>
                         <h3 class="text-sm font-bold text-white mt-1" data-i18n="freePlanTitle">Free Basic</h3>
-                        <p class="text-[11px] text-slate-400 mt-1" data-i18n="freePlanDesc">📍 Jonli Lokatsiya & Radar (100% Bepul), 1 ta farzand, batareya va umumiy ekran vaqti</p>
+                        <p class="text-[11px] text-slate-400 mt-1" data-i18n="freePlanDesc">📍 Jonli Lokatsiya & Radar (100% Bepul), batareya va umumiy ekran vaqti</p>
                     </div>
                     <div class="text-right">
                         <div class="text-base font-black text-white" data-i18n="freePrice">0 so'm</div>
-                        <span class="text-[10px] text-slate-500" data-i18n="foreverFree">Doimiy bepul</span>
+                        <span class="text-[10px] text-slate-500" data-i18n="foreverFree">Hozirda bepul</span>
                     </div>
+                </div>
+                <!-- Sifat va Barqarorlik Ogohlantirishi -->
+                <div class="mt-2.5 p-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-[10px] text-amber-300/90 leading-tight flex items-start gap-1.5">
+                    <span class="text-xs">⚠️</span>
+                    <span data-i18n="freeQualityNotice">Eslatma: Tizim sifati va serverlar barqarorligini ta'minlash maqsadida kelajakda bepul versiyaga ham juda kam (ramziy) miqdorda to'lov joriy etilishi mumkin.</span>
                 </div>
             </div>
 
-            <!-- Family Pro Plan -->
+            <!-- Pro Plan (10,000 so'm har bir bola uchun) -->
             <div class="glass-card p-4 border-amber-500/50 bg-amber-500/5 relative overflow-hidden">
                 <div class="flex justify-between items-start">
                     <div>
-                        <span class="text-[9px] font-bold text-amber-400 bg-amber-500/20 px-2 py-0.5 rounded-full" data-i18n="proPlanBadge">Premium Oilaviy</span>
-                        <h3 class="text-sm font-bold text-white mt-1" data-i18n="proPlanTitle">Family Pro 💎</h3>
-                        <p class="text-[11px] text-slate-300 mt-1" data-i18n="proPlanDesc">🧠 Gemini AI Murabbiy (Ovoz/Rasm/Matn), 📚 1-11 Sinf DTS e-Maktab 100 ballik tahlil, 🎬 Reels chuqur tahlili va cheksiz farzandlar</p>
+                        <span class="text-[9px] font-bold text-amber-400 bg-amber-500/20 px-2 py-0.5 rounded-full" data-i18n="proPlanBadge">Premium Farzand Nazorati</span>
+                        <h3 class="text-sm font-bold text-white mt-1" data-i18n="proPlanTitle">Pro Versiya 💎</h3>
+                        <p class="text-[11px] text-slate-300 mt-1" data-i18n="proPlanDesc">🧠 Gemini AI Murabbiy (Ovoz/Rasm/Matn), 📚 1-11 Sinf DTS e-Maktab 100 ballik tahlil va 🎬 Reels chuqur tahlili</p>
                     </div>
                     <div class="text-right">
-                        <div class="text-base font-black text-amber-400" data-i18n="proPrice">25,000</div>
-                        <span class="text-[10px] text-slate-400" data-i18n="perMonth">so'm / oy</span>
+                        <div class="text-base font-black text-amber-400" data-i18n="proPrice">10,000</div>
+                        <span class="text-[10px] text-slate-400" data-i18n="perChildMonth">so'm / oy (1 bola uchun)</span>
                     </div>
                 </div>
                 <button onclick="togglePlanUpgrade()" id="btnPlanToggle" class="w-full mt-3 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-amber-500/20" data-i18n="activateProBtn">
-                    💎 Family Pro'ni Faollashtirish
+                    💎 Pro Versiyani Faollashtirish
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 💡 MODAL: TAKLIFLAR VA FIKR-MULOHAZALAR (alhamdulillah@tmail.ton) -->
+    <div id="modal-feedback" class="subpage-modal space-y-4">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+            <button onclick="closeSubpage()" class="text-xs font-bold text-emerald-400" data-i18n="backBtn">← Orqaga</button>
+            <h2 class="text-xs font-bold text-white" data-i18n="feedbackTitle">Taklif va Mulohazalar</h2>
+            <span class="w-8"></span>
+        </div>
+
+        <div class="glass-card p-4 space-y-3">
+            <div class="text-center space-y-1">
+                <span class="text-3xl">📬</span>
+                <h3 class="text-sm font-bold text-white mt-1" data-i18n="feedbackHeader">Fikringiz biz uchun muhim!</h3>
+                <p class="text-[11px] text-slate-300 leading-relaxed" data-i18n="feedbackDesc">
+                    Dasturni yanada takomillashtirish, yangi darsliklar yoki qulayliklar bo'yicha takliflaringizni to'g'ridan-to'g'ri ishlab chiquvchilarga yuboring.
+                </p>
+            </div>
+
+            <!-- Email manzili kartochkasi -->
+            <div class="p-3.5 rounded-xl bg-slate-900/90 border border-teal-500/40 text-center space-y-1">
+                <div class="text-[10px] text-slate-400" data-i18n="feedbackEmailLabel">Rasmiy qabul pochtasi:</div>
+                <div class="text-sm font-black text-teal-300 font-mono select-all">alhamdulillah@tmail.ton</div>
+            </div>
+
+            <!-- Gmail / Pochta orqali yozish tugmalari -->
+            <div class="space-y-2 pt-1">
+                <a href="https://mail.google.com/mail/?view=cm&fs=1&to=alhamdulillah@tmail.ton&su=Shield+Parental+Guard+Taklif+va+Mulohaza&body=Assalomu+alaykum,+loyiha+bo'yicha+taklifim:" target="_blank" class="w-full py-2.5 bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white font-bold text-xs rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-red-500/20">
+                    <span>✉️</span>
+                    <span data-i18n="openGmailBtn">Gmail orqali xat yozish</span>
+                </a>
+
+                <a href="mailto:alhamdulillah@tmail.ton?subject=Shield%20Parental%20Guard%20Taklif&body=Assalomu%20alaykum,%20mening%20taklifim:" class="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-xl border border-slate-700 transition flex items-center justify-center gap-2">
+                    <span>📧</span>
+                    <span data-i18n="openDefaultMailBtn">Boshqa pochta dasturi orqali</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- 🛡️ MODAL: JUFTLASH VA ANDROID ILOVA (AUTO-ONBOARDING) -->
+    <div id="modal-pairing" class="subpage-modal space-y-4">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+            <button onclick="closeSubpage()" class="text-xs font-bold text-emerald-400" data-i18n="backBtn">← Orqaga</button>
+            <h2 class="text-xs font-bold text-white" data-i18n="pairingSelect">Farzandni Ulash</h2>
+            <span class="w-8"></span>
+        </div>
+
+        <div class="glass-card p-4 space-y-3">
+            <h3 class="text-xs font-bold text-white" data-i18n="autoPairTitle">🔑 Sizning Oila Kodingiz (Avtomatik):</h3>
+            
+            <!-- 6 Xonali Oila Kodi -->
+            <div class="p-3 rounded-xl bg-slate-900/90 border border-emerald-500/40 text-center space-y-1">
+                <div class="text-2xl font-black text-emerald-400 tracking-wider font-mono" id="displayFamilyCode">849-210</div>
+                <div class="text-[10px] text-slate-400" data-i18n="familyCodeHint">Farzand telefonida kiritiladi yoki havolani yuboring</div>
+            </div>
+
+            <p class="text-[11px] text-slate-300 leading-relaxed" data-i18n="pairingInstruction">
+                Farzand hech qanday admin ishtirokisiz ulanadi:
+                <br>1. Ushbu havolani farzandingizga yuboring:
+            </p>
+
+            <button onclick="copyPairingLink()" class="w-full py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs rounded-xl transition" data-i18n="copyPairLinkBtn">
+                🔗 Ulash Havolasidan Nusxa Olish
+            </button>
+
+            <div class="p-3 rounded-xl bg-slate-900/60 border border-slate-800 space-y-1">
+                <div class="text-xs font-bold text-sky-400">📱 Android Ilova orqali ulash:</div>
+                <div class="text-[10px] text-slate-400 leading-relaxed">
+                    Android ilovani farzand telefoniga o'rnating va yuqoridagi 6 xonali kodni kiriting.
+                </div>
             </div>
         </div>
     </div>
@@ -1162,9 +1254,16 @@ const I18N = {
         langSelect: "Tilni O'zgartirish (Язык)",
         langSub: "O'zbekcha / Русский",
         plansSelect: "Tariflar va Obuna",
-        plansSub: "Free (Lokatsiya) / Family Pro (AI)",
+        plansSub: "Free (Lokatsiya) / Pro (10,000 so'm)",
         pairingSelect: "Farzandni Ulash & Android Ilova",
         pairingSub: "Oila kodi va avtomatik juftlash",
+        feedbackTitle: "Taklif va Mulohazalar",
+        feedbackSub: "alhamdulillah@tmail.ton orqali fikr yuborish",
+        feedbackHeader: "Fikringiz biz uchun muhim!",
+        feedbackDesc: "Dasturni yanada takomillashtirish, yangi darsliklar yoki qulayliklar bo'yicha takliflaringizni to'g'ridan-to'g'ri ishlab chiquvchilarga yuboring.",
+        feedbackEmailLabel: "Rasmiy qabul pochtasi:",
+        openGmailBtn: "Gmail orqali xat yozish",
+        openDefaultMailBtn: "Boshqa pochta dasturi orqali",
         navDashboard: "Asosiy",
         navRadar: "Radar (Bepul)",
         navAi: "AI Murabbiy 💎",
@@ -1177,15 +1276,16 @@ const I18N = {
         saveProfileBtn: "💾 Saqlash va Darsliklarni Yangilash",
         freePlanBadge: "Bepul Tarif (Free)",
         freePlanTitle: "Free Basic",
-        freePlanDesc: "📍 Jonli Lokatsiya & Radar (100% Bepul), 1 ta farzand, batareya va umumiy ekran vaqti",
+        freePlanDesc: "📍 Jonli Lokatsiya & Radar (100% Bepul), batareya va umumiy ekran vaqti",
         freePrice: "0 so'm",
-        foreverFree: "Doimiy bepul",
-        proPlanBadge: "Premium Oilaviy",
-        proPlanTitle: "Family Pro 💎",
-        proPlanDesc: "🧠 Gemini AI Murabbiy (Ovoz/Rasm/Matn), 📚 1-11 Sinf DTS e-Maktab 100 ballik tahlil, 🎬 Reels chuqur tahlili va cheksiz farzandlar",
-        proPrice: "25,000",
-        perMonth: "so'm / oy",
-        activateProBtn: "💎 Family Pro'ni Faollashtirish",
+        foreverFree: "Hozirda bepul",
+        freeQualityNotice: "Eslatma: Tizim sifati va serverlar barqarorligini ta'minlash maqsadida kelajakda bepul versiyaga ham juda kam (ramziy) miqdorda to'lov joriy etilishi mumkin.",
+        proPlanBadge: "Premium Farzand Nazorati",
+        proPlanTitle: "Pro Versiya 💎",
+        proPlanDesc: "🧠 Gemini AI Murabbiy (Ovoz/Rasm/Matn), 📚 1-11 Sinf DTS e-Maktab 100 ballik tahlil va 🎬 Reels chuqur tahlili",
+        proPrice: "10,000",
+        perChildMonth: "so'm / oy (har bir bola uchun)",
+        activateProBtn: "💎 Pro Versiyani Faollashtirish",
         activeProBtn: "✅ Pro Faollashtirilgan",
         autoPairTitle: "🔑 Sizning Oila Kodingiz (Avtomatik):",
         familyCodeHint: "Farzand telefonida kiritiladi yoki havolani yuboring",
@@ -1227,9 +1327,16 @@ const I18N = {
         langSelect: "Сменить Язык (Til)",
         langSub: "O'zbekcha / Русский",
         plansSelect: "Тарифы и Подписка",
-        plansSub: "Free (Локация) / Family Pro (AI)",
+        plansSub: "Free (Локация) / Pro (10 000 сум)",
         pairingSelect: "Подключение Ребёнка и Android App",
         pairingSub: "Код семьи и авто-привязка",
+        feedbackTitle: "Предложения и Отзывы",
+        feedbackSub: "Отправить отзыв на alhamdulillah@tmail.ton",
+        feedbackHeader: "Ваше мнение важно для нас!",
+        feedbackDesc: "Отправьте свои предложения по улучшению программы, новым предметам или удобствам напрямую разработчикам.",
+        feedbackEmailLabel: "Официальная почта для приёма:",
+        openGmailBtn: "Написать через Gmail",
+        openDefaultMailBtn: "Другой почтовый клиент",
         navDashboard: "Главная",
         navRadar: "Радар (Free)",
         navAi: "AI Наставник 💎",
@@ -1242,15 +1349,16 @@ const I18N = {
         saveProfileBtn: "💾 Сохранить и Обновить Учебники",
         freePlanBadge: "Бесплатный Тариф",
         freePlanTitle: "Free Basic",
-        freePlanDesc: "📍 Онлайн-Локация и Радар (100% Бесплатно), 1 ребёнок, батарея и общее экранное время",
+        freePlanDesc: "📍 Онлайн-Локация и Радар (100% Бесплатно), батарея и общее экранное время",
         freePrice: "0 сум",
-        foreverFree: "Всегда бесплатно",
-        proPlanBadge: "Премиум Семейный",
-        proPlanTitle: "Family Pro 💎",
-        proPlanDesc: "🧠 Gemini AI Наставник (Голос/Фото/Текст), 📚 1-11 классы DTS e-Maktab анализ 100 баллов, 🎬 Анализ Reels и безлимит детей",
-        proPrice: "25,000",
-        perMonth: "сум / месяц",
-        activateProBtn: "💎 Активировать Family Pro",
+        foreverFree: "Сейчас бесплатно",
+        freeQualityNotice: "Примечание: В целях повышения качества и стабильности серверов в будущем для бесплатной версии также может быть введена минимальная символическая плата.",
+        proPlanBadge: "Премиум Контроль",
+        proPlanTitle: "Pro Версия 💎",
+        proPlanDesc: "🧠 Gemini AI Наставник (Голос/Фото/Текст), 📚 1-11 классы DTS e-Maktab анализ 100 баллов и 🎬 Анализ Reels",
+        proPrice: "10,000",
+        perChildMonth: "сум / месяц (за каждого ребёнка)",
+        activateProBtn: "💎 Активировать Pro Версию",
         activeProBtn: "✅ Pro Активирован",
         autoPairTitle: "🔑 Ваш Семейный Код (Автоматический):",
         familyCodeHint: "Введите на телефоне ребёнка или отправьте ссылку",
