@@ -1,3 +1,0 @@
-recordings/
-  desktop.ini
-  Дарча.m4a

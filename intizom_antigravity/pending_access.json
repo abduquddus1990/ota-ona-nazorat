@@ -1,7 +1,0 @@
-{
-  "_izoh": "Yangi foydalanuvchiga botdan foydalanish huquqini shu faylga qo'lda yozib berasiz. U shu Telegram akkaunti bilan botga /start bosgach, yozuv AVTOMATIK O'CHADI (bir martalik ishlaydi) va odam ro'yxatdan o'tadi. Botni qayta ishga tushirish shart emas.",
-  "_managers_izoh": "Kalit — odamning Telegram @username'i (boshida @ belgisiz, katta-kichik harf farqi muhim emas). Qiymat — rol: manager, deputy, hr yoki admin.",
-  "managers": {},
-  "_employees_izoh": "Kalit — Telegram @username. Qiymat — Xodimlar bo'limida ro'yxatdan o'tkazilgan xodimning F.I.Sh'i, AYNAN xuddi o'sha yozilishida (masalan 'Anvar Anvarov').",
-  "employees": {}
-}
