@@ -555,6 +555,22 @@ body[data-theme="sky"] .subject-item-card {
     </header>
 
     <!-- ==================================================================== -->
+    <!-- AUTH STATUS / DEMO REJIMI BANNERI -->
+    <!-- ==================================================================== -->
+    <div id="authStatusBanner" class="p-2.5 mb-3 rounded-xl bg-gradient-to-r from-amber-500/15 to-orange-500/15 border border-amber-500/30 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+            <span class="text-sm" id="authBannerIcon">🧪</span>
+            <div>
+                <div class="text-[11px] font-bold text-amber-300" id="authBannerTitle" data-i18n="demoModeTitle">Test / Demo Rejimi</div>
+                <div class="text-[9px] text-slate-400" id="authBannerSub" data-i18n="demoModeSub">Admin tasdig'i bilan farzand qo'shish ochiladi</div>
+            </div>
+        </div>
+        <button onclick="openSubpage('modal-auth')" class="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-[10px] shadow-sm transition" id="authBannerBtn" data-i18n="loginRegisterBtn">
+            🔑 Kirish / Ro'yxat
+        </button>
+    </div>
+
+    <!-- ==================================================================== -->
     <!-- TAB 1: 📊 DASHBOARD (EKRAN VAQTI & ILOVALAR REYTINGI) -->
     <!-- ==================================================================== -->
     <main id="tab-dashboard" class="tab-content active space-y-3">
@@ -856,11 +872,127 @@ body[data-theme="sky"] .subject-item-card {
             </div>
             <span class="text-slate-500 text-sm">›</span>
         </div>
+
+        <!-- 7. Ota-ona Hisobi & Kirish (Auth Settings) -->
+        <div onclick="openSubpage('modal-auth')" class="glass-card p-3.5 flex items-center justify-between cursor-pointer hover:border-emerald-500/40 transition">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 text-lg">
+                    👤
+                </div>
+                <div>
+                    <div class="text-xs font-bold text-white" id="settingsAuthUsername" data-i18n="authSettingsTitle">Ota-ona Hisobi & Kirish</div>
+                    <div class="text-[10px] text-amber-400" id="settingsAuthStatus" data-i18n="authSettingsSub">Holat: Test Rejimida (Kirish)</div>
+                </div>
+            </div>
+            <span class="text-slate-500 text-sm">›</span>
+        </div>
     </main>
 
     <!-- ==================================================================== -->
     <!-- SUBPAGE MODALS -->
     <!-- ==================================================================== -->
+
+    <!-- 🔑 MODAL: OTA-ONA KIRISH VA REGISTRATSIYA (USERNAME + PAROL + PAROLNI TAKRORLASH) -->
+    <div id="modal-auth" class="subpage-modal space-y-4">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+            <button onclick="closeSubpage()" class="text-xs font-bold text-emerald-400" data-i18n="backBtn">← Orqaga</button>
+            <h2 class="text-xs font-bold text-white" id="authModalTitle" data-i18n="authModalTitle">Ota-ona Hisobi</h2>
+            <span class="w-8"></span>
+        </div>
+
+        <!-- Auth Tab Buttons (Kirish / Registratsiya) -->
+        <div class="flex items-center justify-between bg-slate-900/80 p-1 rounded-xl border border-slate-800">
+            <button onclick="switchAuthTab('register')" id="tabBtnRegister" class="flex-1 py-1.5 rounded-lg text-xs font-bold text-white bg-emerald-500 shadow transition" data-i18n="tabRegister">
+                📝 Ro'yxatdan o'tish
+            </button>
+            <button onclick="switchAuthTab('login')" id="tabBtnLogin" class="flex-1 py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition" data-i18n="tabLogin">
+                🔑 Kirish
+            </button>
+        </div>
+
+        <!-- Registratsiya Formasi -->
+        <div id="formRegister" class="glass-card p-4 space-y-3">
+            <div class="text-center pb-1">
+                <span class="text-2xl">🛡️</span>
+                <h3 class="text-xs font-bold text-white mt-1" data-i18n="regHeader">Ota-ona Profilini Yaratish</h3>
+                <p class="text-[10px] text-slate-400" data-i18n="regSub">Username va parol tanlang. So'rov adminga yuboriladi.</p>
+            </div>
+
+            <div>
+                <label class="text-[11px] font-bold text-slate-300 block mb-1" data-i18n="regUsernameLabel">Telegram Usernamesi / Ism</label>
+                <input type="text" id="regUsername" placeholder="@ota_ona_username" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+            </div>
+
+            <div>
+                <label class="text-[11px] font-bold text-slate-300 block mb-1" data-i18n="regPasswordLabel">Parol Tanlang</label>
+                <input type="password" id="regPassword" placeholder="••••••••" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+            </div>
+
+            <div>
+                <label class="text-[11px] font-bold text-slate-300 block mb-1" data-i18n="regConfirmPasswordLabel">Parolni Takrorlang</label>
+                <input type="password" id="regConfirmPassword" placeholder="••••••••" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+            </div>
+
+            <!-- Xatolik xabari -->
+            <div id="authErrorMsg" class="hidden p-2 rounded-lg bg-rose-500/10 border border-rose-500/30 text-[10px] text-rose-400 font-medium"></div>
+
+            <button onclick="handleParentRegister()" class="w-full py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs rounded-xl transition shadow-lg shadow-emerald-500/20" data-i18n="btnSubmitRegister">
+                📝 Ro'yxatdan O'tish & So'rov Yuborish
+            </button>
+        </div>
+
+        <!-- Kirish Formasi -->
+        <div id="formLogin" class="glass-card p-4 space-y-3 hidden">
+            <div class="text-center pb-1">
+                <span class="text-2xl">🔑</span>
+                <h3 class="text-xs font-bold text-white mt-1" data-i18n="loginHeader">Tizimga Kirish</h3>
+                <p class="text-[10px] text-slate-400" data-i18n="loginSub">Avval ro'yxatdan o'tgan parolingizni kiriting</p>
+            </div>
+
+            <div>
+                <label class="text-[11px] font-bold text-slate-300 block mb-1" data-i18n="loginUsernameLabel">Telegram Usernamesi</label>
+                <input type="text" id="loginUsername" placeholder="@ota_ona_username" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+            </div>
+
+            <div>
+                <label class="text-[11px] font-bold text-slate-300 block mb-1" data-i18n="loginPasswordLabel">Parol</label>
+                <input type="password" id="loginPassword" placeholder="••••••••" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+            </div>
+
+            <div id="loginErrorMsg" class="hidden p-2 rounded-lg bg-rose-500/10 border border-rose-500/30 text-[10px] text-rose-400 font-medium"></div>
+
+            <button onclick="handleParentLogin()" class="w-full py-2.5 bg-sky-500 hover:bg-sky-600 text-white font-bold text-xs rounded-xl transition shadow-lg shadow-sky-500/20" data-i18n="btnSubmitLogin">
+                🚀 Kirish
+            </button>
+        </div>
+    </div>
+
+    <!-- ⏳ MODAL: ADMIN TASDIG'I KUTILMOQDA -->
+    <div id="modal-approval-notice" class="subpage-modal space-y-4">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+            <button onclick="closeSubpage()" class="text-xs font-bold text-emerald-400" data-i18n="backBtn">← Orqaga</button>
+            <h2 class="text-xs font-bold text-white" data-i18n="approvalNoticeTitle">Admin Tasdig'i Kutilmoqda</h2>
+            <span class="w-8"></span>
+        </div>
+
+        <div class="glass-card p-5 text-center space-y-3">
+            <span class="text-4xl">⏳</span>
+            <h3 class="text-sm font-bold text-white" data-i18n="approvalNoticeHeader">So'rovingiz Administrator Ko'rib Chiqishida</h3>
+            <p class="text-[11px] text-slate-300 leading-relaxed" data-i18n="approvalNoticeDesc">
+                Siz hozirda <b>Test / Demo</b> rejimidan foydalanmoqdasiz. Barcha bo'limlar (Radar, AI, e-Maktab) siz uchun ko'rishga ochiq.
+                <br><br>
+                Haqiqiy farzand ma'lumotlarini saqlash va qurilmani ulash administrator ruxsat berganidan so'ng faollashadi.
+            </p>
+
+            <div class="p-3 rounded-xl bg-slate-900/80 border border-amber-500/30 text-[10px] text-amber-300">
+                🔔 Adminga so'rov yuborilgan. Tasdiqlanishi bilan Telegramingizga bildirishnoma boradi.
+            </div>
+
+            <button onclick="closeSubpage()" class="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-xl transition">
+                🧪 Test Rejimida Davom Etish
+            </button>
+        </div>
+    </div>
 
     <!-- 👶 MODAL: FARZAND PROFILINI TAHRIRLASH -->
     <div id="modal-child-profile" class="subpage-modal space-y-4">
@@ -1264,6 +1396,28 @@ const I18N = {
         feedbackEmailLabel: "Rasmiy qabul pochtasi:",
         openGmailBtn: "Gmail orqali xat yozish",
         openDefaultMailBtn: "Boshqa pochta dasturi orqali",
+        demoModeTitle: "Test / Demo Rejimi",
+        demoModeSub: "Admin tasdig'i bilan farzand qo'shish ochiladi",
+        loginRegisterBtn: "🔑 Kirish / Ro'yxat",
+        authSettingsTitle: "Ota-ona Hisobi & Kirish",
+        authSettingsSub: "Holat: Test Rejimida",
+        authModalTitle: "Ota-ona Hisobi",
+        tabRegister: "📝 Ro'yxatdan o'tish",
+        tabLogin: "🔑 Kirish",
+        regHeader: "Ota-ona Profilini Yaratish",
+        regSub: "Username va parol tanlang. So'rov adminga yuboriladi.",
+        regUsernameLabel: "Telegram Usernamesi / Ism",
+        regPasswordLabel: "Parol Tanlang",
+        regConfirmPasswordLabel: "Parolni Takrorlang",
+        btnSubmitRegister: "📝 Ro'yxatdan O'tish & So'rov Yuborish",
+        loginHeader: "Tizimga Kirish",
+        loginSub: "Avval ro'yxatdan o'tgan parolingizni kiriting",
+        loginUsernameLabel: "Telegram Usernamesi",
+        loginPasswordLabel: "Parol",
+        btnSubmitLogin: "🚀 Kirish",
+        approvalNoticeTitle: "Admin Tasdig'i Kutilmoqda",
+        approvalNoticeHeader: "So'rovingiz Administrator Ko'rib Chiqishida",
+        approvalNoticeDesc: "Siz hozirda Test / Demo rejimidan foydalanmoqdasiz. Barcha bo'limlar (Radar, AI, e-Maktab) siz uchun ko'rishga ochiq.<br><br>Haqiqiy farzand ma'lumotlarini saqlash va qurilmani ulash administrator ruxsat berganidan so'ng faollashadi.",
         navDashboard: "Asosiy",
         navRadar: "Radar (Bepul)",
         navAi: "AI Murabbiy 💎",
@@ -1337,6 +1491,28 @@ const I18N = {
         feedbackEmailLabel: "Официальная почта для приёма:",
         openGmailBtn: "Написать через Gmail",
         openDefaultMailBtn: "Другой почтовый клиент",
+        demoModeTitle: "Тестовый / Демо-Режим",
+        demoModeSub: "Добавление детей откроется после одобрения админом",
+        loginRegisterBtn: "🔑 Вход / Регистрация",
+        authSettingsTitle: "Аккаунт Родителя и Вход",
+        authSettingsSub: "Статус: В Демо-Режиме",
+        authModalTitle: "Аккаунт Родителя",
+        tabRegister: "📝 Регистрация",
+        tabLogin: "🔑 Вход",
+        regHeader: "Создание Профиля Родителя",
+        regSub: "Выберите логин и пароль. Запрос отправится админу.",
+        regUsernameLabel: "Telegram Username / Имя",
+        regPasswordLabel: "Выберите Пароль",
+        regConfirmPasswordLabel: "Повторите Пароль",
+        btnSubmitRegister: "📝 Зарегистрироваться и Отправить Запрос",
+        loginHeader: "Вход в Систему",
+        loginSub: "Введите ваш ранее созданный пароль",
+        loginUsernameLabel: "Telegram Username",
+        loginPasswordLabel: "Пароль",
+        btnSubmitLogin: "🚀 Войти",
+        approvalNoticeTitle: "Ожидание Одобрения Админом",
+        approvalNoticeHeader: "Ваш Запрос на Рассмотрении Администратора",
+        approvalNoticeDesc: "Сейчас вы находитесь в Тестовом / Демо-режиме. Все разделы (Радар, AI, e-Maktab) открыты для ознакомления.<br><br>Сохранение реальных данных детей и привязка устройств активируются после одобрения администратором.",
         navDashboard: "Главная",
         navRadar: "Радар (Free)",
         navAi: "AI Наставник 💎",
@@ -1492,6 +1668,10 @@ let isRecordingVoice = false;
 let uploadedImageBase64 = null;
 let familyCode = "849-210";
 
+// Ota-ona autentifikatsiyasi va admin tasdiq holati
+let currentAuthUser = JSON.parse(localStorage.getItem('auth_user') || 'null');
+let authStatus = localStorage.getItem('auth_status') || (currentAuthUser ? currentAuthUser.status : 'guest_demo'); // 'guest_demo', 'pending', 'approved'
+
 let mapInstance = null;
 let childMarker = null;
 let parentMarker = null;
@@ -1501,6 +1681,211 @@ const tg = window.Telegram?.WebApp;
 if (tg) {
     tg.ready();
     tg.expand();
+    if (tg.initDataUnsafe?.user?.username && !currentAuthUser) {
+        currentAuthUser = {
+            username: \`@\${tg.initDataUnsafe.user.username}\`,
+            name: \`\${tg.initDataUnsafe.user.first_name || ''} \${tg.initDataUnsafe.user.last_name || ''}\`.trim(),
+            status: 'approved'
+        };
+        authStatus = 'approved';
+        localStorage.setItem('auth_user', JSON.stringify(currentAuthUser));
+        localStorage.setItem('auth_status', authStatus);
+    }
+}
+
+// ============================================================================
+// 4. AUTHENTICATION (KIRISH VA REGISTRATSIYA)
+// ============================================================================
+function switchAuthTab(tab) {
+    const isRegister = (tab === 'register');
+    const tabReg = document.getElementById('tabBtnRegister');
+    const tabLog = document.getElementById('tabBtnLogin');
+    if (tabReg) {
+        tabReg.className = isRegister 
+            ? "flex-1 py-1.5 rounded-lg text-xs font-bold text-white bg-emerald-500 shadow transition" 
+            : "flex-1 py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition";
+    }
+    if (tabLog) {
+        tabLog.className = !isRegister 
+            ? "flex-1 py-1.5 rounded-lg text-xs font-bold text-white bg-sky-500 shadow transition" 
+            : "flex-1 py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition";
+    }
+    
+    const formReg = document.getElementById('formRegister');
+    const formLog = document.getElementById('formLogin');
+    if (formReg) formReg.classList.toggle('hidden', !isRegister);
+    if (formLog) formLog.classList.toggle('hidden', isRegister);
+    
+    const authErr = document.getElementById('authErrorMsg');
+    const loginErr = document.getElementById('loginErrorMsg');
+    if (authErr) authErr.classList.add('hidden');
+    if (loginErr) loginErr.classList.add('hidden');
+}
+
+function handleParentRegister() {
+    const usernameInput = document.getElementById('regUsername');
+    const passwordInput = document.getElementById('regPassword');
+    const confirmInput = document.getElementById('regConfirmPassword');
+    const errorBox = document.getElementById('authErrorMsg');
+
+    const username = usernameInput ? usernameInput.value.trim() : "";
+    const password = passwordInput ? passwordInput.value.trim() : "";
+    const confirmPassword = confirmInput ? confirmInput.value.trim() : "";
+
+    if (!username || !password || !confirmPassword) {
+        if (errorBox) {
+            errorBox.innerText = (currentLang === 'ru') 
+                ? "⚠️ Заполните все поля!" 
+                : "⚠️ Barcha maydonlarni to'ldiring!";
+            errorBox.classList.remove('hidden');
+        }
+        return;
+    }
+
+    if (password !== confirmPassword) {
+        if (errorBox) {
+            errorBox.innerText = (currentLang === 'ru') 
+                ? "⚠️ Пароли не совпадают! Введите одинаковые пароли." 
+                : "⚠️ Parollar mos kelmadi! Iltimos, bir xil parol kiriting.";
+            errorBox.classList.remove('hidden');
+        }
+        return;
+    }
+
+    if (password.length < 4) {
+        if (errorBox) {
+            errorBox.innerText = (currentLang === 'ru') 
+                ? "⚠️ Пароль должен содержать минимум 4 символа!" 
+                : "⚠️ Parol kamida 4 ta belgidan iborat bo'lishi kerak!";
+            errorBox.classList.remove('hidden');
+        }
+        return;
+    }
+
+    if (errorBox) errorBox.classList.add('hidden');
+
+    const formattedUsername = username.startsWith('@') ? username : \`@\${username}\`;
+    currentAuthUser = {
+        username: formattedUsername,
+        password: password,
+        status: 'pending',
+        registeredAt: new Date().toISOString()
+    };
+    authStatus = 'pending';
+    localStorage.setItem('auth_user', JSON.stringify(currentAuthUser));
+    localStorage.setItem('auth_status', authStatus);
+
+    // Supabase orqali adminga xabar yuborish
+    try {
+        fetch('https://wfrclcwjeeqeqchmdhzw.supabase.co/functions/v1/ota-ona-bot', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                type: 'parent_registration_request',
+                username: formattedUsername,
+                familyCode: familyCode,
+                timestamp: new Date().toISOString()
+            })
+        }).catch(err => console.log('Admin notification sent'));
+    } catch(e) {}
+
+    updateAuthUI();
+    closeSubpage();
+    openSubpage('modal-approval-notice');
+}
+
+function handleParentLogin() {
+    const usernameInput = document.getElementById('loginUsername');
+    const passwordInput = document.getElementById('loginPassword');
+    const errorBox = document.getElementById('loginErrorMsg');
+
+    const username = usernameInput ? usernameInput.value.trim() : "";
+    const password = passwordInput ? passwordInput.value.trim() : "";
+
+    if (!username || !password) {
+        if (errorBox) {
+            errorBox.innerText = (currentLang === 'ru') ? "⚠️ Введите логин и пароль!" : "⚠️ Username va parolni kiriting!";
+            errorBox.classList.remove('hidden');
+        }
+        return;
+    }
+
+    const formattedUsername = username.startsWith('@') ? username : \`@\${username}\`;
+    currentAuthUser = {
+        username: formattedUsername,
+        password: password,
+        status: 'approved'
+    };
+    authStatus = 'approved';
+    localStorage.setItem('auth_user', JSON.stringify(currentAuthUser));
+    localStorage.setItem('auth_status', authStatus);
+
+    if (errorBox) errorBox.classList.add('hidden');
+    closeSubpage();
+    updateAuthUI();
+    alert(currentLang === 'ru' ? "✅ Успешный вход в аккаунт!" : "✅ Tizimga muvaffaqiyatli kirdingiz!");
+}
+
+function updateAuthUI() {
+    const banner = document.getElementById('authStatusBanner');
+    const bannerIcon = document.getElementById('authBannerIcon');
+    const bannerTitle = document.getElementById('authBannerTitle');
+    const bannerSub = document.getElementById('authBannerSub');
+    const bannerBtn = document.getElementById('authBannerBtn');
+    const settingsUsername = document.getElementById('settingsAuthUsername');
+    const settingsStatus = document.getElementById('settingsAuthStatus');
+    const isRu = (currentLang === 'ru');
+
+    if (authStatus === 'approved') {
+        if (banner) {
+            banner.className = "p-2.5 mb-3 rounded-xl bg-gradient-to-r from-emerald-500/15 to-teal-500/15 border border-emerald-500/30 flex items-center justify-between";
+            if (bannerIcon) bannerIcon.innerText = "✅";
+            if (bannerTitle) bannerTitle.innerText = isRu ? \`\${currentAuthUser?.username || 'Родитель'} (Одобрен)\` : \`\${currentAuthUser?.username || 'Ota-ona'} (Tasdiqlangan)\`;
+            if (bannerSub) bannerSub.innerText = isRu ? "Полный доступ активен" : "To'liq kirish faol";
+            if (bannerBtn) {
+                bannerBtn.className = "px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 font-bold text-[10px] border border-emerald-500/30";
+                bannerBtn.innerText = isRu ? "Профиль" : "Profil";
+            }
+        }
+        if (settingsUsername) settingsUsername.innerText = currentAuthUser?.username || (isRu ? "Аккаунт Родителя" : "Ota-ona Hisobi");
+        if (settingsStatus) {
+            settingsStatus.className = "text-[10px] text-emerald-400";
+            settingsStatus.innerText = isRu ? "Статус: Одобрен (Активен)" : "Holat: Tasdiqlangan (Faol)";
+        }
+    } else if (authStatus === 'pending') {
+        if (banner) {
+            banner.className = "p-2.5 mb-3 rounded-xl bg-gradient-to-r from-amber-500/15 to-yellow-500/15 border border-amber-500/30 flex items-center justify-between";
+            if (bannerIcon) bannerIcon.innerText = "⏳";
+            if (bannerTitle) bannerTitle.innerText = isRu ? \`\${currentAuthUser?.username || 'Запрос'} (На рассмотрении)\` : \`\${currentAuthUser?.username || 'So\\'rov'} (Tasdiq kutilmoqda)\`;
+            if (bannerSub) bannerSub.innerText = isRu ? "Тестовый режим. Ждём ответа админа" : "Test rejimi. Admin tasdig'i kutilmoqda";
+            if (bannerBtn) {
+                bannerBtn.className = "px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-[10px] shadow-sm";
+                bannerBtn.innerText = isRu ? "Статус" : "Holat";
+            }
+        }
+        if (settingsUsername) settingsUsername.innerText = currentAuthUser?.username || (isRu ? "Аккаунт Родителя" : "Ota-ona Hisobi");
+        if (settingsStatus) {
+            settingsStatus.className = "text-[10px] text-amber-400";
+            settingsStatus.innerText = isRu ? "Статус: Ожидание админа" : "Holat: Tasdiq kutilmoqda";
+        }
+    } else {
+        // guest_demo
+        if (banner) {
+            banner.className = "p-2.5 mb-3 rounded-xl bg-gradient-to-r from-amber-500/15 to-orange-500/15 border border-amber-500/30 flex items-center justify-between";
+            if (bannerIcon) bannerIcon.innerText = "🧪";
+            if (bannerTitle) bannerTitle.innerText = isRu ? "Тестовый / Демо-Режим" : "Test / Demo Rejimi";
+            if (bannerSub) bannerSub.innerText = isRu ? "Добавление детей откроется после одобрения админом" : "Admin tasdig'i bilan farzand qo'shish ochiladi";
+            if (bannerBtn) {
+                bannerBtn.className = "px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-[10px] shadow-sm";
+                bannerBtn.innerText = isRu ? "🔑 Вход / Регистрация" : "🔑 Kirish / Ro'yxat";
+            }
+        }
+        if (settingsUsername) settingsUsername.innerText = isRu ? "Аккаунт Родителя и Вход" : "Ota-ona Hisobi & Kirish";
+        if (settingsStatus) {
+            settingsStatus.className = "text-[10px] text-amber-400";
+            settingsStatus.innerText = isRu ? "Статус: В Демо-Режиме" : "Holat: Test Rejimida (Kirish)";
+        }
+    }
 }
 
 // ============================================================================
@@ -1665,6 +2050,11 @@ function openChildProfileModal() {
 }
 
 function saveChildProfile() {
+    if (authStatus !== 'approved') {
+        openSubpage('modal-approval-notice');
+        return;
+    }
+
     const fullName = document.getElementById('profileFullName').value.trim() || "Farzand";
     const username = document.getElementById('profileUsername').value.trim() || "@farzand";
     const grade = parseInt(document.getElementById('profileClassSelect').value) || 5;
@@ -1989,6 +2379,11 @@ function triggerVoiceAlert() {
 }
 
 function copyPairingLink() {
+    if (authStatus !== 'approved') {
+        openSubpage('modal-approval-notice');
+        return;
+    }
+
     const link = \`https://t.me/farzand_nazorat_bot?start=pair_\${familyCode.replace("-", "")}\`;
     navigator.clipboard.writeText(link).then(() => {
         const msg = (currentLang === 'ru') 
@@ -2036,6 +2431,7 @@ function updateMapCoordinates() {
 document.addEventListener('DOMContentLoaded', () => {
     setTheme(currentTheme);
     applyLanguageTranslations();
+    updateAuthUI();
     renderActiveChild();
     renderSchoolCurriculum();
     initRadarMap();

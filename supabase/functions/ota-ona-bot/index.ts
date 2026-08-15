@@ -1,16 +1,18 @@
 // supabase/functions/ota-ona-bot/index.ts
 //
 // SHIELD PARENTAL GUARD — ADVANCED 24/7 SUPABASE SERVERLESS BOT
-// Bilingual (UZ / RU), Automated 100% Self-Registration (No Admin needed), Free Location/Radar & Pro AI/e-Maktab.
+// Bilingual (UZ / RU), Admin Notifications (@username approval workflow), Demo/Test Mode, and 10k Pricing.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const BOT_TOKEN = Deno.env.get("BOT_TOKEN") || "8992925094:AAE5K1N8VVxiCh9P6H1j7hCrYoTeIBmC8r0";
-const MINI_APP_URL = Deno.env.get("MINI_APP_URL") || "https://abduquddus1990.github.io/ota-ona-nazorat/?v=2.0";
+const MINI_APP_URL = Deno.env.get("MINI_APP_URL") || "https://abduquddus1990.github.io/ota-ona-nazorat/?v=3.0";
 const TELEGRAM_API = `https://api.telegram.org/bot${BOT_TOKEN}`;
 
-// Xotirada saqlanadigan sessiyalar (yoki Supabase DB)
+// Dynamic Admin IDs Store & User States
+const ADMIN_CHAT_IDS = new Set<string | number>();
 const USER_LANG: Record<string | number, string> = {};
+const USER_APPROVAL_STATUS: Record<string, "pending" | "approved" | "rejected"> = {};
 
 function generateFamilyCode(userId: string | number): string {
   const num = Math.abs((Number(userId) * 31 + 7919) % 900000) + 100000;
@@ -42,13 +44,29 @@ async function answerCallbackQuery(callbackQueryId: string, text?: string) {
   });
 }
 
+async function notifyAdmins(text: string, replyMarkup?: any) {
+  for (const adminId of ADMIN_CHAT_IDS) {
+    try {
+      await sendMessage(adminId, text, replyMarkup);
+    } catch (e) {
+      console.error(`Admin ${adminId} ga xabar yuborishda xato:`, e);
+    }
+  }
+}
+
 // BILINGUAL TEXT TEMPLATES (UZ / RU)
-function getStartMenuText(userId: string | number, lang: string = "uz"): string {
+function getStartMenuText(userId: string | number, lang: string = "uz", isApproved: boolean = false): string {
   const code = generateFamilyCode(userId);
   if (lang === "ru") {
+    const statusNote = isApproved 
+      ? "✅ *Ваш аккаунт подтвержден администратором!*" 
+      : "⏳ *Статус:* Запрос отправлен администратору. До одобрения доступен **Тестовый / Демо-режим**.";
+
     return `🛡️ *SHIELD PARENTAL GUARD — ЦЕНТР РОДИТЕЛЬСКОГО КОНТРОЛЯ*
 
 Добро пожаловать! Безопасность, школьные предметы и цифровые привычки вашего ребёнка под защитой 24/7.
+
+${statusNote}
 
 🔑 *Ваш семейный код:* \`${code}\`
 📍 *Онлайн-радар и локация:* **Бесплатно**
@@ -57,9 +75,16 @@ function getStartMenuText(userId: string | number, lang: string = "uz"): string 
 
 Выберите нужный раздел:`;
   }
+
+  const statusNote = isApproved
+    ? "✅ *Sizning hisobingiz administrator tomonidan tasdiqlangan!*"
+    : "⏳ *Holat:* Administratorga so'rov yuborilgan. Tasdiqlanguniga qadar tizim **Test / Demo rejimida** ishlaydi.";
+
   return `🛡️ *SHIELD PARENTAL GUARD — OTA-ONA BOSHQARUV MARKAZI*
 
 Assalomu alaykum! Farzandingizning xavfsizligi, darsliklari va raqamli odatlari 24/7 doimiy nazorat ostida.
+
+${statusNote}
 
 🔑 *Sizning oila kodingiz:* \`${code}\`
 📍 *Jonli lokatsiya va radar:* **100% BEPUL**
@@ -71,7 +96,6 @@ Quyidagi bo'limlardan birini tanlang:`;
 
 function getStartKeyboard(userId: string | number, lang: string = "uz"): any {
   const code = generateFamilyCode(userId);
-  const pairLink = `https://t.me/farzand_nazorat_bot?start=pair_${code.replace("-", "")}`;
   
   if (lang === "ru") {
     return {
@@ -113,9 +137,23 @@ function getStartKeyboard(userId: string | number, lang: string = "uz"): any {
   };
 }
 
-function getPairingText(userId: string | number, lang: string = "uz"): string {
+function getPairingText(userId: string | number, lang: string = "uz", isApproved: boolean = false): string {
   const code = generateFamilyCode(userId);
   const pairLink = `https://t.me/farzand_nazorat_bot?start=pair_${code.replace("-", "")}`;
+  
+  if (!isApproved) {
+    if (lang === "ru") {
+      return `⏳ *ОЖИДАНИЕ ОДОБРЕНИЯ АДМИНИСТРАТОРОМ:*
+
+Ваш аккаунт находится на рассмотрении. После того как администратор подтвердит ваш профиль, вы сможете подключить реальное устройство ребёнка.
+В настоящее время вам доступен **Тестовый / Демо-режим** панели.`;
+    }
+    return `⏳ *ADMINISTRATOR TASDIG'I KUTILMOQDA:*
+
+Sizning profilingiz ko'rib chiqish jarayonida. Administrator ruxsat berganidan so'ng farzand qurilmasini ulashingiz mumkin bo'ladi.
+Hozirda siz uchun boshqaruv paneli **Test / Demo rejimida** to'liq ochiq.`;
+  }
+
   if (lang === "ru") {
     return `🔗 *АВТОМАТИЧЕСКОЕ ПОДКЛЮЧЕНИЕ РЕБЁНКА:*
 
@@ -125,7 +163,7 @@ function getPairingText(userId: string | number, lang: string = "uz"): string {
 2. Или в Android-приложении введите код:
 🔑 **\`${code}\`**
 
-Ребёнок подключится автоматически без участия администратора!`;
+Ребёнок подключится автоматически!`;
   }
   return `🔗 *FARZANDNI AVTOMATIK ULASH YO'RIQNOMASI:*
 
@@ -135,7 +173,7 @@ function getPairingText(userId: string | number, lang: string = "uz"): string {
 2. Yoki Android mobil ilovasida ushbu kodni kiriting:
 🔑 **\`${code}\`**
 
-Farzand hech qanday admin ishtirokisiz avtomatik ravishda profilingizga bog'lanadi!`;
+Farzand profilingizga muvaffaqiyatli bog'lanadi!`;
 }
 
 function getReelsAnalysisText(lang: string = "uz"): string {
@@ -156,36 +194,7 @@ function getReelsAnalysisText(lang: string = "uz"): string {
 • 🔬 *Ilmiy tajribalar & Mantiqiy jumboqlar:* 25% (Ijobiy tendensiya)
 • 🎮 *Ko'ngilochar va o'yin strimlari:* 30% (Me'yorida)
 
-💡 *Tavsiya:* Algoritm ko'proq ta'limiy videolarni tavsiya qilishi uchun fanlar bo'yicha foydali kanallarga obuna bo'lishni yo'lga qo'ying.`;
-}
-
-function getChildrenInfoText(lang: string = "uz"): string {
-  if (lang === "ru") {
-    return `👶 *СПИСОК ПОДКЛЮЧЕННЫХ ДЕТЕЙ:*
-
-1. 👦 *Алиёр Валиджонов* — 5-класс (Средняя школа)
-   • Предметы DTS: Математика, Родной язык, Литература, Science, Английский, Информатика...
-   • Средний балл: *92.4 / 100 баллов* (Отлично)
-   • Экранное время сегодня: *3ч 45м* (Батарея: 84%)
-   • 📍 Локация: 24-я школа (Юнусабад) — *Бесплатно*
-
-2. 👧 *Мадина Валиджонова* — 3-класс (Начальная)
-   • Средний балл: *95.0 / 100 баллов*
-
-Подробная аналитика доступна в Mini App 👇`;
-  }
-  return `👶 *ULANGAN FARZANDLAR RO'YXATI & SINFI:*
-
-1. 👦 *Aliyor Valijonov* — 5-sinf (O'rta ta'lim)
-   • DTS Darsliklari: Matematika, Ona tili, Adabiyot, Science, Chet tili, Informatika...
-   • O'rtacha baho: *92.4 / 100 ball* (A'lo)
-   • Bugungi ekran vaqti: *3s 45d* (Batareya: 84%)
-   • 📍 Lokatsiya: 24-maktab (Yunusobod) — *Bepul*
-
-2. 👧 *Madina Valijonova* — 3-sinf (Boshlang'ich)
-   • O'rtacha baho: *95.0 / 100 ball*
-
-Batafsil tahlilni pastdagi Mini App orqali ko'ring 👇`;
+💡 *Tavsiya:* Algoritm ko'proq ta'limiy videolarni tavsiya qilishi uchun fanlar bo'yicha foydalanuvchi kanallariga obuna bo'lishni yo'lga qo'ying.`;
 }
 
 function getFeedbackText(lang: string = "uz"): string {
@@ -215,7 +224,35 @@ serve(async (req) => {
   }
 
   try {
-    const update = await req.json();
+    const payload = await req.json();
+
+    // 0. Mini App'dan to'g'ridan-to'g'ri ro'yxatdan o'tish so'rovi kelganda
+    if (payload.type === "parent_registration_request") {
+      const username = payload.username || "@noma'lum";
+      const familyCode = payload.familyCode || "849-210";
+      
+      const adminNotice = `🔔 *YANGI OTA-ONA RO'YXATDAN O'TMOQCHI!*
+
+👤 *Username:* ${username}
+🔑 *Oila Kodi:* \`${familyCode}\`
+📅 *Vaqt:* ${new Date().toLocaleString("uz-UZ")}
+
+Ushbu foydalanuvchiga to'liq foydalanish (farzand qo'shish)ga ruxsat berasizmi?`;
+
+      const approvalKeyboard = {
+        inline_keyboard: [
+          [
+            { text: "✅ Ruxsat berish (Approve)", callback_data: `admin_approve_${username}` },
+            { text: "❌ Rad etish (Reject)", callback_data: `admin_reject_${username}` },
+          ],
+        ],
+      };
+
+      await notifyAdmins(adminNotice, approvalKeyboard);
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    }
+
+    const update = payload;
 
     // 1. Callback query tugmalari bosilganda
     if (update.callback_query) {
@@ -223,17 +260,34 @@ serve(async (req) => {
       const chatId = cb.message.chat.id;
       const data = cb.data || "";
       const lang = USER_LANG[chatId] || "uz";
+      const userKey = `@${cb.from.username || cb.from.id}`;
+      const isApproved = USER_APPROVAL_STATUS[userKey] === "approved";
 
       await answerCallbackQuery(cb.id);
 
+      // Admin Tasdiqlash Callbacklari
+      if (data.startsWith("admin_approve_")) {
+        const targetUsername = data.replace("admin_approve_", "");
+        USER_APPROVAL_STATUS[targetUsername] = "approved";
+        
+        await sendMessage(chatId, `✅ *Muvaffaqiyatli:* ${targetUsername} uchun tizimdan foydalanish va farzand qo'shishga to'liq ruxsat berildi!`);
+        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      }
+
+      if (data.startsWith("admin_reject_")) {
+        const targetUsername = data.replace("admin_reject_", "");
+        USER_APPROVAL_STATUS[targetUsername] = "rejected";
+        
+        await sendMessage(chatId, `❌ *Rad etildi:* ${targetUsername} so'rovi rad etildi (Test rejimida qoladi).`);
+        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      }
+
       if (data.startsWith("action_pair")) {
-        await sendMessage(chatId, getPairingText(chatId, lang));
+        await sendMessage(chatId, getPairingText(chatId, lang, isApproved));
       } else if (data === "action_reels") {
         await sendMessage(chatId, getReelsAnalysisText(lang));
       } else if (data === "action_feedback") {
         await sendMessage(chatId, getFeedbackText(lang));
-      } else if (data === "action_children") {
-        await sendMessage(chatId, getChildrenInfoText(lang));
       } else if (data === "action_lang") {
         const langKeyboard = {
           inline_keyboard: [
@@ -260,6 +314,15 @@ serve(async (req) => {
       const chatId = msg.chat.id;
       const text = msg.text || "";
       const lang = USER_LANG[chatId] || "uz";
+      const userKey = `@${msg.from.username || msg.from.id}`;
+      const isApproved = USER_APPROVAL_STATUS[userKey] === "approved";
+
+      // Admin tayinlash buyrug'i (/admin yoki /setadmin)
+      if (text === "/admin" || text === "/setadmin") {
+        ADMIN_CHAT_IDS.add(chatId);
+        await sendMessage(chatId, `👑 *ADMINISTRATOR SIFATIDA TAYINLANDINGIZ!*\n\nSizning Telegram ID: \`${chatId}\`\nEndi barcha yangi foydalanuvchilarning ro'yxatdan o'tish so'rovlari shu yerga [Ruxsat berish / Rad etish] tugmalari bilan yuboriladi.`);
+        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      }
 
       // /start [payload] komandasi
       if (text.startsWith("/start")) {
@@ -272,12 +335,40 @@ serve(async (req) => {
           return new Response(JSON.stringify({ ok: true }), { status: 200 });
         }
 
-        await sendMessage(chatId, getStartMenuText(chatId, lang), getStartKeyboard(chatId, lang));
+        // Yangi foydalanuvchi kirganda adminga bildirishnoma yuborish
+        if (!ADMIN_CHAT_IDS.has(chatId) && !isApproved) {
+          const userFull = `${msg.from.first_name || ''} ${msg.from.last_name || ''}`.trim() || "Foydalanuvchi";
+          const username = msg.from.username ? `@${msg.from.username}` : `ID: ${msg.from.id}`;
+          const code = generateFamilyCode(chatId);
+
+          const adminAlert = `🔔 *YANGI FOYDALANUVCHI ULANMOQCHI!*
+
+👤 *Ism:* ${userFull}
+💬 *Username:* ${username}
+🆔 *Telegram ID:* \`${chatId}\`
+🔑 *Oila Kodi:* \`${code}\`
+📅 *Vaqt:* ${new Date().toLocaleString("uz-UZ")}
+
+Foydalanuvchiga to'liq foydalanish (farzand qo'shish)ga ruxsat berasizmi?`;
+
+          const approveBtn = {
+            inline_keyboard: [
+              [
+                { text: "✅ Ruxsat berish (Approve)", callback_data: `admin_approve_${username}` },
+                { text: "❌ Rad etish (Reject)", callback_data: `admin_reject_${username}` },
+              ],
+            ],
+          };
+
+          await notifyAdmins(adminAlert, approveBtn);
+        }
+
+        await sendMessage(chatId, getStartMenuText(chatId, lang, isApproved), getStartKeyboard(chatId, lang));
         return new Response(JSON.stringify({ ok: true }), { status: 200 });
       }
 
       if (text.startsWith("/farzand")) {
-        await sendMessage(chatId, getChildrenInfoText(lang));
+        await sendMessage(chatId, getPairingText(chatId, lang, isApproved));
         return new Response(JSON.stringify({ ok: true }), { status: 200 });
       }
 

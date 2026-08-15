@@ -61,6 +61,22 @@
     </header>
 
     <!-- ==================================================================== -->
+    <!-- AUTH STATUS / DEMO REJIMI BANNERI -->
+    <!-- ==================================================================== -->
+    <div id="authStatusBanner" class="p-2.5 mb-3 rounded-xl bg-gradient-to-r from-amber-500/15 to-orange-500/15 border border-amber-500/30 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+            <span class="text-sm" id="authBannerIcon">🧪</span>
+            <div>
+                <div class="text-[11px] font-bold text-amber-300" id="authBannerTitle" data-i18n="demoModeTitle">Test / Demo Rejimi</div>
+                <div class="text-[9px] text-slate-400" id="authBannerSub" data-i18n="demoModeSub">Admin tasdig'i bilan farzand qo'shish ochiladi</div>
+            </div>
+        </div>
+        <button onclick="openSubpage('modal-auth')" class="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-[10px] shadow-sm transition" id="authBannerBtn" data-i18n="loginRegisterBtn">
+            🔑 Kirish / Ro'yxat
+        </button>
+    </div>
+
+    <!-- ==================================================================== -->
     <!-- TAB 1: 📊 DASHBOARD (EKRAN VAQTI & ILOVALAR REYTINGI) -->
     <!-- ==================================================================== -->
     <main id="tab-dashboard" class="tab-content active space-y-3">
@@ -362,11 +378,127 @@
             </div>
             <span class="text-slate-500 text-sm">›</span>
         </div>
+
+        <!-- 7. Ota-ona Hisobi & Kirish (Auth Settings) -->
+        <div onclick="openSubpage('modal-auth')" class="glass-card p-3.5 flex items-center justify-between cursor-pointer hover:border-emerald-500/40 transition">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 text-lg">
+                    👤
+                </div>
+                <div>
+                    <div class="text-xs font-bold text-white" id="settingsAuthUsername" data-i18n="authSettingsTitle">Ota-ona Hisobi & Kirish</div>
+                    <div class="text-[10px] text-amber-400" id="settingsAuthStatus" data-i18n="authSettingsSub">Holat: Test Rejimida (Kirish)</div>
+                </div>
+            </div>
+            <span class="text-slate-500 text-sm">›</span>
+        </div>
     </main>
 
     <!-- ==================================================================== -->
     <!-- SUBPAGE MODALS -->
     <!-- ==================================================================== -->
+
+    <!-- 🔑 MODAL: OTA-ONA KIRISH VA REGISTRATSIYA (USERNAME + PAROL + PAROLNI TAKRORLASH) -->
+    <div id="modal-auth" class="subpage-modal space-y-4">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+            <button onclick="closeSubpage()" class="text-xs font-bold text-emerald-400" data-i18n="backBtn">← Orqaga</button>
+            <h2 class="text-xs font-bold text-white" id="authModalTitle" data-i18n="authModalTitle">Ota-ona Hisobi</h2>
+            <span class="w-8"></span>
+        </div>
+
+        <!-- Auth Tab Buttons (Kirish / Registratsiya) -->
+        <div class="flex items-center justify-between bg-slate-900/80 p-1 rounded-xl border border-slate-800">
+            <button onclick="switchAuthTab('register')" id="tabBtnRegister" class="flex-1 py-1.5 rounded-lg text-xs font-bold text-white bg-emerald-500 shadow transition" data-i18n="tabRegister">
+                📝 Ro'yxatdan o'tish
+            </button>
+            <button onclick="switchAuthTab('login')" id="tabBtnLogin" class="flex-1 py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition" data-i18n="tabLogin">
+                🔑 Kirish
+            </button>
+        </div>
+
+        <!-- Registratsiya Formasi -->
+        <div id="formRegister" class="glass-card p-4 space-y-3">
+            <div class="text-center pb-1">
+                <span class="text-2xl">🛡️</span>
+                <h3 class="text-xs font-bold text-white mt-1" data-i18n="regHeader">Ota-ona Profilini Yaratish</h3>
+                <p class="text-[10px] text-slate-400" data-i18n="regSub">Username va parol tanlang. So'rov adminga yuboriladi.</p>
+            </div>
+
+            <div>
+                <label class="text-[11px] font-bold text-slate-300 block mb-1" data-i18n="regUsernameLabel">Telegram Usernamesi / Ism</label>
+                <input type="text" id="regUsername" placeholder="@ota_ona_username" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+            </div>
+
+            <div>
+                <label class="text-[11px] font-bold text-slate-300 block mb-1" data-i18n="regPasswordLabel">Parol Tanlang</label>
+                <input type="password" id="regPassword" placeholder="••••••••" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+            </div>
+
+            <div>
+                <label class="text-[11px] font-bold text-slate-300 block mb-1" data-i18n="regConfirmPasswordLabel">Parolni Takrorlang</label>
+                <input type="password" id="regConfirmPassword" placeholder="••••••••" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+            </div>
+
+            <!-- Xatolik xabari -->
+            <div id="authErrorMsg" class="hidden p-2 rounded-lg bg-rose-500/10 border border-rose-500/30 text-[10px] text-rose-400 font-medium"></div>
+
+            <button onclick="handleParentRegister()" class="w-full py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs rounded-xl transition shadow-lg shadow-emerald-500/20" data-i18n="btnSubmitRegister">
+                📝 Ro'yxatdan O'tish & So'rov Yuborish
+            </button>
+        </div>
+
+        <!-- Kirish Formasi -->
+        <div id="formLogin" class="glass-card p-4 space-y-3 hidden">
+            <div class="text-center pb-1">
+                <span class="text-2xl">🔑</span>
+                <h3 class="text-xs font-bold text-white mt-1" data-i18n="loginHeader">Tizimga Kirish</h3>
+                <p class="text-[10px] text-slate-400" data-i18n="loginSub">Avval ro'yxatdan o'tgan parolingizni kiriting</p>
+            </div>
+
+            <div>
+                <label class="text-[11px] font-bold text-slate-300 block mb-1" data-i18n="loginUsernameLabel">Telegram Usernamesi</label>
+                <input type="text" id="loginUsername" placeholder="@ota_ona_username" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+            </div>
+
+            <div>
+                <label class="text-[11px] font-bold text-slate-300 block mb-1" data-i18n="loginPasswordLabel">Parol</label>
+                <input type="password" id="loginPassword" placeholder="••••••••" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+            </div>
+
+            <div id="loginErrorMsg" class="hidden p-2 rounded-lg bg-rose-500/10 border border-rose-500/30 text-[10px] text-rose-400 font-medium"></div>
+
+            <button onclick="handleParentLogin()" class="w-full py-2.5 bg-sky-500 hover:bg-sky-600 text-white font-bold text-xs rounded-xl transition shadow-lg shadow-sky-500/20" data-i18n="btnSubmitLogin">
+                🚀 Kirish
+            </button>
+        </div>
+    </div>
+
+    <!-- ⏳ MODAL: ADMIN TASDIG'I KUTILMOQDA -->
+    <div id="modal-approval-notice" class="subpage-modal space-y-4">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+            <button onclick="closeSubpage()" class="text-xs font-bold text-emerald-400" data-i18n="backBtn">← Orqaga</button>
+            <h2 class="text-xs font-bold text-white" data-i18n="approvalNoticeTitle">Admin Tasdig'i Kutilmoqda</h2>
+            <span class="w-8"></span>
+        </div>
+
+        <div class="glass-card p-5 text-center space-y-3">
+            <span class="text-4xl">⏳</span>
+            <h3 class="text-sm font-bold text-white" data-i18n="approvalNoticeHeader">So'rovingiz Administrator Ko'rib Chiqishida</h3>
+            <p class="text-[11px] text-slate-300 leading-relaxed" data-i18n="approvalNoticeDesc">
+                Siz hozirda <b>Test / Demo</b> rejimidan foydalanmoqdasiz. Barcha bo'limlar (Radar, AI, e-Maktab) siz uchun ko'rishga ochiq.
+                <br><br>
+                Haqiqiy farzand ma'lumotlarini saqlash va qurilmani ulash administrator ruxsat berganidan so'ng faollashadi.
+            </p>
+
+            <div class="p-3 rounded-xl bg-slate-900/80 border border-amber-500/30 text-[10px] text-amber-300">
+                🔔 Adminga so'rov yuborilgan. Tasdiqlanishi bilan Telegramingizga bildirishnoma boradi.
+            </div>
+
+            <button onclick="closeSubpage()" class="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-xl transition">
+                🧪 Test Rejimida Davom Etish
+            </button>
+        </div>
+    </div>
 
     <!-- 👶 MODAL: FARZAND PROFILINI TAHRIRLASH -->
     <div id="modal-child-profile" class="subpage-modal space-y-4">

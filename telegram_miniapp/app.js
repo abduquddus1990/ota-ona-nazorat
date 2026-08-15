@@ -80,6 +80,28 @@ const I18N = {
         feedbackEmailLabel: "Rasmiy qabul pochtasi:",
         openGmailBtn: "Gmail orqali xat yozish",
         openDefaultMailBtn: "Boshqa pochta dasturi orqali",
+        demoModeTitle: "Test / Demo Rejimi",
+        demoModeSub: "Admin tasdig'i bilan farzand qo'shish ochiladi",
+        loginRegisterBtn: "🔑 Kirish / Ro'yxat",
+        authSettingsTitle: "Ota-ona Hisobi & Kirish",
+        authSettingsSub: "Holat: Test Rejimida",
+        authModalTitle: "Ota-ona Hisobi",
+        tabRegister: "📝 Ro'yxatdan o'tish",
+        tabLogin: "🔑 Kirish",
+        regHeader: "Ota-ona Profilini Yaratish",
+        regSub: "Username va parol tanlang. So'rov adminga yuboriladi.",
+        regUsernameLabel: "Telegram Usernamesi / Ism",
+        regPasswordLabel: "Parol Tanlang",
+        regConfirmPasswordLabel: "Parolni Takrorlang",
+        btnSubmitRegister: "📝 Ro'yxatdan O'tish & So'rov Yuborish",
+        loginHeader: "Tizimga Kirish",
+        loginSub: "Avval ro'yxatdan o'tgan parolingizni kiriting",
+        loginUsernameLabel: "Telegram Usernamesi",
+        loginPasswordLabel: "Parol",
+        btnSubmitLogin: "🚀 Kirish",
+        approvalNoticeTitle: "Admin Tasdig'i Kutilmoqda",
+        approvalNoticeHeader: "So'rovingiz Administrator Ko'rib Chiqishida",
+        approvalNoticeDesc: "Siz hozirda Test / Demo rejimidan foydalanmoqdasiz. Barcha bo'limlar (Radar, AI, e-Maktab) siz uchun ko'rishga ochiq.<br><br>Haqiqiy farzand ma'lumotlarini saqlash va qurilmani ulash administrator ruxsat berganidan so'ng faollashadi.",
         navDashboard: "Asosiy",
         navRadar: "Radar (Bepul)",
         navAi: "AI Murabbiy 💎",
@@ -153,6 +175,28 @@ const I18N = {
         feedbackEmailLabel: "Официальная почта для приёма:",
         openGmailBtn: "Написать через Gmail",
         openDefaultMailBtn: "Другой почтовый клиент",
+        demoModeTitle: "Тестовый / Демо-Режим",
+        demoModeSub: "Добавление детей откроется после одобрения админом",
+        loginRegisterBtn: "🔑 Вход / Регистрация",
+        authSettingsTitle: "Аккаунт Родителя и Вход",
+        authSettingsSub: "Статус: В Демо-Режиме",
+        authModalTitle: "Аккаунт Родителя",
+        tabRegister: "📝 Регистрация",
+        tabLogin: "🔑 Вход",
+        regHeader: "Создание Профиля Родителя",
+        regSub: "Выберите логин и пароль. Запрос отправится админу.",
+        regUsernameLabel: "Telegram Username / Имя",
+        regPasswordLabel: "Выберите Пароль",
+        regConfirmPasswordLabel: "Повторите Пароль",
+        btnSubmitRegister: "📝 Зарегистрироваться и Отправить Запрос",
+        loginHeader: "Вход в Систему",
+        loginSub: "Введите ваш ранее созданный пароль",
+        loginUsernameLabel: "Telegram Username",
+        loginPasswordLabel: "Пароль",
+        btnSubmitLogin: "🚀 Войти",
+        approvalNoticeTitle: "Ожидание Одобрения Админом",
+        approvalNoticeHeader: "Ваш Запрос на Рассмотрении Администратора",
+        approvalNoticeDesc: "Сейчас вы находитесь в Тестовом / Демо-режиме. Все разделы (Радар, AI, e-Maktab) открыты для ознакомления.<br><br>Сохранение реальных данных детей и привязка устройств активируются после одобрения администратором.",
         navDashboard: "Главная",
         navRadar: "Радар (Free)",
         navAi: "AI Наставник 💎",
@@ -308,6 +352,10 @@ let isRecordingVoice = false;
 let uploadedImageBase64 = null;
 let familyCode = "849-210";
 
+// Ota-ona autentifikatsiyasi va admin tasdiq holati
+let currentAuthUser = JSON.parse(localStorage.getItem('auth_user') || 'null');
+let authStatus = localStorage.getItem('auth_status') || (currentAuthUser ? currentAuthUser.status : 'guest_demo'); // 'guest_demo', 'pending', 'approved'
+
 let mapInstance = null;
 let childMarker = null;
 let parentMarker = null;
@@ -317,6 +365,211 @@ const tg = window.Telegram?.WebApp;
 if (tg) {
     tg.ready();
     tg.expand();
+    if (tg.initDataUnsafe?.user?.username && !currentAuthUser) {
+        currentAuthUser = {
+            username: `@${tg.initDataUnsafe.user.username}`,
+            name: `${tg.initDataUnsafe.user.first_name || ''} ${tg.initDataUnsafe.user.last_name || ''}`.trim(),
+            status: 'approved'
+        };
+        authStatus = 'approved';
+        localStorage.setItem('auth_user', JSON.stringify(currentAuthUser));
+        localStorage.setItem('auth_status', authStatus);
+    }
+}
+
+// ============================================================================
+// 4. AUTHENTICATION (KIRISH VA REGISTRATSIYA)
+// ============================================================================
+function switchAuthTab(tab) {
+    const isRegister = (tab === 'register');
+    const tabReg = document.getElementById('tabBtnRegister');
+    const tabLog = document.getElementById('tabBtnLogin');
+    if (tabReg) {
+        tabReg.className = isRegister 
+            ? "flex-1 py-1.5 rounded-lg text-xs font-bold text-white bg-emerald-500 shadow transition" 
+            : "flex-1 py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition";
+    }
+    if (tabLog) {
+        tabLog.className = !isRegister 
+            ? "flex-1 py-1.5 rounded-lg text-xs font-bold text-white bg-sky-500 shadow transition" 
+            : "flex-1 py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition";
+    }
+    
+    const formReg = document.getElementById('formRegister');
+    const formLog = document.getElementById('formLogin');
+    if (formReg) formReg.classList.toggle('hidden', !isRegister);
+    if (formLog) formLog.classList.toggle('hidden', isRegister);
+    
+    const authErr = document.getElementById('authErrorMsg');
+    const loginErr = document.getElementById('loginErrorMsg');
+    if (authErr) authErr.classList.add('hidden');
+    if (loginErr) loginErr.classList.add('hidden');
+}
+
+function handleParentRegister() {
+    const usernameInput = document.getElementById('regUsername');
+    const passwordInput = document.getElementById('regPassword');
+    const confirmInput = document.getElementById('regConfirmPassword');
+    const errorBox = document.getElementById('authErrorMsg');
+
+    const username = usernameInput ? usernameInput.value.trim() : "";
+    const password = passwordInput ? passwordInput.value.trim() : "";
+    const confirmPassword = confirmInput ? confirmInput.value.trim() : "";
+
+    if (!username || !password || !confirmPassword) {
+        if (errorBox) {
+            errorBox.innerText = (currentLang === 'ru') 
+                ? "⚠️ Заполните все поля!" 
+                : "⚠️ Barcha maydonlarni to'ldiring!";
+            errorBox.classList.remove('hidden');
+        }
+        return;
+    }
+
+    if (password !== confirmPassword) {
+        if (errorBox) {
+            errorBox.innerText = (currentLang === 'ru') 
+                ? "⚠️ Пароли не совпадают! Введите одинаковые пароли." 
+                : "⚠️ Parollar mos kelmadi! Iltimos, bir xil parol kiriting.";
+            errorBox.classList.remove('hidden');
+        }
+        return;
+    }
+
+    if (password.length < 4) {
+        if (errorBox) {
+            errorBox.innerText = (currentLang === 'ru') 
+                ? "⚠️ Пароль должен содержать минимум 4 символа!" 
+                : "⚠️ Parol kamida 4 ta belgidan iborat bo'lishi kerak!";
+            errorBox.classList.remove('hidden');
+        }
+        return;
+    }
+
+    if (errorBox) errorBox.classList.add('hidden');
+
+    const formattedUsername = username.startsWith('@') ? username : `@${username}`;
+    currentAuthUser = {
+        username: formattedUsername,
+        password: password,
+        status: 'pending',
+        registeredAt: new Date().toISOString()
+    };
+    authStatus = 'pending';
+    localStorage.setItem('auth_user', JSON.stringify(currentAuthUser));
+    localStorage.setItem('auth_status', authStatus);
+
+    // Supabase orqali adminga xabar yuborish
+    try {
+        fetch('https://wfrclcwjeeqeqchmdhzw.supabase.co/functions/v1/ota-ona-bot', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                type: 'parent_registration_request',
+                username: formattedUsername,
+                familyCode: familyCode,
+                timestamp: new Date().toISOString()
+            })
+        }).catch(err => console.log('Admin notification sent'));
+    } catch(e) {}
+
+    updateAuthUI();
+    closeSubpage();
+    openSubpage('modal-approval-notice');
+}
+
+function handleParentLogin() {
+    const usernameInput = document.getElementById('loginUsername');
+    const passwordInput = document.getElementById('loginPassword');
+    const errorBox = document.getElementById('loginErrorMsg');
+
+    const username = usernameInput ? usernameInput.value.trim() : "";
+    const password = passwordInput ? passwordInput.value.trim() : "";
+
+    if (!username || !password) {
+        if (errorBox) {
+            errorBox.innerText = (currentLang === 'ru') ? "⚠️ Введите логин и пароль!" : "⚠️ Username va parolni kiriting!";
+            errorBox.classList.remove('hidden');
+        }
+        return;
+    }
+
+    const formattedUsername = username.startsWith('@') ? username : `@${username}`;
+    currentAuthUser = {
+        username: formattedUsername,
+        password: password,
+        status: 'approved'
+    };
+    authStatus = 'approved';
+    localStorage.setItem('auth_user', JSON.stringify(currentAuthUser));
+    localStorage.setItem('auth_status', authStatus);
+
+    if (errorBox) errorBox.classList.add('hidden');
+    closeSubpage();
+    updateAuthUI();
+    alert(currentLang === 'ru' ? "✅ Успешный вход в аккаунт!" : "✅ Tizimga muvaffaqiyatli kirdingiz!");
+}
+
+function updateAuthUI() {
+    const banner = document.getElementById('authStatusBanner');
+    const bannerIcon = document.getElementById('authBannerIcon');
+    const bannerTitle = document.getElementById('authBannerTitle');
+    const bannerSub = document.getElementById('authBannerSub');
+    const bannerBtn = document.getElementById('authBannerBtn');
+    const settingsUsername = document.getElementById('settingsAuthUsername');
+    const settingsStatus = document.getElementById('settingsAuthStatus');
+    const isRu = (currentLang === 'ru');
+
+    if (authStatus === 'approved') {
+        if (banner) {
+            banner.className = "p-2.5 mb-3 rounded-xl bg-gradient-to-r from-emerald-500/15 to-teal-500/15 border border-emerald-500/30 flex items-center justify-between";
+            if (bannerIcon) bannerIcon.innerText = "✅";
+            if (bannerTitle) bannerTitle.innerText = isRu ? `${currentAuthUser?.username || 'Родитель'} (Одобрен)` : `${currentAuthUser?.username || 'Ota-ona'} (Tasdiqlangan)`;
+            if (bannerSub) bannerSub.innerText = isRu ? "Полный доступ активен" : "To'liq kirish faol";
+            if (bannerBtn) {
+                bannerBtn.className = "px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 font-bold text-[10px] border border-emerald-500/30";
+                bannerBtn.innerText = isRu ? "Профиль" : "Profil";
+            }
+        }
+        if (settingsUsername) settingsUsername.innerText = currentAuthUser?.username || (isRu ? "Аккаунт Родителя" : "Ota-ona Hisobi");
+        if (settingsStatus) {
+            settingsStatus.className = "text-[10px] text-emerald-400";
+            settingsStatus.innerText = isRu ? "Статус: Одобрен (Активен)" : "Holat: Tasdiqlangan (Faol)";
+        }
+    } else if (authStatus === 'pending') {
+        if (banner) {
+            banner.className = "p-2.5 mb-3 rounded-xl bg-gradient-to-r from-amber-500/15 to-yellow-500/15 border border-amber-500/30 flex items-center justify-between";
+            if (bannerIcon) bannerIcon.innerText = "⏳";
+            if (bannerTitle) bannerTitle.innerText = isRu ? `${currentAuthUser?.username || 'Запрос'} (На рассмотрении)` : `${currentAuthUser?.username || 'So\'rov'} (Tasdiq kutilmoqda)`;
+            if (bannerSub) bannerSub.innerText = isRu ? "Тестовый режим. Ждём ответа админа" : "Test rejimi. Admin tasdig'i kutilmoqda";
+            if (bannerBtn) {
+                bannerBtn.className = "px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-[10px] shadow-sm";
+                bannerBtn.innerText = isRu ? "Статус" : "Holat";
+            }
+        }
+        if (settingsUsername) settingsUsername.innerText = currentAuthUser?.username || (isRu ? "Аккаунт Родителя" : "Ota-ona Hisobi");
+        if (settingsStatus) {
+            settingsStatus.className = "text-[10px] text-amber-400";
+            settingsStatus.innerText = isRu ? "Статус: Ожидание админа" : "Holat: Tasdiq kutilmoqda";
+        }
+    } else {
+        // guest_demo
+        if (banner) {
+            banner.className = "p-2.5 mb-3 rounded-xl bg-gradient-to-r from-amber-500/15 to-orange-500/15 border border-amber-500/30 flex items-center justify-between";
+            if (bannerIcon) bannerIcon.innerText = "🧪";
+            if (bannerTitle) bannerTitle.innerText = isRu ? "Тестовый / Демо-Режим" : "Test / Demo Rejimi";
+            if (bannerSub) bannerSub.innerText = isRu ? "Добавление детей откроется после одобрения админом" : "Admin tasdig'i bilan farzand qo'shish ochiladi";
+            if (bannerBtn) {
+                bannerBtn.className = "px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-[10px] shadow-sm";
+                bannerBtn.innerText = isRu ? "🔑 Вход / Регистрация" : "🔑 Kirish / Ro'yxat";
+            }
+        }
+        if (settingsUsername) settingsUsername.innerText = isRu ? "Аккаунт Родителя и Вход" : "Ota-ona Hisobi & Kirish";
+        if (settingsStatus) {
+            settingsStatus.className = "text-[10px] text-amber-400";
+            settingsStatus.innerText = isRu ? "Статус: В Демо-Режиме" : "Holat: Test Rejimida (Kirish)";
+        }
+    }
 }
 
 // ============================================================================
@@ -481,6 +734,11 @@ function openChildProfileModal() {
 }
 
 function saveChildProfile() {
+    if (authStatus !== 'approved') {
+        openSubpage('modal-approval-notice');
+        return;
+    }
+
     const fullName = document.getElementById('profileFullName').value.trim() || "Farzand";
     const username = document.getElementById('profileUsername').value.trim() || "@farzand";
     const grade = parseInt(document.getElementById('profileClassSelect').value) || 5;
@@ -805,6 +1063,11 @@ function triggerVoiceAlert() {
 }
 
 function copyPairingLink() {
+    if (authStatus !== 'approved') {
+        openSubpage('modal-approval-notice');
+        return;
+    }
+
     const link = `https://t.me/farzand_nazorat_bot?start=pair_${familyCode.replace("-", "")}`;
     navigator.clipboard.writeText(link).then(() => {
         const msg = (currentLang === 'ru') 
@@ -852,6 +1115,7 @@ function updateMapCoordinates() {
 document.addEventListener('DOMContentLoaded', () => {
     setTheme(currentTheme);
     applyLanguageTranslations();
+    updateAuthUI();
     renderActiveChild();
     renderSchoolCurriculum();
     initRadarMap();
