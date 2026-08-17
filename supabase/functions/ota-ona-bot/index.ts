@@ -1,7 +1,8 @@
 // supabase/functions/ota-ona-bot/index.ts
 //
 // SHIELD PARENTAL GUARD — ADVANCED 24/7 SUPABASE SERVERLESS BOT
-// Admin: @ai_loyihachi / @mirkamolov13, Child Status Alerts, Auto Approval Workflow, Zero Location Demands.
+// Multi-Admin / Partner Management (@ai_loyihachi & partners), HTML Parse Mode (Zero parsing errors),
+// Child Status Alerts, Zero Location Demands, and Instant Approval Workflow.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
@@ -9,8 +10,8 @@ const BOT_TOKEN = Deno.env.get("BOT_TOKEN") || "8992925094:AAE5K1N8VVxiCh9P6H1j7
 const MINI_APP_URL = Deno.env.get("MINI_APP_URL") || "https://abduquddus1990.github.io/ota-ona-nazorat/?v=3.0";
 const TELEGRAM_API = `https://api.telegram.org/bot${BOT_TOKEN}`;
 
-// Dynamic Admin IDs Store & Known Admin Usernames
-const ADMIN_USERNAMES = ["ai_loyihachi", "mirkamolov13"];
+// Dynamic Admin IDs Store & Known Admin Usernames (Sheriklar ro'yxati)
+const ADMIN_USERNAMES = new Set<string>(["ai_loyihachi", "mirkamolov13"]);
 const ADMIN_CHAT_IDS = new Set<string | number>();
 const USER_LANG: Record<string | number, string> = {};
 const USER_APPROVAL_STATUS: Record<string, "pending" | "approved" | "rejected"> = {};
@@ -20,21 +21,30 @@ function generateFamilyCode(userId: string | number): string {
   return `${String(num).slice(0, 3)}-${String(num).slice(3, 6)}`;
 }
 
-async function sendMessage(chatId: number | string, text: string, replyMarkup?: any) {
+async function sendMessage(chatId: number | string, htmlText: string, replyMarkup?: any) {
   const payload: any = {
     chat_id: chatId,
-    text: text,
-    parse_mode: "Markdown",
+    text: htmlText,
+    parse_mode: "HTML",
   };
   if (replyMarkup) {
     payload.reply_markup = replyMarkup;
   }
 
-  await fetch(`${TELEGRAM_API}/sendMessage`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
+  try {
+    const res = await fetch(`${TELEGRAM_API}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const result = await res.json();
+    if (!result.ok) {
+      console.error(`Telegram sendMessage xatolik [Chat: ${chatId}]:`, result);
+    }
+    return result;
+  } catch (err) {
+    console.error(`Telegram fetch exception [Chat: ${chatId}]:`, err);
+  }
 }
 
 async function answerCallbackQuery(callbackQueryId: string, text?: string) {
@@ -45,64 +55,70 @@ async function answerCallbackQuery(callbackQueryId: string, text?: string) {
   });
 }
 
-async function notifyAdmins(text: string, replyMarkup?: any) {
+async function notifyAdmins(htmlText: string, replyMarkup?: any) {
   for (const adminId of ADMIN_CHAT_IDS) {
     try {
-      await sendMessage(adminId, text, replyMarkup);
+      await sendMessage(adminId, htmlText, replyMarkup);
     } catch (e) {
       console.error(`Admin ${adminId} ga xabar yuborishda xato:`, e);
     }
   }
 }
 
-// BILINGUAL TEXT TEMPLATES (UZ / RU)
+// BILINGUAL TEXT TEMPLATES (HTML MODE)
 function getStartMenuText(userId: string | number, lang: string = "uz", isApproved: boolean = false, isAdmin: boolean = false): string {
   const code = generateFamilyCode(userId);
 
   if (isAdmin) {
-    return `👑 *SHIELD PARENTAL GUARD — ADMINISTRATOR BOSHQARUV PANELI*
+    return `👑 <b>SHIELD PARENTAL GUARD — ADMINISTRATOR PANELI</b>
 
-Assalomu alaykum, hurmatli Administrator (*@ai_loyihachi*)!
+Assalomu alaykum, hurmatli Boshqaruvchi / Hamkor!
 
-🔑 *Sizning admin ID:* \`${userId}\`
-🔔 *Barcha yangi foydalanuvchilar va farzandlar so'rovlari to'g'ridan-to'g'ri shu yerga keladi.*
+🔑 <b>Sizning Admin ID:</b> <code>${userId}</code>
+🛡️ <b>Huquq darajasi:</b> To'liq Boshqaruv (Administrator)
+🔔 <i>Barcha yangi ota-onalar va farzandlar so'rovlari ushbu chatga keladi.</i>
 
-Quyidagi tugma orqali boshqaruv panelini to'liq rejimda ochishingiz mumkin:`;
+<b>Sheriklar boshqaruvi:</b>
+• <code>/addadmin @username</code> — Yangi sherikka admin huquqini berish
+• <code>/removeadmin @username</code> — Sherik huquqini bekor qilish
+• <code>/admins</code> — Barcha administratorlar ro'yxati
+
+Quyidagi tugma orqali boshqaruv panelini to'liq ochishingiz mumkin:`;
   }
 
   if (lang === "ru") {
     const statusNote = isApproved 
-      ? "✅ *Ваш аккаунт подтвержден администратором!*" 
-      : "⏳ *Статус:* Запрос отправлен администратору (@ai_loyihachi). До одобрения доступен **Тестовый / Демо-режим**.";
+      ? "✅ <b>Ваш аккаунт подтвержден администратором!</b>" 
+      : "⏳ <b>Статус:</b> Запрос отправлен администраторам. До одобрения доступен <b>Тестовый / Демо-режим</b>.";
 
-    return `🛡️ *SHIELD PARENTAL GUARD — ЦЕНТР РОДИТЕЛЬСКОГО КОНТРОЛЯ*
+    return `🛡️ <b>SHIELD PARENTAL GUARD — ЦЕНТР РОДИТЕЛЬСКОГО КОНТРОЛЯ</b>
 
 Добро пожаловать! Безопасность, школьные предметы и цифровые привычки вашего ребёнка под защитой 24/7.
 
 ${statusNote}
 
-🔑 *Ваш семейный код:* \`${code}\`
-📍 *Онлайн-радар и локация:* **Бесплатно**
-💎 *Pro Версия (AI & e-Maktab 100 баллов):* **10,000 сум/мес (за 1 ребёнка)**
-⚠️ *Примечание:* В будущем для бесплатной версии также может быть введена минимальная плата для поддержания серверов.
+🔑 <b>Ваш семейный код:</b> <code>${code}</code>
+📍 <b>Онлайн-радар и локация:</b> <b>Бесплатно</b>
+💎 <b>Pro Версия (AI & e-Maktab 100 баллов):</b> <b>10,000 сум/мес (за 1 ребёнка)</b>
+⚠️ <i>Примечание: В будущем для бесплатной версии также может быть введена минимальная плата для поддержания серверов.</i>
 
 Выберите нужный раздел:`;
   }
 
   const statusNote = isApproved
-    ? "✅ *Sizning hisobingiz administrator tomonidan tasdiqlangan!*"
-    : "⏳ *Holat:* Administratorga (@ai_loyihachi) so'rov yuborilgan. Tasdiqlanguniga qadar tizim **Test / Demo rejimida** ishlaydi.";
+    ? "✅ <b>Sizning hisobingiz administrator tomonidan tasdiqlangan!</b>"
+    : "⏳ <b>Holat:</b> Administratorlarga so'rov yuborilgan. Tasdiqlanguniga qadar tizim <b>Test / Demo rejimida</b> ishlaydi.";
 
-  return `🛡️ *SHIELD PARENTAL GUARD — OTA-ONA BOSHQARUV MARKAZI*
+  return `🛡️ <b>SHIELD PARENTAL GUARD — OTA-ONA BOSHQARUV MARKAZI</b>
 
 Assalomu alaykum! Farzandingizning xavfsizligi, darsliklari va raqamli odatlari 24/7 doimiy nazorat ostida.
 
 ${statusNote}
 
-🔑 *Sizning oila kodingiz:* \`${code}\`
-📍 *Jonli lokatsiya va radar:* **100% BEPUL**
-💎 *Pro Versiya (AI & 100 ballik e-Maktab):* **10,000 so'm/oy (har bir bola uchun)**
-⚠️ *Eslatma:* Kelajakda sifat va barqarorlikni ta'minlash uchun bepul versiyaga ham ramziy to'lov kiritilishi mumkin.
+🔑 <b>Sizning oila kodingiz:</b> <code>${code}</code>
+📍 <b>Jonli lokatsiya va radar:</b> <b>100% BEPUL</b>
+💎 <b>Pro Versiya (AI & 100 ballik e-Maktab):</b> <b>10,000 so'm/oy (har bir bola uchun)</b>
+⚠️ <i>Eslatma: Kelajakda sifat va barqarorlikni ta'minlash uchun bepul versiyaga ham ramziy to'lov kiritilishi mumkin.</i>
 
 Quyidagi bo'limlardan birini tanlang:`;
 }
@@ -156,77 +172,29 @@ function getPairingText(userId: string | number, lang: string = "uz", isApproved
   
   if (!isApproved) {
     if (lang === "ru") {
-      return `⏳ *ОЖИДАНИЕ ОДОБРЕНИЯ АДМИНИСТРАТОРОМ:*
-
-Ваш аккаунт находится на рассмотрении. После того как администратор (@ai_loyihachi) подтвердит ваш профиль, вы сможете подключить реальное устройство ребёнка.
-В настоящее время вам доступен **Тестовый / Демо-режим** панели.`;
+      return `⏳ <b>ОЖИДАНИЕ ОДОБРЕНИЯ АДМИНИСТРАТОРАМИ:</b>\n\nВаш аккаунт находится на рассмотрении. После подтверждения вы сможете подключить реальное устройство ребёнка.\nВ настоящее время вам доступен <b>Тестовый / Демо-режим</b> панели.`;
     }
-    return `⏳ *ADMINISTRATOR TASDIG'I KUTILMOQDA:*
-
-Sizning profilingiz ko'rib chiqish jarayonida. Administrator (@ai_loyihachi) ruxsat berganidan so'ng farzand qurilmasini ulashingiz mumkin bo'ladi.
-Hozirda siz uchun boshqaruv paneli **Test / Demo rejimida** to'liq ochiq.`;
+    return `⏳ <b>ADMINISTRATOR TASDIG'I KUTILMOQDA:</b>\n\nSizning profilingiz ko'rib chiqish jarayonida. Administrator ruxsat berganidan so'ng farzand qurilmasini ulashingiz mumkin bo'ladi.\nHozirda siz uchun boshqaruv paneli <b>Test / Demo rejimida</b> to'liq ochiq.`;
   }
 
   if (lang === "ru") {
-    return `🔗 *АВТОМАТИЧЕСКОЕ ПОДКЛЮЧЕНИЕ РЕБЁНКА:*
-
-1. Перешлите эту ссылку ребёнку в Telegram:
-👉 ${pairLink}
-
-2. Или в Android-приложении введите код:
-🔑 **\`${code}\`**
-
-Ребёнок подключится автоматически!`;
+    return `🔗 <b>АВТОМАТИЧЕСКОЕ ПОДКЛЮЧЕНИЕ РЕБЁНКА:</b>\n\n1. Перешлите эту ссылку ребёнку в Telegram:\n👉 ${pairLink}\n\n2. Или в Android-приложении введите код:\n🔑 <b><code>${code}</code></b>\n\nРебёнок подключится автоматически!`;
   }
-  return `🔗 *FARZANDNI AVTOMATIK ULASH YO'RIQNOMASI:*
-
-1. Quyidagi havolani farzandingizga Telegram orqali yuboring:
-👉 ${pairLink}
-
-2. Yoki Android mobil ilovasida ushbu kodni kiriting:
-🔑 **\`${code}\`**
-
-Farzand profilingizga muvaffaqiyatli bog'lanadi!`;
+  return `🔗 <b>FARZANDNI AVTOMATIK ULASH YO'RIQNOMASI:</b>\n\n1. Quyidagi havolani farzandingizga Telegram orqali yuboring:\n👉 ${pairLink}\n\n2. Yoki Android mobil ilovasida ushbu kodni kiriting:\n🔑 <b><code>${code}</code></b>\n\nFarzand profilingizga muvaffaqiyatli bog'lanadi!`;
 }
 
 function getReelsAnalysisText(lang: string = "uz"): string {
   if (lang === "ru") {
-    return `🎬 *АНАЛИЗ ПРОСМОТРЕННЫХ REELS И ВИДЕО:*
-
-📊 *Распределение по темам:*
-• 💻 *Образование и IT (Python, Робототехника, Языки):* 45% (Полезно)
-• 🔬 *Научные эксперименты и Логика:* 25% (Положительно)
-• 🎮 *Развлечения и Игры:* 30% (В норме)
-
-💡 *Рекомендация:* Чтобы алгоритм чаще рекомендовал обучающие видео, подпишитесь на полезные каналы по школьным предметам.`;
+    return `🎬 <b>АНАЛИЗ ПРОСМОТРЕННЫХ REELS И ВИДЕО:</b>\n\n📊 <b>Распределение по темам:</b>\n• 💻 <b>Образование и IT (Python, Робототехника, Языки):</b> 45% (Полезно)\n• 🔬 <b>Научные эксперименты и Логика:</b> 25% (Положительно)\n• 🎮 <b>Развлечения и Игры:</b> 30% (В норме)\n\n💡 <b>Рекомендация:</b> Чтобы алгоритм чаще рекомендовал обучающие видео, подпишитесь на полезные каналы по школьным предметам.`;
   }
-  return `🎬 *KO'RILAYOTGAN REELS VA VIDEO KONTENT TAHLILI:*
-
-📊 *Mavzular taqsimoti:*
-• 💻 *Ta'limiy & IT (Python, Robototexnika, Chet tili):* 45% (Foydali va rivojlantiruvchi)
-• 🔬 *Ilmiy tajribalar & Mantiqiy jumboqlar:* 25% (Ijobiy tendensiya)
-• 🎮 *Ko'ngilochar va o'yin strimlari:* 30% (Me'yorida)
-
-💡 *Tavsiya:* Algoritm ko'proq ta'limiy videolarni tavsiya qilishi uchun fanlar bo'yicha foydalanuvchi kanallariga obuna bo'lishni yo'lga qo'ying.`;
+  return `🎬 <b>KO'RILAYOTGAN REELS VA VIDEO KONTENT TAHLILI:</b>\n\n📊 <b>Mavzular taqsimoti:</b>\n• 💻 <b>Ta'limiy & IT (Python, Robototexnika, Chet tili):</b> 45% (Foydali va rivojlantiruvchi)\n• 🔬 <b>Ilmiy tajribalar & Mantiqiy jumboqlar:</b> 25% (Ijobiy tendensiya)\n• 🎮 <b>Ko'ngilochar va o'yin strimlari:</b> 30% (Me'yorida)\n\n💡 <b>Tavsiya:</b> Algoritm ko'proq ta'limiy videolarni tavsiya qilishi uchun fanlar bo'yicha foydalanuvchi kanallariga obuna bo'lishni yo'lga qo'ying.`;
 }
 
 function getFeedbackText(lang: string = "uz"): string {
   if (lang === "ru") {
-    return `💡 *ОТЗЫВЫ И ПРЕДЛОЖЕНИЯ:*
-
-Ваше мнение очень важно для нас! Отправьте свои предложения по улучшению программы разработчикам:
-
-📬 *Официальная почта:* \`alhamdulillah@tmail.ton\`
-
-👉 [Написать письмо через Gmail](https://mail.google.com/mail/?view=cm&fs=1&to=alhamdulillah@tmail.ton&su=Shield+Parental+Guard+Taklif+va+Mulohaza)`;
+    return `💡 <b>ОТЗЫВЫ И ПРЕДЛОЖЕНИЯ:</b>\n\nВаше мнение очень важно для нас! Отправьте свои предложения по улучшению программы разработчикам:\n\n📬 <b>Официальная почта:</b> <code>alhamdulillah@tmail.ton</code>\n\n👉 <a href="https://mail.google.com/mail/?view=cm&fs=1&to=alhamdulillah@tmail.ton&su=Shield+Parental+Guard+Taklif+va+Mulohaza">Написать письмо через Gmail</a>`;
   }
-  return `💡 *TAKLIF VA FIKR-MULOHAZALAR:*
-
-Dasturni yanada yaxshilash bo'yicha takliflaringizni to'g'ridan-to'g'ri ishlab chiquvchilarga yuboring:
-
-📬 *Rasmiy qabul pochtasi:* \`alhamdulillah@tmail.ton\`
-
-👉 [Gmail orqali xat yozish](https://mail.google.com/mail/?view=cm&fs=1&to=alhamdulillah@tmail.ton&su=Shield+Parental+Guard+Taklif+va+Mulohaza)`;
+  return `💡 <b>TAKLIF VA FIKR-MULOHAZALAR:</b>\n\nDasturni yanada yaxshilash bo'yicha takliflaringizni to'g'ridan-to'g'ri ishlab chiquvchilarga yuboring:\n\n📬 <b>Rasmiy qabul pochtasi:</b> <code>alhamdulillah@tmail.ton</code>\n\n👉 <a href="https://mail.google.com/mail/?view=cm&fs=1&to=alhamdulillah@tmail.ton&su=Shield+Parental+Guard+Taklif+va+Mulohaza">Gmail orqali xat yozish</a>`;
 }
 
 serve(async (req) => {
@@ -244,13 +212,7 @@ serve(async (req) => {
       const username = payload.username || "@noma'lum";
       const familyCode = payload.familyCode || "849-210";
       
-      const adminNotice = `🔔 *YANGI OTA-ONA RO'YXATDAN O'TMOQCHI!*
-
-👤 *Username:* ${username}
-🔑 *Oila Kodi:* \`${familyCode}\`
-📅 *Vaqt:* ${new Date().toLocaleString("uz-UZ")}
-
-Ushbu foydalanuvchiga to'liq foydalanish (farzand qo'shish)ga ruxsat berasizmi?`;
+      const adminNotice = `🔔 <b>YANGI OTA-ONA RO'YXATDAN O'TMOQCHI!</b>\n\n👤 <b>Username:</b> ${username}\n🔑 <b>Oila Kodi:</b> <code>${familyCode}</code>\n📅 <b>Vaqt:</b> ${new Date().toLocaleString("uz-UZ")}\n\nUshbu foydalanuvchiga to'liq foydalanish (farzand qo'shish)ga ruxsat berasizmi?`;
 
       const approvalKeyboard = {
         inline_keyboard: [
@@ -270,14 +232,7 @@ Ushbu foydalanuvchiga to'liq foydalanish (farzand qo'shish)ga ruxsat berasizmi?`
       const familyCode = payload.familyCode || "849-210";
       const childName = payload.childName || "Farzand";
       
-      const alertMsg = `🎉 *FARZAND ROZILIK BILAN ULANDI!*
-
-👦 *Farzand:* ${childName}
-🔑 *Oila Kodi:* \`${familyCode}\`
-📅 *Vaqt:* ${new Date().toLocaleString("uz-UZ")}
-
-✨ Farzand barcha 4 ta qoidalar bilan tanishdi va ulanishga to'liq rozilik berdi.
-Endi jonli lokatsiya, darsliklar bahosi va qiziqishlar tahlili to'liq ishlaydi!`;
+      const alertMsg = `🎉 <b>FARZAND ROZILIK BILAN ULANDI!</b>\n\n👦 <b>Farzand:</b> ${childName}\n🔑 <b>Oila Kodi:</b> <code>${familyCode}</code>\n📅 <b>Vaqt:</b> ${new Date().toLocaleString("uz-UZ")}\n\n✨ Farzand barcha 4 ta qoidalar bilan tanishdi va ulanishga to'liq rozilik berdi.\nEndi jonli lokatsiya, darsliklar bahosi va qiziqishlar tahlili to'liq ishlaydi!`;
 
       await notifyAdmins(alertMsg);
       return new Response(JSON.stringify({ ok: true }), { status: 200 });
@@ -289,12 +244,7 @@ Endi jonli lokatsiya, darsliklar bahosi va qiziqishlar tahlili to'liq ishlaydi!`
       const statusText = payload.statusText || "Xabar keldi";
       const familyCode = payload.familyCode || "849-210";
 
-      const alertMsg = `📍 *FARZANDINGIZDAN TEZKOR XABAR!*
-
-👦 *Farzand:* ${childName}
-💬 *Xabar:* **${statusText}**
-🔑 *Oila Kodi:* \`${familyCode}\`
-📅 *Vaqt:* ${new Date().toLocaleString("uz-UZ")}`;
+      const alertMsg = `📍 <b>FARZANDINGIZDAN TEZKOR XABAR!</b>\n\n👦 <b>Farzand:</b> ${childName}\n💬 <b>Xabar:</b> <b>${statusText}</b>\n🔑 <b>Oila Kodi:</b> <code>${familyCode}</code>\n📅 <b>Vaqt:</b> ${new Date().toLocaleString("uz-UZ")}`;
 
       await notifyAdmins(alertMsg);
       return new Response(JSON.stringify({ ok: true }), { status: 200 });
@@ -309,7 +259,7 @@ Endi jonli lokatsiya, darsliklar bahosi va qiziqishlar tahlili to'liq ishlaydi!`
       const data = cb.data || "";
       const lang = USER_LANG[chatId] || "uz";
       const rawUsername = (cb.from.username || "").toLowerCase().replace("@", "");
-      const isAdmin = ADMIN_USERNAMES.includes(rawUsername);
+      const isAdmin = ADMIN_USERNAMES.has(rawUsername);
       if (isAdmin) ADMIN_CHAT_IDS.add(chatId);
 
       const userKey = `@${cb.from.username || cb.from.id}`;
@@ -322,7 +272,7 @@ Endi jonli lokatsiya, darsliklar bahosi va qiziqishlar tahlili to'liq ishlaydi!`
         const targetUsername = data.replace("admin_approve_", "");
         USER_APPROVAL_STATUS[targetUsername] = "approved";
         
-        await sendMessage(chatId, `✅ *Muvaffaqiyatli:* ${targetUsername} uchun tizimdan foydalanish va farzand qo'shishga to'liq ruxsat berildi!`);
+        await sendMessage(chatId, `✅ <b>Muvaffaqiyatli:</b> ${targetUsername} uchun tizimdan foydalanish va farzand qo'shishga to'liq ruxsat berildi!`);
         return new Response(JSON.stringify({ ok: true }), { status: 200 });
       }
 
@@ -330,7 +280,7 @@ Endi jonli lokatsiya, darsliklar bahosi va qiziqishlar tahlili to'liq ishlaydi!`
         const targetUsername = data.replace("admin_reject_", "");
         USER_APPROVAL_STATUS[targetUsername] = "rejected";
         
-        await sendMessage(chatId, `❌ *Rad etildi:* ${targetUsername} so'rovi rad etildi (Test rejimida qoladi).`);
+        await sendMessage(chatId, `❌ <b>Rad etildi:</b> ${targetUsername} so'rovi rad etildi (Test rejimida qoladi).`);
         return new Response(JSON.stringify({ ok: true }), { status: 200 });
       }
 
@@ -364,14 +314,55 @@ Endi jonli lokatsiya, darsliklar bahosi va qiziqishlar tahlili to'liq ishlaydi!`
     if (update.message) {
       const msg = update.message;
       const chatId = msg.chat.id;
-      const text = msg.text || "";
+      const text = (msg.text || "").trim();
       const lang = USER_LANG[chatId] || "uz";
       const rawUsername = (msg.from.username || "").toLowerCase().replace("@", "");
-      const isAdmin = ADMIN_USERNAMES.includes(rawUsername);
+      const isAdmin = ADMIN_USERNAMES.has(rawUsername);
       if (isAdmin) ADMIN_CHAT_IDS.add(chatId);
 
       const userKey = `@${msg.from.username || msg.from.id}`;
       const isApproved = USER_APPROVAL_STATUS[userKey] === "approved" || isAdmin;
+
+      // Sherik qo'shish komandasi: /addadmin @username
+      if (text.startsWith("/addadmin")) {
+        if (!isAdmin) {
+          await sendMessage(chatId, "⚠️ Bu buyruq faqat bosh administratorlar uchun!");
+          return new Response(JSON.stringify({ ok: true }), { status: 200 });
+        }
+        const parts = text.split(" ");
+        if (parts.length > 1) {
+          const target = parts[1].replace("@", "").toLowerCase().trim();
+          ADMIN_USERNAMES.add(target);
+          await sendMessage(chatId, `👑 <b>Yangi Hamkor / Admin qo'shildi:</b> @${target}\nEndi @${target} ham loyihani to'liq boshqarishi va so'rovlarni tasdiqlashi mumkin!`);
+        } else {
+          await sendMessage(chatId, "⚠️ Foydalanish: <code>/addadmin @sherik_username</code>");
+        }
+        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      }
+
+      // Sherikni o'chirish: /removeadmin @username
+      if (text.startsWith("/removeadmin")) {
+        if (!isAdmin) {
+          await sendMessage(chatId, "⚠️ Bu buyruq faqat bosh administratorlar uchun!");
+          return new Response(JSON.stringify({ ok: true }), { status: 200 });
+        }
+        const parts = text.split(" ");
+        if (parts.length > 1) {
+          const target = parts[1].replace("@", "").toLowerCase().trim();
+          ADMIN_USERNAMES.delete(target);
+          await sendMessage(chatId, `❌ <b>Admin huquqi olib tashlandi:</b> @${target}`);
+        } else {
+          await sendMessage(chatId, "⚠️ Foydalanish: <code>/removeadmin @sherik_username</code>");
+        }
+        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      }
+
+      // Barcha adminlar ro'yxati: /admins
+      if (text === "/admins") {
+        const list = Array.from(ADMIN_USERNAMES).map(u => `• @${u}`).join("\n");
+        await sendMessage(chatId, `👑 <b>Loyihani Boshqaruvchi Administratorlar va Sheriklar:</b>\n\n${list}\n\n<i>Yangi sherik qo'shish: /addadmin @username</i>`);
+        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      }
 
       // Admin tayinlash buyrug'i (/admin yoki /setadmin)
       if (text === "/admin" || text === "/setadmin" || isAdmin) {
@@ -383,8 +374,8 @@ Endi jonli lokatsiya, darsliklar bahosi va qiziqishlar tahlili to'liq ishlaydi!`
         if (text.includes("pair_")) {
           // Farzand juftlash havolasi orqali kirgan (hech qanday lokatsiya so'ralmaydi!)
           const reply = lang === "ru" 
-            ? "✅ Вы успешно привязаны к родительскому аккаунту! Все школьные предметы и функции активированы."
-            : "✅ Siz ota-onangizning profiliga muvaffaqiyatli bog'landingiz! Barcha darsliklar va imkoniyatlar faollashtirildi.";
+            ? "✅ <b>Вы успешно привязаны к родительскому аккаунту!</b> Все школьные предметы и функции активированы."
+            : "✅ <b>Siz ota-onangizning profiliga muvaffaqiyatli bog'landingiz!</b> Barcha darsliklar va imkoniyatlar faollashtirildi.";
           await sendMessage(chatId, reply);
           return new Response(JSON.stringify({ ok: true }), { status: 200 });
         }
@@ -395,15 +386,7 @@ Endi jonli lokatsiya, darsliklar bahosi va qiziqishlar tahlili to'liq ishlaydi!`
           const username = msg.from.username ? `@${msg.from.username}` : `ID: ${msg.from.id}`;
           const code = generateFamilyCode(chatId);
 
-          const adminAlert = `🔔 *YANGI FOYDALANUVCHI ULANMOQCHI!*
-
-👤 *Ism:* ${userFull}
-💬 *Username:* ${username}
-🆔 *Telegram ID:* \`${chatId}\`
-🔑 *Oila Kodi:* \`${code}\`
-📅 *Vaqt:* ${new Date().toLocaleString("uz-UZ")}
-
-Foydalanuvchiga to'liq foydalanish (farzand qo'shish)ga ruxsat berasizmi?`;
+          const adminAlert = `🔔 <b>YANGI FOYDALANUVCHI ULANMOQCHI!</b>\n\n👤 <b>Ism:</b> ${userFull}\n💬 <b>Username:</b> ${username}\n🆔 <b>Telegram ID:</b> <code>${chatId}</code>\n🔑 <b>Oila Kodi:</b> <code>${code}</code>\n📅 <b>Vaqt:</b> ${new Date().toLocaleString("uz-UZ")}\n\nFoydalanuvchiga to'liq foydalanish (farzand qo'shish)ga ruxsat berasizmi?`;
 
           const approveBtn = {
             inline_keyboard: [
@@ -434,8 +417,8 @@ Foydalanuvchiga to'liq foydalanish (farzand qo'shish)ga ruxsat berasizmi?`;
       // Rasm yoki skrinshot yuborilgan bo'lsa
       if (msg.photo) {
         const photoReply = lang === "ru"
-          ? "✅ *Скриншот принят!*\n\nВремя использования приложений и задания проанализированы. Данные синхронизированы с панелью управления."
-          : "✅ *Skrinshot qabul qilindi!*\n\n📱 Ilovalardan foydalanish vaqti va darslik topshiriqlari tahlil qilindi. Ma'lumotlar boshqaruv paneliga sinxronlashtirildi.";
+          ? "✅ <b>Скриншот принят!</b>\n\nВремя использования приложений и задания проанализированы. Данные синхронизированы с панелью управления."
+          : "✅ <b>Skrinshot qabul qilindi!</b>\n\n📱 Ilovalardan foydalanish vaqti va darslik topshiriqlari tahlil qilindi. Ma'lumotlar boshqaruv paneliga sinxronlashtirildi.";
         await sendMessage(chatId, photoReply);
         return new Response(JSON.stringify({ ok: true }), { status: 200 });
       }
@@ -443,16 +426,16 @@ Foydalanuvchiga to'liq foydalanish (farzand qo'shish)ga ruxsat berasizmi?`;
       // Ovozli xabar
       if (msg.voice) {
         const voiceReply = lang === "ru"
-          ? "🎙️ *Голосовое сообщение принято.*\n\nРекомендации по школьным предметам и цифровым привычкам синхронизированы."
-          : "🎙️ *Ovozli xabar qabul qilindi.*\n\nFarzandingizning darsliklarni o'zlashtirishi va raqamli odatlarini yaxshilash bo'yicha tavsiyalar sinxronlashtirildi.";
+          ? "🎙️ <b>Голосовое сообщение принято.</b>\n\nРекомендации по школьным предметам и цифровым привычкам синхронизированы."
+          : "🎙️ <b>Ovozli xabar qabul qilindi.</b>\n\nFarzandingizning darsliklarni o'zlashtirishi va raqamli odatlarini yaxshilash bo'yicha tavsiyalar sinxronlashtirildi.";
         await sendMessage(chatId, voiceReply);
         return new Response(JSON.stringify({ ok: true }), { status: 200 });
       }
 
       // Boshqa matnli savollar
       const generalReply = lang === "ru"
-        ? "💡 *Информация:* Оценки 100 баллов, школьные предметы 1-11 классов и онлайн-радар под защитой. Нажмите кнопку **«📊 Панель Родителя»** внизу слева."
-        : "💡 *Ma'lumot:* Farzandingizning 100 ballik baholari, 1-11 sinf DTS darsliklari va jonli joylashuvi nazorat ostida. Boshqaruv panelini ochish uchun ekranning pastki chap qismidagi **«📊 Ota-Ona Paneli»** tugmasini bosing.";
+        ? "💡 <b>Информация:</b> Оценки 100 баллов, школьные предметы 1-11 классов и онлайн-радар под защитой. Нажмите кнопку <b>«📊 Панель Родителя»</b> внизу слева."
+        : "💡 <b>Ma'lumot:</b> Farzandingizning 100 ballik baholari, 1-11 sinf DTS darsliklari va jonli joylashuvi nazorat ostida. Boshqaruv panelini ochish uchun ekranning pastki chap qismidagi <b>«📊 Ota-Ona Paneli»</b> tugmasini bosing.";
       await sendMessage(chatId, generalReply);
       return new Response(JSON.stringify({ ok: true }), { status: 200 });
     }
