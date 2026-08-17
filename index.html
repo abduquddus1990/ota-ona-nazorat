@@ -19,9 +19,23 @@
 <body class="p-3 max-w-md mx-auto relative antialiased">
 
     <!-- ==================================================================== -->
+    <!-- ROL TANLASH (PARENT VS CHILD ROLE SWITCHER) -->
+    <!-- ==================================================================== -->
+    <div class="glass-card p-1.5 mb-3 flex items-center justify-between gap-1.5 bg-slate-900/90 border border-slate-800 rounded-2xl">
+        <button onclick="switchAppRole('parent')" id="roleBtnParent" class="flex-1 py-1.5 px-2 rounded-xl text-xs font-bold text-white bg-emerald-500 shadow-md transition flex items-center justify-center gap-1.5">
+            <span>👨‍👩‍👧</span>
+            <span data-i18n="roleParent">Ota-ona Paneli</span>
+        </button>
+        <button onclick="switchAppRole('child')" id="roleBtnChild" class="flex-1 py-1.5 px-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white transition flex items-center justify-center gap-1.5">
+            <span>👦</span>
+            <span data-i18n="roleChild">Farzand Paneli</span>
+        </button>
+    </div>
+
+    <!-- ==================================================================== -->
     <!-- HEADER: Farzand Tanlash & Plan Statusi (Multi-Child & Plan Badge) -->
     <!-- ==================================================================== -->
-    <header class="glass-card p-3 mb-3 flex items-center justify-between">
+    <header id="mainParentHeader" class="glass-card p-3 mb-3 flex items-center justify-between">
         <div class="flex items-center gap-2.5">
             <!-- Farzand Avatari va Tahrirlash Tugmasi -->
             <div onclick="openChildProfileModal()" class="relative cursor-pointer group" title="Farzand profilini tahrirlash">
@@ -75,6 +89,134 @@
             🔑 Kirish / Ro'yxat
         </button>
     </div>
+
+    <!-- ==================================================================== -->
+    <!-- 👦 FARZAND PORTALI (CHILD DASHBOARD & ONBOARDING) -->
+    <!-- ==================================================================== -->
+    <main id="tab-child-portal" class="tab-content space-y-3.5 hidden">
+        <!-- Farzand Salomlashish Headeri -->
+        <section class="glass-card p-4 bg-gradient-to-br from-indigo-950/60 to-purple-950/60 border-indigo-500/40 relative overflow-hidden">
+            <div class="flex items-center gap-3">
+                <div class="w-12 h-12 rounded-2xl bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center text-2xl animate-bounce">
+                    🚀
+                </div>
+                <div>
+                    <h2 class="text-sm font-black text-white" data-i18n="childWelcomeTitle">Salom, Yosh Qahramon! 🌟</h2>
+                    <p class="text-[11px] text-indigo-300 mt-0.5" data-i18n="childWelcomeSub">Sening shaxsiy aqlli yordamching va xavfsizlik qalqoning</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 🎯 1-BAND: TIZIMNING MAQSADI (BOLA TILIDA) -->
+        <section class="glass-card p-4 space-y-2 border-emerald-500/30">
+            <div class="flex items-center gap-2">
+                <div class="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm font-bold">1</div>
+                <h3 class="text-xs font-bold text-white" data-i18n="childGoalTitle">🎯 Tizimning Asosiy Maqsadi Nima?</h3>
+            </div>
+            <p class="text-[11px] text-slate-300 leading-relaxed pl-9" data-i18n="childGoalDesc">
+                Bu dastur seni nazorat qilish yoki jazolash uchun emas! Asosiy maqsad — darslarda a'lochi bo'lishing, qiyin masalalarni oson yechishing, vaqtingni qiziqarli o'tkazishing va xavfsizligingni ta'minlashda senga eng yaqin aqlli do'st bo'lishdir.
+            </p>
+        </section>
+
+        <!-- 🌟 2-BAND: FARZAND UCHUN FOYDA VA AFZALLIKLAR -->
+        <section class="glass-card p-4 space-y-2.5 border-sky-500/30">
+            <div class="flex items-center gap-2">
+                <div class="w-7 h-7 rounded-lg bg-sky-500/20 text-sky-400 flex items-center justify-center text-sm font-bold">2</div>
+                <h3 class="text-xs font-bold text-white" data-i18n="childBenefitsTitle">🌟 Senga Qanday Katta Afzalliklari Bor?</h3>
+            </div>
+            <div class="space-y-2 pl-9">
+                <div class="p-2 rounded-xl bg-slate-900/60 border border-slate-800 flex items-start gap-2">
+                    <span class="text-base">🧠</span>
+                    <div>
+                        <div class="text-[11px] font-bold text-white" data-i18n="childBenefit1Title">Gemini AI Aqlli Murabbiy</div>
+                        <div class="text-[10px] text-slate-400" data-i18n="childBenefit1Desc">Tushunarsiz darslik misollarini rasmga olib yubor, u senga oddiy va qiziqarli qilib tushuntirib beradi.</div>
+                    </div>
+                </div>
+
+                <div class="p-2 rounded-xl bg-slate-900/60 border border-slate-800 flex items-start gap-2">
+                    <span class="text-base">🏆</span>
+                    <div>
+                        <div class="text-[11px] font-bold text-white" data-i18n="childBenefit2Title">100 Ballik e-Maktab & Rag'bat</div>
+                        <div class="text-[10px] text-slate-400" data-i18n="childBenefit2Desc">Fanlardan yuqori ball to'plab, ota-onang bilan kelishgan holda maxsus mukofotlar va sayrlar yutib olasan.</div>
+                    </div>
+                </div>
+
+                <div class="p-2 rounded-xl bg-slate-900/60 border border-slate-800 flex items-start gap-2">
+                    <span class="text-base">📍</span>
+                    <div>
+                        <div class="text-[11px] font-bold text-white" data-i18n="childBenefit3Title">Xotirjam Ota-ona</div>
+                        <div class="text-[10px] text-slate-400" data-i18n="childBenefit3Desc">Maktabdan yoki to'garakdan eson-omon uyga yetganingda ota-onang xavotir olmasligi uchun xarita yordam beradi.</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 🎬 3-BAND: YOUTUBE & REELS TAHLILI (AYNAN SHAXSIY VIDEO EMAS!) -->
+        <section class="glass-card p-4 space-y-2.5 border-purple-500/30">
+            <div class="flex items-center gap-2">
+                <div class="w-7 h-7 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center text-sm font-bold">3</div>
+                <h3 class="text-xs font-bold text-white" data-i18n="childReelsTitle">🎬 YouTube & Reels Tahlili Qanday Ishlaydi?</h3>
+            </div>
+            <div class="p-3 rounded-xl bg-purple-950/30 border border-purple-500/30 text-[11px] text-purple-200 leading-relaxed pl-3 space-y-1.5">
+                <div class="font-bold flex items-center gap-1.5 text-purple-300">
+                    <span>🛡️</span>
+                    <span data-i18n="childPrivacyGuarantee">Maxfiylik Kafolati:</span>
+                </div>
+                <p data-i18n="childReelsDesc">
+                    Biz sening <b>shaxsiy yozishmalaringni (chatlaringni)</b> yoki aynan qaysi videoni ko'rganingni tomosha qilmaymiz! Faqat qaysi fanlarga (IT dasturlash, Mantiq, Ilmiy tajribalar, Ingliz tili) qiziqayotganing mavzusi va daqiqalari ota-onang bilan birga yangi ko'nikmalarni rivojlantirishing uchun tahlil qilinadi.
+                </p>
+            </div>
+        </section>
+
+        <!-- 📱 4-BAND: ILOVALAR BALANSI VA SALOMATLIK -->
+        <section class="glass-card p-4 space-y-2 border-amber-500/30">
+            <div class="flex items-center gap-2">
+                <div class="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center text-sm font-bold">4</div>
+                <h3 class="text-xs font-bold text-white" data-i18n="childAppsTitle">📱 Ilovalar Balansi & Ko'rish Qobiliyati</h3>
+            </div>
+            <p class="text-[11px] text-slate-300 leading-relaxed pl-9" data-i18n="childAppsDesc">
+                Telefon ko'zni charchatmasligi va darslarga xalaqit bermasligi uchun har kungi foydalanish vaqti me'yori saqlanadi. Ilovalardan o'z vaqtida to'g'ri foydalanib, vaqtni unumli rejalashtirishni o'rganasan.
+            </p>
+        </section>
+
+        <!-- 🔑 5-BAND: ROZILIK VA OILAVIY KODNI KIRITISH (PAIRING FORM) -->
+        <section class="glass-card p-4 space-y-3.5 border-emerald-500/40 bg-gradient-to-b from-slate-900/80 to-slate-950/80">
+            <div class="flex items-center gap-2 pb-2 border-b border-slate-800">
+                <span class="text-xl">🤝</span>
+                <div>
+                    <h3 class="text-xs font-bold text-white" data-i18n="childPairingHeader">Oila Profiliga Ulanish & Rozilik</h3>
+                    <div class="text-[10px] text-slate-400" data-i18n="childPairingSub">Ota-onang bergan 6 xonali Oila Kodini kirit</div>
+                </div>
+            </div>
+
+            <!-- Rozilik Chekboxi -->
+            <label class="flex items-start gap-2.5 p-2.5 rounded-xl bg-slate-900/90 border border-slate-700 cursor-pointer hover:border-emerald-500/60 transition">
+                <input type="checkbox" id="childConsentCheckbox" class="mt-0.5 w-4 h-4 rounded text-emerald-500 focus:ring-0 cursor-pointer">
+                <span class="text-[11px] text-slate-200 leading-snug" data-i18n="childConsentLabel">
+                    Men yuqoridagi barcha 4 ta qoida bilan tanishdim va ota-onam bilan tizimga ulanishga roziman.
+                </span>
+            </label>
+
+            <!-- 6 Xonali Kod Kiritish -->
+            <div class="space-y-1.5">
+                <label class="text-[11px] font-bold text-sky-400 block" data-i18n="childInputCodeLabel">6 Xonali Oila Kodi (masalan: 849-210):</label>
+                <input type="text" id="childFamilyCodeInput" placeholder="849-210" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2.5 text-sm font-mono text-center font-bold text-emerald-400 tracking-widest focus:outline-none focus:border-emerald-500 uppercase">
+            </div>
+
+            <div id="childPairErrorMsg" class="hidden p-2 rounded-lg bg-rose-500/10 border border-rose-500/30 text-[10px] text-rose-400 font-medium"></div>
+
+            <button onclick="handleChildPairingSubmit()" class="w-full py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-bold text-xs rounded-xl shadow-lg shadow-emerald-500/20 transition flex items-center justify-center gap-2">
+                <span>🚀</span>
+                <span data-i18n="btnChildConnect">Oila Profiliga Ulanish</span>
+            </button>
+
+            <!-- Muvaffaqiyatli ulanganlik xabari -->
+            <div id="childPairedSuccessBox" class="hidden p-3 rounded-xl bg-emerald-500/15 border border-emerald-500/40 text-center space-y-1">
+                <div class="text-xs font-bold text-emerald-300" data-i18n="childPairedSuccess">🎉 Tabriklaymiz! Siz Oila Profiliga Muvaffaqiyatli Ulandingiz!</div>
+                <div class="text-[10px] text-slate-400" data-i18n="childPairedSub">Ota-onangizning Telegram botiga xabar yuborildi.</div>
+            </div>
+        </section>
+    </main>
 
     <!-- ==================================================================== -->
     <!-- TAB 1: 📊 DASHBOARD (EKRAN VAQTI & ILOVALAR REYTINGI) -->

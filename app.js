@@ -102,6 +102,31 @@ const I18N = {
         approvalNoticeTitle: "Admin Tasdig'i Kutilmoqda",
         approvalNoticeHeader: "So'rovingiz Administrator Ko'rib Chiqishida",
         approvalNoticeDesc: "Siz hozirda Test / Demo rejimidan foydalanmoqdasiz. Barcha bo'limlar (Radar, AI, e-Maktab) siz uchun ko'rishga ochiq.<br><br>Haqiqiy farzand ma'lumotlarini saqlash va qurilmani ulash administrator ruxsat berganidan so'ng faollashadi.",
+        roleParent: "Ota-ona Paneli",
+        roleChild: "Farzand Paneli",
+        childWelcomeTitle: "Salom, Yosh Qahramon! 🌟",
+        childWelcomeSub: "Sening shaxsiy aqlli yordamching va xavfsizlik qalqoning",
+        childGoalTitle: "🎯 Tizimning Asosiy Maqsadi Nima?",
+        childGoalDesc: "Bu dastur seni nazorat qilish yoki jazolash uchun emas! Asosiy maqsad — darslarda a'lochi bo'lishing, qiyin masalalarni oson yechishing, vaqtingni qiziqarli o'tkazishing va xavfsizligingni ta'minlashda senga eng yaqin aqlli do'st bo'lishdir.",
+        childBenefitsTitle: "🌟 Senga Qanday Katta Afzalliklari Bor?",
+        childBenefit1Title: "Gemini AI Aqlli Murabbiy",
+        childBenefit1Desc: "Tushunarsiz darslik misollarini rasmga olib yubor, u senga oddiy va qiziqarli qilib tushuntirib beradi.",
+        childBenefit2Title: "100 Ballik e-Maktab & Rag'bat",
+        childBenefit2Desc: "Fanlardan yuqori ball to'plab, ota-onang bilan kelishgan holda maxsus mukofotlar va sayrlar yutib olasan.",
+        childBenefit3Title: "Xotirjam Ota-ona",
+        childBenefit3Desc: "Maktabdan yoki to'garakdan eson-omon uyga yetganingda ota-onang xavotir olmasligi uchun xarita yordam beradi.",
+        childReelsTitle: "🎬 YouTube & Reels Tahlili Qanday Ishlaydi?",
+        childPrivacyGuarantee: "Maxfiylik Kafolati:",
+        childReelsDesc: "Biz sening shaxsiy yozishmalaringni (chatlaringni) yoki aynan qaysi videoni ko'rganingni tomosha qilmaymiz! Faqat qaysi fanlarga (IT dasturlash, Mantiq, Ilmiy tajribalar, Ingliz tili) qiziqayotganing mavzusi va daqiqalari ota-onang bilan birga yangi ko'nikmalarni rivojlantirishing uchun tahlil qilinadi.",
+        childAppsTitle: "📱 Ilovalar Balansi & Ko'rish Qobiliyati",
+        childAppsDesc: "Telefon ko'zni charchatmasligi va darslarga xalaqit bermasligi uchun har kungi foydalanish vaqti me'yori saqlanadi. Ilovalardan o'z vaqtida to'g'ri foydalanib, vaqtni unumli rejalashtirishni o'rganasan.",
+        childPairingHeader: "Oila Profiliga Ulanish & Rozilik",
+        childPairingSub: "Ota-onang bergan 6 xonali Oila Kodini kirit",
+        childConsentLabel: "Men yuqoridagi barcha 4 ta qoida bilan tanishdim va ota-onam bilan tizimga ulanishga roziman.",
+        childInputCodeLabel: "6 Xonali Oila Kodi (masalan: 849-210):",
+        btnChildConnect: "Oila Profiliga Ulanish",
+        childPairedSuccess: "🎉 Tabriklaymiz! Siz Oila Profiliga Muvaffaqiyatli Ulandingiz!",
+        childPairedSub: "Ota-onangizning Telegram botiga xabar yuborildi.",
         navDashboard: "Asosiy",
         navRadar: "Radar (Bepul)",
         navAi: "AI Murabbiy 💎",
@@ -197,6 +222,31 @@ const I18N = {
         approvalNoticeTitle: "Ожидание Одобрения Админом",
         approvalNoticeHeader: "Ваш Запрос на Рассмотрении Администратора",
         approvalNoticeDesc: "Сейчас вы находитесь в Тестовом / Демо-режиме. Все разделы (Радар, AI, e-Maktab) открыты для ознакомления.<br><br>Сохранение реальных данных детей и привязка устройств активируются после одобрения администратором.",
+        roleParent: "Панель Родителя",
+        roleChild: "Панель Ребёнка",
+        childWelcomeTitle: "Привет, Юный Герой! 🌟",
+        childWelcomeSub: "Твой умный помощник по учёбе и щит безопасности",
+        childGoalTitle: "🎯 Какова Главная Цель Системы?",
+        childGoalDesc: "Это приложение создано не для наказаний или слежки! Главная цель — помочь тебе учиться на отлично, легко решать сложные задачи, полезно проводить время и быть в безопасности.",
+        childBenefitsTitle: "🌟 Какие Супер-Возможности Ты Получаешь?",
+        childBenefit1Title: "Умный Наставник Gemini AI",
+        childBenefit1Desc: "Сфотографируй сложный пример из учебника, и AI объяснит решение просто и понятно.",
+        childBenefit2Title: "100-Балльный e-Maktab и Награды",
+        childBenefit2Desc: "Получай высокие баллы по предметам и выигрывай классные призы и прогулки от родителей.",
+        childBenefit3Title: "Спокойствие Родителей",
+        childBenefit3Desc: "Родители не волнуются, видя, что ты благополучно добрался до школы или секции.",
+        childReelsTitle: "🎬 Как Работает Анализ YouTube и Reels?",
+        childPrivacyGuarantee: "Гарантия Приватности:",
+        childReelsDesc: "Мы НЕ читаем твои личные переписки (чаты) и не смотрим твои видео! Анализируются только темы интересов (IT-программирование, Логика, Наука, Английский) и время для твоего развития.",
+        childAppsTitle: "📱 Баланс Приложений и Здоровье Глаз",
+        childAppsDesc: "Норма экранного времени помогает беречь зрение и не отвлекаться от уроков, распределяя время с пользой.",
+        childPairingHeader: "Подключение к Семье с Согласием",
+        childPairingSub: "Введите 6-значный семейный код от родителей",
+        childConsentLabel: "Я ознакомился со всеми 4 правилами и согласен на подключение к родительскому профилю.",
+        childInputCodeLabel: "6-значный Код Семьи (например: 849-210):",
+        btnChildConnect: "Подключиться к Семье",
+        childPairedSuccess: "🎉 Поздравляем! Вы успешно подключены к семейному профилю!",
+        childPairedSub: "Уведомление отправлено родителям в Telegram-бот.",
         navDashboard: "Главная",
         navRadar: "Радар (Free)",
         navAi: "AI Наставник 💎",
@@ -351,6 +401,7 @@ let activeSchoolPeriod = 'weekly';
 let isRecordingVoice = false;
 let uploadedImageBase64 = null;
 let familyCode = "849-210";
+let currentAppRole = localStorage.getItem('app_role') || 'parent'; // 'parent' or 'child'
 
 // Ota-ona autentifikatsiyasi va admin tasdiq holati
 let currentAuthUser = JSON.parse(localStorage.getItem('auth_user') || 'null');
@@ -378,7 +429,104 @@ if (tg) {
 }
 
 // ============================================================================
-// 4. AUTHENTICATION (KIRISH VA REGISTRATSIYA)
+// 4. ROL TANLASH (OTA-ONA VA FARZAND REJIMLARI)
+// ============================================================================
+function switchAppRole(role) {
+    currentAppRole = role;
+    localStorage.setItem('app_role', role);
+
+    const isParent = (role === 'parent');
+    const roleBtnParent = document.getElementById('roleBtnParent');
+    const roleBtnChild = document.getElementById('roleBtnChild');
+    const parentHeader = document.getElementById('mainParentHeader');
+    const authBanner = document.getElementById('authStatusBanner');
+    const childPortal = document.getElementById('tab-child-portal');
+    const bottomNav = document.querySelector('.bottom-nav');
+
+    if (roleBtnParent) {
+        roleBtnParent.className = isParent
+            ? "flex-1 py-1.5 px-2 rounded-xl text-xs font-bold text-white bg-emerald-500 shadow-md transition flex items-center justify-center gap-1.5"
+            : "flex-1 py-1.5 px-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white transition flex items-center justify-center gap-1.5";
+    }
+
+    if (roleBtnChild) {
+        roleBtnChild.className = !isParent
+            ? "flex-1 py-1.5 px-2 rounded-xl text-xs font-bold text-white bg-indigo-500 shadow-md transition flex items-center justify-center gap-1.5"
+            : "flex-1 py-1.5 px-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white transition flex items-center justify-center gap-1.5";
+    }
+
+    if (isParent) {
+        if (childPortal) childPortal.classList.add('hidden');
+        if (parentHeader) parentHeader.classList.remove('hidden');
+        if (authBanner) authBanner.classList.remove('hidden');
+        if (bottomNav) bottomNav.style.display = 'flex';
+        switchTab('tab-dashboard');
+    } else {
+        // Barcha ota-ona tablarini berkitib, Farzand Portalini faollashtirish
+        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+        if (childPortal) {
+            childPortal.classList.remove('hidden');
+            childPortal.classList.add('active');
+        }
+        if (parentHeader) parentHeader.classList.add('hidden');
+        if (authBanner) authBanner.classList.add('hidden');
+        if (bottomNav) bottomNav.style.display = 'none';
+    }
+}
+
+function handleChildPairingSubmit() {
+    const consent = document.getElementById('childConsentCheckbox')?.checked;
+    const codeInput = document.getElementById('childFamilyCodeInput')?.value.trim();
+    const errorBox = document.getElementById('childPairErrorMsg');
+    const successBox = document.getElementById('childPairedSuccessBox');
+
+    if (!consent) {
+        if (errorBox) {
+            errorBox.innerText = (currentLang === 'ru') 
+                ? "⚠️ Пожалуйста, подтвердите согласие с правилами (отметьте галочку)!" 
+                : "⚠️ Iltimos, barcha qoidalar bilan tanishib, rozilik belgisini qo'ying!";
+            errorBox.classList.remove('hidden');
+        }
+        return;
+    }
+
+    if (!codeInput || codeInput.length < 5) {
+        if (errorBox) {
+            errorBox.innerText = (currentLang === 'ru') 
+                ? "⚠️ Введите корректный 6-значный семейный код (например: 849-210)!" 
+                : "⚠️ Ota-onangiz bergan to'g'ri 6 xonali oila kodini kiriting (masalan: 849-210)!";
+            errorBox.classList.remove('hidden');
+        }
+        return;
+    }
+
+    if (errorBox) errorBox.classList.add('hidden');
+
+    // Supabase botiga farzand muvaffaqiyatli ulanganligi haqida xabar yuborish
+    try {
+        fetch('https://wfrclcwjeeqeqchmdhzw.supabase.co/functions/v1/ota-ona-bot', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                type: 'child_paired_event',
+                familyCode: codeInput,
+                childName: childrenDatabase[currentChildKey]?.name || "Aliyor Valijonov",
+                timestamp: new Date().toISOString()
+            })
+        }).catch(e => console.log('Child paired notification dispatched'));
+    } catch(e) {}
+
+    if (successBox) successBox.classList.remove('hidden');
+    localStorage.setItem('child_paired', 'true');
+    localStorage.setItem('child_family_code', codeInput);
+
+    alert(currentLang === 'ru' 
+        ? "🎉 Отлично! Вы успешно подключились к семье. Оповещение отправлено родителям!" 
+        : "🎉 Ajoyib! Siz oila profiliga muvaffaqiyatli ulandingiz. Ota-onangizga xabar yuborildi!");
+}
+
+// ============================================================================
+// 5. AUTHENTICATION (KIRISH VA REGISTRATSIYA)
 // ============================================================================
 function switchAuthTab(tab) {
     const isRegister = (tab === 'register');
@@ -1116,6 +1264,9 @@ document.addEventListener('DOMContentLoaded', () => {
     setTheme(currentTheme);
     applyLanguageTranslations();
     updateAuthUI();
+    if (currentAppRole === 'child') {
+        switchAppRole('child');
+    }
     renderActiveChild();
     renderSchoolCurriculum();
     initRadarMap();

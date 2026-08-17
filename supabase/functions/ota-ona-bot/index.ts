@@ -252,6 +252,24 @@ Ushbu foydalanuvchiga to'liq foydalanish (farzand qo'shish)ga ruxsat berasizmi?`
       return new Response(JSON.stringify({ ok: true }), { status: 200 });
     }
 
+    // 0.1 Farzand rozilik berib, 6 xonali kod bilan ulanganda
+    if (payload.type === "child_paired_event") {
+      const familyCode = payload.familyCode || "849-210";
+      const childName = payload.childName || "Farzand";
+      
+      const alertMsg = `🎉 *FARZAND ROZILIK BILAN ULANDI!*
+
+👦 *Farzand:* ${childName}
+🔑 *Oila Kodi:* \`${familyCode}\`
+📅 *Vaqt:* ${new Date().toLocaleString("uz-UZ")}
+
+✨ Farzand barcha 4 ta qoidalar bilan tanishdi va ulanishga to'liq rozilik berdi.
+Endi jonli lokatsiya, darsliklar bahosi va qiziqishlar tahlili to'liq ishlaydi!`;
+
+      await notifyAdmins(alertMsg);
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    }
+
     const update = payload;
 
     // 1. Callback query tugmalari bosilganda
