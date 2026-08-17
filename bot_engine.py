@@ -228,6 +228,14 @@ def handle_update(update):
             send_message(chat_id, f"🔗 <b>FARZANDNI ULASH:</b>\n\n👉 {link}\n🔑 Oila kodi: <code>{code}</code>")
             return
 
+        if text.startswith("/reels"):
+            send_message(chat_id, "🎬 <b>REELS VA VIDEO TAHLILI:</b>\n\n📊 • 💻 IT va Dasturlash: 45%\n• 🔬 Ilmiy tajribalar: 25%\n• 🎮 O'yinlar: 30%")
+            return
+
+        if text.startswith("/taklif"):
+            send_message(chat_id, "💡 <b>TAKLIF VA MULOHAZALAR:</b>\n\n📬 Rasmiy pochta: <code>alhamdulillah@tmail.ton</code>\n👉 <a href='https://mail.google.com/mail/?view=cm&fs=1&to=alhamdulillah@tmail.ton'>Gmail orqali xat yozish</a>")
+            return
+
         # Force-remove old reply keyboard on any other message as well
         try:
             res_clean = call_tg("sendMessage", {
@@ -244,11 +252,23 @@ def handle_update(update):
             pass
 
         # Umumiy javob
-        send_message(chat_id, "💡 <b>Ma'lumot:</b> Farzandingizning 100 ballik baholari, 1-11 sinf DTS darsliklari va jonli joylashuvi nazorat ostida. Boshqaruv panelini ochish uchun ekranning pastki chap qismidagi <b>«📊 Ota-Ona Paneli»</b> tugmasini bosing.")
+        send_message(chat_id, "💡 <b>Ma'lumot:</b> Farzandingizning 100 ballik baholari, 1-11 sinf DTS darsliklari va raqamli odatlari nazorat ostida. Boshqaruv panelini ochish uchun ekranning pastki chap qismidagi <b>«📊 Ota-Ona Paneli»</b> tugmasini bosing.")
+
+def setup_bot_commands():
+    commands = [
+        {"command": "start", "description": "🚀 Ota-ona / Ona Boshqaruv Panelini Ochish"},
+        {"command": "farzand", "description": "🔗 Farzandni ulash kodi va havolasi"},
+        {"command": "reels", "description": "🎬 Reels va video tahlili"},
+        {"command": "taklif", "description": "💡 Taklif va fikr-mulohazalar"},
+        {"command": "admins", "description": "👑 Administratorlar va sheriklar"}
+    ]
+    res = call_tg("setMyCommands", {"commands": commands})
+    print("Bot buyruqlari sozlandi (lokatsiya buyrug'i olib tashlandi):", res)
 
 def main_loop():
     print("Shield Parental Guard Bot Engine ishga tushdi (Polling)...")
     call_tg("deleteWebhook", {"drop_pending_updates": False})
+    setup_bot_commands()
     last_update_id = 0
 
     while True:

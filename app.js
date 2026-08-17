@@ -513,8 +513,38 @@ if (tg) {
 }
 
 // ============================================================================
-// 4. ROL TANLASH (OTA-ONA VA FARZAND REJIMLARI)
+// 4. ROL TANLASH (OTA / ONA VA FARZAND REJIMLARI)
 // ============================================================================
+let currentParentRelation = localStorage.getItem('parent_relation') || 'father';
+
+function setParentRelation(relation) {
+    currentParentRelation = relation;
+    localStorage.setItem('parent_relation', relation);
+    const btnFather = document.getElementById('relBtnFather');
+    const btnMother = document.getElementById('relBtnMother');
+    const isFather = (relation === 'father');
+
+    if (btnFather) {
+        btnFather.className = isFather 
+            ? "px-2.5 py-0.5 rounded-lg bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/40 text-[10px] transition"
+            : "px-2.5 py-0.5 rounded-lg bg-slate-800 text-slate-400 font-semibold border border-transparent text-[10px] hover:text-white transition";
+    }
+    if (btnMother) {
+        btnMother.className = !isFather 
+            ? "px-2.5 py-0.5 rounded-lg bg-pink-500/20 text-pink-400 font-bold border border-pink-500/40 text-[10px] transition"
+            : "px-2.5 py-0.5 rounded-lg bg-slate-800 text-slate-400 font-semibold border border-transparent text-[10px] hover:text-white transition";
+    }
+
+    const titleEl = document.getElementById('roleBtnParent');
+    if (titleEl) {
+        const text = isFather 
+            ? (currentLang === 'ru' ? "👨 Панель Отца" : "👨 Ota Paneli")
+            : (currentLang === 'ru' ? "👩 Панель Матери" : "👩 Ona Paneli");
+        const span = titleEl.querySelector('span:last-child');
+        if (span) span.innerText = text;
+    }
+}
+
 function switchAppRole(role) {
     currentAppRole = role;
     localStorage.setItem('app_role', role);
@@ -526,17 +556,22 @@ function switchAppRole(role) {
     const authBanner = document.getElementById('authStatusBanner');
     const parentBottomNav = document.getElementById('parentBottomNav');
     const childBottomNav = document.getElementById('childBottomNav');
+    const rolePillContainer = document.getElementById('parentRolePillContainer');
 
     if (roleBtnParent) {
         roleBtnParent.className = isParent
-            ? "flex-1 py-1.5 px-2 rounded-xl text-xs font-bold text-white bg-emerald-500 shadow-md transition flex items-center justify-center gap-1.5"
-            : "flex-1 py-1.5 px-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white transition flex items-center justify-center gap-1.5";
+            ? "flex-1 py-2 px-2 rounded-xl text-xs font-bold text-white bg-emerald-500 shadow-md transition flex items-center justify-center gap-1.5"
+            : "flex-1 py-2 px-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white transition flex items-center justify-center gap-1.5";
     }
 
     if (roleBtnChild) {
         roleBtnChild.className = !isParent
-            ? "flex-1 py-1.5 px-2 rounded-xl text-xs font-bold text-white bg-indigo-500 shadow-md transition flex items-center justify-center gap-1.5"
-            : "flex-1 py-1.5 px-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white transition flex items-center justify-center gap-1.5";
+            ? "flex-1 py-2 px-2 rounded-xl text-xs font-bold text-white bg-indigo-500 shadow-md transition flex items-center justify-center gap-1.5"
+            : "flex-1 py-2 px-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white transition flex items-center justify-center gap-1.5";
+    }
+
+    if (rolePillContainer) {
+        rolePillContainer.style.display = isParent ? 'flex' : 'none';
     }
 
     // Barcha tablarni yopish
@@ -556,6 +591,7 @@ function switchAppRole(role) {
         }
         if (parentHeader) parentHeader.classList.remove('hidden');
         if (authBanner) authBanner.classList.remove('hidden');
+        setParentRelation(currentParentRelation);
         switchTab('tab-dashboard');
     } else {
         if (parentBottomNav) {
