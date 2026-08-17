@@ -1,257 +1,183 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const HTML = `<!DOCTYPE html>
-<html lang="uz">
+<html class="dark" lang="uz">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Shield Parental Guard — Ota-Ona Nazorati & AI Murabbiy</title>
+    <title>Ogoh AI — Ota-Ona Nazorati & Farzand Xavfsizligi</title>
     <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <!-- Material Symbols & Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Geist:wght@500&display=swap" rel="stylesheet"/>
     <!-- Telegram WebApp SDK -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <!-- Leaflet OpenStreetMap CSS & JS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <!-- Custom CSS -->
+    <!-- Custom Stitch Styles -->
     <style>
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
-
 /* ==========================================================================
-   THEME PALETTES (10 PINTEREST-INSPIRED AESTHETIC THEMES)
+   OGOH AI (GUARDIAN INTELLIGENCE) — STITCH DESIGN SYSTEM
+   Modern Corporate Glassmorphic Theme with High-Precision Dark Aesthetic
    ========================================================================== */
+
 :root {
-    --bg-primary: #090d16;
-    --bg-surface: #111827;
-    --bg-card: rgba(17, 24, 39, 0.88);
-    --border-subtle: rgba(255, 255, 255, 0.08);
-    --border-active: rgba(16, 185, 129, 0.4);
-    --accent-primary: #10b981;
-    --accent-hover: #059669;
-    --text-primary: #f8fafc;
-    --text-secondary: #94a3b8;
-    --text-muted: #64748b;
-    --wallpaper-gradient: radial-gradient(circle at 50% 0%, rgba(16, 185, 129, 0.15), transparent 70%);
+    --bg-primary: #13131b;
+    --bg-surface: #1b1b23;
+    --bg-surface-high: #292932;
+    --bg-card: rgba(30, 41, 59, 0.65);
+    --border-subtle: #334155;
+    --border-active: #22d3ee;
+    
+    --accent-cyan: #22d3ee;
+    --accent-emerald: #00a572;
+    --accent-mint: #4edea3;
+    --accent-amber: #f59e0b;
+    --accent-rose: #f43f5e;
+    --accent-indigo: #818cf8;
+    
+    --text-primary: #e4e1ed;
+    --text-secondary: #c7c4d7;
+    --text-muted: #908fa0;
+    
+    --radius-sm: 0.5rem;
+    --radius-md: 0.75rem;
+    --radius-lg: 1rem;
+    --radius-xl: 1.25rem;
+    --radius-full: 9999px;
 }
 
-/* Theme 1: Aurora Borealis */
 body[data-theme="aurora"] {
-    --bg-primary: #05131e;
-    --bg-surface: #0a253a;
-    --bg-card: rgba(10, 37, 58, 0.88);
-    --border-active: rgba(14, 165, 233, 0.4);
-    --accent-primary: #0ea5e9;
-    --wallpaper-gradient: radial-gradient(circle at 50% 0%, rgba(14, 165, 233, 0.25), rgba(16, 185, 129, 0.15) 50%, transparent 80%);
+    --bg-primary: #0a192f;
+    --bg-surface: #112240;
+    --bg-card: rgba(17, 34, 64, 0.75);
+    --border-subtle: #233554;
+    --border-active: #64ffda;
+    --accent-cyan: #64ffda;
 }
 
-/* Theme 2: Deep Space Nebula */
 body[data-theme="nebula"] {
-    --bg-primary: #0d0818;
-    --bg-surface: #1b1030;
-    --bg-card: rgba(27, 16, 48, 0.88);
-    --border-active: rgba(168, 85, 247, 0.4);
-    --accent-primary: #a855f7;
-    --wallpaper-gradient: radial-gradient(circle at 50% 0%, rgba(168, 85, 247, 0.25), rgba(236, 72, 153, 0.15) 50%, transparent 80%);
+    --bg-primary: #120d24;
+    --bg-surface: #1d163a;
+    --bg-card: rgba(29, 22, 58, 0.75);
+    --border-subtle: #362a66;
+    --border-active: #a855f7;
+    --accent-cyan: #c084fc;
 }
 
-/* Theme 3: Sunset Glow */
 body[data-theme="sunset"] {
-    --bg-primary: #180a0a;
-    --bg-surface: #2b1212;
-    --bg-card: rgba(43, 18, 18, 0.88);
-    --border-active: rgba(249, 115, 22, 0.4);
-    --accent-primary: #f97316;
-    --wallpaper-gradient: radial-gradient(circle at 50% 0%, rgba(249, 115, 22, 0.25), rgba(239, 68, 68, 0.15) 50%, transparent 80%);
+    --bg-primary: #1c1018;
+    --bg-surface: #2d1825;
+    --bg-card: rgba(45, 24, 37, 0.75);
+    --border-subtle: #522741;
+    --border-active: #fb923c;
+    --accent-cyan: #f97316;
 }
 
-/* Theme 4: Emerald Matrix */
 body[data-theme="emerald"] {
-    --bg-primary: #06140d;
-    --bg-surface: #0b291a;
-    --bg-card: rgba(11, 41, 26, 0.88);
-    --border-active: rgba(16, 185, 129, 0.4);
-    --accent-primary: #10b981;
-    --wallpaper-gradient: radial-gradient(circle at 50% 0%, rgba(16, 185, 129, 0.25), transparent 75%);
+    --bg-primary: #061a14;
+    --bg-surface: #0c2b22;
+    --bg-card: rgba(12, 43, 34, 0.75);
+    --border-subtle: #194a3b;
+    --border-active: #10b981;
+    --accent-cyan: #34d399;
 }
 
-/* Theme 5: Sakura Mist */
-body[data-theme="sakura"] {
-    --bg-primary: #170912;
-    --bg-surface: #2b1122;
-    --bg-card: rgba(43, 17, 34, 0.88);
-    --border-active: rgba(244, 63, 94, 0.4);
-    --accent-primary: #f43f5e;
-    --wallpaper-gradient: radial-gradient(circle at 50% 0%, rgba(244, 63, 94, 0.2), rgba(217, 70, 239, 0.1) 60%, transparent 80%);
-}
-
-/* Theme 6: Obsidian Gold */
 body[data-theme="gold"] {
-    --bg-primary: #12100a;
-    --bg-surface: #242013;
-    --bg-card: rgba(36, 32, 19, 0.88);
-    --border-active: rgba(234, 179, 8, 0.4);
-    --accent-primary: #eab308;
-    --wallpaper-gradient: radial-gradient(circle at 50% 0%, rgba(234, 179, 8, 0.2), transparent 75%);
-}
-
-/* Theme 7: Minimal Slate */
-body[data-theme="minimal"] {
-    --bg-primary: #0f172a;
-    --bg-surface: #1e293b;
-    --bg-card: rgba(30, 41, 59, 0.88);
-    --border-active: rgba(148, 163, 184, 0.4);
-    --accent-primary: #38bdf8;
-    --wallpaper-gradient: none;
-}
-
-/* Theme 8: Cyberpunk Night */
-body[data-theme="cyberpunk"] {
-    --bg-primary: #05050d;
-    --bg-surface: #0f1026;
-    --bg-card: rgba(15, 16, 38, 0.92);
-    --border-active: rgba(6, 182, 212, 0.4);
-    --accent-primary: #06b6d4;
-    --wallpaper-gradient: radial-gradient(circle at 50% 0%, rgba(6, 182, 212, 0.25), rgba(217, 70, 239, 0.15) 60%, transparent 80%);
-}
-
-/* Theme 9: Metallic Silver Light 🌟 */
-body[data-theme="silver"] {
-    --bg-primary: #e2e8f0;
-    --bg-surface: #f8fafc;
-    --bg-card: rgba(255, 255, 255, 0.95);
-    --border-subtle: rgba(15, 23, 42, 0.12);
-    --border-active: rgba(71, 85, 105, 0.5);
-    --accent-primary: #0f172a;
-    --text-primary: #0f172a;
-    --text-secondary: #334155;
-    --text-muted: #64748b;
-    --wallpaper-gradient: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 50%, #cbd5e1 100%);
-}
-
-/* Theme 10: Sky Breeze Cyan 🌟 */
-body[data-theme="sky"] {
-    --bg-primary: #f0f9ff;
-    --bg-surface: #e0f2fe;
-    --bg-card: rgba(255, 255, 255, 0.95);
-    --border-subtle: rgba(14, 165, 233, 0.2);
-    --border-active: rgba(2, 132, 199, 0.5);
-    --accent-primary: #0284c7;
-    --text-primary: #0c4a6e;
-    --text-secondary: #0369a1;
-    --text-muted: #38bdf8;
-    --wallpaper-gradient: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 50%, #bae6fd 100%);
-}
-
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-    -webkit-tap-highlight-color: transparent;
+    --bg-primary: #1a1608;
+    --bg-surface: #2b240f;
+    --bg-card: rgba(43, 36, 15, 0.75);
+    --border-subtle: #4a3e1a;
+    --border-active: #fbbf24;
+    --accent-cyan: #f59e0b;
 }
 
 body {
     background-color: var(--bg-primary);
-    background-image: var(--wallpaper-gradient);
-    background-attachment: fixed;
     color: var(--text-primary);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
     min-height: 100vh;
     padding-bottom: 95px;
+    -webkit-tap-highlight-color: transparent;
     user-select: none;
     overflow-x: hidden;
-    transition: background-color 0.35s ease, background-image 0.35s ease, color 0.35s ease;
 }
 
-/* Light Theme Overrides */
-body[data-theme="silver"] .glass-card,
-body[data-theme="sky"] .glass-card {
-    box-shadow: 0 4px 20px 0 rgba(0, 0, 0, 0.08);
-}
-
-body[data-theme="silver"] .text-white,
-body[data-theme="sky"] .text-white {
-    color: var(--text-primary) !important;
-}
-
-body[data-theme="silver"] .bg-slate-900,
-body[data-theme="sky"] .bg-slate-900,
-body[data-theme="silver"] .bg-slate-900\\/70,
-body[data-theme="sky"] .bg-slate-900\\/70,
-body[data-theme="silver"] .bg-slate-900\\/60,
-body[data-theme="sky"] .bg-slate-900\\/60,
-body[data-theme="silver"] .bg-slate-900\\/50,
-body[data-theme="sky"] .bg-slate-900\\/50 {
-    background-color: rgba(241, 245, 249, 0.92) !important;
-}
-
-body[data-theme="silver"] .border-slate-800,
-body[data-theme="sky"] .border-slate-800 {
-    border-color: rgba(148, 163, 184, 0.3) !important;
-}
-
-body[data-theme="silver"] .bottom-nav,
-body[data-theme="sky"] .bottom-nav {
-    background: rgba(255, 255, 255, 0.96);
-    border-top: 1px solid rgba(0, 0, 0, 0.08);
-}
-
-/* Glassmorphism Card Effect */
-.glass-card {
+.glass-panel {
     background: var(--bg-card);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
     border: 1px solid var(--border-subtle);
-    border-radius: 1.25rem;
-    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 4px 24px -1px rgba(0, 0, 0, 0.4);
     transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.glass-card:hover {
-    border-color: var(--border-active);
+.glass-panel:hover {
+    border-color: rgba(34, 211, 238, 0.45);
 }
 
-/* 3D Smooth Page Flip / Slide Transition */
+.ambient-glow-bg {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: -1;
+    background: radial-gradient(circle at 50% 15%, rgba(34, 211, 238, 0.08) 0%, transparent 65%);
+    animation: ambientPulse 6s ease-in-out infinite alternate;
+}
+
+@keyframes ambientPulse {
+    0% { opacity: 0.5; transform: scale(1); }
+    100% { opacity: 0.9; transform: scale(1.06); }
+}
+
+.status-glow-safe {
+    background: radial-gradient(circle at top right, rgba(0, 165, 114, 0.16) 0%, transparent 70%);
+}
+
+.status-accent-safe {
+    border-left: 3px solid var(--accent-mint);
+}
+
+@keyframes pulseDot {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(1.25); }
+}
+.animate-pulse-dot {
+    animation: pulseDot 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.font-display-brand {
+    font-family: 'Inter', sans-serif;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+}
+
+.font-data-mono {
+    font-family: 'Geist', monospace, sans-serif;
+}
+
 .tab-content {
     display: none;
     opacity: 0;
-    transform: translateY(8px) scale(0.99);
-    transition: opacity 0.28s cubic-bezier(0.4, 0, 0.2, 1), transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+    transform: translateY(6px);
+    transition: opacity 0.25s ease-out, transform 0.25s ease-out;
 }
 
-.tab-content.active {
-    display: block;
+.tab-content.active:not(.hidden) {
+    display: block !important;
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translateY(0);
 }
 
-/* Sub-page / Modal Overlay */
-.subpage-modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: var(--bg-primary);
-    z-index: 2000;
-    display: none;
-    overflow-y: auto;
-    padding: 16px;
-    padding-bottom: 90px;
-    animation: slideUp 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+.tab-content.hidden {
+    display: none !important;
 }
 
-.subpage-modal.active {
-    display: block;
-}
-
-@keyframes slideUp {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-/* Bottom Navigation Bar */
 .bottom-nav {
     position: fixed !important;
     bottom: 0 !important;
@@ -259,32 +185,21 @@ body[data-theme="sky"] .bottom-nav {
     right: 0 !important;
     max-width: 480px;
     margin: 0 auto;
-    background: rgba(9, 13, 22, 0.96) !important;
-    backdrop-filter: blur(24px) !important;
-    -webkit-backdrop-filter: blur(24px) !important;
+    background: rgba(19, 19, 27, 0.92) !important;
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
     border-top: 1px solid var(--border-subtle);
-    z-index: 9999 !important;
+    border-top-left-radius: 1.25rem;
+    border-top-right-radius: 1.25rem;
+    z-index: 99999 !important;
     display: flex !important;
     justify-content: space-around;
     align-items: center;
-    padding: 8px 10px 14px 10px;
-    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.5);
+    padding: 6px 8px calc(8px + env(safe-area-inset-bottom, 0px)) 8px;
+    box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.65);
 }
 
 .bottom-nav.hidden {
-    display: none !important;
-}
-
-.tab-content {
-    display: none;
-}
-
-.tab-content.active:not(.hidden) {
-    display: block !important;
-    animation: fadeIn 0.2s ease-out;
-}
-
-.tab-content.hidden {
     display: none !important;
 }
 
@@ -299,79 +214,61 @@ body[data-theme="sky"] .bottom-nav {
     font-size: 10px;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.2s ease;
-    padding: 6px 10px;
-    border-radius: 12px;
-    min-width: 58px;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    padding: 6px 12px;
+    border-radius: 9999px;
 }
 
-.nav-btn svg {
-    width: 22px;
-    height: 22px;
+.nav-btn .material-symbols-outlined {
+    font-size: 22px;
     margin-bottom: 2px;
-    transition: transform 0.2s ease;
+    transition: transform 0.2s ease, font-variation-settings 0.2s ease;
 }
 
 .nav-btn.active {
-    color: var(--accent-primary) !important;
-    background: rgba(16, 185, 129, 0.12);
+    color: var(--accent-cyan) !important;
+    background: rgba(34, 211, 238, 0.12);
 }
 
-.nav-btn.active svg {
-    transform: scale(1.1);
+.nav-btn.active .material-symbols-outlined {
+    font-variation-settings: 'FILL' 1;
+    transform: translateY(-1px) scale(1.08);
 }
 
 #childBottomNav .nav-btn.active {
-    color: #818cf8 !important;
-    background: rgba(99, 102, 241, 0.15);
+    color: var(--accent-indigo) !important;
+    background: rgba(129, 140, 248, 0.15);
 }
 
-/* Leaflet Map */
-#map {
-    height: 240px;
-    width: 100%;
-    border-radius: 1rem;
-    z-index: 10;
+.subpage-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--bg-primary);
+    z-index: 100000;
+    display: none;
+    overflow-y: auto;
+    padding: 16px;
+    padding-bottom: 95px;
+    animation: modalSlideUp 0.24s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Radar Pin */
-.radar-pin {
-    width: 14px;
-    height: 14px;
-    background: var(--accent-primary);
-    border: 2px solid #ffffff;
-    border-radius: 50%;
-    position: relative;
+.subpage-modal.active {
+    display: block;
 }
 
-.radar-pin::after {
-    content: '';
-    position: absolute;
-    top: -8px;
-    left: -8px;
-    width: 30px;
-    height: 30px;
-    background: rgba(16, 185, 129, 0.4);
-    border-radius: 50%;
-    animation: radarRipple 2s infinite;
+@keyframes modalSlideUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes radarRipple {
-    0% { transform: scale(0.5); opacity: 1; }
-    100% { transform: scale(2.2); opacity: 0; }
-}
-
-/* Progress Bars */
 .progress-bar-bg {
-    background-color: rgba(255, 255, 255, 0.06);
+    background-color: rgba(255, 255, 255, 0.08);
     border-radius: 9999px;
-    height: 8px;
+    height: 7px;
     overflow: hidden;
-}
-
-body[data-theme="silver"] .progress-bar-bg,
-body[data-theme="sky"] .progress-bar-bg {
-    background-color: rgba(0, 0, 0, 0.08);
 }
 
 .progress-bar-fill {
@@ -380,9 +277,57 @@ body[data-theme="sky"] .progress-bar-bg {
     transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Theme Thumbnail Cards */
+#map {
+    height: 250px;
+    width: 100%;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-subtle);
+    z-index: 10;
+}
+
+.radar-pin {
+    width: 16px;
+    height: 16px;
+    background: var(--accent-cyan);
+    border: 2.5px solid #ffffff;
+    border-radius: 50%;
+    box-shadow: 0 0 16px var(--accent-cyan);
+    animation: radarPulse 2s infinite;
+}
+
+@keyframes radarPulse {
+    0% { box-shadow: 0 0 0 0 rgba(34, 211, 238, 0.7); }
+    70% { box-shadow: 0 0 0 14px rgba(34, 211, 238, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(34, 211, 238, 0); }
+}
+
+.voice-record-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #22d3ee, #0284c7);
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+.voice-record-btn.recording {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    animation: voiceRecordPulse 1.2s infinite;
+}
+
+@keyframes voiceRecordPulse {
+    0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+    70% { transform: scale(1.1); box-shadow: 0 0 0 12px rgba(239, 68, 68, 0); }
+    100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
 .theme-card {
-    height: 70px;
+    height: 64px;
     border-radius: 12px;
     border: 2px solid transparent;
     cursor: pointer;
@@ -395,170 +340,69 @@ body[data-theme="sky"] .progress-bar-bg {
 }
 
 .theme-card.active {
-    border-color: var(--accent-primary);
-    box-shadow: 0 0 12px rgba(16, 185, 129, 0.4);
+    border-color: var(--accent-cyan);
+    box-shadow: 0 0 14px rgba(34, 211, 238, 0.35);
 }
 
-/* ==========================================================================
-   AI CHAT & AUDIO VISUALIZER
-   ========================================================================== */
-.ai-chat-container {
-    max-height: 280px;
-    overflow-y: auto;
-    scroll-behavior: smooth;
+::-webkit-scrollbar {
+    display: none;
 }
-
-.chat-bubble-user {
-    background: rgba(16, 185, 129, 0.15);
-    border: 1px solid rgba(16, 185, 129, 0.3);
-    border-radius: 14px 14px 2px 14px;
-    color: var(--text-primary);
-    padding: 8px 12px;
-    max-width: 85%;
-    align-self: flex-end;
-    font-size: 12px;
-}
-
-.chat-bubble-ai {
-    background: var(--bg-surface);
-    border: 1px solid var(--border-subtle);
-    border-radius: 14px 14px 14px 2px;
-    color: var(--text-primary);
-    padding: 10px 14px;
-    max-width: 90%;
-    align-self: flex-start;
-    font-size: 12px;
-    line-height: 1.45;
-}
-
-/* Voice Recording Pulsing Button */
-.voice-record-btn {
-    width: 44px;
-    height: 44px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #10b981, #059669);
-    border: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    cursor: pointer;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.voice-record-btn.recording {
-    background: linear-gradient(135deg, #ef4444, #dc2626);
-    animation: voicePulse 1.2s infinite;
-}
-
-@keyframes voicePulse {
-    0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-    70% { transform: scale(1.1); box-shadow: 0 0 0 14px rgba(239, 68, 68, 0); }
-    100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
-}
-
-/* Waveform Bars */
-.waveform-bars {
-    display: flex;
-    align-items: center;
-    gap: 3px;
-    height: 24px;
-}
-
-.waveform-bar {
-    width: 3px;
-    background: #10b981;
-    border-radius: 2px;
-    animation: waveAnim 1s ease-in-out infinite alternate;
-}
-
-@keyframes waveAnim {
-    0% { height: 4px; }
-    100% { height: 22px; }
-}
-
-/* 100-Point Grade Score Card */
-.score-badge-100 {
-    font-size: 28px;
-    font-weight: 800;
-    line-height: 1;
-    background: linear-gradient(135deg, #10b981, #38bdf8);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-}
-
-/* Period Pills */
-.period-pill {
-    padding: 6px 14px;
-    border-radius: 9999px;
-    font-size: 11px;
-    font-weight: 700;
-    cursor: pointer;
-    border: 1px solid var(--border-subtle);
-    background: transparent;
-    color: var(--text-muted);
-    transition: all 0.2s ease;
-}
-
-.period-pill.active {
-    background: var(--accent-primary);
-    color: #ffffff;
-    border-color: var(--accent-primary);
-    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.35);
-}
-
-/* Sticky High-Contrast Subject List */
-.subject-sticky-container {
-    max-height: 380px;
-    overflow-y: auto;
-    padding-right: 4px;
-}
-
-.subject-item-card {
-    background: rgba(15, 23, 42, 0.7);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 12px;
-    padding: 10px 14px;
-    transition: transform 0.2s ease, border-color 0.2s ease;
-}
-
-body[data-theme="silver"] .subject-item-card,
-body[data-theme="sky"] .subject-item-card {
-    background: rgba(255, 255, 255, 0.92);
-    border: 1px solid rgba(148, 163, 184, 0.25);
-}
-
-.subject-item-card:hover {
-    border-color: var(--accent-primary);
-    transform: translateY(-1px);
+* {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
 }
 
 </style>
 </head>
-<body class="p-3 max-w-md mx-auto relative antialiased">
+<body class="p-3 max-w-md mx-auto relative antialiased text-slate-200">
+    <div class="ambient-glow-bg"></div>
+
+    <!-- ==================================================================== -->
+    <!-- TOP APP BAR (OGOH AI BRAND & MASCOT) -->
+    <!-- ==================================================================== -->
+    <header class="glass-panel px-3.5 py-2.5 mb-3 flex items-center justify-between border-[#334155]">
+        <div class="flex items-center gap-2">
+            <span class="material-symbols-outlined text-[#22D3EE] text-2xl animate-pulse">shield</span>
+            <div>
+                <h1 class="font-display-brand text-sm text-[#22D3EE] font-black tracking-wider leading-none">OGOH AI</h1>
+                <p class="text-[9px] text-slate-400 mt-0.5" data-i18n="appSubtitle">Guardian Intelligence — Ota-ona & Farzand</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <!-- Silver Wolf Mascot Avatar -->
+            <div class="w-8 h-8 rounded-full border border-[#22D3EE]/60 bg-[#22D3EE]/10 flex items-center justify-center text-base shadow-[0_0_10px_rgba(34,211,238,0.25)]">
+                🐺
+            </div>
+            <!-- Plan Badge -->
+            <button onclick="openSubpage('modal-plans')" class="px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-300 text-[10px] font-bold">
+                💎 Pro
+            </button>
+        </div>
+    </header>
 
     <!-- ==================================================================== -->
     <!-- ROL TANLASH (OTA / ONA VS FARZAND ROLE SWITCHER) -->
     <!-- ==================================================================== -->
-    <div class="glass-card p-1.5 mb-3 flex items-center justify-between gap-1.5 bg-slate-900/90 border border-slate-800 rounded-2xl">
-        <button onclick="switchAppRole('parent')" id="roleBtnParent" class="flex-1 py-2 px-2 rounded-xl text-xs font-bold text-white bg-emerald-500 shadow-md transition flex items-center justify-center gap-1.5">
-            <span>👨‍👩‍👧</span>
+    <div class="glass-panel p-1.5 mb-2.5 flex items-center justify-between gap-1.5 bg-slate-900/90 border-[#334155] rounded-2xl">
+        <button onclick="switchAppRole('parent')" id="roleBtnParent" class="flex-1 py-1.5 px-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-cyan-500 to-teal-500 shadow-md transition flex items-center justify-center gap-1.5">
+            <span class="material-symbols-outlined text-sm">family_restroom</span>
             <span data-i18n="roleParent">Ota / Ona Paneli</span>
         </button>
-        <button onclick="switchAppRole('child')" id="roleBtnChild" class="flex-1 py-2 px-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white transition flex items-center justify-center gap-1.5">
-            <span>👦</span>
+        <button onclick="switchAppRole('child')" id="roleBtnChild" class="flex-1 py-1.5 px-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white transition flex items-center justify-center gap-1.5">
+            <span class="material-symbols-outlined text-sm">child_care</span>
             <span data-i18n="roleChild">Farzand Paneli</span>
         </button>
     </div>
 
-    <!-- Ota / Ona Tanlash (Onalarga ham to'liq bir xil panel) -->
-    <div id="parentRolePillContainer" class="flex items-center justify-between px-2 py-1 mb-2 bg-slate-900/60 rounded-xl border border-slate-800/80 text-[11px]">
+    <!-- Ota / Ona Tanlash Pills -->
+    <div id="parentRolePillContainer" class="flex items-center justify-between px-2.5 py-1 mb-3 bg-slate-900/60 rounded-xl border border-slate-800 text-[11px]">
         <div class="flex items-center gap-1.5 text-slate-400">
-            <span>👤</span>
+            <span class="material-symbols-outlined text-xs text-cyan-400">person</span>
             <span data-i18n="parentIdentityLabel">Sizning rolingiz:</span>
         </div>
         <div class="flex items-center gap-1">
-            <button onclick="setParentRelation('father')" id="relBtnFather" class="px-2.5 py-0.5 rounded-lg bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/40 text-[10px] transition">
+            <button onclick="setParentRelation('father')" id="relBtnFather" class="px-2.5 py-0.5 rounded-lg bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/40 text-[10px] transition">
                 👨 Otasi
             </button>
             <button onclick="setParentRelation('mother')" id="relBtnMother" class="px-2.5 py-0.5 rounded-lg bg-slate-800 text-slate-400 font-semibold border border-transparent text-[10px] hover:text-white transition">
@@ -909,15 +753,81 @@ body[data-theme="sky"] .subject-item-card {
     </main>
 
     <!-- ==================================================================== -->
-    <!-- TAB 1: 📊 DASHBOARD (EKRAN VAQTI & ILOVALAR REYTINGI) -->
+    <!-- TAB 1: 📊 DASHBOARD (STITCH STATUS CARD & AI INSIGHTS) -->
     <!-- ==================================================================== -->
-    <main id="tab-dashboard" class="tab-content active space-y-3">
-        <!-- 1. Ekran Vaqti & Limit Bloki -->
-        <section class="glass-card p-4">
-            <div class="flex items-center justify-between mb-3">
+    <main id="tab-dashboard" class="tab-content active space-y-3.5">
+        <!-- 1. Stitch Status Card (Level 1 Surface with Glow) -->
+        <section class="glass-panel p-4 status-glow-safe status-accent-safe relative overflow-hidden">
+            <div class="flex justify-between items-start mb-3">
+                <div>
+                    <h2 class="text-sm font-black text-white mb-0.5 flex items-center gap-2">
+                        <div class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse-dot"></div>
+                        <span>Tizim Faol</span>
+                    </h2>
+                    <p class="text-[11px] text-emerald-400/90 font-medium">Barcha xavfsizlik himoyasi yoqilgan</p>
+                </div>
+                <div class="text-right">
+                    <div class="flex items-center gap-1 text-cyan-400 font-bold text-xs font-mono">
+                        <span class="material-symbols-outlined text-[16px]">battery_charging_full</span>
+                        <span id="statBattery">84%</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2 text-slate-300 text-[11px] bg-slate-900/80 px-2.5 py-1.5 rounded-xl border border-slate-800 inline-flex">
+                <span class="material-symbols-outlined text-xs text-cyan-400">location_on</span>
+                <span id="radarCurrentAddress">Yunusobod 4-mavze, 24-maktab</span>
+            </div>
+        </section>
+
+        <!-- 2. AI Tahlil & Video Insights (Stitch Widget) -->
+        <section class="glass-panel p-4 border-t-2 border-t-cyan-400/60 space-y-3">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
+                        <span class="material-symbols-outlined text-lg">psychology</span>
+                    </div>
+                    <div>
+                        <h3 class="text-xs font-black text-white">AI Tahlil & Video Qiziqishlar</h3>
+                        <div class="text-[9px] text-slate-400">YouTube Shorts va Instagram Reels</div>
+                    </div>
+                </div>
+                <span class="px-2 py-0.5 bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 rounded-full text-[9px] font-bold flex items-center gap-1">
+                    <span class="material-symbols-outlined text-[11px]">check_circle</span>
+                    <span>Ijobiy</span>
+                </span>
+            </div>
+
+            <p class="text-[11px] text-slate-300 leading-relaxed">
+                Bugun YouTube'da asosan <b>robototexnika, Python dasturlash</b> va ilm-fan videolarini tomosha qildi. Xavf darajasi: <b>Past</b>.
+            </p>
+        </section>
+
+        <!-- 3. Tezkor Harakatlar Gridi (Quick Actions) -->
+        <section class="grid grid-cols-2 gap-2.5">
+            <button onclick="switchTab('tab-radar')" class="glass-panel p-3 flex flex-col items-center justify-center gap-1.5 hover:border-cyan-500/50 active:scale-95 transition">
+                <div class="w-10 h-10 rounded-full bg-cyan-500/15 flex items-center justify-center text-cyan-400">
+                    <span class="material-symbols-outlined text-xl">distance</span>
+                </div>
+                <span class="text-xs font-bold text-white">Jonli Radar</span>
+                <span class="text-[9px] text-emerald-400 font-semibold">100% Bepul</span>
+            </button>
+
+            <button onclick="switchTab('tab-ai')" class="glass-panel p-3 flex flex-col items-center justify-center gap-1.5 hover:border-cyan-500/50 active:scale-95 transition">
+                <div class="w-10 h-10 rounded-full bg-gradient-to-r from-cyan-500 to-indigo-500 flex items-center justify-center text-white">
+                    <span class="material-symbols-outlined text-xl">psychology</span>
+                </div>
+                <span class="text-xs font-bold text-white">AI Murabbiy</span>
+                <span class="text-[9px] text-cyan-300 font-semibold">Gemini 2.0</span>
+            </button>
+        </section>
+
+        <!-- 4. Bugungi Ekran Vaqti & Limit Bloki -->
+        <section class="glass-panel p-4 space-y-3">
+            <div class="flex items-center justify-between">
                 <div>
                     <h2 class="text-xs font-bold text-slate-400" data-i18n="screenTime">Bugungi Ekran Vaqti</h2>
-                    <div class="text-2xl font-black text-white mt-0.5" id="totalScreenTime">3s 45d</div>
+                    <div class="text-2xl font-black text-white font-mono mt-0.5" id="totalScreenTime">3s 45d</div>
                 </div>
                 <div class="text-right">
                     <span class="text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20" id="screenStatus" data-i18n="normalStatus">Normal</span>
@@ -926,12 +836,12 @@ body[data-theme="sky"] .subject-item-card {
             </div>
 
             <div class="progress-bar-bg">
-                <div id="screenTimeBar" class="progress-bar-fill bg-gradient-to-r from-emerald-500 to-sky-400" style="width: 72%;"></div>
+                <div id="screenTimeBar" class="progress-bar-fill bg-gradient-to-r from-cyan-500 via-teal-400 to-emerald-400" style="width: 72%;"></div>
             </div>
         </section>
 
-        <!-- 2. Ilovalar Reytingi (Batareya & Screen-Time Tahlili) -->
-        <section class="glass-card p-4 space-y-3">
+        <!-- 5. Ilovalar Reytingi -->
+        <section class="glass-panel p-4 space-y-3">
             <div class="flex items-center justify-between">
                 <h3 class="text-xs font-bold text-white flex items-center gap-1.5" data-i18n="appRankings">
                     📱 Ilovalardan Foydalanish Reytingi
@@ -1862,73 +1772,62 @@ body[data-theme="sky"] .subject-item-card {
         </div>
     </div>
     <!-- ==================================================================== -->
-    <!-- OTA-ONA BOTTOM NAVIGATION BAR (5 TA BO'LIM) -->
+    <!-- ==================================================================== -->
+    <!-- OTA-ONA BOTTOM NAVIGATION BAR (STITCH 5 TA BO'LIM) -->
     <!-- ==================================================================== -->
     <nav id="parentBottomNav" class="bottom-nav">
         <button onclick="switchTab('tab-dashboard')" id="nav-tab-dashboard" class="nav-btn active">
-            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-            </svg>
+            <span class="material-symbols-outlined">home</span>
             <span data-i18n="navDashboard">Asosiy</span>
         </button>
 
         <button onclick="switchTab('tab-radar')" id="nav-tab-radar" class="nav-btn">
-            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
+            <span class="material-symbols-outlined">distance</span>
             <span data-i18n="navRadar">Radar (Bepul)</span>
         </button>
 
         <button onclick="switchTab('tab-ai')" id="nav-tab-ai" class="nav-btn">
-            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
+            <span class="material-symbols-outlined">psychology</span>
             <span data-i18n="navAi">AI Murabbiy 💎</span>
         </button>
 
         <button onclick="switchTab('tab-school')" id="nav-tab-school" class="nav-btn">
-            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-            </svg>
+            <span class="material-symbols-outlined">school</span>
             <span data-i18n="navSchool">e-Maktab 💎</span>
         </button>
 
         <button onclick="switchTab('tab-settings')" id="nav-tab-settings" class="nav-btn">
-            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
+            <span class="material-symbols-outlined">settings</span>
             <span data-i18n="navSettings">Sozlamalar</span>
         </button>
     </nav>
 
     <!-- ==================================================================== -->
-    <!-- FARZAND BOTTOM NAVIGATION BAR (5 TA FARZAND BO'LIMI) -->
+    <!-- FARZAND BOTTOM NAVIGATION BAR (STITCH 5 TA FARZAND BO'LIMI) -->
     <!-- ==================================================================== -->
     <nav id="childBottomNav" class="bottom-nav hidden">
         <button onclick="switchChildTab('child-tab-home')" id="nav-child-tab-home" class="nav-btn active">
-            <span class="text-base">🏠</span>
+            <span class="material-symbols-outlined">home</span>
             <span data-i18n="childNavHome">Asosiy</span>
         </button>
 
         <button onclick="switchChildTab('child-tab-ai')" id="nav-child-tab-ai" class="nav-btn">
-            <span class="text-base">🧠</span>
+            <span class="material-symbols-outlined">smart_toy</span>
             <span data-i18n="childNavAi">AI Do'st</span>
         </button>
 
         <button onclick="switchChildTab('child-tab-rewards')" id="nav-child-tab-rewards" class="nav-btn">
-            <span class="text-base">🏆</span>
+            <span class="material-symbols-outlined">military_tech</span>
             <span data-i18n="childNavRewards">Yutuqlar</span>
         </button>
 
         <button onclick="switchChildTab('child-tab-school')" id="nav-child-tab-school" class="nav-btn">
-            <span class="text-base">📚</span>
+            <span class="material-symbols-outlined">menu_book</span>
             <span data-i18n="childNavSchool">e-Maktabim</span>
         </button>
 
         <button onclick="switchChildTab('child-tab-explore')" id="nav-child-tab-explore" class="nav-btn">
-            <span class="text-base">🎬</span>
+            <span class="material-symbols-outlined">subscriptions</span>
             <span data-i18n="childNavExplore">Qiziqishlar</span>
         </button>
     </nav>
@@ -3099,6 +2998,9 @@ function renderActiveChild() {
 
     const battEl = document.getElementById('batteryBadge');
     if (battEl) battEl.innerText = \`\${child.battery}%\`;
+
+    const statBattEl = document.getElementById('statBattery');
+    if (statBattEl) statBattEl.innerText = \`\${child.battery}%\`;
 
     const remEl = document.getElementById('remainingTime');
     if (remEl) remEl.innerText = isRu ? child.remaining_ru : child.remaining;

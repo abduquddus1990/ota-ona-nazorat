@@ -1,4 +1,6 @@
-/* ==========================================================================
+﻿import os
+
+styles_css = """/* ==========================================================================
    OGOH AI (GUARDIAN INTELLIGENCE) — STITCH DESIGN SYSTEM
    Modern Corporate Glassmorphic Theme with High-Precision Dark Aesthetic
    ========================================================================== */
@@ -329,3 +331,9 @@ body {
     -ms-overflow-style: none;
     scrollbar-width: none;
 }
+"""
+
+with open("styles.css", "w", encoding="utf-8") as f:
+    f.write(styles_css)
+
+print("styles.css successfully written!")

@@ -1163,6 +1163,9 @@ function renderActiveChild() {
     const battEl = document.getElementById('batteryBadge');
     if (battEl) battEl.innerText = `${child.battery}%`;
 
+    const statBattEl = document.getElementById('statBattery');
+    if (statBattEl) statBattEl.innerText = `${child.battery}%`;
+
     const remEl = document.getElementById('remainingTime');
     if (remEl) remEl.innerText = isRu ? child.remaining_ru : child.remaining;
 
