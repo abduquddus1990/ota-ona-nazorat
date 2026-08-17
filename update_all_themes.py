@@ -1,4 +1,6 @@
-/* ==========================================================================
+﻿import os
+
+styles_css = """/* ==========================================================================
    QALQON AI (GUARDIAN INTELLIGENCE) — STITCH DESIGN SYSTEM
    Full Multi-Theme Engine with High-Precision Glassmorphic Styling
    ========================================================================== */
@@ -515,3 +517,9 @@ body[data-theme="sky"] .bottom-nav {
     -ms-overflow-style: none;
     scrollbar-width: none;
 }
+"""
+
+with open("styles.css", "w", encoding="utf-8") as f:
+    f.write(styles_css)
+
+print("styles.css completely updated with all 12 themes (including silver & sky)!")
