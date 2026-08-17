@@ -65,8 +65,7 @@ async function notifyAdmins(htmlText: string, replyMarkup?: any) {
   }
 }
 
-// BILINGUAL TEXT TEMPLATES (HTML MODE)
-function getStartMenuText(userId: string | number, lang: string = "uz", isApproved: boolean = false, isAdmin: boolean = false): string {
+function getStartMenuText(userId: string | number, lang: string = "uz", isApproved: boolean = true, isAdmin: boolean = false): string {
   const code = generateFamilyCode(userId);
 
   if (isAdmin) {
@@ -87,38 +86,30 @@ Quyidagi tugma orqali boshqaruv panelini to'liq ochishingiz mumkin:`;
   }
 
   if (lang === "ru") {
-    const statusNote = isApproved 
-      ? "✅ <b>Ваш аккаунт подтвержден администратором!</b>" 
-      : "⏳ <b>Статус:</b> Запрос отправлен администраторам. До одобрения доступен <b>Тестовый / Демо-режим</b>.";
-
     return `🛡️ <b>SHIELD PARENTAL GUARD — ЦЕНТР РОДИТЕЛЬСКОГО КОНТРОЛЯ</b>
 
 Добро пожаловать! Безопасность, школьные предметы и цифровые привычки вашего ребёнка под защитой 24/7.
 
-${statusNote}
+✅ <b>Ваш доступ полностью активен!</b>
 
 🔑 <b>Ваш семейный код:</b> <code>${code}</code>
 📍 <b>Онлайн-радар и локация:</b> <b>Бесплатно</b>
 💎 <b>Pro Версия (AI & e-Maktab 100 баллов):</b> <b>10,000 сум/мес (за 1 ребёнка)</b>
-⚠️ <i>Примечание: В будущем для бесплатной версии также может быть введена минимальная плата для поддержания серверов.</i>
+ℹ️ <i>Официальная почта для предложений: <code>alhamdulillah@tmail.ton</code></i>
 
 Выберите нужный раздел:`;
   }
-
-  const statusNote = isApproved
-    ? "✅ <b>Sizning hisobingiz administrator tomonidan tasdiqlangan!</b>"
-    : "⏳ <b>Holat:</b> Administratorlarga so'rov yuborilgan. Tasdiqlanguniga qadar tizim <b>Test / Demo rejimida</b> ishlaydi.";
 
   return `🛡️ <b>SHIELD PARENTAL GUARD — OTA-ONA BOSHQARUV MARKAZI</b>
 
 Assalomu alaykum! Farzandingizning xavfsizligi, darsliklari va raqamli odatlari 24/7 doimiy nazorat ostida.
 
-${statusNote}
+✅ <b>Sizning hisobingiz to'liq faol!</b>
 
 🔑 <b>Sizning oila kodingiz:</b> <code>${code}</code>
 📍 <b>Jonli lokatsiya va radar:</b> <b>100% BEPUL</b>
 💎 <b>Pro Versiya (AI & 100 ballik e-Maktab):</b> <b>10,000 so'm/oy (har bir bola uchun)</b>
-⚠️ <i>Eslatma: Kelajakda sifat va barqarorlikni ta'minlash uchun bepul versiyaga ham ramziy to'lov kiritilishi mumkin.</i>
+ℹ️ <i>Taklif va mulohazalar uchun rasmiy pochta: <code>alhamdulillah@tmail.ton</code></i>
 
 Quyidagi bo'limlardan birini tanlang:`;
 }
@@ -371,8 +362,28 @@ serve(async (req) => {
 
       // /start [payload] komandasi
       if (text.startsWith("/start")) {
+        // Force-remove old reply keyboard (location sharing button) from user's Telegram client cache
+        try {
+          const resClean = await fetch(`${TELEGRAM_API}/sendMessage`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              chat_id: chatId,
+              text: "🛡️",
+              reply_markup: { remove_keyboard: true }
+            })
+          });
+          const cleanJson = await resClean.json();
+          if (cleanJson.ok && cleanJson.result?.message_id) {
+            await fetch(`${TELEGRAM_API}/deleteMessage`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ chat_id: chatId, message_id: cleanJson.result.message_id })
+            });
+          }
+        } catch (_) {}
+
         if (text.includes("pair_")) {
-          // Farzand juftlash havolasi orqali kirgan (hech qanday lokatsiya so'ralmaydi!)
           const reply = lang === "ru" 
             ? "✅ <b>Вы успешно привязаны к родительскому аккаунту!</b> Все школьные предметы и функции активированы."
             : "✅ <b>Siz ota-onangizning profiliga muvaffaqiyatli bog'landingiz!</b> Barcha darsliklar va imkoniyatlar faollashtirildi.";
@@ -380,32 +391,12 @@ serve(async (req) => {
           return new Response(JSON.stringify({ ok: true }), { status: 200 });
         }
 
-        // Agar oddiy yangi foydalanuvchi kirsa (va admin bo'lmasa), adminga bildirishnoma yuborish
-        if (!isAdmin && !isApproved) {
-          const userFull = `${msg.from.first_name || ''} ${msg.from.last_name || ''}`.trim() || "Foydalanuvchi";
-          const username = msg.from.username ? `@${msg.from.username}` : `ID: ${msg.from.id}`;
-          const code = generateFamilyCode(chatId);
-
-          const adminAlert = `🔔 <b>YANGI FOYDALANUVCHI ULANMOQCHI!</b>\n\n👤 <b>Ism:</b> ${userFull}\n💬 <b>Username:</b> ${username}\n🆔 <b>Telegram ID:</b> <code>${chatId}</code>\n🔑 <b>Oila Kodi:</b> <code>${code}</code>\n📅 <b>Vaqt:</b> ${new Date().toLocaleString("uz-UZ")}\n\nFoydalanuvchiga to'liq foydalanish (farzand qo'shish)ga ruxsat berasizmi?`;
-
-          const approveBtn = {
-            inline_keyboard: [
-              [
-                { text: "✅ Ruxsat berish (Approve)", callback_data: `admin_approve_${username}` },
-                { text: "❌ Rad etish (Reject)", callback_data: `admin_reject_${username}` },
-              ],
-            ],
-          };
-
-          await notifyAdmins(adminAlert, approveBtn);
-        }
-
-        await sendMessage(chatId, getStartMenuText(chatId, lang, isApproved, isAdmin), getStartKeyboard(chatId, lang));
+        await sendMessage(chatId, getStartMenuText(chatId, lang, true, isAdmin), getStartKeyboard(chatId, lang));
         return new Response(JSON.stringify({ ok: true }), { status: 200 });
       }
 
       if (text.startsWith("/farzand")) {
-        await sendMessage(chatId, getPairingText(chatId, lang, isApproved));
+        await sendMessage(chatId, getPairingText(chatId, lang, true));
         return new Response(JSON.stringify({ ok: true }), { status: 200 });
       }
 

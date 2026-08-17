@@ -200,31 +200,26 @@ def handle_update(update):
             return
 
         if text.startswith("/start"):
+            # Force-remove old reply keyboard (location sharing button) from user's Telegram client cache
+            try:
+                res_clean = call_tg("sendMessage", {
+                    "chat_id": chat_id,
+                    "text": "🛡️",
+                    "reply_markup": json.dumps({"remove_keyboard": True})
+                })
+                if res_clean.get("ok") and res_clean.get("result", {}).get("message_id"):
+                    call_tg("deleteMessage", {
+                        "chat_id": chat_id,
+                        "message_id": res_clean["result"]["message_id"]
+                    })
+            except Exception as e:
+                pass
+
             if "pair_" in text:
                 send_message(chat_id, "✅ <b>Siz ota-onangizning profiliga muvaffaqiyatli bog'landingiz!</b> Barcha darsliklar va imkoniyatlar faollashtirildi.")
                 return
 
-            if not is_admin and not is_approved:
-                user_full = f"{msg['from'].get('first_name', '')} {msg['from'].get('last_name', '')}".strip() or "Foydalanuvchi"
-                code = generate_family_code(chat_id)
-                admin_alert = (
-                    f"🔔 <b>YANGI FOYDALANUVCHI ULANMOQCHI!</b>\n\n"
-                    f"👤 <b>Ism:</b> {user_full}\n"
-                    f"💬 <b>Username:</b> {user_key}\n"
-                    f"🆔 <b>Telegram ID:</b> <code>{chat_id}</code>\n"
-                    f"🔑 <b>Oila Kodi:</b> <code>{code}</code>\n"
-                    f"📅 <b>Vaqt:</b> {time.strftime('%d.%m.%Y %H:%M')}\n\n"
-                    f"Foydalanuvchiga to'liq foydalanish (farzand qo'shish)ga ruxsat berasizmi?"
-                )
-                approve_kb = {
-                    "inline_keyboard": [
-                        [{"text": "✅ Ruxsat berish (Approve)", "callback_data": f"admin_approve_{user_key}"},
-                         {"text": "❌ Rad etish (Reject)", "callback_data": f"admin_reject_{user_key}"}]
-                    ]
-                }
-                notify_admins(admin_alert, approve_kb)
-
-            send_message(chat_id, get_start_menu_text(chat_id, lang, is_approved, is_admin), get_start_keyboard(chat_id, lang))
+            send_message(chat_id, get_start_menu_text(chat_id, lang, True, is_admin), get_start_keyboard(chat_id, lang))
             return
 
         if text.startswith("/farzand"):
@@ -232,6 +227,21 @@ def handle_update(update):
             link = f"https://t.me/farzand_nazorat_bot?start=pair_{code.replace('-', '')}"
             send_message(chat_id, f"🔗 <b>FARZANDNI ULASH:</b>\n\n👉 {link}\n🔑 Oila kodi: <code>{code}</code>")
             return
+
+        # Force-remove old reply keyboard on any other message as well
+        try:
+            res_clean = call_tg("sendMessage", {
+                "chat_id": chat_id,
+                "text": "🛡️",
+                "reply_markup": json.dumps({"remove_keyboard": True})
+            })
+            if res_clean.get("ok") and res_clean.get("result", {}).get("message_id"):
+                call_tg("deleteMessage", {
+                    "chat_id": chat_id,
+                    "message_id": res_clean["result"]["message_id"]
+                })
+        except Exception:
+            pass
 
         # Umumiy javob
         send_message(chat_id, "💡 <b>Ma'lumot:</b> Farzandingizning 100 ballik baholari, 1-11 sinf DTS darsliklari va jonli joylashuvi nazorat ostida. Boshqaruv panelini ochish uchun ekranning pastki chap qismidagi <b>«📊 Ota-Ona Paneli»</b> tugmasini bosing.")
