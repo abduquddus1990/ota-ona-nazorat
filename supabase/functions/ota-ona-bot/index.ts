@@ -190,7 +190,7 @@ function getFeedbackText(lang: string = "uz"): string {
 
 serve(async (req) => {
   if (req.method === "GET") {
-    return new Response(JSON.stringify({ status: "OK", service: "Shield Parental Guard Bot" }), {
+    return new Response(JSON.stringify({ status: "OK", service: "Qalqon AI Bot" }), {
       headers: { "Content-Type": "application/json" },
     });
   }

@@ -55,7 +55,7 @@ def get_start_menu_text(user_id, lang="uz", is_approved=True, is_admin=False):
     code = generate_family_code(user_id)
     if is_admin:
         return (
-            f"👑 <b>SHIELD PARENTAL GUARD — ADMINISTRATOR PANELI</b>\n\n"
+            f"👑 <b>QALQON AI — ADMINISTRATOR PANELI</b>\n\n"
             f"Assalomu alaykum, hurmatli Boshqaruvchi / Hamkor!\n\n"
             f"🔑 <b>Sizning Admin ID:</b> <code>{user_id}</code>\n"
             f"🛡️ <b>Huquq darajasi:</b> To'liq Boshqaruv (Administrator)\n"
@@ -69,7 +69,7 @@ def get_start_menu_text(user_id, lang="uz", is_approved=True, is_admin=False):
 
     if lang == "ru":
         return (
-            f"🛡️ <b>SHIELD PARENTAL GUARD — ЦЕНТР РОДИТЕЛЬСКОГО КОНТРОЛЯ</b>\n\n"
+            f"🛡️ <b>QALQON AI — ЦЕНТР РОДИТЕЛЬСКОГО КОНТРОЛЯ</b>\n\n"
             f"Добро пожаловать! Безопасность, школьные предметы и цифровые привычки вашего ребёнка под защитой 24/7.\n\n"
             f"✅ <b>Ваш доступ полностью активен!</b>\n\n"
             f"🔑 <b>Ваш семейный код:</b> <code>{code}</code>\n"
@@ -80,8 +80,8 @@ def get_start_menu_text(user_id, lang="uz", is_approved=True, is_admin=False):
         )
 
     return (
-        f"🛡️ <b>SHIELD PARENTAL GUARD — OTA-ONA BOSHQARUV MARKAZI</b>\n\n"
-        f"Assalomu alaykum! Farzandingizning xavfsizligi, darsliklari va raqamli odatlari 24/7 doimiy nazorat ostida.\n\n"
+        f"🛡️ <b>QALQON AI — BOSHQARUV MARKAZI</b>\n\n"
+        f"Assalomu alaykum! Farzandingizning xavfsizligi, darsliklari va raqamli odatlari 24/7 doimiy himoya ostida.\n\n"
         f"✅ <b>Sizning hisobingiz to'liq faol!</b>\n\n"
         f"🔑 <b>Sizning oila kodingiz:</b> <code>{code}</code>\n"
         f"📍 <b>Jonli lokatsiya va radar:</b> <b>100% BEPUL</b>\n"
@@ -266,7 +266,7 @@ def setup_bot_commands():
     print("Bot buyruqlari sozlandi (lokatsiya buyrug'i olib tashlandi):", res)
 
 def main_loop():
-    print("Shield Parental Guard Bot Engine ishga tushdi (Polling)...")
+    print("Qalqon AI Bot Engine ishga tushdi (Polling)...")
     call_tg("deleteWebhook", {"drop_pending_updates": False})
     setup_bot_commands()
     last_update_id = 0

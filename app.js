@@ -36,6 +36,9 @@ const CURRICULUM_DATABASE = {
 // 2. BILINGUAL DICTIONARY (UZ / RU)
 const I18N = {
     uz: {
+        appSubtitle: "Guardian Intelligence — Ota-ona & Farzand",
+        aboutShortDesc: "Hurmatli Ota-onalar! Qalqon AI dasturining bosh maqsadi — aslo bolaning orqasidan poyloqchilik qilish emas, balki mehr, o'zaro ishonch, raqamli xavfsizlik va darslarni 100 ballik DTS davlat standarti bo'yicha a'lo o'zlashtirishiga ko'maklashishdir.",
+        aboutPrivacyNote: "Shaxsiy chatlar o'qilmaydi, faqat ta'limiy qiziqishlar tahlil qilinadi.",
         screenTime: "Bugungi Ekran Vaqti",
         normalStatus: "Normal",
         limitRemain: "Qoldi:",
@@ -137,7 +140,7 @@ const I18N = {
         aboutAppModalTitle: "Dastur Haqida & Bizning Maqsadimiz",
         aboutManifestTitle: "Poyloqchilik Emas — Mehr, Ishonch va Xavfsizlik!",
         aboutManifestSubtitle: "Zamonaviy raqamli dunyoda farzandingizning eng yaqin himoyachisi",
-        aboutText1: "Hurmatli ota-onalar! Shield Parental Guard tizimining bosh falsafasi hech qachon bolaning orqasidan poyloqchilik qilish yoki uning shaxsiy erkinligini cheklash emas.",
+        aboutText1: "Hurmatli ota-onalar! Qalqon AI tizimining bosh falsafasi hech qachon bolaning orqasidan poyloqchilik qilish yoki uning shaxsiy erkinligini cheklash emas.",
         aboutText2: "Bizning asosiy maqsadimiz — farzandimizni raqamli xavf-xatarlardan asrash, darslarni 100 ballik DTS davlat standarti bo'yicha a'lo o'zlashtirishiga yordam berish va oilada o'zaro ishonch muhitini mustahkamlashdir.",
         aboutPrivacyHead: "100% Shaffoflik va Maxfiylik:",
         aboutPrivacyBody: "Biz shaxsiy chatlarni o'qimaymiz va videolarni tomosha qilmaymiz. Tizim faqat qiziqish vektorlari va darsliklar tahlilini yuritadi.",
@@ -233,7 +236,7 @@ const I18N = {
         aboutAppModalTitle: "О Программе и Нашей Миссии",
         aboutManifestTitle: "Не Слежка — а Любовь, Доверие и Безопасность!",
         aboutManifestSubtitle: "Главный защитник вашего ребёнка в цифровом мире",
-        aboutText1: "Уважаемые родители! Главная философия Shield Parental Guard — это ни в коем случае не слежка и не ограничение свободы ребёнка.",
+        aboutText1: "Уважаемые родители! Главная философия Qalqon AI — это ни в коем случае не слежка и не ограничение свободы ребёнка.",
         aboutText2: "Наша главная цель — защитить детей от цифровых угроз, помочь учиться на 100 баллов по стандартам DTS и построить атмосферу взаимного доверия в семье.",
         aboutPrivacyHead: "100% Прозрачность и Приватность:",
         aboutPrivacyBody: "Мы не читаем личные чаты и не смотрим видео. Анализируются только векторы интересов и успеваемость.",
@@ -266,7 +269,7 @@ const I18N = {
         loginPasswordLabel: "Пароль",
         btnSubmitLogin: "🚀 Войти",
         approvalNoticeTitle: "Полный Доступ Активен",
-        approvalNoticeHeader: "Добро пожаловать в Shield Parental Guard!",
+        approvalNoticeHeader: "Добро пожаловать в Qalqon AI!",
         approvalNoticeDesc: "Все разделы (Радар, Gemini AI, e-Maktab 100 баллов) открыты для вас без ограничений.",
         roleParent: "Панель Родителя",
         roleChild: "Панель Ребёнка",

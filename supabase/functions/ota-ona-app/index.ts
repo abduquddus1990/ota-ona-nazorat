@@ -7,7 +7,7 @@ const HTML = `<!DOCTYPE html>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Ogoh AI — Ota-Ona Nazorati & Farzand Xavfsizligi</title>
+    <title>Qalqon AI — Ota-Ona Nazorati & Farzand Xavfsizligi</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <!-- Material Symbols & Fonts -->
@@ -21,7 +21,7 @@ const HTML = `<!DOCTYPE html>
     <!-- Custom Stitch Styles -->
     <style>
 /* ==========================================================================
-   OGOH AI (GUARDIAN INTELLIGENCE) — STITCH DESIGN SYSTEM
+   QALQON AI (GUARDIAN INTELLIGENCE) — STITCH DESIGN SYSTEM
    Modern Corporate Glassmorphic Theme with High-Precision Dark Aesthetic
    ========================================================================== */
 
@@ -98,6 +98,11 @@ body[data-theme="gold"] {
 
 body {
     background-color: var(--bg-primary);
+    background-image: linear-gradient(rgba(19, 19, 27, 0.86), rgba(19, 19, 27, 0.94)), url('assets/wolf_bg.jpg'), url('https://lh3.googleusercontent.com/aida/AP1WRLvyZl9o8A5zQ5i57HL37UvZjrNo-GrK4fr4xLIkZCuWmH9K8yu36Z0M3DZDbfZgU_vvXxnG8tPKdpYJBXZsLNiJtcOimq4CT5KJF0kSOSrhhDd5ecgBRJHSiQ-JqK1tOtroIT6lJ-3WCOvQaqD9a1J2rCbG9K5QWX1GqxMCbOzBFJDp3TacA4mPvYe7CK_L3M92zFo0mSlNWgg6nqSopxxPDRm5bBsIpTbJjWkmJIyiZVcCVbIAttfbNO-F');
+    background-attachment: fixed;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
     color: var(--text-primary);
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
     min-height: 100vh;
@@ -358,21 +363,21 @@ body {
     <div class="ambient-glow-bg"></div>
 
     <!-- ==================================================================== -->
-    <!-- TOP APP BAR (OGOH AI BRAND & MASCOT) -->
+    <!-- TOP APP BAR (QALQON AI BRAND & MASCOT) -->
     <!-- ==================================================================== -->
     <header class="glass-panel px-3.5 py-2.5 mb-3 flex items-center justify-between border-[#334155]">
         <div class="flex items-center gap-2">
             <span class="material-symbols-outlined text-[#22D3EE] text-2xl animate-pulse">shield</span>
             <div>
-                <h1 class="font-display-brand text-sm text-[#22D3EE] font-black tracking-wider leading-none">OGOH AI</h1>
+                <h1 class="font-display-brand text-sm text-[#22D3EE] font-black tracking-wider leading-none">QALQON AI</h1>
                 <p class="text-[9px] text-slate-400 mt-0.5" data-i18n="appSubtitle">Guardian Intelligence — Ota-ona & Farzand</p>
             </div>
         </div>
 
         <div class="flex items-center gap-2">
             <!-- Silver Wolf Mascot Avatar -->
-            <div class="w-8 h-8 rounded-full border border-[#22D3EE]/60 bg-[#22D3EE]/10 flex items-center justify-center text-base shadow-[0_0_10px_rgba(34,211,238,0.25)]">
-                🐺
+            <div class="w-8 h-8 rounded-full border-2 border-[#22D3EE]/80 bg-[#22D3EE]/20 flex items-center justify-center overflow-hidden relative shadow-[0_0_10px_rgba(34,211,238,0.35)]">
+                <img src="assets/wolf_mascot.png" onerror="this.src='https://lh3.googleusercontent.com/aida-public/AB6AXuD4KD1uqMogxlSUh4XTwFZ6O8CcikpLzeXyE_AoKP5Bb7hfxrK_rDplyKX2s0KI3Kf-D2TRnanZtUX21nyuflU3WUny5Q3xGqSOAFplw0NaQNtSmIFXg_tVGW1h8CU70IPksptF26DN2hbF2nFN9sZOKWou2ZiNFaEl1s9UvWP8vjflsQwQWMt_BttzLNQBBJHpzrSqvqz-wwxaNui-4J52Xz6TfF8kqKuSIoBQubAXZiw9_QUtaSOjOw'" alt="Kumush Bo'ri" class="w-full h-full object-cover">
             </div>
             <!-- Plan Badge -->
             <button onclick="openSubpage('modal-plans')" class="px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-300 text-[10px] font-bold">
@@ -1055,7 +1060,7 @@ body {
             <div class="space-y-2 text-[11px] text-slate-300 leading-relaxed">
                 <div class="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
                     <p data-i18n="aboutShortDesc">
-                        Hurmatli Ota-onalar! <b>Shield Parental Guard</b> dasturining bosh maqsadi — aslo bolaning orqasidan poyloqchilik qilish emas, balki <b>mehr, o'zaro ishonch, raqamli xavfsizlik va darslarni 100 ballik DTS davlat standarti</b> bo'yicha a'lo o'zlashtirishiga ko'maklashishdir.
+                        Hurmatli Ota-onalar! <b>Qalqon AI</b> dasturining bosh maqsadi — aslo bolaning orqasidan poyloqchilik qilish emas, balki <b>mehr, o'zaro ishonch, raqamli xavfsizlik va darslarni 100 ballik DTS davlat standarti</b> bo'yicha a'lo o'zlashtirishiga ko'maklashishdir.
                     </p>
                 </div>
                 <div class="flex items-center gap-2 text-[10px] text-emerald-300 px-1">
@@ -1552,7 +1557,7 @@ body {
 
             <div class="p-3 rounded-xl bg-slate-900/80 border border-slate-800 space-y-2 text-[11px] text-slate-300">
                 <p data-i18n="aboutText1">
-                    Hurmatli ota-onalar! <b>Shield Parental Guard</b> tizimining bosh falsafasi hech qachon bolaning orqasidan poyloqchilik qilish yoki uning shaxsiy erkinligini cheklash emas.
+                    Hurmatli ota-onalar! <b>Qalqon AI</b> tizimining bosh falsafasi hech qachon bolaning orqasidan poyloqchilik qilish yoki uning shaxsiy erkinligini cheklash emas.
                 </p>
                 <p data-i18n="aboutText2">
                     Bizning asosiy maqsadimiz — farzandimizni raqamli xavf-xatarlardan asrash, darslarni 100 ballik DTS davlat standarti bo'yicha a'lo o'zlashtirishiga yordam berish va oilada o'zaro ishonch muhitini mustahkamlashdir.
@@ -1872,6 +1877,9 @@ const CURRICULUM_DATABASE = {
 // 2. BILINGUAL DICTIONARY (UZ / RU)
 const I18N = {
     uz: {
+        appSubtitle: "Guardian Intelligence — Ota-ona & Farzand",
+        aboutShortDesc: "Hurmatli Ota-onalar! Qalqon AI dasturining bosh maqsadi — aslo bolaning orqasidan poyloqchilik qilish emas, balki mehr, o'zaro ishonch, raqamli xavfsizlik va darslarni 100 ballik DTS davlat standarti bo'yicha a'lo o'zlashtirishiga ko'maklashishdir.",
+        aboutPrivacyNote: "Shaxsiy chatlar o'qilmaydi, faqat ta'limiy qiziqishlar tahlil qilinadi.",
         screenTime: "Bugungi Ekran Vaqti",
         normalStatus: "Normal",
         limitRemain: "Qoldi:",
@@ -1973,7 +1981,7 @@ const I18N = {
         aboutAppModalTitle: "Dastur Haqida & Bizning Maqsadimiz",
         aboutManifestTitle: "Poyloqchilik Emas — Mehr, Ishonch va Xavfsizlik!",
         aboutManifestSubtitle: "Zamonaviy raqamli dunyoda farzandingizning eng yaqin himoyachisi",
-        aboutText1: "Hurmatli ota-onalar! Shield Parental Guard tizimining bosh falsafasi hech qachon bolaning orqasidan poyloqchilik qilish yoki uning shaxsiy erkinligini cheklash emas.",
+        aboutText1: "Hurmatli ota-onalar! Qalqon AI tizimining bosh falsafasi hech qachon bolaning orqasidan poyloqchilik qilish yoki uning shaxsiy erkinligini cheklash emas.",
         aboutText2: "Bizning asosiy maqsadimiz — farzandimizni raqamli xavf-xatarlardan asrash, darslarni 100 ballik DTS davlat standarti bo'yicha a'lo o'zlashtirishiga yordam berish va oilada o'zaro ishonch muhitini mustahkamlashdir.",
         aboutPrivacyHead: "100% Shaffoflik va Maxfiylik:",
         aboutPrivacyBody: "Biz shaxsiy chatlarni o'qimaymiz va videolarni tomosha qilmaymiz. Tizim faqat qiziqish vektorlari va darsliklar tahlilini yuritadi.",
@@ -2069,7 +2077,7 @@ const I18N = {
         aboutAppModalTitle: "О Программе и Нашей Миссии",
         aboutManifestTitle: "Не Слежка — а Любовь, Доверие и Безопасность!",
         aboutManifestSubtitle: "Главный защитник вашего ребёнка в цифровом мире",
-        aboutText1: "Уважаемые родители! Главная философия Shield Parental Guard — это ни в коем случае не слежка и не ограничение свободы ребёнка.",
+        aboutText1: "Уважаемые родители! Главная философия Qalqon AI — это ни в коем случае не слежка и не ограничение свободы ребёнка.",
         aboutText2: "Наша главная цель — защитить детей от цифровых угроз, помочь учиться на 100 баллов по стандартам DTS и построить атмосферу взаимного доверия в семье.",
         aboutPrivacyHead: "100% Прозрачность и Приватность:",
         aboutPrivacyBody: "Мы не читаем личные чаты и не смотрим видео. Анализируются только векторы интересов и успеваемость.",
@@ -2102,7 +2110,7 @@ const I18N = {
         loginPasswordLabel: "Пароль",
         btnSubmitLogin: "🚀 Войти",
         approvalNoticeTitle: "Полный Доступ Активен",
-        approvalNoticeHeader: "Добро пожаловать в Shield Parental Guard!",
+        approvalNoticeHeader: "Добро пожаловать в Qalqon AI!",
         approvalNoticeDesc: "Все разделы (Радар, Gemini AI, e-Maktab 100 баллов) открыты для вас без ограничений.",
         roleParent: "Панель Родителя",
         roleChild: "Панель Ребёнка",

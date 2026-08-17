@@ -1,5 +1,5 @@
 /* ==========================================================================
-   OGOH AI (GUARDIAN INTELLIGENCE) — STITCH DESIGN SYSTEM
+   QALQON AI (GUARDIAN INTELLIGENCE) — STITCH DESIGN SYSTEM
    Modern Corporate Glassmorphic Theme with High-Precision Dark Aesthetic
    ========================================================================== */
 
@@ -76,6 +76,11 @@ body[data-theme="gold"] {
 
 body {
     background-color: var(--bg-primary);
+    background-image: linear-gradient(rgba(19, 19, 27, 0.86), rgba(19, 19, 27, 0.94)), url('assets/wolf_bg.jpg'), url('https://lh3.googleusercontent.com/aida/AP1WRLvyZl9o8A5zQ5i57HL37UvZjrNo-GrK4fr4xLIkZCuWmH9K8yu36Z0M3DZDbfZgU_vvXxnG8tPKdpYJBXZsLNiJtcOimq4CT5KJF0kSOSrhhDd5ecgBRJHSiQ-JqK1tOtroIT6lJ-3WCOvQaqD9a1J2rCbG9K5QWX1GqxMCbOzBFJDp3TacA4mPvYe7CK_L3M92zFo0mSlNWgg6nqSopxxPDRm5bBsIpTbJjWkmJIyiZVcCVbIAttfbNO-F');
+    background-attachment: fixed;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
     color: var(--text-primary);
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
     min-height: 100vh;
