@@ -1,4 +1,7 @@
-/* ==========================================================================
+﻿import os, shutil
+
+# 1. Update styles.css
+styles_css = """/* ==========================================================================
    QALQON AI (GUARDIAN INTELLIGENCE) — STITCH DESIGN SYSTEM
    Modern Corporate Glassmorphic Theme with High-Precision Dark Aesthetic
    ========================================================================== */
@@ -363,3 +366,9 @@ body[data-theme="gold"] {
     -ms-overflow-style: none;
     scrollbar-width: none;
 }
+"""
+
+with open("styles.css", "w", encoding="utf-8") as f:
+    f.write(styles_css)
+
+print("styles.css updated with dual wolf themes and responsive background!")

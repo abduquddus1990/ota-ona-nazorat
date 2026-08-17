@@ -29,7 +29,7 @@ const HTML = `<!DOCTYPE html>
     --bg-primary: #13131b;
     --bg-surface: #1b1b23;
     --bg-surface-high: #292932;
-    --bg-card: rgba(30, 41, 59, 0.65);
+    --bg-card: rgba(27, 27, 35, 0.78);
     --border-subtle: #334155;
     --border-active: #22d3ee;
     
@@ -51,57 +51,12 @@ const HTML = `<!DOCTYPE html>
     --radius-full: 9999px;
 }
 
-body[data-theme="aurora"] {
-    --bg-primary: #0a192f;
-    --bg-surface: #112240;
-    --bg-card: rgba(17, 34, 64, 0.75);
-    --border-subtle: #233554;
-    --border-active: #64ffda;
-    --accent-cyan: #64ffda;
-}
-
-body[data-theme="nebula"] {
-    --bg-primary: #120d24;
-    --bg-surface: #1d163a;
-    --bg-card: rgba(29, 22, 58, 0.75);
-    --border-subtle: #362a66;
-    --border-active: #a855f7;
-    --accent-cyan: #c084fc;
-}
-
-body[data-theme="sunset"] {
-    --bg-primary: #1c1018;
-    --bg-surface: #2d1825;
-    --bg-card: rgba(45, 24, 37, 0.75);
-    --border-subtle: #522741;
-    --border-active: #fb923c;
-    --accent-cyan: #f97316;
-}
-
-body[data-theme="emerald"] {
-    --bg-primary: #061a14;
-    --bg-surface: #0c2b22;
-    --bg-card: rgba(12, 43, 34, 0.75);
-    --border-subtle: #194a3b;
-    --border-active: #10b981;
-    --accent-cyan: #34d399;
-}
-
-body[data-theme="gold"] {
-    --bg-primary: #1a1608;
-    --bg-surface: #2b240f;
-    --bg-card: rgba(43, 36, 15, 0.75);
-    --border-subtle: #4a3e1a;
-    --border-active: #fbbf24;
-    --accent-cyan: #f59e0b;
-}
-
 body {
     background-color: var(--bg-primary);
-    background-image: linear-gradient(rgba(19, 19, 27, 0.86), rgba(19, 19, 27, 0.94)), url('assets/wolf_bg.jpg'), url('https://lh3.googleusercontent.com/aida/AP1WRLvyZl9o8A5zQ5i57HL37UvZjrNo-GrK4fr4xLIkZCuWmH9K8yu36Z0M3DZDbfZgU_vvXxnG8tPKdpYJBXZsLNiJtcOimq4CT5KJF0kSOSrhhDd5ecgBRJHSiQ-JqK1tOtroIT6lJ-3WCOvQaqD9a1J2rCbG9K5QWX1GqxMCbOzBFJDp3TacA4mPvYe7CK_L3M92zFo0mSlNWgg6nqSopxxPDRm5bBsIpTbJjWkmJIyiZVcCVbIAttfbNO-F');
+    background-image: linear-gradient(rgba(19, 19, 27, 0.84), rgba(19, 19, 27, 0.94)), url('assets/wolf_adult_hero.png');
     background-attachment: fixed;
-    background-size: cover;
-    background-position: center;
+    background-size: 380px auto;
+    background-position: center 60px;
     background-repeat: no-repeat;
     color: var(--text-primary);
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
@@ -112,18 +67,85 @@ body {
     overflow-x: hidden;
 }
 
+body.role-child {
+    background-image: linear-gradient(rgba(19, 19, 27, 0.84), rgba(19, 19, 27, 0.94)), url('assets/wolf_pup_hero.png') !important;
+    background-size: 360px auto !important;
+    background-position: center 60px !important;
+}
+
+body[data-theme="wolf_adult"] {
+    background-image: linear-gradient(rgba(19, 19, 27, 0.82), rgba(19, 19, 27, 0.92)), url('assets/wolf_adult_hero.png') !important;
+    background-size: 380px auto !important;
+    background-position: center 60px !important;
+}
+
+body[data-theme="wolf_pup"] {
+    background-image: linear-gradient(rgba(19, 19, 27, 0.82), rgba(19, 19, 27, 0.92)), url('assets/wolf_pup_hero.png') !important;
+    background-size: 360px auto !important;
+    background-position: center 60px !important;
+}
+
+body[data-theme="aurora"] {
+    --bg-primary: #0a192f;
+    --bg-surface: #112240;
+    --bg-card: rgba(17, 34, 64, 0.82);
+    --border-subtle: #233554;
+    --border-active: #64ffda;
+    --accent-cyan: #64ffda;
+    background-image: linear-gradient(rgba(10, 25, 47, 0.88), rgba(10, 25, 47, 0.95)), url('assets/wolf_adult_hero.png') !important;
+    background-size: 380px auto !important;
+}
+
+body[data-theme="nebula"] {
+    --bg-primary: #120d24;
+    --bg-surface: #1d163a;
+    --bg-card: rgba(29, 22, 58, 0.82);
+    --border-subtle: #362a66;
+    --border-active: #a855f7;
+    --accent-cyan: #c084fc;
+    background-image: linear-gradient(rgba(18, 13, 36, 0.88), rgba(18, 13, 36, 0.95)), url('assets/wolf_pup_hero.png') !important;
+    background-size: 360px auto !important;
+}
+
+body[data-theme="sunset"] {
+    --bg-primary: #1c1018;
+    --bg-surface: #2d1825;
+    --bg-card: rgba(45, 24, 37, 0.82);
+    --border-subtle: #522741;
+    --border-active: #fb923c;
+    --accent-cyan: #f97316;
+}
+
+body[data-theme="emerald"] {
+    --bg-primary: #061a14;
+    --bg-surface: #0c2b22;
+    --bg-card: rgba(12, 43, 34, 0.82);
+    --border-subtle: #194a3b;
+    --border-active: #10b981;
+    --accent-cyan: #34d399;
+}
+
+body[data-theme="gold"] {
+    --bg-primary: #1a1608;
+    --bg-surface: #2b240f;
+    --bg-card: rgba(43, 36, 15, 0.82);
+    --border-subtle: #4a3e1a;
+    --border-active: #fbbf24;
+    --accent-cyan: #f59e0b;
+}
+
 .glass-panel {
     background: var(--bg-card);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-lg);
-    box-shadow: 0 4px 24px -1px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 4px 24px -1px rgba(0, 0, 0, 0.45);
     transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .glass-panel:hover {
-    border-color: rgba(34, 211, 238, 0.45);
+    border-color: rgba(34, 211, 238, 0.5);
 }
 
 .ambient-glow-bg {
@@ -131,17 +153,17 @@ body {
     inset: 0;
     pointer-events: none;
     z-index: -1;
-    background: radial-gradient(circle at 50% 15%, rgba(34, 211, 238, 0.08) 0%, transparent 65%);
+    background: radial-gradient(circle at 50% 12%, rgba(34, 211, 238, 0.12) 0%, transparent 65%);
     animation: ambientPulse 6s ease-in-out infinite alternate;
 }
 
 @keyframes ambientPulse {
-    0% { opacity: 0.5; transform: scale(1); }
-    100% { opacity: 0.9; transform: scale(1.06); }
+    0% { opacity: 0.6; transform: scale(1); }
+    100% { opacity: 1; transform: scale(1.06); }
 }
 
 .status-glow-safe {
-    background: radial-gradient(circle at top right, rgba(0, 165, 114, 0.16) 0%, transparent 70%);
+    background: radial-gradient(circle at top right, rgba(0, 165, 114, 0.18) 0%, transparent 70%);
 }
 
 .status-accent-safe {
@@ -190,7 +212,7 @@ body {
     right: 0 !important;
     max-width: 480px;
     margin: 0 auto;
-    background: rgba(19, 19, 27, 0.92) !important;
+    background: rgba(19, 19, 27, 0.94) !important;
     backdrop-filter: blur(20px) !important;
     -webkit-backdrop-filter: blur(20px) !important;
     border-top: 1px solid var(--border-subtle);
@@ -232,7 +254,7 @@ body {
 
 .nav-btn.active {
     color: var(--accent-cyan) !important;
-    background: rgba(34, 211, 238, 0.12);
+    background: rgba(34, 211, 238, 0.14);
 }
 
 .nav-btn.active .material-symbols-outlined {
@@ -242,7 +264,7 @@ body {
 
 #childBottomNav .nav-btn.active {
     color: var(--accent-indigo) !important;
-    background: rgba(129, 140, 248, 0.15);
+    background: rgba(129, 140, 248, 0.18);
 }
 
 .subpage-modal {
@@ -252,6 +274,10 @@ body {
     right: 0;
     bottom: 0;
     background: var(--bg-primary);
+    background-image: linear-gradient(rgba(19, 19, 27, 0.94), rgba(19, 19, 27, 0.98)), url('assets/wolf_adult_hero.png');
+    background-size: 380px auto;
+    background-position: center 60px;
+    background-repeat: no-repeat;
     z-index: 100000;
     display: none;
     overflow-y: auto;
@@ -270,7 +296,7 @@ body {
 }
 
 .progress-bar-bg {
-    background-color: rgba(255, 255, 255, 0.08);
+    background-color: rgba(255, 255, 255, 0.09);
     border-radius: 9999px;
     height: 7px;
     overflow: hidden;
@@ -332,21 +358,24 @@ body {
 }
 
 .theme-card {
-    height: 64px;
-    border-radius: 12px;
+    height: 72px;
+    border-radius: 14px;
     border: 2px solid transparent;
     cursor: pointer;
     transition: all 0.2s ease;
     display: flex;
-    align-items: flex-end;
+    flex-direction: column;
+    justify-content: flex-end;
     padding: 8px;
     font-size: 11px;
     font-weight: 700;
+    position: relative;
+    overflow: hidden;
 }
 
 .theme-card.active {
     border-color: var(--accent-cyan);
-    box-shadow: 0 0 14px rgba(34, 211, 238, 0.35);
+    box-shadow: 0 0 16px rgba(34, 211, 238, 0.45);
 }
 
 ::-webkit-scrollbar {
@@ -480,23 +509,23 @@ body {
 
     <!-- FARZAND TAB 1: 🏠 ASOSIY (BOSH SAHIFA, TEZKOR XABARLAR, POMODORO & ULANISH) -->
     <main id="child-tab-home" class="tab-content space-y-3.5 hidden">
-        <!-- Farzand Salomlashish Headeri -->
-        <section class="glass-card p-4 bg-gradient-to-br from-indigo-950/70 to-purple-950/70 border-indigo-500/40 relative overflow-hidden">
-            <div class="flex items-center justify-between">
-                <div class="flex items-center gap-3">
-                    <div class="w-12 h-12 rounded-2xl bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center text-2xl animate-bounce">
-                        🚀
-                    </div>
-                    <div>
-                        <h2 class="text-sm font-black text-white" data-i18n="childWelcomeTitle">Salom, Yosh Qahramon! 🌟</h2>
-                        <p class="text-[11px] text-indigo-300 mt-0.5" data-i18n="childWelcomeSub">Sening shaxsiy aqlli yordamching va xavfsizlik qalqoning</p>
-                    </div>
+        <!-- Farzand 3D Bo'ri Qahramon Boshqaruv Kartasi -->
+        <section class="glass-panel p-4 bg-gradient-to-r from-indigo-950/90 via-slate-900/85 to-purple-950/70 border-indigo-500/50 relative overflow-hidden flex items-center justify-between">
+            <div class="space-y-1.5 z-10 max-w-[62%]">
+                <div class="flex items-center gap-1 text-amber-300 text-[10px] font-bold uppercase tracking-wider">
+                    <span>⚔️</span>
+                    <span>Yosh Qahramon Bo'ri Hamrohi</span>
                 </div>
-                <div class="px-2.5 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-[10px] font-bold text-emerald-300 flex items-center gap-1">
-                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                    <span>Online</span>
+                <h2 class="text-sm font-black text-white leading-tight" data-i18n="childWelcomeTitle">Salom, Yosh Qahramon! 🌟</h2>
+                <p class="text-[10px] text-indigo-200" data-i18n="childWelcomeSub">Sening shaxsiy aqlli do'sting va bilim qalqoning</p>
+                <div class="pt-1 flex items-center gap-1">
+                    <span class="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[9px] font-bold">🟢 Faol & Himoyada</span>
                 </div>
             </div>
+            <div class="w-24 h-28 relative flex-shrink-0 z-10 flex items-center justify-center">
+                <img src="assets/wolf_pup_hero.png" alt="Qalqon AI Kichik Bo'ri" class="w-full h-full object-contain filter drop-shadow-[0_0_15px_rgba(129,140,248,0.6)] transform hover:scale-105 transition duration-300">
+            </div>
+            <div class="absolute -right-4 -bottom-6 w-36 h-36 opacity-20 pointer-events-none bg-center bg-no-repeat bg-contain" style="background-image: url('assets/wolf_pup_hero.png');"></div>
         </section>
 
         <!-- 📍 BO'LIMOSTI 1: TEZKOR XABARLAR (OTAN-ONAGA 1 SONIYADA) -->
@@ -761,6 +790,22 @@ body {
     <!-- TAB 1: 📊 DASHBOARD (STITCH STATUS CARD & AI INSIGHTS) -->
     <!-- ==================================================================== -->
     <main id="tab-dashboard" class="tab-content active space-y-3.5">
+        <!-- 3D Bo'ri Qalqon AI Himoyachi Hero Card -->
+        <section class="glass-panel p-3.5 bg-gradient-to-r from-slate-900/95 via-slate-900/85 to-cyan-950/60 border-cyan-500/40 relative overflow-hidden flex items-center justify-between">
+            <div class="space-y-1 z-10 max-w-[65%]">
+                <div class="flex items-center gap-1.5 text-cyan-400 text-[10px] font-bold uppercase tracking-wider">
+                    <span class="material-symbols-outlined text-sm">shield</span>
+                    <span>Qalqon AI Himoyachi</span>
+                </div>
+                <h2 class="text-sm font-black text-white leading-tight">Qalqon AI — Oila Xavfsizlik Qalqoni</h2>
+                <p class="text-[10px] text-slate-300">Farzandingiz 24/7 aqlli himoya, 100 ballik DTS va xavfsiz odatlar nazoratida.</p>
+            </div>
+            <div class="w-24 h-28 relative flex-shrink-0 z-10 flex items-center justify-center">
+                <img src="assets/wolf_adult_hero.png" alt="Qalqon AI Bo'ri Himoyachi" class="w-full h-full object-contain filter drop-shadow-[0_0_15px_rgba(34,211,238,0.5)] transform hover:scale-105 transition duration-300">
+            </div>
+            <div class="absolute -right-4 -bottom-6 w-36 h-36 opacity-20 pointer-events-none bg-center bg-no-repeat bg-contain" style="background-image: url('assets/wolf_adult_hero.png');"></div>
+        </section>
+
         <!-- 1. Stitch Status Card (Level 1 Surface with Glow) -->
         <section class="glass-panel p-4 status-glow-safe status-accent-safe relative overflow-hidden">
             <div class="flex justify-between items-start mb-3">
@@ -1425,7 +1470,17 @@ body {
         </div>
 
         <div class="grid grid-cols-2 gap-3">
-            <div onclick="setTheme('default')" data-theme-name="default" class="theme-card active bg-gradient-to-br from-slate-900 to-slate-950 border-slate-800 text-emerald-400">
+            <div onclick="setTheme('wolf_adult')" data-theme-name="wolf_adult" class="theme-card active bg-gradient-to-br from-slate-900 to-cyan-950 border-cyan-500/50 text-cyan-300 flex flex-col justify-end p-2 relative overflow-hidden">
+                <div class="absolute right-0 bottom-0 w-14 h-16 opacity-40 bg-contain bg-no-repeat bg-right-bottom" style="background-image: url('assets/wolf_adult_hero.png');"></div>
+                <div class="text-[9px] text-cyan-400 font-semibold">🐺 Ota-ona Foni</div>
+                <div class="font-bold text-white text-xs">Katta Bo'ri (Qalqon)</div>
+            </div>
+            <div onclick="setTheme('wolf_pup')" data-theme-name="wolf_pup" class="theme-card bg-gradient-to-br from-slate-900 to-indigo-950 border-indigo-500/50 text-indigo-300 flex flex-col justify-end p-2 relative overflow-hidden">
+                <div class="absolute right-0 bottom-0 w-14 h-16 opacity-40 bg-contain bg-no-repeat bg-right-bottom" style="background-image: url('assets/wolf_pup_hero.png');"></div>
+                <div class="text-[9px] text-indigo-400 font-semibold">🐺 Farzand Foni</div>
+                <div class="font-bold text-white text-xs">Kichik Bo'ri (Qilich)</div>
+            </div>
+            <div onclick="setTheme('default')" data-theme-name="default" class="theme-card bg-gradient-to-br from-slate-900 to-slate-950 border-slate-800 text-emerald-400">
                 Cyber Dark
             </div>
             <div onclick="setTheme('aurora')" data-theme-name="aurora" class="theme-card bg-gradient-to-br from-sky-950 to-emerald-950 border-sky-800 text-sky-400">
@@ -2425,6 +2480,8 @@ function switchAppRole(role) {
     });
 
     if (isParent) {
+        document.body.classList.remove('role-child');
+        document.body.classList.add('role-parent');
         if (childBottomNav) {
             childBottomNav.style.display = 'none';
             childBottomNav.classList.add('hidden');
@@ -2438,6 +2495,8 @@ function switchAppRole(role) {
         setParentRelation(currentParentRelation);
         switchTab('tab-dashboard');
     } else {
+        document.body.classList.remove('role-parent');
+        document.body.classList.add('role-child');
         if (parentBottomNav) {
             parentBottomNav.style.display = 'none';
             parentBottomNav.classList.add('hidden');

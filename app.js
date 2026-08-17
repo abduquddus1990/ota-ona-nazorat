@@ -584,6 +584,8 @@ function switchAppRole(role) {
     });
 
     if (isParent) {
+        document.body.classList.remove('role-child');
+        document.body.classList.add('role-parent');
         if (childBottomNav) {
             childBottomNav.style.display = 'none';
             childBottomNav.classList.add('hidden');
@@ -597,6 +599,8 @@ function switchAppRole(role) {
         setParentRelation(currentParentRelation);
         switchTab('tab-dashboard');
     } else {
+        document.body.classList.remove('role-parent');
+        document.body.classList.add('role-child');
         if (parentBottomNav) {
             parentBottomNav.style.display = 'none';
             parentBottomNav.classList.add('hidden');
