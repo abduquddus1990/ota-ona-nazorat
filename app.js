@@ -132,6 +132,24 @@ const I18N = {
         childNavRewards: "Yutuqlar",
         childNavSchool: "e-Maktabim",
         childNavExplore: "Qiziqishlar",
+        aboutAppTitle: "Dastur Haqida & Asosiy Maqsad",
+        aboutAppSub: "Poyloqchilik emas — mehr, xavfsizlik va darslik nazorati",
+        aboutAppModalTitle: "Dastur Haqida & Bizning Maqsadimiz",
+        aboutManifestTitle: "Poyloqchilik Emas — Mehr, Ishonch va Xavfsizlik!",
+        aboutManifestSubtitle: "Zamonaviy raqamli dunyoda farzandingizning eng yaqin himoyachisi",
+        aboutText1: "Hurmatli ota-onalar! Shield Parental Guard tizimining bosh falsafasi hech qachon bolaning orqasidan poyloqchilik qilish yoki uning shaxsiy erkinligini cheklash emas.",
+        aboutText2: "Bizning asosiy maqsadimiz — farzandimizni raqamli xavf-xatarlardan asrash, darslarni 100 ballik DTS davlat standarti bo'yicha a'lo o'zlashtirishiga yordam berish va oilada o'zaro ishonch muhitini mustahkamlashdir.",
+        aboutPrivacyHead: "100% Shaffoflik va Maxfiylik:",
+        aboutPrivacyBody: "Biz shaxsiy chatlarni o'qimaymiz va videolarni tomosha qilmaymiz. Tizim faqat qiziqish vektorlari va darsliklar tahlilini yuritadi.",
+        aboutAiHead: "Gemini AI Yordamchi & Repetitor:",
+        aboutAiBody: "Qiyin darslik topshiriqlarini rasmga olib yuborish orqali bolaga do'stona va tushunarli yechimlar taqdim etiladi.",
+        aboutContactHint: "Loyiha bo'yicha taklif, mulohaza va murojaatlaringiz uchun rasmiy manzil:",
+        writeGmailBtn: "Gmail orqali xat yozish",
+        appStatsTitle: "Dastur Statistikasi & Dinamika",
+        appStatsSub: "14,820+ Ota-onalar, 23,450+ Farzandlar",
+        appStatsModalTitle: "Dastur Statistikasi & Dinamika",
+        statParentsLabel: "Ulangan Ota-onalar",
+        statChildrenLabel: "Ulangan Farzandlar",
         navDashboard: "Asosiy",
         navRadar: "Radar (Bepul)",
         navAi: "AI Murabbiy 💎",
@@ -210,28 +228,46 @@ const I18N = {
         feedbackEmailLabel: "Официальная почта для приёма:",
         openGmailBtn: "Написать через Gmail",
         openDefaultMailBtn: "Другой почтовый клиент",
-        demoModeTitle: "Тестовый / Демо-Режим",
-        demoModeSub: "Добавление детей откроется после одобрения админом",
+        aboutAppTitle: "О Программе и Главной Цели",
+        aboutAppSub: "Не слежка — а забота, безопасность и помощь в учёбе",
+        aboutAppModalTitle: "О Программе и Нашей Миссии",
+        aboutManifestTitle: "Не Слежка — а Любовь, Доверие и Безопасность!",
+        aboutManifestSubtitle: "Главный защитник вашего ребёнка в цифровом мире",
+        aboutText1: "Уважаемые родители! Главная философия Shield Parental Guard — это ни в коем случае не слежка и не ограничение свободы ребёнка.",
+        aboutText2: "Наша главная цель — защитить детей от цифровых угроз, помочь учиться на 100 баллов по стандартам DTS и построить атмосферу взаимного доверия в семье.",
+        aboutPrivacyHead: "100% Прозрачность и Приватность:",
+        aboutPrivacyBody: "Мы не читаем личные чаты и не смотрим видео. Анализируются только векторы интересов и успеваемость.",
+        aboutAiHead: "Gemini AI Репетитор и Наставник:",
+        aboutAiBody: "Сфотографируйте сложное задание из учебника, и AI объяснит решение простым и понятным языком.",
+        aboutContactHint: "Официальный адрес для предложений и связи с создателями:",
+        writeGmailBtn: "Написать через Gmail",
+        appStatsTitle: "Статистика Программы и Динамика",
+        appStatsSub: "14,820+ Родителей, 23,450+ Детей",
+        appStatsModalTitle: "Статистика Программы и Динамика",
+        statParentsLabel: "Подключённых Родителей",
+        statChildrenLabel: "Подключённых Детей",
+        demoModeTitle: "Аккаунт Родителя",
+        demoModeSub: "Полный доступ активен",
         loginRegisterBtn: "🔑 Вход / Регистрация",
         authSettingsTitle: "Аккаунт Родителя и Вход",
-        authSettingsSub: "Статус: В Демо-Режиме",
+        authSettingsSub: "Статус: Активен (Вход)",
         authModalTitle: "Аккаунт Родителя",
         tabRegister: "📝 Регистрация",
         tabLogin: "🔑 Вход",
         regHeader: "Создание Профиля Родителя",
-        regSub: "Выберите логин и пароль. Запрос отправится админу.",
+        regSub: "Выберите логин и пароль для входа в панель.",
         regUsernameLabel: "Telegram Username / Имя",
         regPasswordLabel: "Выберите Пароль",
         regConfirmPasswordLabel: "Повторите Пароль",
-        btnSubmitRegister: "📝 Зарегистрироваться и Отправить Запрос",
+        btnSubmitRegister: "📝 Зарегистрироваться",
         loginHeader: "Вход в Систему",
         loginSub: "Введите ваш ранее созданный пароль",
         loginUsernameLabel: "Telegram Username",
         loginPasswordLabel: "Пароль",
         btnSubmitLogin: "🚀 Войти",
-        approvalNoticeTitle: "Ожидание Одобрения Админом",
-        approvalNoticeHeader: "Ваш Запрос на Рассмотрении Администратора",
-        approvalNoticeDesc: "Сейчас вы находитесь в Тестовом / Демо-режиме. Все разделы (Радар, AI, e-Maktab) открыты для ознакомления.<br><br>Сохранение реальных данных детей и привязка устройств активируются после одобрения администратором.",
+        approvalNoticeTitle: "Полный Доступ Активен",
+        approvalNoticeHeader: "Добро пожаловать в Shield Parental Guard!",
+        approvalNoticeDesc: "Все разделы (Радар, Gemini AI, e-Maktab 100 баллов) открыты для вас без ограничений.",
         roleParent: "Панель Родителя",
         roleChild: "Панель Ребёнка",
         childWelcomeTitle: "Привет, Юный Герой! 🌟",
@@ -813,14 +849,14 @@ function handleParentRegister() {
     currentAuthUser = {
         username: formattedUsername,
         password: password,
-        status: 'pending',
+        status: 'approved',
         registeredAt: new Date().toISOString()
     };
-    authStatus = 'pending';
+    authStatus = 'approved';
     localStorage.setItem('auth_user', JSON.stringify(currentAuthUser));
     localStorage.setItem('auth_status', authStatus);
 
-    // Supabase orqali adminga xabar yuborish
+    // Supabase orqali bildirishnoma yuborish
     try {
         fetch('https://wfrclcwjeeqeqchmdhzw.supabase.co/functions/v1/ota-ona-bot', {
             method: 'POST',
@@ -831,12 +867,15 @@ function handleParentRegister() {
                 familyCode: familyCode,
                 timestamp: new Date().toISOString()
             })
-        }).catch(err => console.log('Admin notification sent'));
+        }).catch(err => console.log('Notification sent'));
     } catch(e) {}
 
     updateAuthUI();
     closeSubpage();
-    openSubpage('modal-approval-notice');
+    const successMsg = (currentLang === 'ru') 
+        ? "🎉 Регистрация успешно завершена! Доступ ко всем функциям активирован."
+        : "🎉 Ro'yxatdan o'tish muvaffaqiyatli yakunlandi! Barcha bo'limlar to'liq faollashtirildi.";
+    alert(successMsg);
 }
 
 function handleParentLogin() {
@@ -881,55 +920,20 @@ function updateAuthUI() {
     const settingsStatus = document.getElementById('settingsAuthStatus');
     const isRu = (currentLang === 'ru');
 
-    if (authStatus === 'approved') {
-        if (banner) {
-            banner.className = "p-2.5 mb-3 rounded-xl bg-gradient-to-r from-emerald-500/15 to-teal-500/15 border border-emerald-500/30 flex items-center justify-between";
-            if (bannerIcon) bannerIcon.innerText = "✅";
-            if (bannerTitle) bannerTitle.innerText = isRu ? `${currentAuthUser?.username || 'Родитель'} (Одобрен)` : `${currentAuthUser?.username || 'Ota-ona'} (Tasdiqlangan)`;
-            if (bannerSub) bannerSub.innerText = isRu ? "Полный доступ активен" : "To'liq kirish faol";
-            if (bannerBtn) {
-                bannerBtn.className = "px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 font-bold text-[10px] border border-emerald-500/30";
-                bannerBtn.innerText = isRu ? "Профиль" : "Profil";
-            }
+    if (banner) {
+        banner.className = "p-2.5 mb-3 rounded-xl bg-gradient-to-r from-emerald-500/15 to-teal-500/15 border border-emerald-500/30 flex items-center justify-between";
+        if (bannerIcon) bannerIcon.innerText = "🛡️";
+        if (bannerTitle) bannerTitle.innerText = isRu ? `${currentAuthUser?.username || 'Родитель'} (Активен)` : `${currentAuthUser?.username || 'Ota-ona'} (Faol)`;
+        if (bannerSub) bannerSub.innerText = isRu ? "Все разделы контроля активны" : "Barcha nazorat bo'limlari to'liq faol";
+        if (bannerBtn) {
+            bannerBtn.className = "px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 font-bold text-[10px] border border-emerald-500/30";
+            bannerBtn.innerText = isRu ? "Профиль" : "Profil";
         }
-        if (settingsUsername) settingsUsername.innerText = currentAuthUser?.username || (isRu ? "Аккаунт Родителя" : "Ota-ona Hisobi");
-        if (settingsStatus) {
-            settingsStatus.className = "text-[10px] text-emerald-400";
-            settingsStatus.innerText = isRu ? "Статус: Одобрен (Активен)" : "Holat: Tasdiqlangan (Faol)";
-        }
-    } else if (authStatus === 'pending') {
-        if (banner) {
-            banner.className = "p-2.5 mb-3 rounded-xl bg-gradient-to-r from-amber-500/15 to-yellow-500/15 border border-amber-500/30 flex items-center justify-between";
-            if (bannerIcon) bannerIcon.innerText = "⏳";
-            if (bannerTitle) bannerTitle.innerText = isRu ? `${currentAuthUser?.username || 'Запрос'} (На рассмотрении)` : `${currentAuthUser?.username || 'So\'rov'} (Tasdiq kutilmoqda)`;
-            if (bannerSub) bannerSub.innerText = isRu ? "Тестовый режим. Ждём ответа админа" : "Test rejimi. Admin tasdig'i kutilmoqda";
-            if (bannerBtn) {
-                bannerBtn.className = "px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-[10px] shadow-sm";
-                bannerBtn.innerText = isRu ? "Статус" : "Holat";
-            }
-        }
-        if (settingsUsername) settingsUsername.innerText = currentAuthUser?.username || (isRu ? "Аккаунт Родителя" : "Ota-ona Hisobi");
-        if (settingsStatus) {
-            settingsStatus.className = "text-[10px] text-amber-400";
-            settingsStatus.innerText = isRu ? "Статус: Ожидание админа" : "Holat: Tasdiq kutilmoqda";
-        }
-    } else {
-        // guest_demo
-        if (banner) {
-            banner.className = "p-2.5 mb-3 rounded-xl bg-gradient-to-r from-amber-500/15 to-orange-500/15 border border-amber-500/30 flex items-center justify-between";
-            if (bannerIcon) bannerIcon.innerText = "🧪";
-            if (bannerTitle) bannerTitle.innerText = isRu ? "Тестовый / Демо-Режим" : "Test / Demo Rejimi";
-            if (bannerSub) bannerSub.innerText = isRu ? "Добавление детей откроется после одобрения админом" : "Admin tasdig'i bilan farzand qo'shish ochiladi";
-            if (bannerBtn) {
-                bannerBtn.className = "px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-[10px] shadow-sm";
-                bannerBtn.innerText = isRu ? "🔑 Вход / Регистрация" : "🔑 Kirish / Ro'yxat";
-            }
-        }
-        if (settingsUsername) settingsUsername.innerText = isRu ? "Аккаунт Родителя и Вход" : "Ota-ona Hisobi & Kirish";
-        if (settingsStatus) {
-            settingsStatus.className = "text-[10px] text-amber-400";
-            settingsStatus.innerText = isRu ? "Статус: В Демо-Режиме" : "Holat: Test Rejimida (Kirish)";
-        }
+    }
+    if (settingsUsername) settingsUsername.innerText = currentAuthUser?.username || (isRu ? "Аккаунт Родителя" : "Ota-ona Hisobi");
+    if (settingsStatus) {
+        settingsStatus.className = "text-[10px] text-emerald-400";
+        settingsStatus.innerText = isRu ? "Статус: Активен (Вход выполнен)" : "Holat: To'liq Faol";
     }
 }
 
@@ -948,12 +952,6 @@ function applyLanguageTranslations() {
 
     const aiBubble = document.getElementById('aiWelcomeBubble');
     if (aiBubble) aiBubble.innerText = dict.aiWelcome;
-
-    document.getElementById('langCheckUz').classList.toggle('hidden', currentLang !== 'uz');
-    document.getElementById('langCheckRu').classList.toggle('hidden', currentLang !== 'ru');
-
-    // Update Plan Badge
-    updatePlanBadge();
 }
 
 function setLanguage(lang) {
@@ -965,48 +963,24 @@ function setLanguage(lang) {
     closeSubpage();
 }
 
-function updatePlanBadge() {
-    const badge = document.getElementById('headerPlanBadge');
-    const toggleBtn = document.getElementById('btnPlanToggle');
-    const dict = I18N[currentLang] || I18N.uz;
-
-    if (userPlan === 'pro') {
-        badge.className = "px-2 py-1 rounded-full bg-amber-500/20 border border-amber-500/30 text-amber-300 text-[10px] font-bold";
-        badge.innerText = "💎 Pro";
-        if (toggleBtn) toggleBtn.innerText = dict.activeProBtn;
-    } else {
-        badge.className = "px-2 py-1 rounded-full bg-slate-700/60 border border-slate-600 text-slate-300 text-[10px] font-bold";
-        badge.innerText = "Free";
-        if (toggleBtn) toggleBtn.innerText = dict.activateProBtn;
-    }
-}
-
-function togglePlanUpgrade() {
-    userPlan = (userPlan === 'free') ? 'pro' : 'free';
-    localStorage.setItem('user_plan', userPlan);
-    updatePlanBadge();
-    const msg = (currentLang === 'ru') 
-        ? `Тариф переключен на: ${userPlan.toUpperCase()}`
-        : `Tarif o'zgartirildi: ${userPlan.toUpperCase()}`;
-    alert(msg);
-}
-
 // ============================================================================
-// 5. 100-BALLIK E-MAKTAB BAHOLARI GENERATORI & KO'RSATISH
+// 5. TA'LIM VA DTS 100 BALLIK BAHOLAR GRAFIGI
 // ============================================================================
-function getSubjectScore(subjectName, gradeNum, period) {
+function getSubjectScore(subject, grade, period) {
     let hash = 0;
-    const key = subjectName + gradeNum + period + currentChildKey;
+    const key = `${subject}_${grade}_${period}`;
     for (let i = 0; i < key.length; i++) {
         hash = (hash << 5) - hash + key.charCodeAt(i);
         hash |= 0;
     }
-    const baseScore = 75 + Math.abs(hash % 24);
-    return Math.min(100, Math.max(60, baseScore));
+    const base = 75 + Math.abs(hash % 24); // 75 dan 98 gacha ball
+    return Math.min(100, Math.max(60, base));
 }
 
 function renderSchoolCurriculum() {
     const child = childrenDatabase[currentChildKey];
+    if (!child) return;
+
     const grade = child.grade || 5;
     const langDict = CURRICULUM_DATABASE[currentLang] || CURRICULUM_DATABASE.uz;
     const subjects = langDict[grade] || langDict[5];
@@ -1104,11 +1078,6 @@ function openChildProfileModal() {
 }
 
 function saveChildProfile() {
-    if (authStatus !== 'approved') {
-        openSubpage('modal-approval-notice');
-        return;
-    }
-
     const fullName = document.getElementById('profileFullName').value.trim() || "Farzand";
     const username = document.getElementById('profileUsername').value.trim() || "@farzand";
     const grade = parseInt(document.getElementById('profileClassSelect').value) || 5;
@@ -1149,26 +1118,33 @@ function switchChild(childKey) {
 
 function renderActiveChild() {
     const child = childrenDatabase[currentChildKey];
+    if (!child) return;
     const isRu = (currentLang === 'ru');
 
-    document.getElementById('totalScreenTime').innerText = isRu ? child.screenTime_ru : child.screenTime;
-    document.getElementById('batteryBadge').innerText = `${child.battery}%`;
-    document.getElementById('remainingTime').innerText = isRu ? child.remaining_ru : child.remaining;
-    document.getElementById('childSelector').value = currentChildKey;
-    document.getElementById('displayFamilyCode').innerText = familyCode;
+    const screenEl = document.getElementById('totalScreenTime');
+    if (screenEl) screenEl.innerText = isRu ? child.screenTime_ru : child.screenTime;
 
-    // Ilovalar Reytingi
+    const battEl = document.getElementById('batteryBadge');
+    if (battEl) battEl.innerText = `${child.battery}%`;
+
+    const remEl = document.getElementById('remainingTime');
+    if (remEl) remEl.innerText = isRu ? child.remaining_ru : child.remaining;
+
+    const selectEl = document.getElementById('childSelector');
+    if (selectEl) selectEl.value = currentChildKey;
+
+    // Ilovalar reytingi
     const appList = document.getElementById('appUsageList');
-    if (appList) {
+    if (appList && child.apps) {
         appList.innerHTML = child.apps.map(app => `
             <div class="space-y-1">
                 <div class="flex items-center justify-between text-xs">
                     <div class="flex items-center gap-2">
-                        <span class="text-sm">${app.icon}</span>
+                        <span>${app.icon}</span>
                         <span class="font-bold text-white">${app.name}</span>
-                        <span class="text-[10px] text-slate-400 bg-slate-800/60 px-1.5 py-0.2 rounded">${isRu ? app.category_ru : app.category}</span>
+                        <span class="text-[10px] text-slate-400">(${isRu ? app.category_ru : app.category})</span>
                     </div>
-                    <span class="font-mono text-slate-300">${app.time} <b class="text-emerald-400">(${app.percent}%)</b></span>
+                    <span class="font-bold text-slate-300 font-mono">${app.time}</span>
                 </div>
                 <div class="progress-bar-bg">
                     <div class="progress-bar-fill ${app.color}" style="width: ${app.percent}%;"></div>
@@ -1177,74 +1153,76 @@ function renderActiveChild() {
         `).join('');
     }
 
-    // Geofences (Barcha uchun bepul)
-    const geofenceList = document.getElementById('geofenceZoneList');
-    if (geofenceList) {
-        geofenceList.innerHTML = child.location.geofences.map(g => `
-            <div class="flex items-center justify-between p-2.5 rounded-lg bg-slate-900/50 border border-slate-800 text-xs">
-                <span class="text-slate-300 font-medium">${g.name}</span>
-                <span class="font-bold ${g.color}">${g.status}</span>
-            </div>
-        `).join('');
-    }
-
-    // Interests
-    const interestList = document.getElementById('aiInterestVectors');
-    if (interestList) {
-        const interests = isRu ? child.interests.ru : child.interests.uz;
-        interestList.innerHTML = interests.map(i => `
+    // Qiziqishlar vektorlari
+    const interestContainer = document.getElementById('aiInterestVectors');
+    if (interestContainer && child.interests) {
+        const interests = child.interests[currentLang] || child.interests.uz || [];
+        interestContainer.innerHTML = interests.map(item => `
             <div class="space-y-1">
-                <div class="flex justify-between text-xs">
-                    <span class="text-slate-300 font-medium">${i.topic}</span>
-                    <span class="font-bold text-white">${i.percent}%</span>
+                <div class="flex items-center justify-between text-xs">
+                    <span class="text-slate-300 font-medium">${item.topic}</span>
+                    <span class="font-bold text-emerald-400 font-mono">${item.percent}%</span>
                 </div>
                 <div class="progress-bar-bg">
-                    <div class="progress-bar-fill ${i.color}" style="width: ${i.percent}%;"></div>
+                    <div class="progress-bar-fill ${item.color}" style="width: ${item.percent}%;"></div>
                 </div>
             </div>
         `).join('');
     }
 
-    document.getElementById('radarAddress').innerText = isRu ? child.location.address_ru : child.location.address;
-}
-
-// ============================================================================
-// 7. AI CHAT, OVOZ VA REELS TAHLILI (GEMINI AI)
-// ============================================================================
-function appendUserMessage(text, imageSrc = null) {
-    const thread = document.getElementById('aiChatThread');
-    const msgDiv = document.createElement('div');
-    msgDiv.className = "chat-bubble-user";
-    
-    let content = "";
-    if (imageSrc) {
-        content += `<img src="${imageSrc}" class="w-32 h-24 object-cover rounded-lg mb-1.5 border border-emerald-500/40" />`;
+    // Geofences
+    const geofenceList = document.getElementById('geofenceList');
+    if (geofenceList && child.location && child.location.geofences) {
+        geofenceList.innerHTML = child.location.geofences.map(geo => `
+            <div class="flex items-center justify-between p-2 rounded-lg bg-slate-900/60 border border-slate-800">
+                <span class="text-xs font-semibold text-slate-300">${geo.name}</span>
+                <span class="text-[10px] font-bold ${geo.color}">${geo.status}</span>
+            </div>
+        `).join('');
     }
-    content += `<span>${text}</span>`;
-    msgDiv.innerHTML = content;
-    thread.appendChild(msgDiv);
-    thread.scrollTop = thread.scrollHeight;
+
+    // Radar manzil
+    const radarAddr = document.getElementById('radarCurrentAddress') || document.getElementById('radarAddress');
+    if (radarAddr && child.location) {
+        radarAddr.innerText = isRu ? child.location.address_ru : child.location.address;
+    }
 }
 
-function appendAIMessage(text) {
-    const thread = document.getElementById('aiChatThread');
-    const msgDiv = document.createElement('div');
-    msgDiv.className = "chat-bubble-ai";
-    const headerTitle = (currentLang === 'ru') ? "🧠 Gemini AI Наставник:" : "🧠 Gemini AI Murabbiy:";
-    msgDiv.innerHTML = `<span class="text-purple-400 font-bold text-[10px] block mb-1">${headerTitle}</span>` + text;
-    thread.appendChild(msgDiv);
-    thread.scrollTop = thread.scrollHeight;
+// ============================================================================
+// 7. GEMINI AI TIZIMI (CHAT, FOTO, OVOZ VA REELS TAHLILI)
+// ============================================================================
+function handleImageUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        uploadedImageBase64 = e.target.result;
+        const prevContainer = document.getElementById('imagePreviewContainer');
+        const prevThumb = document.getElementById('imagePreviewThumb') || document.getElementById('imagePreview');
+        if (prevContainer) prevContainer.classList.remove('hidden');
+        if (prevThumb) prevThumb.src = uploadedImageBase64;
+    };
+    reader.readAsDataURL(file);
+}
+
+function clearImagePreview() {
+    uploadedImageBase64 = null;
+    const prevContainer = document.getElementById('imagePreviewContainer');
+    if (prevContainer) prevContainer.classList.add('hidden');
+    const fileInput = document.getElementById('aiFileInput') || document.getElementById('aiImageInput');
+    if (fileInput) fileInput.value = "";
 }
 
 function sendTextMessage() {
     const input = document.getElementById('aiTextInput');
+    if (!input) return;
     const text = input.value.trim();
     if (!text && !uploadedImageBase64) return;
 
-    const defaultImgText = (currentLang === 'ru') ? "📷 Отправлено фото для анализа" : "📷 Rasm tahlili uchun yuborildi";
-    appendUserMessage(text || defaultImgText, uploadedImageBase64);
+    appendUserMessage(text, uploadedImageBase64);
     input.value = "";
-    
+
     setTimeout(() => {
         generateAIResponse(text, uploadedImageBase64);
         clearImagePreview();
@@ -1252,7 +1230,8 @@ function sendTextMessage() {
 }
 
 function sendQuickPrompt(promptText) {
-    document.getElementById('aiTextInput').value = promptText;
+    const input = document.getElementById('aiTextInput');
+    if (input) input.value = promptText;
     sendTextMessage();
 }
 
@@ -1266,14 +1245,14 @@ function generateAIResponse(query, imageBase64) {
         if (isRu) {
             responseText = `
                 <b>📷 Вывод по анализу задания:</b><br>
-                Загруженное фото школьного задания проанализировано. Рекомендация для <b>${child.name_ru || child.name} (${child.grade}-класс)</b>:<br>
+                Загруженное фото школьного задания проанализировано. Рекомендация для <b>${child?.name_ru || child?.name || 'ребёнка'} (${child?.grade || 5}-класс)</b>:<br>
                 • <b>Правило:</b> Закрепите теоретическое понятие на практических примерах в течение 10 минут.<br>
                 • <b>Закрепление:</b> Решите 2-3 упражнения самостоятельно и проверьте балл в e-Maktab! 🌟
             `;
         } else {
             responseText = `
                 <b>📷 Vazifa / Rasm Tahlili Xulosasi:</b><br>
-                Yuklangan darslik topshirig'i tahlil qilindi. <b>${child.name} (${child.grade}-sinf)</b> uchun ushbu darslik mavzusini o'zlashtirish bo'yicha yo'riqnoma:<br>
+                Yuklangan darslik topshirig'i tahlil qilindi. <b>${child?.name || 'Farzandingiz'} (${child?.grade || 5}-sinf)</b> uchun ushbu darslik mavzusini o'zlashtirish bo'yicha yo'riqnoma:<br>
                 • <b>Asosiy qoida:</b> Mavzuning nazariy tushunchasini 10 daqiqa amaliy misollar orqali ko'rib chiqing.<br>
                 • <b>Mustahkamlash:</b> Darslikdagi 2-3 ta topshiriqni mustaqil yechishga yo'naltiring va 100 ballik e-Maktab ko'rsatkichini qayd eting! 🌟
             `;
@@ -1282,7 +1261,7 @@ function generateAIResponse(query, imageBase64) {
         if (isRu) {
             responseText = `
                 <b>🎬 Анализ просмотренных Reels и видео:</b><br>
-                Точные данные по видеоконтенту для <b>${child.name_ru || child.name} (${child.grade}-класс)</b>:<br><br>
+                Точные данные по видеоконтенту для <b>${child?.name_ru || child?.name || 'ребёнка'} (${child?.grade || 5}-класс)</b>:<br><br>
                 📊 <b>Распределение по темам:</b><br>
                 • <b>💻 Образование и IT (Python, Робототехника, Языки):</b> 45% (Полезно)<br>
                 • <b>🔬 Научные опыты и Логические задачи:</b> 25% (Положительно)<br>
@@ -1292,7 +1271,7 @@ function generateAIResponse(query, imageBase64) {
         } else {
             responseText = `
                 <b>🎬 Ko'rilayotgan Reels va Video Kontent Tahlili:</b><br>
-                Farzandingiz <b>${child.name} (${child.grade}-sinf)</b> tomosha qilayotgan Reels / Shorts videolari bo'yicha aniq ma'lumotlar:<br><br>
+                Farzandingiz <b>${child?.name || 'Farzandingiz'} (${child?.grade || 5}-sinf)</b> tomosha qilayotgan Reels / Shorts videolari bo'yicha aniq ma'lumotlar:<br><br>
                 📊 <b>Mavzular taqsimoti:</b><br>
                 • <b>💻 Ta'limiy & IT (Python, Robototexnika, Ingliz tili):</b> 45% (Foydali va rivojlantiruvchi)<br>
                 • <b>🔬 Ilmiy tajribalar & Mantiqiy jumboqlar:</b> 25% (Ijobiy tendensiya)<br>
@@ -1304,14 +1283,14 @@ function generateAIResponse(query, imageBase64) {
         if (isRu) {
             responseText = `
                 <b>📚 Усвоение предметов и повышение интереса:</b><br>
-                Методы закрепления школьных предметов госстандарта (DTS) для <b>${child.name_ru || child.name} (${child.grade}-класс)</b>:<br>
+                Методы закрепления школьных предметов госстандарта (DTS) для <b>${child?.name_ru || child?.name || 'ребёнка'} (${child?.grade || 5}-класс)</b>:<br>
                 • <b>Практический подход:</b> Изучение математики и естественных наук через графические примеры и опыты гораздо эффективнее.<br>
                 • <b>Аналитика:</b> Совместно просматривайте показатели 100 баллов в разделе e-Maktab.
             `;
         } else {
             responseText = `
                 <b>📚 Darslarni O'zlashtirish va Qiziqishni Oshirish:</b><br>
-                <b>${child.name} (${child.grade}-sinf)</b> uchun Davlat ta'lim standarti fanlarini mustahkamlash usullari:<br>
+                <b>${child?.name || 'Farzandingiz'} (${child?.grade || 5}-sinf)</b> uchun Davlat ta'lim standarti fanlarini mustahkamlash usullari:<br>
                 • <b>Amaliy yondashuv:</b> Matematika va tabiiy fanlarni grafik misollar va tajribalar orqali o'rganish samaraliroq.<br>
                 • <b>Haftalik tahlil:</b> e-Maktab bo'limidagi 100 ballik ko'rsatkichlarni birgalikda ko'rib, yuqori natijalarni qayd etib boring.
             `;
@@ -1319,11 +1298,11 @@ function generateAIResponse(query, imageBase64) {
     } else {
         if (isRu) {
             responseText = `
-                <b>💡 Информация:</b> Расписание уроков, оценки 100 баллов, онлайн-локация и заряд батареи <b>${child.name_ru || child.name}</b> под постоянным контролем. Вы можете задать любой вопрос по предметам или лимитам.
+                <b>💡 Информация:</b> Расписание уроков, оценки 100 баллов, онлайн-локация и заряд батареи <b>${child?.name_ru || child?.name || 'ребёнка'}</b> под постоянным контролем. Вы можете задать любой вопрос по предметам или лимитам.
             `;
         } else {
             responseText = `
-                <b>💡 Ma'lumot:</b> Farzandingiz <b>${child.name} (${child.grade}-sinf)</b> ning dars jadvali, 100 ballik baholari, jonli joylashuvi va batareya ko'rsatkichlari doimiy nazorat ostida. Har qanday fan, video tahlili yoki limitlar bo'yicha savolingizni yozishingiz mumkin.
+                <b>💡 Ma'lumot:</b> Farzandingiz <b>${child?.name || 'Farzandingiz'} (${child?.grade || 5}-sinf)</b> ning dars jadvali, 100 ballik baholari, jonli joylashuvi va batareya ko'rsatkichlari doimiy nazorat ostida. Har qanday fan, video tahlili yoki limitlar bo'yicha savolingizni yozishingiz mumkin.
             `;
         }
     }
@@ -1338,8 +1317,8 @@ function toggleVoiceRecording() {
     const status = document.getElementById('voiceRecordingStatus');
 
     if (isRecordingVoice) {
-        btn.classList.add('recording');
-        status.classList.remove('hidden');
+        if (btn) btn.classList.add('recording');
+        if (status) status.classList.remove('hidden');
     } else {
         stopAndSendVoice();
     }
@@ -1349,38 +1328,50 @@ function stopAndSendVoice() {
     isRecordingVoice = false;
     const btn = document.getElementById('voiceRecordBtn');
     const status = document.getElementById('voiceRecordingStatus');
-    btn.classList.remove('recording');
-    status.classList.add('hidden');
+    if (btn) btn.classList.remove('recording');
+    if (status) status.classList.add('hidden');
 
-    const voiceUserText = (currentLang === 'ru') ? "🎙️ <i>[Голосовое сообщение: 0:08 сек]</i>" : "🎙️ <i>[Ovozli xabar: 0:08 sek]</i>";
-    appendUserMessage(voiceUserText);
+    const voiceNoteText = (currentLang === 'ru')
+        ? "🎙️ Голосовой вопрос: «Помоги решить задачу по математике на странице 42»"
+        : "🎙️ Ovozli savol: «42-betdagi matematika misolini tushuntirib ber»";
+    
+    appendUserMessage(voiceNoteText, null);
     setTimeout(() => {
-        const voiceAIText = (currentLang === 'ru') 
-            ? "🎙️ <b>Анализ голосового сообщения:</b> Ваш вопрос принят. Рекомендации по учебному процессу и привычкам подготовлены!"
-            : "🎙️ <b>Ovozli Xabar Tahlili:</b> Savolingiz qabul qilindi. Farzandingizning dars jarayonini nazorat qilish bo'yicha yo'riqnoma tayyorlandi!";
-        appendAIMessage(voiceAIText);
+        generateAIResponse("fan dars", null);
     }, 800);
 }
 
-// Rasm Yuklash
-function handleImageSelected(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        uploadedImageBase64 = e.target.result;
-        document.getElementById('imagePreview').src = uploadedImageBase64;
-        document.getElementById('imageFileName').innerText = file.name;
-        document.getElementById('imagePreviewContainer').classList.remove('hidden');
-    };
-    reader.readAsDataURL(file);
+function appendUserMessage(text, imageBase64) {
+    const chat = document.getElementById('aiChatContainer') || document.getElementById('aiChatThread');
+    if (!chat) return;
+    let imgHtml = imageBase64 ? `<img src="${imageBase64}" class="w-32 h-32 object-cover rounded-xl mb-1.5 border border-white/20">` : "";
+    const msg = document.createElement('div');
+    msg.className = "flex justify-end";
+    msg.innerHTML = `
+        <div class="bg-emerald-500 text-white rounded-2xl rounded-tr-sm p-3 max-w-[85%] text-xs shadow-md">
+            ${imgHtml}
+            ${text ? `<div>${text}</div>` : ""}
+        </div>
+    `;
+    chat.appendChild(msg);
+    chat.scrollTop = chat.scrollHeight;
 }
 
-function clearImagePreview() {
-    uploadedImageBase64 = null;
-    document.getElementById('aiImageInput').value = "";
-    document.getElementById('imagePreviewContainer').classList.add('hidden');
+function appendAIMessage(htmlContent) {
+    const chat = document.getElementById('aiChatContainer') || document.getElementById('aiChatThread');
+    if (!chat) return;
+    const msg = document.createElement('div');
+    msg.className = "flex gap-2.5 max-w-[90%]";
+    msg.innerHTML = `
+        <div class="w-8 h-8 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-sm flex-shrink-0">
+            🤖
+        </div>
+        <div class="glass-card p-3 rounded-2xl rounded-tl-sm text-xs text-slate-200 leading-relaxed shadow-md">
+            ${htmlContent}
+        </div>
+    `;
+    chat.appendChild(msg);
+    chat.scrollTop = chat.scrollHeight;
 }
 
 // ============================================================================
@@ -1400,18 +1391,28 @@ function setTheme(themeName) {
 }
 
 function switchTab(tabId) {
-    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(t => {
+        t.classList.remove('active');
+        t.classList.add('hidden');
+    });
+    document.querySelectorAll('#parentBottomNav .nav-btn').forEach(b => b.classList.remove('active'));
 
     const targetTab = document.getElementById(tabId);
     const targetBtn = document.getElementById(`nav-${tabId}`);
 
-    if (targetTab) targetTab.classList.add('active');
+    if (targetTab) {
+        targetTab.classList.remove('hidden');
+        targetTab.classList.add('active');
+    }
     if (targetBtn) targetBtn.classList.add('active');
 
-    if (tabId === 'tab-radar' && mapInstance) {
-        setTimeout(() => mapInstance.invalidateSize(), 200);
+    if (tabId === 'tab-radar') {
+        setTimeout(() => {
+            initRadarMap();
+            if (mapInstance) mapInstance.invalidateSize();
+        }, 150);
     }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function openSubpage(subpageId) {
@@ -1441,11 +1442,6 @@ function triggerVoiceAlert() {
 }
 
 function copyPairingLink() {
-    if (authStatus !== 'approved') {
-        openSubpage('modal-approval-notice');
-        return;
-    }
-
     const link = `https://t.me/farzand_nazorat_bot?start=pair_${familyCode.replace("-", "")}`;
     navigator.clipboard.writeText(link).then(() => {
         const msg = (currentLang === 'ru') 
@@ -1461,6 +1457,7 @@ function initRadarMap() {
     if (!mapEl || mapInstance) return;
 
     const child = childrenDatabase[currentChildKey];
+    if (!child || !child.location) return;
     mapInstance = L.map('map', { zoomControl: false, attributionControl: false }).setView([child.location.lat, child.location.lng], 14);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(mapInstance);
 
@@ -1483,7 +1480,7 @@ function initRadarMap() {
 
 function updateMapCoordinates() {
     const child = childrenDatabase[currentChildKey];
-    if (mapInstance && childMarker) {
+    if (mapInstance && childMarker && child && child.location) {
         childMarker.setLatLng([child.location.lat, child.location.lng]);
         mapInstance.setView([child.location.lat, child.location.lng], 14);
     }
@@ -1494,9 +1491,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setTheme(currentTheme);
     applyLanguageTranslations();
     updateAuthUI();
-    if (currentAppRole === 'child') {
-        switchAppRole('child');
-    }
+    switchAppRole(currentAppRole);
     renderActiveChild();
     renderSchoolCurriculum();
     initRadarMap();

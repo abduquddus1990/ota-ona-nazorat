@@ -51,7 +51,7 @@ def notify_admins(html_text, reply_markup=None):
     for admin_id in ADMIN_CHAT_IDS:
         send_message(admin_id, html_text, reply_markup)
 
-def get_start_menu_text(user_id, lang="uz", is_approved=False, is_admin=False):
+def get_start_menu_text(user_id, lang="uz", is_approved=True, is_admin=False):
     code = generate_family_code(user_id)
     if is_admin:
         return (
@@ -68,27 +68,25 @@ def get_start_menu_text(user_id, lang="uz", is_approved=False, is_admin=False):
         )
 
     if lang == "ru":
-        status_note = "✅ <b>Ваш аккаунт подтвержден администратором!</b>" if is_approved else "⏳ <b>Статус:</b> Запрос отправлен администраторам (@ai_loyihachi). До одобрения доступен <b>Тестовый / Демо-режим</b>."
         return (
             f"🛡️ <b>SHIELD PARENTAL GUARD — ЦЕНТР РОДИТЕЛЬСКОГО КОНТРОЛЯ</b>\n\n"
             f"Добро пожаловать! Безопасность, школьные предметы и цифровые привычки вашего ребёнка под защитой 24/7.\n\n"
-            f"{status_note}\n\n"
+            f"✅ <b>Ваш доступ полностью активен!</b>\n\n"
             f"🔑 <b>Ваш семейный код:</b> <code>{code}</code>\n"
             f"📍 <b>Онлайн-радар и локация:</b> <b>Бесплатно</b>\n"
             f"💎 <b>Pro Версия (AI & e-Maktab 100 баллов):</b> <b>10,000 сум/мес (за 1 ребёнка)</b>\n"
-            f"⚠️ <i>Примечание: В будущем для бесплатной версии также может быть введена минимальная плата для поддержания серверов.</i>\n\n"
+            f"ℹ️ <i>Официальная почта для предложений: <code>alhamdulillah@tmail.ton</code></i>\n\n"
             f"Выберите нужный раздел:"
         )
 
-    status_note = "✅ <b>Sizning hisobingiz administrator tomonidan tasdiqlangan!</b>" if is_approved else "⏳ <b>Holat:</b> Administratorlarga (@ai_loyihachi) so'rov yuborilgan. Tasdiqlanguniga qadar tizim <b>Test / Demo rejimida</b> ishlaydi."
     return (
         f"🛡️ <b>SHIELD PARENTAL GUARD — OTA-ONA BOSHQARUV MARKAZI</b>\n\n"
         f"Assalomu alaykum! Farzandingizning xavfsizligi, darsliklari va raqamli odatlari 24/7 doimiy nazorat ostida.\n\n"
-        f"{status_note}\n\n"
+        f"✅ <b>Sizning hisobingiz to'liq faol!</b>\n\n"
         f"🔑 <b>Sizning oila kodingiz:</b> <code>{code}</code>\n"
         f"📍 <b>Jonli lokatsiya va radar:</b> <b>100% BEPUL</b>\n"
         f"💎 <b>Pro Versiya (AI & 100 ballik e-Maktab):</b> <b>10,000 so'm/oy (har bir bola uchun)</b>\n"
-        f"⚠️ <i>Eslatma: Kelajakda sifat va barqarorlikni ta'minlash uchun bepul versiyaga ham ramziy to'lov kiritilishi mumkin.</i>\n\n"
+        f"ℹ️ <i>Taklif va mulohazalar uchun rasmiy pochta: <code>alhamdulillah@tmail.ton</code></i>\n\n"
         f"Quyidagi bo'limlardan birini tanlang:"
     )
 
