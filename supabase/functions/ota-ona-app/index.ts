@@ -585,9 +585,11 @@ body[data-theme="sky"] .subject-item-card {
     </div>
 
     <!-- ==================================================================== -->
-    <!-- 👦 FARZAND PORTALI (CHILD DASHBOARD & FULL SUITE) -->
+    <!-- 👦 FARZAND 5 TA ASOSIY BO'LIMI (CHILD 5 TAB VIEWS & SUB-SECTIONS) -->
     <!-- ==================================================================== -->
-    <main id="tab-child-portal" class="tab-content space-y-3.5 hidden">
+
+    <!-- FARZAND TAB 1: 🏠 ASOSIY (BOSH SAHIFA, TEZKOR XABARLAR, POMODORO & ULANISH) -->
+    <main id="child-tab-home" class="tab-content space-y-3.5 hidden">
         <!-- Farzand Salomlashish Headeri -->
         <section class="glass-card p-4 bg-gradient-to-br from-indigo-950/70 to-purple-950/70 border-indigo-500/40 relative overflow-hidden">
             <div class="flex items-center justify-between">
@@ -607,7 +609,7 @@ body[data-theme="sky"] .subject-item-card {
             </div>
         </section>
 
-        <!-- 📍 1-BO'LIM: "MEN YETIB KELDIM" TEZKOR XABARLAR (QUICK STATUS BUTTONS) -->
+        <!-- 📍 BO'LIMOSTI 1: TEZKOR XABARLAR (OTAN-ONAGA 1 SONIYADA) -->
         <section class="glass-card p-3.5 space-y-2 border-sky-500/30">
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2">
@@ -651,87 +653,7 @@ body[data-theme="sky"] .subject-item-card {
             </div>
         </section>
 
-        <!-- 🧠 2-BO'LIM: AI UY VAZIFASI DO'STI & REPETITOR -->
-        <section class="glass-card p-4 space-y-3 border-indigo-500/40">
-            <div class="flex items-center gap-2">
-                <span class="text-xl">🧠</span>
-                <div>
-                    <h3 class="text-xs font-bold text-white" data-i18n="childAiHelperTitle">Gemini AI Uy Vazifasi Do'stim</h3>
-                    <div class="text-[10px] text-indigo-300" data-i18n="childAiHelperSub">Misolni rasmga ol yoki savol ber — tushunarli yechib beraman!</div>
-                </div>
-            </div>
-
-            <!-- AI Chat Bubble -->
-            <div id="childAiChatBox" class="p-3 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-2 text-[11px]">
-                <div class="flex items-start gap-2">
-                    <div class="w-6 h-6 rounded-full bg-indigo-500/20 flex items-center justify-center text-xs">🤖</div>
-                    <div class="p-2 rounded-xl bg-indigo-950/40 border border-indigo-500/30 text-slate-200" id="childAiBubble" data-i18n="childAiWelcome">
-                        Salom! Matematika, Ingliz tili yoki boshqa darsdagi qiyin masalani rasmga olib yubor, birgalikda oson va qiziqarli o'rganamiz! 🌟
-                    </div>
-                </div>
-            </div>
-
-            <!-- Chips -->
-            <div class="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
-                <button onclick="askChildAiPreset('matem')" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-300 whitespace-nowrap transition">📐 Misol yechish</button>
-                <button onclick="askChildAiPreset('english')" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-300 whitespace-nowrap transition">📖 Ingliz tili qoidasi</button>
-                <button onclick="askChildAiPreset('science')" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-300 whitespace-nowrap transition">🧪 Qiziqarli tajriba</button>
-            </div>
-
-            <!-- Input bar -->
-            <div class="flex items-center gap-2">
-                <input type="text" id="childAiInput" placeholder="Savolingni yoz..." class="flex-1 bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
-                <button onclick="handleChildAiSend()" class="p-2 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-bold transition">
-                    ➤
-                </button>
-            </div>
-        </section>
-
-        <!-- 🏆 3-BO'LIM: MENING YUTUQLARIM & MUKOFORLARIM (BADGES & REWARDS) -->
-        <section class="glass-card p-4 space-y-3 border-amber-500/40">
-            <div class="flex items-center justify-between">
-                <div class="flex items-center gap-2">
-                    <span class="text-xl">🏆</span>
-                    <div>
-                        <h3 class="text-xs font-bold text-white" data-i18n="childBadgesTitle">Mening Yutuqlarim & Mukofotlar</h3>
-                        <div class="text-[10px] text-amber-300">Darslarni yaxshi bajarganing uchun olingan nishonlar</div>
-                    </div>
-                </div>
-                <span class="text-xs font-black text-amber-400">350 Ball ⭐</span>
-            </div>
-
-            <div class="grid grid-cols-3 gap-2 text-center">
-                <div class="p-2.5 rounded-xl bg-slate-900/70 border border-amber-500/30 space-y-1">
-                    <div class="text-2xl">🥇</div>
-                    <div class="text-[10px] font-bold text-white">Darslik Qahramoni</div>
-                    <div class="text-[8px] text-emerald-400">95+ ball</div>
-                </div>
-                <div class="p-2.5 rounded-xl bg-slate-900/70 border border-sky-500/30 space-y-1">
-                    <div class="text-2xl">⏱️</div>
-                    <div class="text-[10px] font-bold text-white">Vaqt Ustasi</div>
-                    <div class="text-[8px] text-sky-400">Me'yorda</div>
-                </div>
-                <div class="p-2.5 rounded-xl bg-slate-900/70 border border-purple-500/30 space-y-1">
-                    <div class="text-2xl">📚</div>
-                    <div class="text-[10px] font-bold text-white">Kitobxon</div>
-                    <div class="text-[8px] text-purple-400">Faol</div>
-                </div>
-            </div>
-
-            <!-- Mukofotlar Kartasi -->
-            <div class="p-3 rounded-xl bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/30 flex items-center justify-between">
-                <div class="flex items-center gap-2.5">
-                    <span class="text-2xl">🎟️</span>
-                    <div>
-                        <div class="text-[11px] font-bold text-white">Kinoga Sayr Mukofoti</div>
-                        <div class="text-[9px] text-slate-400">Ota-onang bilan kelishilgan rag'bat</div>
-                    </div>
-                </div>
-                <span class="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-400 text-[9px] font-bold">Faollashdi ✅</span>
-            </div>
-        </section>
-
-        <!-- ⏱️ 4-BO'LIM: VAQT BALANSI & "POMODORO" DARS TAYMERI -->
+        <!-- ⏱️ BO'LIMOSTI 2: POMODORO DARS TAYMERI & KO'Z MASHQI -->
         <section class="glass-card p-4 space-y-3 border-teal-500/30">
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2">
@@ -757,25 +679,7 @@ body[data-theme="sky"] .subject-item-card {
             </div>
         </section>
 
-        <!-- 🎯 5-BO'LIM: TIZIMNING MAQSADI & QOIDALAR (ONBOARDING) -->
-        <section class="glass-card p-4 space-y-2.5 border-purple-500/30">
-            <div class="flex items-center gap-2">
-                <span class="text-xl">🛡️</span>
-                <h3 class="text-xs font-bold text-white" data-i18n="childGoalTitle">🎯 Tizim Qoidalari & Shaffoflik Kafolati</h3>
-            </div>
-            <div class="space-y-2 text-[11px] text-slate-300 leading-relaxed pl-2">
-                <div class="p-2 rounded-xl bg-slate-900/60 border border-slate-800 flex items-start gap-2">
-                    <span>✨</span>
-                    <span data-i18n="childGoalDesc">Bu dastur jazo emas, balki sening darslarda a'lochi bo'lishing va xavfsizliging uchun aqlli yordamchidir.</span>
-                </div>
-                <div class="p-2 rounded-xl bg-purple-950/30 border border-purple-500/30 flex items-start gap-2 text-purple-200">
-                    <span>🔒</span>
-                    <span data-i18n="childReelsDesc">Biz sening shaxsiy yozishmalaringni (chatlaringni) yoki videolaringni ko'rmaymiz! Faqat qaysi fanlarga qiziqayotganing mavzulari tahlil qilinadi.</span>
-                </div>
-            </div>
-        </section>
-
-        <!-- 🔑 6-BO'LIM: ROZILIK VA OILAVIY KODNI KIRITISH (PAIRING FORM) -->
+        <!-- 🔑 BO'LIMOSTI 3: ROZILIK VA OILAVIY KODNI KIRITISH -->
         <section class="glass-card p-4 space-y-3.5 border-emerald-500/40 bg-gradient-to-b from-slate-900/80 to-slate-950/80">
             <div class="flex items-center gap-2 pb-2 border-b border-slate-800">
                 <span class="text-xl">🤝</span>
@@ -789,7 +693,7 @@ body[data-theme="sky"] .subject-item-card {
             <label class="flex items-start gap-2.5 p-2.5 rounded-xl bg-slate-900/90 border border-slate-700 cursor-pointer hover:border-emerald-500/60 transition">
                 <input type="checkbox" id="childConsentCheckbox" class="mt-0.5 w-4 h-4 rounded text-emerald-500 focus:ring-0 cursor-pointer">
                 <span class="text-[11px] text-slate-200 leading-snug" data-i18n="childConsentLabel">
-                    Men yuqoridagi barcha 4 ta qoida bilan tanishdim va ota-onam bilan tizimga ulanishga roziman.
+                    Men yuqoridagi barcha qoidalar bilan tanishdim va ota-onam bilan tizimga ulanishga roziman.
                 </span>
             </label>
 
@@ -806,10 +710,159 @@ body[data-theme="sky"] .subject-item-card {
                 <span data-i18n="btnChildConnect">Oila Profiliga Ulanish</span>
             </button>
 
-            <!-- Muvaffaqiyatli ulanganlik xabari -->
             <div id="childPairedSuccessBox" class="hidden p-3 rounded-xl bg-emerald-500/15 border border-emerald-500/40 text-center space-y-1">
                 <div class="text-xs font-bold text-emerald-300" data-i18n="childPairedSuccess">🎉 Tabriklaymiz! Siz Oila Profiliga Muvaffaqiyatli Ulandingiz!</div>
                 <div class="text-[10px] text-slate-400" data-i18n="childPairedSub">Ota-onangizning Telegram botiga xabar yuborildi.</div>
+            </div>
+        </section>
+    </main>
+
+    <!-- FARZAND TAB 2: 🧠 AI DO'ST (AI CHAT, RASM YUKLASH, FAN SHABLONLARI) -->
+    <main id="child-tab-ai" class="tab-content space-y-3.5 hidden">
+        <section class="glass-card p-4 space-y-3 border-indigo-500/40">
+            <div class="flex items-center gap-2">
+                <span class="text-2xl">🧠</span>
+                <div>
+                    <h3 class="text-xs font-bold text-white" data-i18n="childAiHelperTitle">Gemini AI Uy Vazifasi Do'stim</h3>
+                    <div class="text-[10px] text-indigo-300" data-i18n="childAiHelperSub">Misolni rasmga ol yoki savol ber — tushunarli yechib beraman!</div>
+                </div>
+            </div>
+
+            <!-- AI Chat Bubble -->
+            <div id="childAiChatBox" class="p-3.5 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-2 text-[11px]">
+                <div class="flex items-start gap-2">
+                    <div class="w-6 h-6 rounded-full bg-indigo-500/20 flex items-center justify-center text-xs">🤖</div>
+                    <div class="p-2.5 rounded-xl bg-indigo-950/40 border border-indigo-500/30 text-slate-200" id="childAiBubble" data-i18n="childAiWelcome">
+                        Salom! Matematika, Ingliz tili yoki boshqa darsdagi qiyin masalani rasmga olib yubor, birgalikda oson va qiziqarli o'rganamiz! 🌟
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bo'limosti: Tezkor Fan Shablonlari -->
+            <div class="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+                <button onclick="askChildAiPreset('matem')" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-300 whitespace-nowrap transition">📐 Matematika misoli</button>
+                <button onclick="askChildAiPreset('english')" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-300 whitespace-nowrap transition">📖 Ingliz tili grammatika</button>
+                <button onclick="askChildAiPreset('science')" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-300 whitespace-nowrap transition">🧪 Qiziqarli tajriba</button>
+            </div>
+
+            <!-- Input Bar -->
+            <div class="flex items-center gap-2">
+                <input type="text" id="childAiInput" placeholder="Savolingni yoz..." class="flex-1 bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                <button onclick="handleChildAiSend()" class="p-2 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-bold transition">
+                    ➤
+                </button>
+            </div>
+        </section>
+    </main>
+
+    <!-- FARZAND TAB 3: 🏆 YUTUQLAR (GAMIFICATION & MUKOFORLAR) -->
+    <main id="child-tab-rewards" class="tab-content space-y-3.5 hidden">
+        <section class="glass-card p-4 space-y-3 border-amber-500/40">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <span class="text-2xl">🏆</span>
+                    <div>
+                        <h3 class="text-xs font-bold text-white" data-i18n="childBadgesTitle">Mening Yutuqlarim & Mukofotlar</h3>
+                        <div class="text-[10px] text-amber-300">Darslarni a'lo bajarganing uchun nishonlar</div>
+                    </div>
+                </div>
+                <span class="text-xs font-black text-amber-400">350 Ball ⭐</span>
+            </div>
+
+            <!-- Bo'limosti: Nishonlar Galereyasi -->
+            <div class="grid grid-cols-3 gap-2 text-center">
+                <div class="p-2.5 rounded-xl bg-slate-900/70 border border-amber-500/30 space-y-1">
+                    <div class="text-2xl">🥇</div>
+                    <div class="text-[10px] font-bold text-white">Darslik Qahramoni</div>
+                    <div class="text-[8px] text-emerald-400">95+ ball</div>
+                </div>
+                <div class="p-2.5 rounded-xl bg-slate-900/70 border border-sky-500/30 space-y-1">
+                    <div class="text-2xl">⏱️</div>
+                    <div class="text-[10px] font-bold text-white">Vaqt Ustasi</div>
+                    <div class="text-[8px] text-sky-400">Me'yorda</div>
+                </div>
+                <div class="p-2.5 rounded-xl bg-slate-900/70 border border-purple-500/30 space-y-1">
+                    <div class="text-2xl">📚</div>
+                    <div class="text-[10px] font-bold text-white">Kitobxon</div>
+                    <div class="text-[8px] text-purple-400">Faol</div>
+                </div>
+            </div>
+
+            <!-- Bo'limosti: Mukofotlar Kartasi -->
+            <div class="p-3 rounded-xl bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/30 flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                    <span class="text-2xl">🎟️</span>
+                    <div>
+                        <div class="text-[11px] font-bold text-white">Kinoga Sayr Mukofoti</div>
+                        <div class="text-[9px] text-slate-400">Ota-onang bilan kelishilgan rag'bat</div>
+                    </div>
+                </div>
+                <span class="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-400 text-[9px] font-bold">Faollashdi ✅</span>
+            </div>
+        </section>
+    </main>
+
+    <!-- FARZAND TAB 4: 📚 E-MAKTABIM (100 BALLIK BAHOLAR & DARS JADVALI) -->
+    <main id="child-tab-school" class="tab-content space-y-3.5 hidden">
+        <section class="glass-card p-4 space-y-3 border-emerald-500/40">
+            <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+                <div>
+                    <h3 class="text-xs font-bold text-white">📚 Mening 100 Ballik Baholarim</h3>
+                    <div class="text-[10px] text-slate-400">e-Maktab DTS Darsliklari Bo'yicha</div>
+                </div>
+                <span class="text-xs font-black text-emerald-400">92.4 / 100 ⭐</span>
+            </div>
+
+            <!-- Bo'limosti: Fanlar Shkalasi -->
+            <div class="space-y-2 text-[11px]">
+                <div class="p-2 rounded-xl bg-slate-900/70 border border-slate-800 flex items-center justify-between">
+                    <span>📐 Matematika</span>
+                    <span class="font-bold text-emerald-400">94 ball (A'lo)</span>
+                </div>
+                <div class="p-2 rounded-xl bg-slate-900/70 border border-slate-800 flex items-center justify-between">
+                    <span>📖 Ingliz tili</span>
+                    <span class="font-bold text-sky-400">88 ball (Yaxshi)</span>
+                </div>
+                <div class="p-2 rounded-xl bg-slate-900/70 border border-slate-800 flex items-center justify-between">
+                    <span>🇺🇿 Ona tili va Adabiyot</span>
+                    <span class="font-bold text-emerald-400">92 ball (A'lo)</span>
+                </div>
+                <div class="p-2 rounded-xl bg-slate-900/70 border border-slate-800 flex items-center justify-between">
+                    <span>💻 Informatika va IT</span>
+                    <span class="font-bold text-emerald-400">98 ball (Top 1%)</span>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- FARZAND TAB 5: 🎬 QIZIQISHLAR (IT, FAN & SHAFFOFLIK QOIDALARI) -->
+    <main id="child-tab-explore" class="tab-content space-y-3.5 hidden">
+        <!-- Bo'limosti 1: IT & Dasturlash Kurslari -->
+        <section class="glass-card p-4 space-y-2.5 border-sky-500/30">
+            <div class="flex items-center gap-2">
+                <span class="text-xl">💻</span>
+                <h3 class="text-xs font-bold text-white">IT & Scratch Dasturlash</h3>
+            </div>
+            <p class="text-[11px] text-slate-300 leading-relaxed">
+                Yosh dasturchilar uchun Scratch va Python bo'yicha sara darslar va qiziqarli o'yinlar yaratish maydoni.
+            </p>
+        </section>
+
+        <!-- Bo'limosti 2: Maxfiylik Kafolati -->
+        <section class="glass-card p-4 space-y-2.5 border-purple-500/30">
+            <div class="flex items-center gap-2">
+                <span class="text-xl">🛡️</span>
+                <h3 class="text-xs font-bold text-white" data-i18n="childGoalTitle">🎯 Tizim Qoidalari & Shaffoflik Kafolati</h3>
+            </div>
+            <div class="space-y-2 text-[11px] text-slate-300 leading-relaxed">
+                <div class="p-2.5 rounded-xl bg-slate-900/60 border border-slate-800 flex items-start gap-2">
+                    <span>✨</span>
+                    <span data-i18n="childGoalDesc">Bu dastur jazo emas, balki sening darslarda a'lochi bo'lishing va xavfsizliging uchun aqlli yordamchidir.</span>
+                </div>
+                <div class="p-2.5 rounded-xl bg-purple-950/30 border border-purple-500/30 flex items-start gap-2 text-purple-200">
+                    <span>🔒</span>
+                    <span data-i18n="childReelsDesc">Biz sening shaxsiy yozishmalaringni (chatlaringni) yoki videolaringni ko'rmaymiz! Faqat qaysi fanlarga qiziqayotganing mavzulari tahlil qilinadi.</span>
+                </div>
             </div>
         </section>
     </main>
@@ -1253,9 +1306,15 @@ body[data-theme="sky"] .subject-item-card {
                     <input type="text" id="profileFullName" placeholder="Aliyor Valijonov" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
                 </div>
 
-                <div>
-                    <label class="text-[11px] font-bold text-slate-300 block mb-1" data-i18n="usernameLabel">Telegram Usernamesi</label>
-                    <input type="text" id="profileUsername" placeholder="@aliyor_valijonov" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="text-[11px] font-bold text-slate-300 block mb-1" data-i18n="usernameLabel">Telegram Username</label>
+                        <input type="text" id="profileUsername" placeholder="@aliyor_v" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+                    </div>
+                    <div>
+                        <label class="text-[11px] font-bold text-slate-300 block mb-1" data-i18n="phoneLabel">Telefon Raqami</label>
+                        <input type="tel" id="profilePhone" placeholder="+998 90 123 45 67" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+                    </div>
                 </div>
 
                 <div>
@@ -1273,6 +1332,27 @@ body[data-theme="sky"] .subject-item-card {
                         <option value="10">10-sinf / 10-класс</option>
                         <option value="11">11-sinf / 11-класс</option>
                     </select>
+                </div>
+
+                <!-- e-Maktab (Kundalik) Login & Paroli -->
+                <div class="p-3 rounded-xl bg-slate-900/80 border border-sky-500/30 space-y-2">
+                    <div class="flex items-center gap-1.5 text-xs font-bold text-sky-400">
+                        <span>📚</span>
+                        <span data-i18n="emaktabSyncHeader">e-Maktab (Kundalik) Sinxronizatsiyasi</span>
+                    </div>
+                    <div class="text-[9px] text-slate-400 leading-tight" data-i18n="emaktabSyncDesc">
+                        Baholar va davomatni avtomatik olish uchun kiritiladi (Tasdiq kodi shart emas).
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 pt-1">
+                        <div>
+                            <label class="text-[10px] text-slate-300 block mb-1" data-i18n="emaktabLoginLabel">e-Maktab Login</label>
+                            <input type="text" id="profileEmaktabLogin" placeholder="login_kundalik" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-sky-500">
+                        </div>
+                        <div>
+                            <label class="text-[10px] text-slate-300 block mb-1" data-i18n="emaktabPassLabel">e-Maktab Parol</label>
+                            <input type="password" id="profileEmaktabPassword" placeholder="••••••••" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-sky-500">
+                        </div>
+                    </div>
                 </div>
 
                 <button onclick="saveChildProfile()" class="w-full py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs rounded-xl transition shadow-lg shadow-emerald-500/20" data-i18n="saveProfileBtn">
@@ -1476,48 +1556,10 @@ body[data-theme="sky"] .subject-item-card {
                     Android ilovani farzand telefoniga o'rnating va yuqoridagi 6 xonali kodni kiriting.
                 </div>
             </div>
-        </div>
-    </div>
-
-    <!-- 🛡️ MODAL: JUFTLASH VA ANDROID ILOVA (AUTO-ONBOARDING) -->
-    <div id="modal-pairing" class="subpage-modal space-y-4">
-        <div class="flex items-center justify-between pb-3 border-b border-slate-800">
-            <button onclick="closeSubpage()" class="text-xs font-bold text-emerald-400" data-i18n="backBtn">← Orqaga</button>
-            <h2 class="text-xs font-bold text-white" data-i18n="pairingSelect">Farzandni Ulash</h2>
-            <span class="w-8"></span>
-        </div>
-
-        <div class="glass-card p-4 space-y-3">
-            <h3 class="text-xs font-bold text-white" data-i18n="autoPairTitle">🔑 Sizning Oila Kodingiz (Avtomatik):</h3>
-            
-            <!-- 6 Xonali Oila Kodi -->
-            <div class="p-3 rounded-xl bg-slate-900/90 border border-emerald-500/40 text-center space-y-1">
-                <div class="text-2xl font-black text-emerald-400 tracking-wider font-mono" id="displayFamilyCode">849-210</div>
-                <div class="text-[10px] text-slate-400" data-i18n="familyCodeHint">Farzand telefonida kiritiladi yoki havolani yuboring</div>
-            </div>
-
-            <p class="text-[11px] text-slate-300 leading-relaxed" data-i18n="pairingInstruction">
-                Farzand hech qanday admin ishtirokisiz ulanadi:
-                <br>1. Ushbu havolani farzandingizga yuboring:
-            </p>
-
-            <button onclick="copyPairingLink()" class="w-full py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs rounded-xl transition" data-i18n="copyPairLinkBtn">
-                🔗 Ulash Havolasidan Nusxa Olish
-            </button>
-
-            <div class="p-3 rounded-xl bg-slate-900/60 border border-slate-800 space-y-1">
-                <div class="text-xs font-bold text-sky-400">📱 Android Ilova orqali ulash:</div>
-                <div class="text-[10px] text-slate-400 leading-relaxed">
-                    Android ilovani farzand telefoniga o'rnating va yuqoridagi 6 xonali kodni kiriting.
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- ==================================================================== -->
-    <!-- BOTTOM NAVIGATION BAR (5 TA BO'LIM) -->
+    <!-- OTA-ONA BOTTOM NAVIGATION BAR (5 TA BO'LIM) -->
     <!-- ==================================================================== -->
-    <nav class="bottom-nav">
+    <nav id="parentBottomNav" class="bottom-nav">
         <button onclick="switchTab('tab-dashboard')" id="nav-tab-dashboard" class="nav-btn active">
             <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
@@ -1553,6 +1595,36 @@ body[data-theme="sky"] .subject-item-card {
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
             <span data-i18n="navSettings">Sozlamalar</span>
+        </button>
+    </nav>
+
+    <!-- ==================================================================== -->
+    <!-- FARZAND BOTTOM NAVIGATION BAR (5 TA FARZAND BO'LIMI) -->
+    <!-- ==================================================================== -->
+    <nav id="childBottomNav" class="bottom-nav hidden">
+        <button onclick="switchChildTab('child-tab-home')" id="nav-child-tab-home" class="nav-btn active">
+            <span class="text-base">🏠</span>
+            <span data-i18n="childNavHome">Asosiy</span>
+        </button>
+
+        <button onclick="switchChildTab('child-tab-ai')" id="nav-child-tab-ai" class="nav-btn">
+            <span class="text-base">🧠</span>
+            <span data-i18n="childNavAi">AI Do'st</span>
+        </button>
+
+        <button onclick="switchChildTab('child-tab-rewards')" id="nav-child-tab-rewards" class="nav-btn">
+            <span class="text-base">🏆</span>
+            <span data-i18n="childNavRewards">Yutuqlar</span>
+        </button>
+
+        <button onclick="switchChildTab('child-tab-school')" id="nav-child-tab-school" class="nav-btn">
+            <span class="text-base">📚</span>
+            <span data-i18n="childNavSchool">e-Maktabim</span>
+        </button>
+
+        <button onclick="switchChildTab('child-tab-explore')" id="nav-child-tab-explore" class="nav-btn">
+            <span class="text-base">🎬</span>
+            <span data-i18n="childNavExplore">Qiziqishlar</span>
         </button>
     </nav>
 
@@ -1687,6 +1759,11 @@ const I18N = {
         btnChildConnect: "Oila Profiliga Ulanish",
         childPairedSuccess: "🎉 Tabriklaymiz! Siz Oila Profiliga Muvaffaqiyatli Ulandingiz!",
         childPairedSub: "Ota-onangizning Telegram botiga xabar yuborildi.",
+        childNavHome: "Asosiy",
+        childNavAi: "AI Do'st",
+        childNavRewards: "Yutuqlar",
+        childNavSchool: "e-Maktabim",
+        childNavExplore: "Qiziqishlar",
         navDashboard: "Asosiy",
         navRadar: "Radar (Bepul)",
         navAi: "AI Murabbiy 💎",
@@ -1695,6 +1772,11 @@ const I18N = {
         backBtn: "← Orqaga",
         nameLabel: "Ism va Familiyasi",
         usernameLabel: "Telegram Usernamesi",
+        phoneLabel: "Telefon Raqami",
+        emaktabSyncHeader: "e-Maktab (Kundalik) Sinxronizatsiyasi",
+        emaktabSyncDesc: "Baholar va davomatni avtomatik olish uchun kiritiladi (Tasdiq kodi shart emas).",
+        emaktabLoginLabel: "e-Maktab Login",
+        emaktabPassLabel: "e-Maktab Parol",
         classLabel: "Sinfi (1-11 Sinf DTS)",
         saveProfileBtn: "💾 Saqlash va Darsliklarni Yangilash",
         freePlanBadge: "Bepul Tarif (Free)",
@@ -1807,6 +1889,11 @@ const I18N = {
         btnChildConnect: "Подключиться к Семье",
         childPairedSuccess: "🎉 Поздравляем! Вы успешно подключены к семейному профилю!",
         childPairedSub: "Уведомление отправлено родителям в Telegram-бот.",
+        childNavHome: "Главная",
+        childNavAi: "AI Друг",
+        childNavRewards: "Награды",
+        childNavSchool: "e-Maktab",
+        childNavExplore: "Интересы",
         navDashboard: "Главная",
         navRadar: "Радар (Free)",
         navAi: "AI Наставник 💎",
@@ -1815,6 +1902,11 @@ const I18N = {
         backBtn: "← Назад",
         nameLabel: "Имя и Фамилия",
         usernameLabel: "Telegram Username",
+        phoneLabel: "Номер Телефона",
+        emaktabSyncHeader: "Синхронизация с e-Maktab (Kundalik)",
+        emaktabSyncDesc: "Для автоматического получения оценок и посещаемости (Код подтверждения не требуется).",
+        emaktabLoginLabel: "e-Maktab Логин",
+        emaktabPassLabel: "e-Maktab Пароль",
         classLabel: "Класс (1-11 Классы DTS)",
         saveProfileBtn: "💾 Сохранить и Обновить Учебники",
         freePlanBadge: "Бесплатный Тариф",
@@ -1843,10 +1935,13 @@ let childrenDatabase = {
         name: "Aliyor Valijonov",
         name_ru: "Алиёр Валиджонов",
         username: "@aliyor_v",
+        phone: "+998 90 123 45 67",
+        emaktabLogin: "aliyor_kundalik",
+        emaktabPassword: "••••••••",
         grade: 5,
         battery: 84,
-        screenTime: "3s 45d",
-        screenTime_ru: "3ч 45м",
+        screenTime: "3s 20d",
+        screenTime_ru: "3ч 20м",
         remaining: "1s 15d",
         remaining_ru: "1ч 15м",
         location: {
@@ -1883,6 +1978,9 @@ let childrenDatabase = {
         name: "Madina Valijonova",
         name_ru: "Мадина Валиджонова",
         username: "@madina_v",
+        phone: "+998 90 987 65 43",
+        emaktabLogin: "madina_kundalik",
+        emaktabPassword: "••••••••",
         grade: 3,
         battery: 92,
         screenTime: "2s 10d",
@@ -1919,6 +2017,9 @@ let childrenDatabase = {
         name: "Temur Valijonov",
         name_ru: "Темур Валиджонов",
         username: "@temur_v",
+        phone: "+998 90 555 44 33",
+        emaktabLogin: "temur_kundalik",
+        emaktabPassword: "••••••••",
         grade: 9,
         battery: 76,
         screenTime: "4s 15d",
@@ -2019,8 +2120,8 @@ function switchAppRole(role) {
     const roleBtnChild = document.getElementById('roleBtnChild');
     const parentHeader = document.getElementById('mainParentHeader');
     const authBanner = document.getElementById('authStatusBanner');
-    const childPortal = document.getElementById('tab-child-portal');
-    const bottomNav = document.querySelector('.bottom-nav');
+    const parentBottomNav = document.getElementById('parentBottomNav');
+    const childBottomNav = document.getElementById('childBottomNav');
 
     if (roleBtnParent) {
         roleBtnParent.className = isParent
@@ -2034,23 +2135,61 @@ function switchAppRole(role) {
             : "flex-1 py-1.5 px-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white transition flex items-center justify-center gap-1.5";
     }
 
+    // Barcha tablarni yopish
+    document.querySelectorAll('.tab-content').forEach(t => {
+        t.classList.remove('active');
+        t.classList.add('hidden');
+    });
+
     if (isParent) {
-        if (childPortal) childPortal.classList.add('hidden');
+        if (childBottomNav) {
+            childBottomNav.style.display = 'none';
+            childBottomNav.classList.add('hidden');
+        }
+        if (parentBottomNav) {
+            parentBottomNav.style.display = 'flex';
+            parentBottomNav.classList.remove('hidden');
+        }
         if (parentHeader) parentHeader.classList.remove('hidden');
         if (authBanner) authBanner.classList.remove('hidden');
-        if (bottomNav) bottomNav.style.display = 'flex';
         switchTab('tab-dashboard');
     } else {
-        // Barcha ota-ona tablarini berkitib, Farzand Portalini faollashtirish
-        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-        if (childPortal) {
-            childPortal.classList.remove('hidden');
-            childPortal.classList.add('active');
+        if (parentBottomNav) {
+            parentBottomNav.style.display = 'none';
+            parentBottomNav.classList.add('hidden');
+        }
+        if (childBottomNav) {
+            childBottomNav.style.display = 'flex';
+            childBottomNav.classList.remove('hidden');
         }
         if (parentHeader) parentHeader.classList.add('hidden');
         if (authBanner) authBanner.classList.add('hidden');
-        if (bottomNav) bottomNav.style.display = 'none';
+        switchChildTab('child-tab-home');
     }
+}
+
+function switchChildTab(tabId) {
+    const childTabs = ['child-tab-home', 'child-tab-ai', 'child-tab-rewards', 'child-tab-school', 'child-tab-explore'];
+    childTabs.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.classList.remove('active');
+            el.classList.add('hidden');
+        }
+        const navBtn = document.getElementById(\`nav-\${id}\`);
+        if (navBtn) navBtn.classList.remove('active');
+    });
+
+    const activeEl = document.getElementById(tabId);
+    if (activeEl) {
+        activeEl.classList.remove('hidden');
+        activeEl.classList.add('active');
+    }
+
+    const activeNav = document.getElementById(\`nav-\${tabId}\`);
+    if (activeNav) activeNav.classList.add('active');
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 // 📍 FARZAND TEZKOR XABARLARI
@@ -2584,6 +2723,15 @@ function openChildProfileModal() {
     document.getElementById('profileFullName').value = (currentLang === 'ru') ? (child.name_ru || child.name) : child.name;
     document.getElementById('profileUsername').value = child.username;
     document.getElementById('profileClassSelect').value = child.grade || 5;
+    if (document.getElementById('profilePhone')) {
+        document.getElementById('profilePhone').value = child.phone || "+998 90 123 45 67";
+    }
+    if (document.getElementById('profileEmaktabLogin')) {
+        document.getElementById('profileEmaktabLogin').value = child.emaktabLogin || "login_kundalik";
+    }
+    if (document.getElementById('profileEmaktabPassword')) {
+        document.getElementById('profileEmaktabPassword').value = child.emaktabPassword || "••••••••";
+    }
     openSubpage('modal-child-profile');
 }
 
@@ -2596,10 +2744,18 @@ function saveChildProfile() {
     const fullName = document.getElementById('profileFullName').value.trim() || "Farzand";
     const username = document.getElementById('profileUsername').value.trim() || "@farzand";
     const grade = parseInt(document.getElementById('profileClassSelect').value) || 5;
+    const phone = document.getElementById('profilePhone')?.value.trim() || "+998 90 123 45 67";
+    const emaktabLogin = document.getElementById('profileEmaktabLogin')?.value.trim() || "login_kundalik";
+    const emaktabPassword = document.getElementById('profileEmaktabPassword')?.value.trim() || "••••••••";
 
     childrenDatabase[currentChildKey].name = fullName;
     childrenDatabase[currentChildKey].username = username;
     childrenDatabase[currentChildKey].grade = grade;
+    childrenDatabase[currentChildKey].phone = phone;
+    childrenDatabase[currentChildKey].emaktabLogin = emaktabLogin;
+    childrenDatabase[currentChildKey].emaktabPassword = emaktabPassword;
+
+    localStorage.setItem('children_database', JSON.stringify(childrenDatabase));
 
     const select = document.getElementById('childSelector');
     if (select.querySelector(\`option[value="\${currentChildKey}"]\`)) {
@@ -2611,8 +2767,8 @@ function saveChildProfile() {
     closeSubpage();
 
     const alertMsg = (currentLang === 'ru')
-        ? \`✅ Данные ребёнка сохранены!\\nУчебники \${grade}-го класса и шкала 100 баллов установлены.\`
-        : \`✅ Farzand ma'lumotlari saqlandi!\\n\${grade}-sinf Davlat darsliklari va 100 ballik baholar o'rnatildi.\`;
+        ? \`✅ Данные ребёнка и синхронизация с e-Maktab сохранены!\\nУчебники \${grade}-го класса и шкала 100 баллов установлены.\`
+        : \`✅ Farzand ma'lumotlari va e-Maktab sinxronizatsiyasi saqlandi!\\n\${grade}-sinf Davlat darsliklari va 100 ballik baholar o'rnatildi.\`;
     alert(alertMsg);
 }
 

@@ -127,6 +127,11 @@ const I18N = {
         btnChildConnect: "Oila Profiliga Ulanish",
         childPairedSuccess: "🎉 Tabriklaymiz! Siz Oila Profiliga Muvaffaqiyatli Ulandingiz!",
         childPairedSub: "Ota-onangizning Telegram botiga xabar yuborildi.",
+        childNavHome: "Asosiy",
+        childNavAi: "AI Do'st",
+        childNavRewards: "Yutuqlar",
+        childNavSchool: "e-Maktabim",
+        childNavExplore: "Qiziqishlar",
         navDashboard: "Asosiy",
         navRadar: "Radar (Bepul)",
         navAi: "AI Murabbiy 💎",
@@ -135,6 +140,11 @@ const I18N = {
         backBtn: "← Orqaga",
         nameLabel: "Ism va Familiyasi",
         usernameLabel: "Telegram Usernamesi",
+        phoneLabel: "Telefon Raqami",
+        emaktabSyncHeader: "e-Maktab (Kundalik) Sinxronizatsiyasi",
+        emaktabSyncDesc: "Baholar va davomatni avtomatik olish uchun kiritiladi (Tasdiq kodi shart emas).",
+        emaktabLoginLabel: "e-Maktab Login",
+        emaktabPassLabel: "e-Maktab Parol",
         classLabel: "Sinfi (1-11 Sinf DTS)",
         saveProfileBtn: "💾 Saqlash va Darsliklarni Yangilash",
         freePlanBadge: "Bepul Tarif (Free)",
@@ -247,6 +257,11 @@ const I18N = {
         btnChildConnect: "Подключиться к Семье",
         childPairedSuccess: "🎉 Поздравляем! Вы успешно подключены к семейному профилю!",
         childPairedSub: "Уведомление отправлено родителям в Telegram-бот.",
+        childNavHome: "Главная",
+        childNavAi: "AI Друг",
+        childNavRewards: "Награды",
+        childNavSchool: "e-Maktab",
+        childNavExplore: "Интересы",
         navDashboard: "Главная",
         navRadar: "Радар (Free)",
         navAi: "AI Наставник 💎",
@@ -255,6 +270,11 @@ const I18N = {
         backBtn: "← Назад",
         nameLabel: "Имя и Фамилия",
         usernameLabel: "Telegram Username",
+        phoneLabel: "Номер Телефона",
+        emaktabSyncHeader: "Синхронизация с e-Maktab (Kundalik)",
+        emaktabSyncDesc: "Для автоматического получения оценок и посещаемости (Код подтверждения не требуется).",
+        emaktabLoginLabel: "e-Maktab Логин",
+        emaktabPassLabel: "e-Maktab Пароль",
         classLabel: "Класс (1-11 Классы DTS)",
         saveProfileBtn: "💾 Сохранить и Обновить Учебники",
         freePlanBadge: "Бесплатный Тариф",
@@ -283,10 +303,13 @@ let childrenDatabase = {
         name: "Aliyor Valijonov",
         name_ru: "Алиёр Валиджонов",
         username: "@aliyor_v",
+        phone: "+998 90 123 45 67",
+        emaktabLogin: "aliyor_kundalik",
+        emaktabPassword: "••••••••",
         grade: 5,
         battery: 84,
-        screenTime: "3s 45d",
-        screenTime_ru: "3ч 45м",
+        screenTime: "3s 20d",
+        screenTime_ru: "3ч 20м",
         remaining: "1s 15d",
         remaining_ru: "1ч 15м",
         location: {
@@ -323,6 +346,9 @@ let childrenDatabase = {
         name: "Madina Valijonova",
         name_ru: "Мадина Валиджонова",
         username: "@madina_v",
+        phone: "+998 90 987 65 43",
+        emaktabLogin: "madina_kundalik",
+        emaktabPassword: "••••••••",
         grade: 3,
         battery: 92,
         screenTime: "2s 10d",
@@ -359,6 +385,9 @@ let childrenDatabase = {
         name: "Temur Valijonov",
         name_ru: "Темур Валиджонов",
         username: "@temur_v",
+        phone: "+998 90 555 44 33",
+        emaktabLogin: "temur_kundalik",
+        emaktabPassword: "••••••••",
         grade: 9,
         battery: 76,
         screenTime: "4s 15d",
@@ -459,8 +488,8 @@ function switchAppRole(role) {
     const roleBtnChild = document.getElementById('roleBtnChild');
     const parentHeader = document.getElementById('mainParentHeader');
     const authBanner = document.getElementById('authStatusBanner');
-    const childPortal = document.getElementById('tab-child-portal');
-    const bottomNav = document.querySelector('.bottom-nav');
+    const parentBottomNav = document.getElementById('parentBottomNav');
+    const childBottomNav = document.getElementById('childBottomNav');
 
     if (roleBtnParent) {
         roleBtnParent.className = isParent
@@ -474,23 +503,61 @@ function switchAppRole(role) {
             : "flex-1 py-1.5 px-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white transition flex items-center justify-center gap-1.5";
     }
 
+    // Barcha tablarni yopish
+    document.querySelectorAll('.tab-content').forEach(t => {
+        t.classList.remove('active');
+        t.classList.add('hidden');
+    });
+
     if (isParent) {
-        if (childPortal) childPortal.classList.add('hidden');
+        if (childBottomNav) {
+            childBottomNav.style.display = 'none';
+            childBottomNav.classList.add('hidden');
+        }
+        if (parentBottomNav) {
+            parentBottomNav.style.display = 'flex';
+            parentBottomNav.classList.remove('hidden');
+        }
         if (parentHeader) parentHeader.classList.remove('hidden');
         if (authBanner) authBanner.classList.remove('hidden');
-        if (bottomNav) bottomNav.style.display = 'flex';
         switchTab('tab-dashboard');
     } else {
-        // Barcha ota-ona tablarini berkitib, Farzand Portalini faollashtirish
-        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-        if (childPortal) {
-            childPortal.classList.remove('hidden');
-            childPortal.classList.add('active');
+        if (parentBottomNav) {
+            parentBottomNav.style.display = 'none';
+            parentBottomNav.classList.add('hidden');
+        }
+        if (childBottomNav) {
+            childBottomNav.style.display = 'flex';
+            childBottomNav.classList.remove('hidden');
         }
         if (parentHeader) parentHeader.classList.add('hidden');
         if (authBanner) authBanner.classList.add('hidden');
-        if (bottomNav) bottomNav.style.display = 'none';
+        switchChildTab('child-tab-home');
     }
+}
+
+function switchChildTab(tabId) {
+    const childTabs = ['child-tab-home', 'child-tab-ai', 'child-tab-rewards', 'child-tab-school', 'child-tab-explore'];
+    childTabs.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.classList.remove('active');
+            el.classList.add('hidden');
+        }
+        const navBtn = document.getElementById(`nav-${id}`);
+        if (navBtn) navBtn.classList.remove('active');
+    });
+
+    const activeEl = document.getElementById(tabId);
+    if (activeEl) {
+        activeEl.classList.remove('hidden');
+        activeEl.classList.add('active');
+    }
+
+    const activeNav = document.getElementById(`nav-${tabId}`);
+    if (activeNav) activeNav.classList.add('active');
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 // 📍 FARZAND TEZKOR XABARLARI
@@ -1024,6 +1091,15 @@ function openChildProfileModal() {
     document.getElementById('profileFullName').value = (currentLang === 'ru') ? (child.name_ru || child.name) : child.name;
     document.getElementById('profileUsername').value = child.username;
     document.getElementById('profileClassSelect').value = child.grade || 5;
+    if (document.getElementById('profilePhone')) {
+        document.getElementById('profilePhone').value = child.phone || "+998 90 123 45 67";
+    }
+    if (document.getElementById('profileEmaktabLogin')) {
+        document.getElementById('profileEmaktabLogin').value = child.emaktabLogin || "login_kundalik";
+    }
+    if (document.getElementById('profileEmaktabPassword')) {
+        document.getElementById('profileEmaktabPassword').value = child.emaktabPassword || "••••••••";
+    }
     openSubpage('modal-child-profile');
 }
 
@@ -1036,10 +1112,18 @@ function saveChildProfile() {
     const fullName = document.getElementById('profileFullName').value.trim() || "Farzand";
     const username = document.getElementById('profileUsername').value.trim() || "@farzand";
     const grade = parseInt(document.getElementById('profileClassSelect').value) || 5;
+    const phone = document.getElementById('profilePhone')?.value.trim() || "+998 90 123 45 67";
+    const emaktabLogin = document.getElementById('profileEmaktabLogin')?.value.trim() || "login_kundalik";
+    const emaktabPassword = document.getElementById('profileEmaktabPassword')?.value.trim() || "••••••••";
 
     childrenDatabase[currentChildKey].name = fullName;
     childrenDatabase[currentChildKey].username = username;
     childrenDatabase[currentChildKey].grade = grade;
+    childrenDatabase[currentChildKey].phone = phone;
+    childrenDatabase[currentChildKey].emaktabLogin = emaktabLogin;
+    childrenDatabase[currentChildKey].emaktabPassword = emaktabPassword;
+
+    localStorage.setItem('children_database', JSON.stringify(childrenDatabase));
 
     const select = document.getElementById('childSelector');
     if (select.querySelector(`option[value="${currentChildKey}"]`)) {
@@ -1051,8 +1135,8 @@ function saveChildProfile() {
     closeSubpage();
 
     const alertMsg = (currentLang === 'ru')
-        ? `✅ Данные ребёнка сохранены!\nУчебники ${grade}-го класса и шкала 100 баллов установлены.`
-        : `✅ Farzand ma'lumotlari saqlandi!\n${grade}-sinf Davlat darsliklari va 100 ballik baholar o'rnatildi.`;
+        ? `✅ Данные ребёнка и синхронизация с e-Maktab сохранены!\nУчебники ${grade}-го класса и шкала 100 баллов установлены.`
+        : `✅ Farzand ma'lumotlari va e-Maktab sinxronizatsiyasi saqlandi!\n${grade}-sinf Davlat darsliklari va 100 ballik baholar o'rnatildi.`;
     alert(alertMsg);
 }
 
