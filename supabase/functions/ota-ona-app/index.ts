@@ -523,6 +523,39 @@ body[data-theme="sky"] .nav-btn.active {
     scrollbar-width: none;
 }
 
+/* Child AI Chat High-Contrast Theme Adaptation */
+body[data-theme="silver"] #childAiChatThread,
+body[data-theme="sky"] #childAiChatThread {
+    background-color: rgba(241, 245, 249, 0.95) !important;
+    border-color: #cbd5e1 !important;
+}
+
+body[data-theme="silver"] #childAiChatThread .bg-indigo-950\\/50,
+body[data-theme="sky"] #childAiChatThread .bg-indigo-950\\/50 {
+    background-color: #ffffff !important;
+    border-color: #cbd5e1 !important;
+    color: #0f172a !important;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08) !important;
+}
+
+body[data-theme="silver"] #childAiChatThread .text-slate-200,
+body[data-theme="sky"] #childAiChatThread .text-slate-200 {
+    color: #0f172a !important;
+}
+
+body[data-theme="silver"] #aiChatThread,
+body[data-theme="sky"] #aiChatThread {
+    background-color: rgba(241, 245, 249, 0.95) !important;
+    border-color: #cbd5e1 !important;
+}
+
+body[data-theme="silver"] .chat-bubble-ai,
+body[data-theme="sky"] .chat-bubble-ai {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    border-color: #cbd5e1 !important;
+}
+
 </style>
 </head>
 <body class="p-3 max-w-md mx-auto relative antialiased text-slate-200">
@@ -854,38 +887,46 @@ body[data-theme="sky"] .nav-btn.active {
         </section>
     </main>
 
-    <!-- FARZAND TAB 2: 🧠 AI DO'ST (AI CHAT, RASM YUKLASH, FAN SHABLONLARI) -->
+    <!-- FARZAND TAB 2: 🧠 AI DO'ST (AI CHAT, DOIMIY MULTI-TURN SUHBAT, RAG & FAN SHABLONLARI) -->
     <main id="child-tab-ai" class="tab-content space-y-3.5 hidden">
-        <section class="glass-card p-4 space-y-3 border-indigo-500/40">
-            <div class="flex items-center gap-2">
-                <span class="text-2xl">🧠</span>
-                <div>
-                    <h3 class="text-xs font-bold text-white" data-i18n="childAiHelperTitle">Gemini AI Uy Vazifasi Do'stim</h3>
-                    <div class="text-[10px] text-indigo-300" data-i18n="childAiHelperSub">Misolni rasmga ol yoki savol ber — tushunarli yechib beraman!</div>
+        <section class="glass-panel p-4 space-y-3 border-indigo-500/40">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-10 h-10 rounded-2xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-xl shadow-md">
+                        🐺
+                    </div>
+                    <div>
+                        <h3 class="text-xs font-black text-white">Qalqon AI — Aqlli Bo'ri Do'stim</h3>
+                        <div class="text-[10px] text-indigo-300">1-11 Sinf DTS Darsliklari & Yordamchi</div>
+                    </div>
                 </div>
+                <button onclick="clearChildChatHistory()" class="px-2 py-1 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-[10px] text-slate-400 hover:text-white transition" title="Suhbatni tozalash">
+                    🔄 Tozalash
+                </button>
             </div>
 
-            <!-- AI Chat Bubble -->
-            <div id="childAiChatBox" class="p-3.5 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-2 text-[11px]">
-                <div class="flex items-start gap-2">
-                    <div class="w-6 h-6 rounded-full bg-indigo-500/20 flex items-center justify-center text-xs">🤖</div>
-                    <div class="p-2.5 rounded-xl bg-indigo-950/40 border border-indigo-500/30 text-slate-200" id="childAiBubble" data-i18n="childAiWelcome">
-                        Salom! Matematika, Ingliz tili yoki boshqa darsdagi qiyin masalani rasmga olib yubor, birgalikda oson va qiziqarli o'rganamiz! 🌟
+            <!-- AI Multi-Turn Chat Tarixi Oynasi (Uzluksiz Suhbat) -->
+            <div id="childAiChatThread" class="max-h-80 overflow-y-auto space-y-2.5 p-3 rounded-2xl bg-slate-900/80 border border-slate-800 flex flex-col text-xs shadow-inner">
+                <div class="flex items-start gap-2.5">
+                    <div class="w-7 h-7 rounded-xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-sm flex-shrink-0">🐺</div>
+                    <div class="p-3 rounded-2xl rounded-tl-sm bg-indigo-950/50 border border-indigo-500/30 text-slate-200 leading-relaxed shadow-sm">
+                        Assalomu alaykum, aziz do'stim! 🌟 Men sening o'qishdagi eng yaqin do'stingman. Matematika, Fizika, Ingliz tili yoki darslikdagi istalgan qiyin misolingni yoz — birgalikda bosqichma-bosqich yechamiz! 🐺✨
                     </div>
                 </div>
             </div>
 
-            <!-- Bo'limosti: Tezkor Fan Shablonlari -->
-            <div class="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
-                <button onclick="askChildAiPreset('matem')" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-300 whitespace-nowrap transition">📐 Matematika misoli</button>
-                <button onclick="askChildAiPreset('english')" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-300 whitespace-nowrap transition">📖 Ingliz tili grammatika</button>
-                <button onclick="askChildAiPreset('science')" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-300 whitespace-nowrap transition">🧪 Qiziqarli tajriba</button>
+            <!-- Tezkor Fan Shablonlari -->
+            <div class="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+                <button onclick="askChildAiPreset('matem')" class="px-2.5 py-1.5 rounded-xl bg-slate-800/90 hover:bg-indigo-600/30 border border-slate-700/80 text-[10px] font-bold text-slate-300 hover:text-indigo-300 whitespace-nowrap transition flex items-center gap-1">📐 Matematika (Kasrlar)</button>
+                <button onclick="askChildAiPreset('english')" class="px-2.5 py-1.5 rounded-xl bg-slate-800/90 hover:bg-indigo-600/30 border border-slate-700/80 text-[10px] font-bold text-slate-300 hover:text-indigo-300 whitespace-nowrap transition flex items-center gap-1">📖 Ingliz tili (Grammar)</button>
+                <button onclick="askChildAiPreset('physics')" class="px-2.5 py-1.5 rounded-xl bg-slate-800/90 hover:bg-indigo-600/30 border border-slate-700/80 text-[10px] font-bold text-slate-300 hover:text-indigo-300 whitespace-nowrap transition flex items-center gap-1">⚡ Fizika (Om qonuni)</button>
+                <button onclick="askChildAiPreset('science')" class="px-2.5 py-1.5 rounded-xl bg-slate-800/90 hover:bg-indigo-600/30 border border-slate-700/80 text-[10px] font-bold text-slate-300 hover:text-indigo-300 whitespace-nowrap transition flex items-center gap-1">🧪 Kimyo (Davriy jadval)</button>
             </div>
 
             <!-- Input Bar -->
-            <div class="flex items-center gap-2">
-                <input type="text" id="childAiInput" placeholder="Savolingni yoz..." class="flex-1 bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
-                <button onclick="handleChildAiSend()" class="p-2 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-bold transition">
+            <div class="flex items-center gap-2 pt-1 border-t border-slate-800">
+                <input type="text" id="childAiInput" placeholder="Savolingni yoz..." class="flex-1 bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition" onkeypress="if(event.key==='Enter') handleChildAiSend()">
+                <button onclick="handleChildAiSend()" class="p-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white text-xs font-bold transition shadow-md shadow-indigo-500/20">
                     ➤
                 </button>
             </div>
@@ -3088,41 +3129,99 @@ function sendChildQuickStatus(statusType) {
     alert(alertMsg);
 }
 
-// 🧠 FARZAND AI CHAT
+// 🧠 FARZAND AI CHAT (MULTI-TURN UZLUKSIZ SUHBAT)
+function clearChildChatHistory() {
+    const thread = document.getElementById('childAiChatThread');
+    if (!thread) return;
+    const isRu = (currentLang === 'ru');
+    thread.innerHTML = \`
+        <div class="flex items-start gap-2.5">
+            <div class="w-7 h-7 rounded-xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-sm flex-shrink-0">🐺</div>
+            <div class="p-3 rounded-2xl rounded-tl-sm bg-indigo-950/50 border border-indigo-500/30 text-slate-200 leading-relaxed shadow-sm">
+                \${isRu ? "🐺 Чат очищен! Задай любой вопрос из школьной программы 1-11 классов." : "🐺 Suhbat tozalandi! 1-11 sinf darsliklaridan istalgan savolingni yoz."}
+            </div>
+        </div>
+    \`;
+}
+
 function askChildAiPreset(type) {
     const isRu = (currentLang === 'ru');
     const input = document.getElementById('childAiInput');
     if (!input) return;
 
     if (type === 'matem') {
-        input.value = isRu ? "Как решить задачу по дробям?" : "Kasrlar bo'yicha masalani qanday yechaman?";
+        input.value = isRu ? "Как сложить разные дроби?" : "Oddiy kasrlarni qo'shish qoidasini tushuntir";
     } else if (type === 'english') {
-        input.value = isRu ? "Объясни время Present Simple с примерами" : "Present Simple zamonini misollar bilan tushuntirib ber";
+        input.value = isRu ? "Объясни время Present Simple с примерами" : "Present Simple zamonini misollar bilan tushuntir";
+    } else if (type === 'physics') {
+        input.value = isRu ? "Что гласит закон Ома?" : "Om qonuni formulasi va qoidasi qanday?";
     } else if (type === 'science') {
-        input.value = isRu ? "Какой интересный опыт можно провести дома?" : "Uyda qanday qiziqarli ilmiy tajriba o'tkazish mumkin?";
+        input.value = isRu ? "Расскажи про периодическую таблицу Менделеева" : "Mendeleyev davriy jadvali nima?";
     }
     handleChildAiSend();
 }
 
+function appendChildUserMessage(text) {
+    const thread = document.getElementById('childAiChatThread');
+    if (!thread) return;
+    const msg = document.createElement('div');
+    msg.className = "flex justify-end";
+    msg.innerHTML = \`
+        <div class="bg-indigo-600 text-white font-medium rounded-2xl rounded-tr-sm p-3 max-w-[85%] text-xs shadow-md">
+            \${text}
+        </div>
+    \`;
+    thread.appendChild(msg);
+    thread.scrollTop = thread.scrollHeight;
+}
+
+function appendChildAiMessage(htmlContent) {
+    const thread = document.getElementById('childAiChatThread');
+    if (!thread) return;
+    const msg = document.createElement('div');
+    msg.className = "flex items-start gap-2.5 max-w-[95%]";
+    msg.innerHTML = \`
+        <div class="w-7 h-7 rounded-xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-sm flex-shrink-0">🐺</div>
+        <div class="p-3 rounded-2xl rounded-tl-sm bg-indigo-950/50 border border-indigo-500/30 text-slate-200 leading-relaxed shadow-sm">
+            \${htmlContent}
+        </div>
+    \`;
+    thread.appendChild(msg);
+    thread.scrollTop = thread.scrollHeight;
+}
+
 function handleChildAiSend() {
     const input = document.getElementById('childAiInput');
-    const bubble = document.getElementById('childAiBubble');
     const text = input ? input.value.trim() : "";
     const isRu = (currentLang === 'ru');
 
     if (!text) return;
     if (input) input.value = "";
 
-    if (bubble) {
-        bubble.innerText = isRu ? "⏳ Ищу в базе учебников 1-11 классов ДТС..." : "⏳ 1-11 sinf DTS darsliklar bazasidan qidiryapman...";
+    // 1. Foydalanuvchi xabarini chatga qo'shish
+    appendChildUserMessage(text);
+
+    // 2. Kutilmoqda indikatori
+    const thread = document.getElementById('childAiChatThread');
+    const loadingId = 'child-ai-loading-' + Date.now();
+    if (thread) {
+        const loadDiv = document.createElement('div');
+        loadDiv.id = loadingId;
+        loadDiv.className = "flex items-center gap-2 text-[11px] text-indigo-300 italic pl-9";
+        loadDiv.innerHTML = isRu ? "⏳ Ищу в базе 1-11 классов ДТС..." : "⏳ 1-11 sinf DTS darsliklar bazasidan qidiryapman...";
+        thread.appendChild(loadDiv);
+        thread.scrollTop = thread.scrollHeight;
     }
 
     const lower = text.toLowerCase();
     const isGreeting = lower.includes('salom') || lower.includes('assalom') || lower.includes('privet') || lower.includes('hello') || lower.includes('qalaysan') || lower.includes('qalesan') || lower.includes('yaxshimisiz');
 
     setTimeout(() => {
+        const loadEl = document.getElementById(loadingId);
+        if (loadEl) loadEl.remove();
+
         let answer = "";
-        const ragMatch = searchDtsKnowledge(text, 5);
+        const ragMatch = searchDtsKnowledge(text, null);
 
         if (isGreeting) {
             answer = isRu
@@ -3133,7 +3232,7 @@ function handleChildAiSend() {
                    + \`📖 <b>Mavzu:</b> \${ragMatch.chapter}<br><br>\`
                    + \`💡 <b>Rasmiy qoida:</b><br>\${ragMatch.rule}<br><br>\`
                    + (ragMatch.formula ? \`📐 <b>Formula:</b> <code>\${ragMatch.formula}</code><br><br>\` : '')
-                   + \`🎯 <i>Senda bu mavzu a'lo darajada o'xshaydi! Yana savollaring bo'lsa, bemalol yoz! 🐺✨</i>\`;
+                   + \`🎯 <i>Senda bu mavzu a'lo darajada o'xshaydi! Keyingi savolingni bemalol yoz! 🐺✨</i>\`;
         } else if (lower.includes('matem') || lower.includes('+') || lower.includes('-') || lower.includes('*') || lower.includes('/') || lower.includes('kasr')) {
             answer = isRu
                 ? \`📐 Отличный математический вопрос! По задаче «\${text}»: давай решим шаг за шагом. Сначала определим формулу, а затем вычислим результат. Ты отлично справляешься! 🚀\`
@@ -3143,7 +3242,7 @@ function handleChildAiSend() {
                 ? \`💡 Отличный вопрос по теме «\${text}»! Главное понять суть и применить на практике. Если нужно подробнее разобрать примеры, просто напиши! 🐺✨\`
                 : \`💡 «\${text}» bo'yicha ajoyib savol! Asosiysi qoidani to'g'ri tushunib, amalda qo'llashdir. Agar qaysi qismi tushunarsiz bo'lsa, bemalol so'ra! 🐺✨\`;
         }
-        if (bubble) bubble.innerHTML = answer;
+        appendChildAiMessage(answer);
     }, 500);
 }
 
@@ -3719,6 +3818,8 @@ function generateAIResponse(query, imageBase64) {
     const isRu = (currentLang === 'ru');
     let responseText = "";
 
+    const ragMatch = searchDtsKnowledge(query, null);
+
     if (imageBase64) {
         if (isRu) {
             responseText = \`
@@ -3735,6 +3836,14 @@ function generateAIResponse(query, imageBase64) {
                 • <b>Mustahkamlash:</b> Darslikdagi 2-3 ta topshiriqni mustaqil yechishga yo'naltiring va 100 ballik e-Maktab ko'rsatkichini qayd eting! 🌟
             \`;
         }
+    } else if (ragMatch) {
+        responseText = \`
+            <b>📚 Darslik Tahlili (\${ragMatch.grade}-sinf \${ragMatch.subject}, \${ragMatch.page}-bet):</b><br>
+            • <b>Mavzu:</b> \${ragMatch.chapter}<br>
+            • <b>DTS Standarti:</b> \${ragMatch.rule}<br>
+            \${ragMatch.formula ? \`• <b>Asosiy formula:</b> <code>\${ragMatch.formula}</code><br>\` : ''}
+            💡 <i>Farzandingizga ushbu mavzu bo'yicha e-Maktabda 100 ball to'plashida yordam bering!</i>
+        \`;
     } else if (qLower.includes("reels") || qLower.includes("short") || qLower.includes("video") || qLower.includes("insta") || qLower.includes("youtube") || qLower.includes("видео")) {
         if (isRu) {
             responseText = \`

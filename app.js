@@ -793,41 +793,99 @@ function sendChildQuickStatus(statusType) {
     alert(alertMsg);
 }
 
-// 🧠 FARZAND AI CHAT
+// 🧠 FARZAND AI CHAT (MULTI-TURN UZLUKSIZ SUHBAT)
+function clearChildChatHistory() {
+    const thread = document.getElementById('childAiChatThread');
+    if (!thread) return;
+    const isRu = (currentLang === 'ru');
+    thread.innerHTML = `
+        <div class="flex items-start gap-2.5">
+            <div class="w-7 h-7 rounded-xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-sm flex-shrink-0">🐺</div>
+            <div class="p-3 rounded-2xl rounded-tl-sm bg-indigo-950/50 border border-indigo-500/30 text-slate-200 leading-relaxed shadow-sm">
+                ${isRu ? "🐺 Чат очищен! Задай любой вопрос из школьной программы 1-11 классов." : "🐺 Suhbat tozalandi! 1-11 sinf darsliklaridan istalgan savolingni yoz."}
+            </div>
+        </div>
+    `;
+}
+
 function askChildAiPreset(type) {
     const isRu = (currentLang === 'ru');
     const input = document.getElementById('childAiInput');
     if (!input) return;
 
     if (type === 'matem') {
-        input.value = isRu ? "Как решить задачу по дробям?" : "Kasrlar bo'yicha masalani qanday yechaman?";
+        input.value = isRu ? "Как сложить разные дроби?" : "Oddiy kasrlarni qo'shish qoidasini tushuntir";
     } else if (type === 'english') {
-        input.value = isRu ? "Объясни время Present Simple с примерами" : "Present Simple zamonini misollar bilan tushuntirib ber";
+        input.value = isRu ? "Объясни время Present Simple с примерами" : "Present Simple zamonini misollar bilan tushuntir";
+    } else if (type === 'physics') {
+        input.value = isRu ? "Что гласит закон Ома?" : "Om qonuni formulasi va qoidasi qanday?";
     } else if (type === 'science') {
-        input.value = isRu ? "Какой интересный опыт можно провести дома?" : "Uyda qanday qiziqarli ilmiy tajriba o'tkazish mumkin?";
+        input.value = isRu ? "Расскажи про периодическую таблицу Менделеева" : "Mendeleyev davriy jadvali nima?";
     }
     handleChildAiSend();
 }
 
+function appendChildUserMessage(text) {
+    const thread = document.getElementById('childAiChatThread');
+    if (!thread) return;
+    const msg = document.createElement('div');
+    msg.className = "flex justify-end";
+    msg.innerHTML = `
+        <div class="bg-indigo-600 text-white font-medium rounded-2xl rounded-tr-sm p-3 max-w-[85%] text-xs shadow-md">
+            ${text}
+        </div>
+    `;
+    thread.appendChild(msg);
+    thread.scrollTop = thread.scrollHeight;
+}
+
+function appendChildAiMessage(htmlContent) {
+    const thread = document.getElementById('childAiChatThread');
+    if (!thread) return;
+    const msg = document.createElement('div');
+    msg.className = "flex items-start gap-2.5 max-w-[95%]";
+    msg.innerHTML = `
+        <div class="w-7 h-7 rounded-xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-sm flex-shrink-0">🐺</div>
+        <div class="p-3 rounded-2xl rounded-tl-sm bg-indigo-950/50 border border-indigo-500/30 text-slate-200 leading-relaxed shadow-sm">
+            ${htmlContent}
+        </div>
+    `;
+    thread.appendChild(msg);
+    thread.scrollTop = thread.scrollHeight;
+}
+
 function handleChildAiSend() {
     const input = document.getElementById('childAiInput');
-    const bubble = document.getElementById('childAiBubble');
     const text = input ? input.value.trim() : "";
     const isRu = (currentLang === 'ru');
 
     if (!text) return;
     if (input) input.value = "";
 
-    if (bubble) {
-        bubble.innerText = isRu ? "⏳ Ищу в базе учебников 1-11 классов ДТС..." : "⏳ 1-11 sinf DTS darsliklar bazasidan qidiryapman...";
+    // 1. Foydalanuvchi xabarini chatga qo'shish
+    appendChildUserMessage(text);
+
+    // 2. Kutilmoqda indikatori
+    const thread = document.getElementById('childAiChatThread');
+    const loadingId = 'child-ai-loading-' + Date.now();
+    if (thread) {
+        const loadDiv = document.createElement('div');
+        loadDiv.id = loadingId;
+        loadDiv.className = "flex items-center gap-2 text-[11px] text-indigo-300 italic pl-9";
+        loadDiv.innerHTML = isRu ? "⏳ Ищу в базе 1-11 классов ДТС..." : "⏳ 1-11 sinf DTS darsliklar bazasidan qidiryapman...";
+        thread.appendChild(loadDiv);
+        thread.scrollTop = thread.scrollHeight;
     }
 
     const lower = text.toLowerCase();
     const isGreeting = lower.includes('salom') || lower.includes('assalom') || lower.includes('privet') || lower.includes('hello') || lower.includes('qalaysan') || lower.includes('qalesan') || lower.includes('yaxshimisiz');
 
     setTimeout(() => {
+        const loadEl = document.getElementById(loadingId);
+        if (loadEl) loadEl.remove();
+
         let answer = "";
-        const ragMatch = searchDtsKnowledge(text, 5);
+        const ragMatch = searchDtsKnowledge(text, null);
 
         if (isGreeting) {
             answer = isRu
@@ -838,7 +896,7 @@ function handleChildAiSend() {
                    + `📖 <b>Mavzu:</b> ${ragMatch.chapter}<br><br>`
                    + `💡 <b>Rasmiy qoida:</b><br>${ragMatch.rule}<br><br>`
                    + (ragMatch.formula ? `📐 <b>Formula:</b> <code>${ragMatch.formula}</code><br><br>` : '')
-                   + `🎯 <i>Senda bu mavzu a'lo darajada o'xshaydi! Yana savollaring bo'lsa, bemalol yoz! 🐺✨</i>`;
+                   + `🎯 <i>Senda bu mavzu a'lo darajada o'xshaydi! Keyingi savolingni bemalol yoz! 🐺✨</i>`;
         } else if (lower.includes('matem') || lower.includes('+') || lower.includes('-') || lower.includes('*') || lower.includes('/') || lower.includes('kasr')) {
             answer = isRu
                 ? `📐 Отличный математический вопрос! По задаче «${text}»: давай решим шаг за шагом. Сначала определим формулу, а затем вычислим результат. Ты отлично справляешься! 🚀`
@@ -848,7 +906,7 @@ function handleChildAiSend() {
                 ? `💡 Отличный вопрос по теме «${text}»! Главное понять суть и применить на практике. Если нужно подробнее разобрать примеры, просто напиши! 🐺✨`
                 : `💡 «${text}» bo'yicha ajoyib savol! Asosiysi qoidani to'g'ri tushunib, amalda qo'llashdir. Agar qaysi qismi tushunarsiz bo'lsa, bemalol so'ra! 🐺✨`;
         }
-        if (bubble) bubble.innerHTML = answer;
+        appendChildAiMessage(answer);
     }, 500);
 }
 
@@ -1424,6 +1482,8 @@ function generateAIResponse(query, imageBase64) {
     const isRu = (currentLang === 'ru');
     let responseText = "";
 
+    const ragMatch = searchDtsKnowledge(query, null);
+
     if (imageBase64) {
         if (isRu) {
             responseText = `
@@ -1440,6 +1500,14 @@ function generateAIResponse(query, imageBase64) {
                 • <b>Mustahkamlash:</b> Darslikdagi 2-3 ta topshiriqni mustaqil yechishga yo'naltiring va 100 ballik e-Maktab ko'rsatkichini qayd eting! 🌟
             `;
         }
+    } else if (ragMatch) {
+        responseText = `
+            <b>📚 Darslik Tahlili (${ragMatch.grade}-sinf ${ragMatch.subject}, ${ragMatch.page}-bet):</b><br>
+            • <b>Mavzu:</b> ${ragMatch.chapter}<br>
+            • <b>DTS Standarti:</b> ${ragMatch.rule}<br>
+            ${ragMatch.formula ? `• <b>Asosiy formula:</b> <code>${ragMatch.formula}</code><br>` : ''}
+            💡 <i>Farzandingizga ushbu mavzu bo'yicha e-Maktabda 100 ball to'plashida yordam bering!</i>
+        `;
     } else if (qLower.includes("reels") || qLower.includes("short") || qLower.includes("video") || qLower.includes("insta") || qLower.includes("youtube") || qLower.includes("видео")) {
         if (isRu) {
             responseText = `
