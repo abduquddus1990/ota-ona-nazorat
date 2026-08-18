@@ -1236,125 +1236,64 @@ body[data-theme="sky"] .bottom-nav {
     <!-- ==================================================================== -->
     <!-- TAB 5: ⚙️ SOZLAMALAR -->
     <!-- ==================================================================== -->
-    <main id="tab-settings" class="tab-content space-y-3.5">
-        <h2 class="text-sm font-bold text-white px-1" data-i18n="settingsTitle">⚙️ Tizim Sozlamalari & Ma'lumotlar</h2>
+    <!-- ==================================================================== -->
+    <!-- TAB 5: ⚙️ SOZLAMALAR (FULL SETTINGS HUB & SUBPAGES) -->
+    <!-- ==================================================================== -->
+    <main id="tab-settings" class="tab-content space-y-2.5 hidden">
+        <div class="flex items-center justify-between px-1 mb-1">
+            <h2 class="text-xs font-black text-white uppercase tracking-wider flex items-center gap-1.5" data-i18n="settingsTitle">
+                <span class="material-symbols-outlined text-sm text-cyan-400">settings</span>
+                <span>Tizim Sozlamalari & Ma'lumotlar</span>
+            </h2>
+            <span class="text-[10px] text-cyan-400 font-mono font-bold">v4.4 Qalqon AI</span>
+        </div>
 
-        <!-- ℹ️ 1. DASTUR HAQIDA VA BIZNING ASOSIY MAQSADIMIZ (POYLOQCHILIK EMAS — MEHR VA XAVFSIZLIK) -->
-        <section class="glass-card p-4 space-y-3 border-emerald-500/40 bg-gradient-to-br from-emerald-950/40 via-slate-900/90 to-slate-950/90">
-            <div class="flex items-center justify-between border-b border-emerald-500/20 pb-2">
-                <div class="flex items-center gap-2">
-                    <span class="text-xl">🛡️</span>
-                    <div>
-                        <h3 class="text-xs font-black text-white" data-i18n="aboutManifestTitle">Dastur Haqida & Bizning Maqsadimiz</h3>
-                        <div class="text-[9px] text-emerald-400 font-semibold" data-i18n="aboutManifestSubtitle">Poyloqchilik emas — Mehr, Ishonch va Xavfsizlik!</div>
-                    </div>
-                </div>
-                <button onclick="openSubpage('modal-about')" class="px-2 py-1 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 text-[10px] font-bold rounded-lg transition">
-                    Batafsil ↗
-                </button>
-            </div>
-
-            <div class="space-y-2 text-[11px] text-slate-300 leading-relaxed">
-                <div class="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
-                    <p data-i18n="aboutShortDesc">
-                        Hurmatli Ota-onalar! <b>Qalqon AI</b> dasturining bosh maqsadi — aslo bolaning orqasidan poyloqchilik qilish emas, balki <b>mehr, o'zaro ishonch, raqamli xavfsizlik va darslarni 100 ballik DTS davlat standarti</b> bo'yicha a'lo o'zlashtirishiga ko'maklashishdir.
-                    </p>
-                </div>
-                <div class="flex items-center gap-2 text-[10px] text-emerald-300 px-1">
-                    <span>🔒</span>
-                    <span data-i18n="aboutPrivacyNote">Shaxsiy chatlar o'qilmaydi, faqat ta'limiy qiziqishlar tahlil qilinadi.</span>
-                </div>
-            </div>
-
-            <!-- Rasmiy Murojaat Pochtasi -->
-            <div class="p-3 rounded-xl bg-slate-950 border border-teal-500/30 flex items-center justify-between gap-2">
-                <div>
-                    <div class="text-[9px] text-slate-400" data-i18n="feedbackEmailLabel">Rasmiy aloqa pochtasi:</div>
-                    <div class="text-xs font-black text-teal-300 font-mono select-all">alhamdulillah@tmail.ton</div>
-                </div>
-                <a href="https://mail.google.com/mail/?view=cm&fs=1&to=alhamdulillah@tmail.ton&su=Shield+Parental+Guard+Murojaat" target="_blank" class="px-3 py-1.5 bg-gradient-to-r from-teal-500 to-emerald-600 text-white font-bold text-[10px] rounded-lg transition flex items-center gap-1 shadow">
-                    <span>✉️</span>
-                    <span>Gmail</span>
-                </a>
-            </div>
-        </section>
-
-        <!-- 📊 2. DASTUR STATISTIKASI & DINAMIK O'SISH (OTA-ONALAR VA FARZANDLAR SONI) -->
-        <section class="glass-card p-4 space-y-3 border-indigo-500/40 bg-gradient-to-br from-indigo-950/30 via-slate-900/90 to-slate-950/90">
-            <div class="flex items-center justify-between border-b border-indigo-500/20 pb-2">
-                <div class="flex items-center gap-2">
-                    <span class="text-xl">📊</span>
-                    <div>
-                        <h3 class="text-xs font-black text-white" data-i18n="appStatsModalTitle">Dastur Statistikasi & Dinamik O'sish</h3>
-                        <div class="text-[9px] text-indigo-400 font-semibold">Tizimga ulangan foydalanuvchilar</div>
-                    </div>
-                </div>
-                <span class="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold text-[9px]">+34.5% Oylik</span>
-            </div>
-
-            <!-- 2 Ta Alohida Hisoblagich: Ota-onalar va Farzandlar Faqat Soni -->
-            <div class="grid grid-cols-2 gap-2.5">
-                <div class="p-3 rounded-xl bg-slate-900/90 border border-emerald-500/40 text-center">
-                    <span class="text-xl">👨‍👩‍👧</span>
-                    <div class="text-xl font-black text-emerald-400 font-mono mt-0.5" id="settingsStatParents">14,820</div>
-                    <div class="text-[10px] font-bold text-slate-300" data-i18n="statParentsLabel">Ulangan Ota-onalar</div>
-                    <div class="text-[8px] text-emerald-400 mt-0.5">(Otalar va Onalar)</div>
-                </div>
-
-                <div class="p-3 rounded-xl bg-slate-900/90 border border-indigo-500/40 text-center">
-                    <span class="text-xl">👦</span>
-                    <div class="text-xl font-black text-indigo-400 font-mono mt-0.5" id="settingsStatChildren">23,450</div>
-                    <div class="text-[10px] font-bold text-slate-300" data-i18n="statChildrenLabel">Ulangan Farzandlar</div>
-                    <div class="text-[8px] text-indigo-400 mt-0.5">(1-11 Sinf DTS)</div>
-                </div>
-            </div>
-
-            <!-- Dinamik O'sish Diagrammasi (SVG Surat) -->
-            <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
-                <div class="flex items-center justify-between text-[10px] text-slate-300 font-semibold">
-                    <span>📈 Oylik Faol O'sish Dinamikasi:</span>
-                    <span class="text-emerald-400 font-mono">38,270+ Jami</span>
-                </div>
-                <svg viewBox="0 0 300 75" class="w-full h-16 overflow-visible">
-                    <defs>
-                        <linearGradient id="setChartGrad" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stop-color="#10b981" stop-opacity="0.45"/>
-                            <stop offset="100%" stop-color="#10b981" stop-opacity="0.0"/>
-                        </linearGradient>
-                    </defs>
-                    <path d="M 0,65 Q 50,60 100,45 T 200,28 T 300,8 L 300,75 L 0,75 Z" fill="url(#setChartGrad)"/>
-                    <path d="M 0,65 Q 50,60 100,45 T 200,28 T 300,8" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round"/>
-                    <circle cx="100" cy="45" r="3.5" fill="#10b981" stroke="#fff" stroke-width="1.5"/>
-                    <circle cx="200" cy="28" r="3.5" fill="#38bdf8" stroke="#fff" stroke-width="1.5"/>
-                    <circle cx="300" cy="8" r="4.5" fill="#818cf8" stroke="#fff" stroke-width="2"/>
-                </svg>
-                <div class="flex justify-between text-[8px] text-slate-400 font-mono">
-                    <span>May (8.4k)</span>
-                    <span>Iyun (15.2k)</span>
-                    <span>Iyul (26.1k)</span>
-                    <span class="text-emerald-400 font-bold">Avgust (38.2k+)</span>
-                </div>
-            </div>
-        </section>
-
-        <!-- 3. Fon Tanlash (Pinterest Estetikasi) -->
-        <div onclick="openSubpage('modal-themes')" class="glass-card p-3.5 flex items-center justify-between cursor-pointer hover:border-emerald-500/40 transition">
+        <!-- 1. Dastur Haqida & Bizning Maqsadimiz -->
+        <div onclick="openSubpage('modal-about')" class="glass-panel p-3.5 flex items-center justify-between cursor-pointer hover:border-cyan-500/50 transition">
             <div class="flex items-center gap-3">
-                <div class="w-9 h-9 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 text-lg">
+                <div class="w-9 h-9 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 text-lg">
+                    🛡️
+                </div>
+                <div>
+                    <div class="text-xs font-bold text-white" data-i18n="aboutAppTitle">Dastur Haqida & Asosiy Maqsad</div>
+                    <div class="text-[10px] text-slate-400" data-i18n="aboutAppSub">Poyloqchilik emas — mehr, xavfsizlik va darslik nazorati</div>
+                </div>
+            </div>
+            <span class="text-slate-500 text-sm font-bold">›</span>
+        </div>
+
+        <!-- 2. Dastur Statistikasi & Dinamik O'sish -->
+        <div onclick="openSubpage('modal-app-stats')" class="glass-panel p-3.5 flex items-center justify-between cursor-pointer hover:border-cyan-500/50 transition">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center text-indigo-400 text-lg">
+                    📊
+                </div>
+                <div>
+                    <div class="text-xs font-bold text-white" data-i18n="appStatsTitle">Dastur Statistikasi & Dinamika</div>
+                    <div class="text-[10px] text-slate-400" data-i18n="appStatsSub">14,820+ Ota-onalar, 23,450+ Farzandlar</div>
+                </div>
+            </div>
+            <span class="text-slate-500 text-sm font-bold">›</span>
+        </div>
+
+        <!-- 3. Fon va Dizaynni Tanlash -->
+        <div onclick="openSubpage('modal-themes')" class="glass-panel p-3.5 flex items-center justify-between cursor-pointer hover:border-cyan-500/50 transition">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-400 text-lg">
                     🎨
                 </div>
                 <div>
                     <div class="text-xs font-bold text-white" data-i18n="themeSelect">Fon va Dizaynni Tanlash</div>
-                    <div class="text-[10px] text-slate-400" data-i18n="themeSub">10 xil eksklyuziv estetika fonlari</div>
+                    <div class="text-[10px] text-slate-400" data-i18n="themeSub">12 xil eksklyuziv estetika fonlari & 3D Bo'rilar</div>
                 </div>
             </div>
-            <span class="text-slate-500 text-sm">›</span>
+            <span class="text-slate-500 text-sm font-bold">›</span>
         </div>
 
-        <!-- 4. Farzand Ma'lumotlarini Kiritish & Tahrirlash -->
-        <div onclick="openChildProfileModal()" class="glass-card p-3.5 flex items-center justify-between cursor-pointer hover:border-emerald-500/40 transition">
+        <!-- 4. Farzand Ma'lumotlari & Sinfi -->
+        <div onclick="openChildProfileModal()" class="glass-panel p-3.5 flex items-center justify-between cursor-pointer hover:border-cyan-500/50 transition">
             <div class="flex items-center gap-3">
-                <div class="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 text-lg">
+                <div class="w-9 h-9 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 text-lg">
                     👶
                 </div>
                 <div>
@@ -1362,13 +1301,13 @@ body[data-theme="sky"] .bottom-nav {
                     <div class="text-[10px] text-slate-400" data-i18n="profileSub">Ism, Username, Telefon va e-Maktab</div>
                 </div>
             </div>
-            <span class="text-slate-500 text-sm">›</span>
+            <span class="text-slate-500 text-sm font-bold">›</span>
         </div>
 
         <!-- 5. Tilni O'zgartirish (UZ / RU) -->
-        <div onclick="openSubpage('modal-languages')" class="glass-card p-3.5 flex items-center justify-between cursor-pointer hover:border-emerald-500/40 transition">
+        <div onclick="openSubpage('modal-languages')" class="glass-panel p-3.5 flex items-center justify-between cursor-pointer hover:border-cyan-500/50 transition">
             <div class="flex items-center gap-3">
-                <div class="w-9 h-9 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400 text-lg">
+                <div class="w-9 h-9 rounded-xl bg-sky-500/15 border border-sky-500/30 flex items-center justify-center text-sky-400 text-lg">
                     🌐
                 </div>
                 <div>
@@ -1376,27 +1315,27 @@ body[data-theme="sky"] .bottom-nav {
                     <div class="text-[10px] text-slate-400" data-i18n="langSub">O'zbekcha / Русский</div>
                 </div>
             </div>
-            <span class="text-slate-500 text-sm">›</span>
+            <span class="text-slate-500 text-sm font-bold">›</span>
         </div>
 
-        <!-- 6. Tariflar va Obuna (Free / Family Pro) -->
-        <div onclick="openSubpage('modal-plans')" class="glass-card p-3.5 flex items-center justify-between cursor-pointer hover:border-emerald-500/40 transition">
+        <!-- 6. Tariflar va Obuna (Free / Pro) -->
+        <div onclick="openSubpage('modal-plans')" class="glass-panel p-3.5 flex items-center justify-between cursor-pointer hover:border-cyan-500/50 transition">
             <div class="flex items-center gap-3">
-                <div class="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 text-lg">
+                <div class="w-9 h-9 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 text-lg">
                     💎
                 </div>
                 <div>
                     <div class="text-xs font-bold text-white" data-i18n="plansSelect">Tariflar va Obuna</div>
-                    <div class="text-[10px] text-slate-400" data-i18n="plansSub">Free (Lokatsiya) / Family Pro (AI)</div>
+                    <div class="text-[10px] text-slate-400" data-i18n="plansSub">Free (Lokatsiya) / Pro (10,000 so'm)</div>
                 </div>
             </div>
-            <span class="text-slate-500 text-sm">›</span>
+            <span class="text-slate-500 text-sm font-bold">›</span>
         </div>
 
         <!-- 7. Juftlash va Android Ilova -->
-        <div onclick="openSubpage('modal-pairing')" class="glass-card p-3.5 flex items-center justify-between cursor-pointer hover:border-emerald-500/40 transition">
+        <div onclick="openSubpage('modal-pairing')" class="glass-panel p-3.5 flex items-center justify-between cursor-pointer hover:border-cyan-500/50 transition">
             <div class="flex items-center gap-3">
-                <div class="w-9 h-9 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 text-lg">
+                <div class="w-9 h-9 rounded-xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center text-rose-400 text-lg">
                     🛡️
                 </div>
                 <div>
@@ -1404,13 +1343,13 @@ body[data-theme="sky"] .bottom-nav {
                     <div class="text-[10px] text-slate-400" data-i18n="pairingSub">Oila kodi va avtomatik juftlash</div>
                 </div>
             </div>
-            <span class="text-slate-500 text-sm">›</span>
+            <span class="text-slate-500 text-sm font-bold">›</span>
         </div>
 
         <!-- 8. Takliflar va Fikr-mulohazalar (alhamdulillah@tmail.ton) -->
-        <div onclick="openSubpage('modal-feedback')" class="glass-card p-3.5 flex items-center justify-between cursor-pointer hover:border-emerald-500/40 transition">
+        <div onclick="openSubpage('modal-feedback')" class="glass-panel p-3.5 flex items-center justify-between cursor-pointer hover:border-cyan-500/50 transition">
             <div class="flex items-center gap-3">
-                <div class="w-9 h-9 rounded-xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center text-teal-400 text-lg">
+                <div class="w-9 h-9 rounded-xl bg-teal-500/15 border border-teal-500/30 flex items-center justify-center text-teal-400 text-lg">
                     💡
                 </div>
                 <div>
@@ -1418,13 +1357,13 @@ body[data-theme="sky"] .bottom-nav {
                     <div class="text-[10px] text-slate-400" data-i18n="feedbackSub">alhamdulillah@tmail.ton orqali fikr yuborish</div>
                 </div>
             </div>
-            <span class="text-slate-500 text-sm">›</span>
+            <span class="text-slate-500 text-sm font-bold">›</span>
         </div>
 
         <!-- 9. Ota-ona Hisobi & Kirish (Auth Settings) -->
-        <div onclick="openSubpage('modal-auth')" class="glass-card p-3.5 flex items-center justify-between cursor-pointer hover:border-emerald-500/40 transition">
+        <div onclick="openSubpage('modal-auth')" class="glass-panel p-3.5 flex items-center justify-between cursor-pointer hover:border-cyan-500/50 transition">
             <div class="flex items-center gap-3">
-                <div class="w-9 h-9 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 text-lg">
+                <div class="w-9 h-9 rounded-xl bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center text-indigo-400 text-lg">
                     👤
                 </div>
                 <div>
@@ -1432,7 +1371,7 @@ body[data-theme="sky"] .bottom-nav {
                     <div class="text-[10px] text-emerald-400" id="settingsAuthStatus" data-i18n="authSettingsSub">Holat: To'liq Faol Kirish</div>
                 </div>
             </div>
-            <span class="text-slate-500 text-sm">›</span>
+            <span class="text-slate-500 text-sm font-bold">›</span>
         </div>
     </main>
 
