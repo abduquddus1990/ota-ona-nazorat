@@ -637,10 +637,10 @@ body[data-theme="sky"] .nav-btn.active {
 
     <!-- FARZAND TAB 1: 🏠 ASOSIY (BOSH SAHIFA, TEZKOR XABARLAR, POMODORO & ULANISH) -->
     <main id="child-tab-home" class="tab-content space-y-3.5 hidden">
-        <!-- Farzand 3D Bo'ri Qahramon Katta & Kengaytirilgan Hero Card -->
-        <section class="glass-panel p-5 bg-gradient-to-br from-indigo-950/95 via-slate-900/90 to-purple-950/80 border-2 border-indigo-500/50 rounded-3xl relative overflow-hidden shadow-[0_8px_36px_rgba(129,140,248,0.22)]">
+        <!-- Farzand 3D Bo'ri Qahramon Katta & Kengaytirilgan Hero Card (Erkin va Keng Hoshiyali) -->
+        <section class="glass-panel px-6 py-5 bg-gradient-to-br from-indigo-950/95 via-slate-900/90 to-purple-950/85 border-2 border-indigo-500/50 rounded-3xl relative overflow-hidden shadow-[0_8px_36px_rgba(129,140,248,0.22)]">
             <!-- Top Badges Row -->
-            <div class="flex items-center justify-between gap-2 mb-3 z-10 relative">
+            <div class="flex items-center justify-between gap-2 mb-3.5 z-10 relative pl-1">
                 <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-400/50 text-indigo-300 text-[11px] font-black uppercase tracking-wider shadow-sm">
                     <span>⚔️</span>
                     <span>YOSH QAHRAMON HAMROHI</span>
@@ -651,28 +651,28 @@ body[data-theme="sky"] .nav-btn.active {
                 </div>
             </div>
 
-            <!-- Main Content & Wolf Pup Row -->
-            <div class="flex items-center justify-between gap-3 z-10 relative">
-                <div class="space-y-2 flex-1 pr-1">
-                    <h2 class="text-lg md:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 via-purple-200 to-white leading-tight tracking-wide font-display-brand uppercase" data-i18n="childWelcomeTitle">
+            <!-- Main Content & Wolf Pup Row with generous left margin -->
+            <div class="flex items-center justify-between gap-3 z-10 relative pl-1">
+                <div class="space-y-2 flex-1 pr-2">
+                    <h2 class="text-xl md:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 via-purple-200 to-white leading-tight tracking-wide font-display-brand uppercase" data-i18n="childWelcomeTitle">
                         SALOM, YOSH QAHRAMON! 🌟
                     </h2>
                     <div class="text-xs font-extrabold text-indigo-200/90 tracking-wide uppercase">
                         Sening Aqlli Do'sting & Bilim Qalqoning
                     </div>
-                    <p class="text-[11px] text-indigo-200/95 leading-relaxed pt-0.5" data-i18n="childWelcomeSub">
+                    <p class="text-xs text-indigo-200 leading-relaxed pt-0.5" data-i18n="childWelcomeSub">
                         Darslarda a'lochi bo'lish, qiyin masalalarni oson yechish va maroqli bilim olishda yoningdagi sadoqatli yordamchi.
                     </p>
                 </div>
 
                 <!-- 3D Kichik Bo'ri Render Figurasi -->
-                <div class="w-32 h-38 md:w-36 md:h-42 relative flex-shrink-0 flex items-center justify-center">
+                <div class="w-28 h-36 md:w-34 md:h-40 relative flex-shrink-0 flex items-center justify-center">
                     <img src="assets/wolf_pup_hero.png" alt="Qalqon AI Kichik Bo'ri" class="w-full h-full object-contain filter drop-shadow-[0_0_24px_rgba(129,140,248,0.65)] transform hover:scale-105 transition duration-300">
                 </div>
             </div>
 
             <!-- Bottom Tags -->
-            <div class="mt-3 pt-2.5 border-t border-indigo-500/25 flex items-center justify-between text-[10px] text-indigo-200 font-semibold z-10 relative">
+            <div class="mt-3.5 pt-3 border-t border-indigo-500/25 flex items-center justify-between text-[10px] text-indigo-200 font-semibold z-10 relative px-1">
                 <span class="flex items-center gap-1 text-indigo-300">
                     <span class="material-symbols-outlined text-xs">smart_toy</span>
                     <span>AI Do'st</span>
@@ -956,10 +956,10 @@ body[data-theme="sky"] .nav-btn.active {
     <!-- TAB 1: 📊 DASHBOARD (QALQON AI HIMOYACHI HERO & ASOSIY STATUS) -->
     <!-- ==================================================================== -->
     <main id="tab-dashboard" class="tab-content active space-y-3.5">
-        <!-- 3D Bo'ri Qalqon AI Himoyachi Katta & Kengaytirilgan Hero Card -->
-        <section class="glass-panel p-5 bg-gradient-to-br from-slate-900/95 via-slate-900/90 to-cyan-950/80 border-2 border-cyan-500/50 rounded-3xl relative overflow-hidden shadow-[0_8px_36px_rgba(34,211,238,0.22)]">
+        <!-- 3D Bo'ri Qalqon AI Himoyachi Katta & Kengaytirilgan Hero Card (Erkin va Keng Hoshiyali) -->
+        <section class="glass-panel px-6 py-5 bg-gradient-to-br from-slate-900/95 via-slate-900/90 to-cyan-950/85 border-2 border-cyan-500/50 rounded-3xl relative overflow-hidden shadow-[0_8px_36px_rgba(34,211,238,0.22)]">
             <!-- Top Badges Row -->
-            <div class="flex items-center justify-between gap-2 mb-3 z-10 relative">
+            <div class="flex items-center justify-between gap-2 mb-3.5 z-10 relative pl-1">
                 <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/20 border border-cyan-400/50 text-cyan-300 text-[11px] font-black uppercase tracking-wider shadow-sm">
                     <span class="material-symbols-outlined text-sm text-cyan-300">shield</span>
                     <span>QALQON AI HIMOYACHI</span>
@@ -970,28 +970,28 @@ body[data-theme="sky"] .nav-btn.active {
                 </div>
             </div>
 
-            <!-- Main Content & Wolf Row -->
-            <div class="flex items-center justify-between gap-3 z-10 relative">
-                <div class="space-y-2 flex-1 pr-1">
-                    <h2 class="text-lg md:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-teal-200 to-white leading-tight tracking-wide font-display-brand uppercase">
+            <!-- Main Content & Wolf Row with generous left margin -->
+            <div class="flex items-center justify-between gap-3 z-10 relative pl-1">
+                <div class="space-y-2 flex-1 pr-2">
+                    <h2 class="text-xl md:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-teal-200 to-white leading-tight tracking-wide font-display-brand uppercase">
                         QALQON AI
                     </h2>
                     <div class="text-xs font-extrabold text-cyan-200/90 tracking-wide uppercase">
                         Oila Xavfsizlik & Ta'lim Qalqoni
                     </div>
-                    <p class="text-[11px] text-slate-300/95 leading-relaxed pt-0.5">
+                    <p class="text-xs text-slate-300 leading-relaxed pt-0.5">
                         Farzandingiz 24/7 aqlli sun'iy intellekt, 100 ballik DTS darsliklari va raqamli odatlar xavfsizligi nazorati ostida.
                     </p>
                 </div>
 
                 <!-- 3D Bo'ri Render Figurasi -->
-                <div class="w-32 h-38 md:w-36 md:h-42 relative flex-shrink-0 flex items-center justify-center">
+                <div class="w-28 h-36 md:w-34 md:h-40 relative flex-shrink-0 flex items-center justify-center">
                     <img src="assets/wolf_adult_hero.png" alt="Qalqon AI Bo'ri Himoyachi" class="w-full h-full object-contain filter drop-shadow-[0_0_24px_rgba(34,211,238,0.65)] transform hover:scale-105 transition duration-300">
                 </div>
             </div>
 
             <!-- Bottom Tech Tags -->
-            <div class="mt-3 pt-2.5 border-t border-cyan-500/25 flex items-center justify-between text-[10px] text-slate-300 font-semibold z-10 relative">
+            <div class="mt-3.5 pt-3 border-t border-cyan-500/25 flex items-center justify-between text-[10px] text-slate-300 font-semibold z-10 relative px-1">
                 <span class="flex items-center gap-1 text-cyan-300">
                     <span class="material-symbols-outlined text-xs">psychology</span>
                     <span>Gemini 2.0 AI</span>

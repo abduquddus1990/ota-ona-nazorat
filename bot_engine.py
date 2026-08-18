@@ -1,6 +1,6 @@
 # bot_engine.py
 #
-# SHIELD PARENTAL GUARD — 24/7 PRODUCTION TELEGRAM BOT
+# QALQON AI — 24/7 PRODUCTION TELEGRAM BOT
 # Multi-Admin & Partner Management (@ai_loyihachi & partners)
 # HTML Formatting, Instant Role Recognition, Zero Location Demands, Child Alerts
 
@@ -80,9 +80,9 @@ def get_start_menu_text(user_id, lang="uz", is_approved=True, is_admin=False):
         )
 
     return (
-        f"🛡️ <b>QALQON AI — BOSHQARUV MARKAZI</b>\n\n"
-        f"Assalomu alaykum! Farzandingizning xavfsizligi, darsliklari va raqamli odatlari 24/7 doimiy himoya ostida.\n\n"
-        f"✅ <b>Sizning hisobingiz to'liq faol!</b>\n\n"
+        f"👋 <b>Assalomu alaykum!</b>\n\n"
+        f"🛡️ <b>Qalqon AI</b> — Ota-ona nazorati va AI tahlil tizimi 24/7 serverda faol.\n\n"
+        f"Farzandingizning darsliklari (1-11 sinf DTS), 100 ballik baholari, ekran vaqti va ilovalar reytingini ko'rish uchun pastdagi tugmani bosing.\n\n"
         f"🔑 <b>Sizning oila kodingiz:</b> <code>{code}</code>\n"
         f"📍 <b>Jonli lokatsiya va radar:</b> <b>100% BEPUL</b>\n"
         f"💎 <b>Pro Versiya (AI & 100 ballik e-Maktab):</b> <b>10,000 so'm/oy (har bir bola uchun)</b>\n"

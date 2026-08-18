@@ -1,6 +1,6 @@
 // supabase/functions/ota-ona-bot/index.ts
 //
-// SHIELD PARENTAL GUARD — ADVANCED 24/7 SUPABASE SERVERLESS BOT
+// QALQON AI — ADVANCED 24/7 SUPABASE SERVERLESS BOT
 // Multi-Admin / Partner Management (@ai_loyihachi & partners), HTML Parse Mode (Zero parsing errors),
 // Child Status Alerts, Zero Location Demands, and Instant Approval Workflow.
 
@@ -69,7 +69,7 @@ function getStartMenuText(userId: string | number, lang: string = "uz", isApprov
   const code = generateFamilyCode(userId);
 
   if (isAdmin) {
-    return `👑 <b>SHIELD PARENTAL GUARD — ADMINISTRATOR PANELI</b>
+    return `👑 <b>QALQON AI — ADMINISTRATOR PANELI</b>
 
 Assalomu alaykum, hurmatli Boshqaruvchi / Hamkor!
 
@@ -86,7 +86,7 @@ Quyidagi tugma orqali boshqaruv panelini to'liq ochishingiz mumkin:`;
   }
 
   if (lang === "ru") {
-    return `🛡️ <b>SHIELD PARENTAL GUARD — ЦЕНТР РОДИТЕЛЬСКОГО КОНТРОЛЯ</b>
+    return `🛡️ <b>QALQON AI — ЦЕНТР РОДИТЕЛЬСКОГО КОНТРОЛЯ</b>
 
 Добро пожаловать! Безопасность, школьные предметы и цифровые привычки вашего ребёнка под защитой 24/7.
 
@@ -100,7 +100,7 @@ Quyidagi tugma orqali boshqaruv panelini to'liq ochishingiz mumkin:`;
 Выберите нужный раздел:`;
   }
 
-  return `🛡️ <b>SHIELD PARENTAL GUARD — OTA-ONA BOSHQARUV MARKAZI</b>
+  return `🛡️ <b>QALQON AI — OTA-ONA BOSHQARUV MARKAZI</b>
 
 Assalomu alaykum! Farzandingizning xavfsizligi, darsliklari va raqamli odatlari 24/7 doimiy nazorat ostida.
 
