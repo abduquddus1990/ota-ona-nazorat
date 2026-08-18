@@ -199,6 +199,13 @@ def handle_update(update):
             send_message(chat_id, f"👑 <b>Administratorlar va Sheriklar Ro'yxati:</b>\n\n{admin_list}\n\n<i>Yangi sherik qo'shish: /addadmin @username</i>")
             return
 
+        if text.startswith("/status_alert_"):
+            # Triggered from mini app
+            parts = text.replace("/status_alert_", "").split("_")
+            st_type = parts[0] if len(parts) > 0 else "maktab"
+            notify_admins(f"🔔 <b>FARZANDINGIZDAN TEZKOR XABAR:</b>\n\nHolat: {st_type.upper()}\nManzil: Yunusobod 4-mavze, 24-maktab\n⏰ Vaqt: {time.strftime('%H:%M')}")
+            return
+
         if text.startswith("/start"):
             # Force-remove old reply keyboard (location sharing button) from user's Telegram client cache
             try:

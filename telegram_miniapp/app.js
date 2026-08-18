@@ -704,15 +704,29 @@ function handleChildAiSend() {
     if (input) input.value = "";
 
     if (bubble) {
-        bubble.innerText = isRu ? "⏳ Думаю над решением..." : "⏳ Yechimni tayyorlayapman...";
+        bubble.innerText = isRu ? "⏳ Думаю над ответом..." : "⏳ Javobni tayyorlayapman...";
     }
 
+    const lower = text.toLowerCase();
+    const isGreeting = lower.includes('salom') || lower.includes('assalom') || lower.includes('privet') || lower.includes('hello') || lower.includes('qalaysan') || lower.includes('qalesan') || lower.includes('yaxshimisiz');
+
     setTimeout(() => {
-        let answer = isRu 
-            ? `🌟 Отличный вопрос! По теме «${text}» всё просто: главное понять формулу и сделать пару примеров. Ты отлично справляешься! 🚀`
-            : `🌟 Ajoyib savol! «${text}» bo'yicha yechim juda oson: formulani eslab qolamiz va 2 ta mashq bajaramiz. Senda hammasi a'lo darajada o'xshaydi! 🚀`;
+        let answer = "";
+        if (isGreeting) {
+            answer = isRu
+                ? "🐺 Привет, дорогой друг! 🌟 Как твои дела и настроение? Какой предмет (математика, языки, физика) сегодня разберём вместе или у тебя есть интересный вопрос?"
+                : "🐺 Assalomu alaykum, aziz do'stim! 🌟 Kayfiyating qanday? Bugun qaysi fan (matematika, ingliz tili, fizika) bo'yicha birga shug'ullanamiz yoki qanday qiziqarli savoling bor?";
+        } else if (lower.includes('kasr') || lower.includes('drob') || lower.includes('matem') || lower.includes('+') || lower.includes('-') || lower.includes('*') || lower.includes('/')) {
+            answer = isRu
+                ? `📐 Отличный математический вопрос! По задаче «${text}»: давай решим шаг за шагом. Сначала приводим к общему знаменателю, а затем складываем числители. Ты отлично справляешься! 🚀`
+                : `📐 Ajoyib matematik savol! «${text}» masalasini kel, birga bosqichma-bosqich yechamiz: avval umumiy maxraj topamiz, so'ng suratlarni qo'shamiz. Senda hammasi a'lo darajada o'xshaydi! 🚀`;
+        } else {
+            answer = isRu
+                ? `💡 Отличный вопрос по теме «${text}»! Главное понять суть и применить на практике. Если нужно подробнее объяснить, просто напиши! 🐺✨`
+                : `💡 «${text}» bo'yicha ajoyib savol! Asosiysi qoidani tushunib, amalda qo'llashdir. Agar qaysi qismi tushunarsiz bo'lsa, bemalol so'ra, birga o'rganamiz! 🐺✨`;
+        }
         if (bubble) bubble.innerText = answer;
-    }, 800);
+    }, 600);
 }
 
 // ⏱️ POMODORO TAYMERI
