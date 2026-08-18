@@ -118,16 +118,7 @@
         </div>
     </header>
 
-    <!-- ==================================================================== -->
-    <!-- AUTH STATUS / DEMO REJIMI BANNERI -->
-    <!-- ==================================================================== -->
-    <div id="authStatusBanner" class="p-2.5 mb-3 rounded-xl bg-gradient-to-r from-amber-500/15 to-orange-500/15 border border-amber-500/30 flex items-center justify-between">
-        <div class="flex items-center gap-2">
-            <span class="text-sm" id="authBannerIcon">🧪</span>
-            <div>
-                <div class="text-[11px] font-bold text-amber-300" id="authBannerTitle" data-i18n="demoModeTitle">Test / Demo Rejimi</div>
-                <div class="text-[9px] text-slate-400" id="authBannerSub" data-i18n="demoModeSub">Admin tasdig'i bilan farzand qo'shish ochiladi</div>
-            </div>
+    
         </div>
         <button onclick="openSubpage('modal-auth')" class="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-[10px] shadow-sm transition" id="authBannerBtn" data-i18n="loginRegisterBtn">
             🔑 Kirish / Ro'yxat
@@ -420,21 +411,30 @@
     <!-- ==================================================================== -->
     <!-- TAB 1: 📊 DASHBOARD (STITCH STATUS CARD & AI INSIGHTS) -->
     <!-- ==================================================================== -->
+    <!-- ==================================================================== -->
+    <!-- TAB 1: 📊 DASHBOARD (QALQON AI HIMOYACHI HERO & ASOSIY STATUS) -->
+    <!-- ==================================================================== -->
     <main id="tab-dashboard" class="tab-content active space-y-3.5">
-        <!-- 3D Bo'ri Qalqon AI Himoyachi Hero Card -->
-        <section class="glass-panel p-3.5 bg-gradient-to-r from-slate-900/95 via-slate-900/85 to-cyan-950/60 border-cyan-500/40 relative overflow-hidden flex items-center justify-between">
-            <div class="space-y-1 z-10 max-w-[65%]">
-                <div class="flex items-center gap-1.5 text-cyan-400 text-[10px] font-bold uppercase tracking-wider">
-                    <span class="material-symbols-outlined text-sm">shield</span>
+        <!-- 3D Bo'ri Qalqon AI Himoyachi Katta Hero Card -->
+        <section class="glass-panel p-4.5 bg-gradient-to-r from-slate-900/95 via-slate-900/90 to-cyan-950/70 border-cyan-500/50 rounded-2xl relative overflow-hidden flex items-center justify-between shadow-[0_4px_30px_rgba(34,211,238,0.18)]">
+            <div class="space-y-2 z-10 max-w-[62%]">
+                <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 text-[11px] font-extrabold uppercase tracking-wider">
+                    <span class="material-symbols-outlined text-sm text-cyan-400">shield</span>
                     <span>Qalqon AI Himoyachi</span>
                 </div>
-                <h2 class="text-sm font-black text-white leading-tight">Qalqon AI — Oila Xavfsizlik Qalqoni</h2>
-                <p class="text-[10px] text-slate-300">Farzandingiz 24/7 aqlli himoya, 100 ballik DTS va xavfsiz odatlar nazoratida.</p>
+                <h2 class="text-base font-black text-white leading-tight tracking-wide">QALQON AI — OILA XAVFSIZLIK QALQONI</h2>
+                <p class="text-[11px] text-slate-300 leading-relaxed">Farzandingiz 24/7 aqlli himoya, 100 ballik DTS va xavfsiz raqamli odatlar nazorati ostida.</p>
+                <div class="pt-1 flex items-center gap-1.5">
+                    <span class="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold flex items-center gap-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                        <span>Doimiy Himoyada</span>
+                    </span>
+                </div>
             </div>
-            <div class="w-24 h-28 relative flex-shrink-0 z-10 flex items-center justify-center">
-                <img src="assets/wolf_adult_hero.png" alt="Qalqon AI Bo'ri Himoyachi" class="w-full h-full object-contain filter drop-shadow-[0_0_15px_rgba(34,211,238,0.5)] transform hover:scale-105 transition duration-300">
+            <div class="w-32 h-36 relative flex-shrink-0 z-10 flex items-center justify-center">
+                <img src="assets/wolf_adult_hero.png" alt="Qalqon AI Bo'ri Himoyachi" class="w-full h-full object-contain filter drop-shadow-[0_0_22px_rgba(34,211,238,0.6)] transform hover:scale-105 transition duration-300">
             </div>
-            <div class="absolute -right-4 -bottom-6 w-36 h-36 opacity-20 pointer-events-none bg-center bg-no-repeat bg-contain" style="background-image: url('assets/wolf_adult_hero.png');"></div>
+            <div class="absolute -right-6 -bottom-8 w-48 h-48 opacity-25 pointer-events-none bg-center bg-no-repeat bg-contain" style="background-image: url('assets/wolf_adult_hero.png');"></div>
         </section>
 
         <!-- 1. Stitch Status Card (Level 1 Surface with Glow) -->
@@ -443,7 +443,7 @@
                 <div>
                     <h2 class="text-sm font-black text-white mb-0.5 flex items-center gap-2">
                         <div class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse-dot"></div>
-                        <span>Tizim Faol</span>
+                        <span>Tizim Faol & Xavfsiz</span>
                     </h2>
                     <p class="text-[11px] text-emerald-400/90 font-medium">Barcha xavfsizlik himoyasi yoqilgan</p>
                 </div>
@@ -461,49 +461,7 @@
             </div>
         </section>
 
-        <!-- 2. AI Tahlil & Video Insights (Stitch Widget) -->
-        <section class="glass-panel p-4 border-t-2 border-t-cyan-400/60 space-y-3">
-            <div class="flex items-center justify-between">
-                <div class="flex items-center gap-2">
-                    <div class="w-8 h-8 rounded-xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
-                        <span class="material-symbols-outlined text-lg">psychology</span>
-                    </div>
-                    <div>
-                        <h3 class="text-xs font-black text-white">AI Tahlil & Video Qiziqishlar</h3>
-                        <div class="text-[9px] text-slate-400">YouTube Shorts va Instagram Reels</div>
-                    </div>
-                </div>
-                <span class="px-2 py-0.5 bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 rounded-full text-[9px] font-bold flex items-center gap-1">
-                    <span class="material-symbols-outlined text-[11px]">check_circle</span>
-                    <span>Ijobiy</span>
-                </span>
-            </div>
-
-            <p class="text-[11px] text-slate-300 leading-relaxed">
-                Bugun YouTube'da asosan <b>robototexnika, Python dasturlash</b> va ilm-fan videolarini tomosha qildi. Xavf darajasi: <b>Past</b>.
-            </p>
-        </section>
-
-        <!-- 3. Tezkor Harakatlar Gridi (Quick Actions) -->
-        <section class="grid grid-cols-2 gap-2.5">
-            <button onclick="switchTab('tab-radar')" class="glass-panel p-3 flex flex-col items-center justify-center gap-1.5 hover:border-cyan-500/50 active:scale-95 transition">
-                <div class="w-10 h-10 rounded-full bg-cyan-500/15 flex items-center justify-center text-cyan-400">
-                    <span class="material-symbols-outlined text-xl">distance</span>
-                </div>
-                <span class="text-xs font-bold text-white">Jonli Radar</span>
-                <span class="text-[9px] text-emerald-400 font-semibold">100% Bepul</span>
-            </button>
-
-            <button onclick="switchTab('tab-ai')" class="glass-panel p-3 flex flex-col items-center justify-center gap-1.5 hover:border-cyan-500/50 active:scale-95 transition">
-                <div class="w-10 h-10 rounded-full bg-gradient-to-r from-cyan-500 to-indigo-500 flex items-center justify-center text-white">
-                    <span class="material-symbols-outlined text-xl">psychology</span>
-                </div>
-                <span class="text-xs font-bold text-white">AI Murabbiy</span>
-                <span class="text-[9px] text-cyan-300 font-semibold">Gemini 2.0</span>
-            </button>
-        </section>
-
-        <!-- 4. Bugungi Ekran Vaqti & Limit Bloki -->
+        <!-- 2. Bugungi Ekran Vaqti & Limit Bloki -->
         <section class="glass-panel p-4 space-y-3">
             <div class="flex items-center justify-between">
                 <div>
@@ -521,7 +479,7 @@
             </div>
         </section>
 
-        <!-- 5. Ilovalar Reytingi -->
+        <!-- 3. Ilovalar Reytingi -->
         <section class="glass-panel p-4 space-y-3">
             <div class="flex items-center justify-between">
                 <h3 class="text-xs font-bold text-white flex items-center gap-1.5" data-i18n="appRankings">
@@ -568,9 +526,60 @@
     <!-- ==================================================================== -->
     <!-- TAB 3: 🧠 AI MURABBIY (PRO: MATN, OVOZ VA RASM TAHLILI) -->
     <!-- ==================================================================== -->
-    <main id="tab-ai" class="tab-content space-y-3">
-        <!-- AI Interaktiv Muloqot Majmuasi -->
-        <section class="glass-card p-3.5 space-y-3">
+    <!-- ==================================================================== -->
+    <!-- TAB 3: 🧠 AI MURABBIY (PRO: MATN, OVOZ, RASM VA REELS TAHLILI) -->
+    <!-- ==================================================================== -->
+    <main id="tab-ai" class="tab-content space-y-3.5 hidden">
+        <!-- 1. AI Tahlil & Video Qiziqishlar (YouTube Shorts & Instagram Reels) -->
+        <section class="glass-panel p-4 border-t-2 border-t-cyan-400/80 space-y-3">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
+                        <span class="material-symbols-outlined text-xl">psychology</span>
+                    </div>
+                    <div>
+                        <h3 class="text-xs font-black text-white">AI Tahlil & Video Qiziqishlar</h3>
+                        <div class="text-[10px] text-slate-400">YouTube Shorts va Instagram Reels</div>
+                    </div>
+                </div>
+                <span class="px-2.5 py-0.5 bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 rounded-full text-[10px] font-bold flex items-center gap-1">
+                    <span class="material-symbols-outlined text-xs">check_circle</span>
+                    <span>Ijobiy</span>
+                </span>
+            </div>
+
+            <p class="text-[11px] text-slate-300 leading-relaxed">
+                Bugun YouTube'da asosan <b>robototexnika, Python dasturlash</b> va ilm-fan videolarini tomosha qildi. Xavf darajasi: <b>Past</b>.
+            </p>
+
+            <!-- Qiziqishlar Vektorlari -->
+            <div class="pt-2 border-t border-slate-800/80 space-y-2.5">
+                <div class="text-[11px] font-bold text-slate-300" data-i18n="interestVectors">🎯 Farzand Qiziqishlari Vektorlari:</div>
+                <div class="space-y-2" id="aiInterestVectors">
+                    <!-- JS orqali to'ldiriladi -->
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. Tezkor Jonli Radar & Navigatsiya Tugmasi -->
+        <div class="glass-panel p-3 flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-lg bg-cyan-500/15 flex items-center justify-center text-cyan-400">
+                    <span class="material-symbols-outlined text-lg">distance</span>
+                </div>
+                <div>
+                    <div class="text-xs font-bold text-white">Jonli Radar & Joylashuv</div>
+                    <div class="text-[9px] text-emerald-400 font-semibold">100% Bepul doimiy monitoring</div>
+                </div>
+            </div>
+            <button onclick="switchTab('tab-radar')" class="px-3 py-1.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 text-[10px] font-bold transition flex items-center gap-1">
+                <span>Xaritaga o'tish</span>
+                <span class="material-symbols-outlined text-xs">arrow_forward</span>
+            </button>
+        </div>
+
+        <!-- 3. AI Interaktiv Muloqot Majmuasi (Gemini Chat, Rasm, Ovoz) -->
+        <section class="glass-panel p-4 space-y-3">
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2">
                     <span class="text-xl">🧠</span>
@@ -583,7 +592,7 @@
             </div>
 
             <!-- AI Chat Tarixi Oynasi -->
-            <div id="aiChatThread" class="ai-chat-container space-y-2 p-2 rounded-xl bg-slate-900/60 border border-slate-800 flex flex-col">
+            <div id="aiChatThread" class="ai-chat-container space-y-2 p-2.5 rounded-xl bg-slate-900/60 border border-slate-800 flex flex-col">
                 <div class="chat-bubble-ai" id="aiWelcomeBubble">
                     Assalomu alaykum! Men farzandingizning darsliklarini o'zlashtirishi, qiziqishlari va raqamli odatlarini tahlil qiluvchi AI yordamchisiman. Darslik topshirig'i rasmini yuklang, savol yozing yoki ovozli xabar qoldiring! 🌟
                 </div>
@@ -603,13 +612,13 @@
 
             <!-- Tezkor Savol Tugmalari (Prompt Chips) -->
             <div class="flex gap-1.5 overflow-x-auto pb-1 text-[10px]">
-                <button onclick="sendQuickPrompt('Farzandim darslariga qiziqishini qanday oshirsam bo\'ladi?')" class="whitespace-nowrap px-2.5 py-1 rounded-full bg-slate-800/80 border border-slate-700/60 text-slate-300 hover:text-emerald-400 transition" data-i18n="chip1">
+                <button onclick="sendQuickPrompt('Farzandim darslariga qiziqishini qanday oshirsam bo'ladi?')" class="whitespace-nowrap px-2.5 py-1 rounded-full bg-slate-800/80 border border-slate-700/60 text-slate-300 hover:text-emerald-400 transition" data-i18n="chip1">
                     💡 Darsga qiziqishni oshirish
                 </button>
-                <button onclick="sendQuickPrompt('Ko\'rilgan Reels va video kontentlar tahlili')" class="whitespace-nowrap px-2.5 py-1 rounded-full bg-slate-800/80 border border-slate-700/60 text-slate-300 hover:text-emerald-400 transition" data-i18n="chip2">
+                <button onclick="sendQuickPrompt('Ko'rilgan Reels va video kontentlar tahlili')" class="whitespace-nowrap px-2.5 py-1 rounded-full bg-slate-800/80 border border-slate-700/60 text-slate-300 hover:text-emerald-400 transition" data-i18n="chip2">
                     🎬 Reels & Video tahlili
                 </button>
-                <button onclick="sendQuickPrompt('Ekran vaqti me\'yori va batareya tahlili')" class="whitespace-nowrap px-2.5 py-1 rounded-full bg-slate-800/80 border border-slate-700/60 text-slate-300 hover:text-emerald-400 transition" data-i18n="chip3">
+                <button onclick="sendQuickPrompt('Ekran vaqti me'yori va batareya tahlili')" class="whitespace-nowrap px-2.5 py-1 rounded-full bg-slate-800/80 border border-slate-700/60 text-slate-300 hover:text-emerald-400 transition" data-i18n="chip3">
                     📱 Ekran vaqti tahlili
                 </button>
             </div>
@@ -648,17 +657,6 @@
                 <button onclick="stopAndSendVoice()" class="text-[10px] bg-red-500 text-white px-2 py-0.5 rounded font-bold" data-i18n="readyBtn">
                     Tayyor
                 </button>
-            </div>
-        </section>
-
-        <!-- Farzand Qiziqishlari Vektorlari -->
-        <section class="glass-card p-3.5 space-y-2.5">
-            <h3 class="text-xs font-bold text-white flex items-center justify-between">
-                <span data-i18n="interestVectors">🎯 Farzand Qiziqishlari Vektorlari</span>
-                <span class="text-[10px] text-slate-400" data-i18n="aiAnalysis">AI Xulosasi</span>
-            </h3>
-            <div class="space-y-2" id="aiInterestVectors">
-                <!-- JS orqali to'ldiriladi -->
             </div>
         </section>
     </main>
