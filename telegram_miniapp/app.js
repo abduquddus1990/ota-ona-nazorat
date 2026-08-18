@@ -1424,15 +1424,11 @@ function appendAIMessage(htmlContent) {
 // 8. SUBPAGE, MAVZU VA LOKATSIYA BOSHQARUVI
 // ============================================================================
 function setTheme(themeName) {
-    currentTheme = themeName;
-    localStorage.setItem('app_theme', themeName);
-    if (themeName === 'default') {
-        document.body.removeAttribute('data-theme');
-    } else {
-        document.body.setAttribute('data-theme', themeName);
-    }
+    currentTheme = themeName || 'default';
+    localStorage.setItem('app_theme', currentTheme);
+    document.body.setAttribute('data-theme', currentTheme);
     document.querySelectorAll('.theme-card').forEach(c => c.classList.remove('active'));
-    const activeCard = document.querySelector(`[data-theme-name="${themeName}"]`);
+    const activeCard = document.querySelector(`[data-theme-name="${currentTheme}"]`);
     if (activeCard) activeCard.classList.add('active');
 }
 

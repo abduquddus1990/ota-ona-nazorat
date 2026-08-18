@@ -1030,6 +1030,7 @@
     </div>
 
     <!-- 🎨 MODAL: FONLAR GALEREYASI -->
+    <!-- 🎨 MODAL: FONLAR GALEREYASI -->
     <div id="modal-themes" class="subpage-modal space-y-4">
         <div class="flex items-center justify-between pb-3 border-b border-slate-800">
             <button onclick="closeSubpage()" class="text-xs font-bold text-emerald-400" data-i18n="backBtn">← Orqaga</button>
@@ -1037,46 +1038,51 @@
             <span class="w-8"></span>
         </div>
 
+        <div class="p-2.5 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-[10px] text-cyan-300 flex items-center gap-2">
+            <span>ℹ️</span>
+            <span>Bo'ri maskotlari avtomatik ravishda Ota-ona panelida Katta Bo'ri, Farzand panelida Kichik Bo'ri holatida aks etadi.</span>
+        </div>
+
         <div class="grid grid-cols-2 gap-3">
-            <div onclick="setTheme('wolf_adult')" data-theme-name="wolf_adult" class="theme-card active bg-gradient-to-br from-slate-900 to-cyan-950 border-cyan-500/50 text-cyan-300 flex flex-col justify-end p-2 relative overflow-hidden">
-                <div class="absolute right-0 bottom-0 w-14 h-16 opacity-40 bg-contain bg-no-repeat bg-right-bottom" style="background-image: url('assets/wolf_adult_hero.png');"></div>
-                <div class="text-[9px] text-cyan-400 font-semibold">🐺 Ota-ona Foni</div>
-                <div class="font-bold text-white text-xs">Katta Bo'ri (Qalqon)</div>
-            </div>
-            <div onclick="setTheme('wolf_pup')" data-theme-name="wolf_pup" class="theme-card bg-gradient-to-br from-slate-900 to-indigo-950 border-indigo-500/50 text-indigo-300 flex flex-col justify-end p-2 relative overflow-hidden">
-                <div class="absolute right-0 bottom-0 w-14 h-16 opacity-40 bg-contain bg-no-repeat bg-right-bottom" style="background-image: url('assets/wolf_pup_hero.png');"></div>
-                <div class="text-[9px] text-indigo-400 font-semibold">🐺 Farzand Foni</div>
-                <div class="font-bold text-white text-xs">Kichik Bo'ri (Qilich)</div>
-            </div>
-            <div onclick="setTheme('default')" data-theme-name="default" class="theme-card bg-gradient-to-br from-slate-900 to-slate-950 border-slate-800 text-emerald-400">
-                Cyber Dark
+            <div onclick="setTheme('default')" data-theme-name="default" class="theme-card active bg-gradient-to-br from-slate-900 to-slate-950 border-slate-800 text-emerald-400">
+                <div class="text-[9px] text-emerald-500">🌌 Qorong'i</div>
+                <div>Cyber Dark</div>
             </div>
             <div onclick="setTheme('aurora')" data-theme-name="aurora" class="theme-card bg-gradient-to-br from-sky-950 to-emerald-950 border-sky-800 text-sky-400">
-                Aurora Borealis
+                <div class="text-[9px] text-sky-500">🌌 Shimoliy Nur</div>
+                <div>Aurora Borealis</div>
             </div>
             <div onclick="setTheme('nebula')" data-theme-name="nebula" class="theme-card bg-gradient-to-br from-purple-950 to-pink-950 border-purple-800 text-purple-400">
-                Deep Space Nebula
+                <div class="text-[9px] text-purple-400">🌌 Fazoviy Tuman</div>
+                <div>Deep Space Nebula</div>
             </div>
             <div onclick="setTheme('sunset')" data-theme-name="sunset" class="theme-card bg-gradient-to-br from-amber-950 to-red-950 border-amber-800 text-amber-400">
-                Sunset Glow
+                <div class="text-[9px] text-amber-400">🌅 Quyosh Botishi</div>
+                <div>Sunset Glow</div>
             </div>
             <div onclick="setTheme('emerald')" data-theme-name="emerald" class="theme-card bg-gradient-to-br from-emerald-950 to-slate-950 border-emerald-800 text-emerald-300">
-                Emerald Matrix
+                <div class="text-[9px] text-emerald-400">🌲 Zumrad Matrix</div>
+                <div>Emerald Matrix</div>
             </div>
             <div onclick="setTheme('sakura')" data-theme-name="sakura" class="theme-card bg-gradient-to-br from-pink-950 to-slate-950 border-pink-800 text-pink-300">
-                Sakura Mist
+                <div class="text-[9px] text-pink-400">🌸 Pushti Sakura</div>
+                <div>Sakura Mist</div>
             </div>
             <div onclick="setTheme('gold')" data-theme-name="gold" class="theme-card bg-gradient-to-br from-yellow-950 to-slate-950 border-yellow-800 text-yellow-300">
-                Obsidian Gold
+                <div class="text-[9px] text-yellow-400">👑 Qirollik Oltini</div>
+                <div>Obsidian Gold</div>
             </div>
             <div onclick="setTheme('cyberpunk')" data-theme-name="cyberpunk" class="theme-card bg-gradient-to-br from-cyan-950 to-fuchsia-950 border-cyan-800 text-cyan-300">
-                Cyberpunk Night
+                <div class="text-[9px] text-cyan-400">⚡ Neon Shahar</div>
+                <div>Cyberpunk Night</div>
             </div>
-            <div onclick="setTheme('silver')" data-theme-name="silver" class="theme-card bg-gradient-to-br from-slate-200 to-slate-400 border-slate-400 text-slate-900 shadow-md">
-                Metallic Silver Light 🌟
+            <div onclick="setTheme('silver')" data-theme-name="silver" class="theme-card bg-gradient-to-br from-slate-100 to-slate-300 border-slate-300 text-slate-900 shadow-md">
+                <div class="text-[9px] text-sky-700 font-bold">🌟 Och Kumush</div>
+                <div class="font-extrabold text-slate-900">Titanium Silver</div>
             </div>
-            <div onclick="setTheme('sky')" data-theme-name="sky" class="theme-card bg-gradient-to-br from-sky-100 to-sky-300 border-sky-400 text-sky-950 shadow-md">
-                Sky Breeze Cyan 🌟
+            <div onclick="setTheme('sky')" data-theme-name="sky" class="theme-card bg-gradient-to-br from-sky-100 to-blue-200 border-sky-300 text-sky-950 shadow-md">
+                <div class="text-[9px] text-cyan-700 font-bold">💎 Och Neon Tsian</div>
+                <div class="font-extrabold text-sky-950">Cyber Ice Frost</div>
             </div>
         </div>
     </div>

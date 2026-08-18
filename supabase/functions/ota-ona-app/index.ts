@@ -22,7 +22,7 @@ const HTML = `<!DOCTYPE html>
     <style>
 /* ==========================================================================
    QALQON AI (GUARDIAN INTELLIGENCE) — STITCH DESIGN SYSTEM
-   Full Multi-Theme Engine with High-Precision Glassmorphic Styling
+   Automatic Dual-Wolf Backgrounds + 10 Full Custom Themes
    ========================================================================== */
 
 :root {
@@ -51,7 +51,9 @@ const HTML = `<!DOCTYPE html>
     --radius-full: 9999px;
 }
 
-/* Base Body Background (Wolf Adult Default) */
+/* ==========================================================================
+   BASE & AUTOMATIC WOLF BACKGROUNDS (Parent = Adult Wolf, Child = Wolf Pup)
+   ========================================================================== */
 body {
     background-color: var(--bg-primary);
     background-image: linear-gradient(rgba(19, 19, 27, 0.84), rgba(19, 19, 27, 0.94)), url('assets/wolf_adult_hero.png');
@@ -66,6 +68,7 @@ body {
     -webkit-tap-highlight-color: transparent;
     user-select: none;
     overflow-x: hidden;
+    transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 body.role-child {
@@ -74,55 +77,48 @@ body.role-child {
     background-position: center 60px !important;
 }
 
-/* 1. Theme: Katta Bo'ri (Wolf Adult Hero) */
-body[data-theme="wolf_adult"] {
-    background-image: linear-gradient(rgba(19, 19, 27, 0.82), rgba(19, 19, 27, 0.92)), url('assets/wolf_adult_hero.png') !important;
-    background-size: 380px auto !important;
-    background-position: center 60px !important;
-}
-
-/* 2. Theme: Kichik Bo'ri (Wolf Pup Hero) */
-body[data-theme="wolf_pup"] {
-    background-image: linear-gradient(rgba(19, 19, 27, 0.82), rgba(19, 19, 27, 0.92)), url('assets/wolf_pup_hero.png') !important;
-    background-size: 360px auto !important;
-    background-position: center 60px !important;
-}
-
-/* 3. Theme: Cyber Dark */
+/* 1. Cyber Dark (Default) */
 body[data-theme="default"] {
-    background-image: linear-gradient(rgba(19, 19, 27, 0.90), rgba(19, 19, 27, 0.96)), url('assets/wolf_adult_hero.png') !important;
+    --bg-primary: #13131b;
+    --bg-card: rgba(27, 27, 35, 0.78);
+    background-color: #13131b !important;
+    background-image: linear-gradient(rgba(19, 19, 27, 0.88), rgba(19, 19, 27, 0.96)), url('assets/wolf_adult_hero.png') !important;
+}
+body.role-child[data-theme="default"] {
+    background-image: linear-gradient(rgba(19, 19, 27, 0.88), rgba(19, 19, 27, 0.96)), url('assets/wolf_pup_hero.png') !important;
 }
 
-/* 4. Theme: Aurora Borealis */
+/* 2. Aurora Borealis */
 body[data-theme="aurora"] {
     --bg-primary: #0a192f;
-    --bg-surface: #112240;
     --bg-card: rgba(17, 34, 64, 0.82);
     --border-subtle: #233554;
     --border-active: #64ffda;
     --accent-cyan: #64ffda;
     background-color: #0a192f !important;
     background-image: linear-gradient(rgba(10, 25, 47, 0.86), rgba(10, 25, 47, 0.94)), url('assets/wolf_adult_hero.png') !important;
-    background-size: 380px auto !important;
+}
+body.role-child[data-theme="aurora"] {
+    background-image: linear-gradient(rgba(10, 25, 47, 0.86), rgba(10, 25, 47, 0.94)), url('assets/wolf_pup_hero.png') !important;
 }
 
-/* 5. Theme: Deep Space Nebula */
+/* 3. Deep Space Nebula */
 body[data-theme="nebula"] {
     --bg-primary: #120d24;
-    --bg-surface: #1d163a;
     --bg-card: rgba(29, 22, 58, 0.82);
     --border-subtle: #362a66;
     --border-active: #a855f7;
     --accent-cyan: #c084fc;
     background-color: #120d24 !important;
+    background-image: linear-gradient(rgba(18, 13, 36, 0.86), rgba(18, 13, 36, 0.94)), url('assets/wolf_adult_hero.png') !important;
+}
+body.role-child[data-theme="nebula"] {
     background-image: linear-gradient(rgba(18, 13, 36, 0.86), rgba(18, 13, 36, 0.94)), url('assets/wolf_pup_hero.png') !important;
-    background-size: 360px auto !important;
 }
 
-/* 6. Theme: Sunset Glow */
+/* 4. Sunset Glow */
 body[data-theme="sunset"] {
     --bg-primary: #1c1018;
-    --bg-surface: #2d1825;
     --bg-card: rgba(45, 24, 37, 0.82);
     --border-subtle: #522741;
     --border-active: #fb923c;
@@ -130,11 +126,13 @@ body[data-theme="sunset"] {
     background-color: #1c1018 !important;
     background-image: linear-gradient(rgba(28, 16, 24, 0.86), rgba(28, 16, 24, 0.94)), url('assets/wolf_adult_hero.png') !important;
 }
+body.role-child[data-theme="sunset"] {
+    background-image: linear-gradient(rgba(28, 16, 24, 0.86), rgba(28, 16, 24, 0.94)), url('assets/wolf_pup_hero.png') !important;
+}
 
-/* 7. Theme: Emerald Matrix */
+/* 5. Emerald Matrix */
 body[data-theme="emerald"] {
     --bg-primary: #061a14;
-    --bg-surface: #0c2b22;
     --bg-card: rgba(12, 43, 34, 0.82);
     --border-subtle: #194a3b;
     --border-active: #10b981;
@@ -142,11 +140,13 @@ body[data-theme="emerald"] {
     background-color: #061a14 !important;
     background-image: linear-gradient(rgba(6, 26, 20, 0.86), rgba(6, 26, 20, 0.94)), url('assets/wolf_adult_hero.png') !important;
 }
+body.role-child[data-theme="emerald"] {
+    background-image: linear-gradient(rgba(6, 26, 20, 0.86), rgba(6, 26, 20, 0.94)), url('assets/wolf_pup_hero.png') !important;
+}
 
-/* 8. Theme: Obsidian Gold */
+/* 6. Obsidian Gold */
 body[data-theme="gold"] {
     --bg-primary: #1a1608;
-    --bg-surface: #2b240f;
     --bg-card: rgba(43, 36, 15, 0.82);
     --border-subtle: #4a3e1a;
     --border-active: #fbbf24;
@@ -154,135 +154,120 @@ body[data-theme="gold"] {
     background-color: #1a1608 !important;
     background-image: linear-gradient(rgba(26, 22, 8, 0.86), rgba(26, 22, 8, 0.94)), url('assets/wolf_adult_hero.png') !important;
 }
+body.role-child[data-theme="gold"] {
+    background-image: linear-gradient(rgba(26, 22, 8, 0.86), rgba(26, 22, 8, 0.94)), url('assets/wolf_pup_hero.png') !important;
+}
 
-/* 9. Theme: Sakura Mist */
+/* 7. Sakura Mist */
 body[data-theme="sakura"] {
     --bg-primary: #1f1118;
-    --bg-surface: #2d1825;
     --bg-card: rgba(45, 24, 37, 0.82);
     --border-subtle: #5b2149;
     --border-active: #f472b6;
     --accent-cyan: #f472b6;
     background-color: #1f1118 !important;
+    background-image: linear-gradient(rgba(31, 17, 24, 0.86), rgba(31, 17, 24, 0.94)), url('assets/wolf_adult_hero.png') !important;
+}
+body.role-child[data-theme="sakura"] {
     background-image: linear-gradient(rgba(31, 17, 24, 0.86), rgba(31, 17, 24, 0.94)), url('assets/wolf_pup_hero.png') !important;
-    background-size: 360px auto !important;
 }
 
-/* 10. Theme: Cyberpunk Night */
+/* 8. Cyberpunk Night */
 body[data-theme="cyberpunk"] {
     --bg-primary: #0a0e17;
-    --bg-surface: #121829;
     --bg-card: rgba(18, 24, 41, 0.82);
     --border-subtle: #1e293b;
     --border-active: #00f0ff;
     --accent-cyan: #00f0ff;
     background-color: #0a0e17 !important;
     background-image: linear-gradient(rgba(10, 14, 23, 0.86), rgba(10, 14, 23, 0.94)), url('assets/wolf_adult_hero.png') !important;
-    background-size: 380px auto !important;
+}
+body.role-child[data-theme="cyberpunk"] {
+    background-image: linear-gradient(rgba(10, 14, 23, 0.86), rgba(10, 14, 23, 0.94)), url('assets/wolf_pup_hero.png') !important;
 }
 
-/* 11. Theme: Metallic Silver Light 🌟 */
+/* 9. Titanium Silver Glass (Och Kumush Titaniy 🌟) */
 body[data-theme="silver"] {
-    --bg-primary: #e2e8f0;
-    --bg-surface: #f1f5f9;
-    --bg-surface-high: #ffffff;
-    --bg-card: rgba(255, 255, 255, 0.90);
+    --bg-primary: #e6ebf2;
+    --bg-card: rgba(255, 255, 255, 0.88);
     --border-subtle: #cbd5e1;
     --border-active: #0284c7;
     --accent-cyan: #0284c7;
-    --accent-emerald: #059669;
     --text-primary: #0f172a;
-    --text-secondary: #334155;
-    --text-muted: #64748b;
-    background-color: #f1f5f9 !important;
-    background-image: linear-gradient(rgba(241, 245, 249, 0.82), rgba(226, 232, 240, 0.92)), url('assets/wolf_adult_hero.png') !important;
-    background-size: 380px auto !important;
-    background-position: center 60px !important;
+    background-color: #e6ebf2 !important;
+    background-image: linear-gradient(rgba(240, 244, 248, 0.84), rgba(226, 232, 240, 0.94)), url('assets/wolf_adult_hero.png') !important;
     color: #0f172a !important;
 }
-
-body[data-theme="silver"] .glass-panel {
+body.role-child[data-theme="silver"] {
+    background-image: linear-gradient(rgba(240, 244, 248, 0.84), rgba(226, 232, 240, 0.94)), url('assets/wolf_pup_hero.png') !important;
+}
+body[data-theme="silver"] .glass-panel,
+body[data-theme="silver"] .glass-card {
     background: rgba(255, 255, 255, 0.92) !important;
-    border-color: #cbd5e1 !important;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08) !important;
+    border: 1px solid rgba(203, 213, 225, 0.9) !important;
+    box-shadow: 0 4px 20px rgba(15, 23, 42, 0.08) !important;
     color: #0f172a !important;
 }
-
-body[data-theme="silver"] .text-white {
-    color: #0f172a !important;
-}
-
-body[data-theme="silver"] .text-slate-300, 
-body[data-theme="silver"] .text-slate-200 {
-    color: #334155 !important;
-}
-
-body[data-theme="silver"] .text-slate-400 {
-    color: #64748b !important;
-}
-
+body[data-theme="silver"] .text-white { color: #0f172a !important; }
+body[data-theme="silver"] .text-slate-200,
+body[data-theme="silver"] .text-slate-300 { color: #334155 !important; }
+body[data-theme="silver"] .text-slate-400 { color: #64748b !important; }
 body[data-theme="silver"] .bg-slate-900,
 body[data-theme="silver"] .bg-slate-950 {
-    background-color: #f8fafc !important;
+    background-color: #f1f5f9 !important;
     border-color: #cbd5e1 !important;
 }
-
 body[data-theme="silver"] .bottom-nav {
     background: rgba(255, 255, 255, 0.96) !important;
-    border-top-color: #cbd5e1 !important;
-    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1) !important;
+    border-top: 1px solid #cbd5e1 !important;
+    box-shadow: 0 -4px 24px rgba(15, 23, 42, 0.12) !important;
+}
+body[data-theme="silver"] .nav-btn { color: #64748b; }
+body[data-theme="silver"] .nav-btn.active {
+    color: #0284c7 !important;
+    background: rgba(2, 132, 199, 0.14) !important;
 }
 
-/* 12. Theme: Sky Breeze Cyan 🌟 */
+/* 10. Cyber Ice Frost (Och Neon Tsian Muz 💎) */
 body[data-theme="sky"] {
-    --bg-primary: #e0f2fe;
-    --bg-surface: #f0f9ff;
-    --bg-surface-high: #ffffff;
-    --bg-card: rgba(255, 255, 255, 0.92);
-    --border-subtle: #bae6fd;
+    --bg-primary: #dbeafe;
+    --bg-card: rgba(255, 255, 255, 0.88);
+    --border-subtle: #bfdbfe;
     --border-active: #0284c7;
     --accent-cyan: #0284c7;
-    --accent-emerald: #0d9488;
     --text-primary: #082f49;
-    --text-secondary: #0369a1;
-    --text-muted: #0284c7;
-    background-color: #f0f9ff !important;
-    background-image: linear-gradient(rgba(240, 249, 255, 0.82), rgba(224, 242, 254, 0.92)), url('assets/wolf_pup_hero.png') !important;
-    background-size: 360px auto !important;
-    background-position: center 60px !important;
+    background-color: #dbeafe !important;
+    background-image: linear-gradient(rgba(239, 246, 255, 0.84), rgba(219, 234, 254, 0.94)), url('assets/wolf_adult_hero.png') !important;
     color: #082f49 !important;
 }
-
-body[data-theme="sky"] .glass-panel {
+body.role-child[data-theme="sky"] {
+    background-image: linear-gradient(rgba(239, 246, 255, 0.84), rgba(219, 234, 254, 0.94)), url('assets/wolf_pup_hero.png') !important;
+}
+body[data-theme="sky"] .glass-panel,
+body[data-theme="sky"] .glass-card {
     background: rgba(255, 255, 255, 0.92) !important;
-    border-color: #bae6fd !important;
+    border: 1px solid rgba(191, 219, 254, 0.9) !important;
     box-shadow: 0 4px 20px rgba(2, 132, 199, 0.12) !important;
     color: #082f49 !important;
 }
-
-body[data-theme="sky"] .text-white {
-    color: #082f49 !important;
-}
-
-body[data-theme="sky"] .text-slate-300, 
-body[data-theme="sky"] .text-slate-200 {
-    color: #0369a1 !important;
-}
-
-body[data-theme="sky"] .text-slate-400 {
-    color: #0284c7 !important;
-}
-
+body[data-theme="sky"] .text-white { color: #082f49 !important; }
+body[data-theme="sky"] .text-slate-200,
+body[data-theme="sky"] .text-slate-300 { color: #0369a1 !important; }
+body[data-theme="sky"] .text-slate-400 { color: #0284c7 !important; }
 body[data-theme="sky"] .bg-slate-900,
 body[data-theme="sky"] .bg-slate-950 {
-    background-color: #f0f9ff !important;
-    border-color: #bae6fd !important;
+    background-color: #eff6ff !important;
+    border-color: #bfdbfe !important;
 }
-
 body[data-theme="sky"] .bottom-nav {
     background: rgba(255, 255, 255, 0.96) !important;
-    border-top-color: #bae6fd !important;
-    box-shadow: 0 -4px 20px rgba(2, 132, 199, 0.12) !important;
+    border-top: 1px solid #bfdbfe !important;
+    box-shadow: 0 -4px 24px rgba(2, 132, 199, 0.12) !important;
+}
+body[data-theme="sky"] .nav-btn { color: #0284c7; }
+body[data-theme="sky"] .nav-btn.active {
+    color: #0284c7 !important;
+    background: rgba(2, 132, 199, 0.14) !important;
 }
 
 /* Glassmorphism Panel */
@@ -1551,6 +1536,7 @@ body[data-theme="sky"] .bottom-nav {
     </div>
 
     <!-- 🎨 MODAL: FONLAR GALEREYASI -->
+    <!-- 🎨 MODAL: FONLAR GALEREYASI -->
     <div id="modal-themes" class="subpage-modal space-y-4">
         <div class="flex items-center justify-between pb-3 border-b border-slate-800">
             <button onclick="closeSubpage()" class="text-xs font-bold text-emerald-400" data-i18n="backBtn">← Orqaga</button>
@@ -1558,46 +1544,51 @@ body[data-theme="sky"] .bottom-nav {
             <span class="w-8"></span>
         </div>
 
+        <div class="p-2.5 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-[10px] text-cyan-300 flex items-center gap-2">
+            <span>ℹ️</span>
+            <span>Bo'ri maskotlari avtomatik ravishda Ota-ona panelida Katta Bo'ri, Farzand panelida Kichik Bo'ri holatida aks etadi.</span>
+        </div>
+
         <div class="grid grid-cols-2 gap-3">
-            <div onclick="setTheme('wolf_adult')" data-theme-name="wolf_adult" class="theme-card active bg-gradient-to-br from-slate-900 to-cyan-950 border-cyan-500/50 text-cyan-300 flex flex-col justify-end p-2 relative overflow-hidden">
-                <div class="absolute right-0 bottom-0 w-14 h-16 opacity-40 bg-contain bg-no-repeat bg-right-bottom" style="background-image: url('assets/wolf_adult_hero.png');"></div>
-                <div class="text-[9px] text-cyan-400 font-semibold">🐺 Ota-ona Foni</div>
-                <div class="font-bold text-white text-xs">Katta Bo'ri (Qalqon)</div>
-            </div>
-            <div onclick="setTheme('wolf_pup')" data-theme-name="wolf_pup" class="theme-card bg-gradient-to-br from-slate-900 to-indigo-950 border-indigo-500/50 text-indigo-300 flex flex-col justify-end p-2 relative overflow-hidden">
-                <div class="absolute right-0 bottom-0 w-14 h-16 opacity-40 bg-contain bg-no-repeat bg-right-bottom" style="background-image: url('assets/wolf_pup_hero.png');"></div>
-                <div class="text-[9px] text-indigo-400 font-semibold">🐺 Farzand Foni</div>
-                <div class="font-bold text-white text-xs">Kichik Bo'ri (Qilich)</div>
-            </div>
-            <div onclick="setTheme('default')" data-theme-name="default" class="theme-card bg-gradient-to-br from-slate-900 to-slate-950 border-slate-800 text-emerald-400">
-                Cyber Dark
+            <div onclick="setTheme('default')" data-theme-name="default" class="theme-card active bg-gradient-to-br from-slate-900 to-slate-950 border-slate-800 text-emerald-400">
+                <div class="text-[9px] text-emerald-500">🌌 Qorong'i</div>
+                <div>Cyber Dark</div>
             </div>
             <div onclick="setTheme('aurora')" data-theme-name="aurora" class="theme-card bg-gradient-to-br from-sky-950 to-emerald-950 border-sky-800 text-sky-400">
-                Aurora Borealis
+                <div class="text-[9px] text-sky-500">🌌 Shimoliy Nur</div>
+                <div>Aurora Borealis</div>
             </div>
             <div onclick="setTheme('nebula')" data-theme-name="nebula" class="theme-card bg-gradient-to-br from-purple-950 to-pink-950 border-purple-800 text-purple-400">
-                Deep Space Nebula
+                <div class="text-[9px] text-purple-400">🌌 Fazoviy Tuman</div>
+                <div>Deep Space Nebula</div>
             </div>
             <div onclick="setTheme('sunset')" data-theme-name="sunset" class="theme-card bg-gradient-to-br from-amber-950 to-red-950 border-amber-800 text-amber-400">
-                Sunset Glow
+                <div class="text-[9px] text-amber-400">🌅 Quyosh Botishi</div>
+                <div>Sunset Glow</div>
             </div>
             <div onclick="setTheme('emerald')" data-theme-name="emerald" class="theme-card bg-gradient-to-br from-emerald-950 to-slate-950 border-emerald-800 text-emerald-300">
-                Emerald Matrix
+                <div class="text-[9px] text-emerald-400">🌲 Zumrad Matrix</div>
+                <div>Emerald Matrix</div>
             </div>
             <div onclick="setTheme('sakura')" data-theme-name="sakura" class="theme-card bg-gradient-to-br from-pink-950 to-slate-950 border-pink-800 text-pink-300">
-                Sakura Mist
+                <div class="text-[9px] text-pink-400">🌸 Pushti Sakura</div>
+                <div>Sakura Mist</div>
             </div>
             <div onclick="setTheme('gold')" data-theme-name="gold" class="theme-card bg-gradient-to-br from-yellow-950 to-slate-950 border-yellow-800 text-yellow-300">
-                Obsidian Gold
+                <div class="text-[9px] text-yellow-400">👑 Qirollik Oltini</div>
+                <div>Obsidian Gold</div>
             </div>
             <div onclick="setTheme('cyberpunk')" data-theme-name="cyberpunk" class="theme-card bg-gradient-to-br from-cyan-950 to-fuchsia-950 border-cyan-800 text-cyan-300">
-                Cyberpunk Night
+                <div class="text-[9px] text-cyan-400">⚡ Neon Shahar</div>
+                <div>Cyberpunk Night</div>
             </div>
-            <div onclick="setTheme('silver')" data-theme-name="silver" class="theme-card bg-gradient-to-br from-slate-200 to-slate-400 border-slate-400 text-slate-900 shadow-md">
-                Metallic Silver Light 🌟
+            <div onclick="setTheme('silver')" data-theme-name="silver" class="theme-card bg-gradient-to-br from-slate-100 to-slate-300 border-slate-300 text-slate-900 shadow-md">
+                <div class="text-[9px] text-sky-700 font-bold">🌟 Och Kumush</div>
+                <div class="font-extrabold text-slate-900">Titanium Silver</div>
             </div>
-            <div onclick="setTheme('sky')" data-theme-name="sky" class="theme-card bg-gradient-to-br from-sky-100 to-sky-300 border-sky-400 text-sky-950 shadow-md">
-                Sky Breeze Cyan 🌟
+            <div onclick="setTheme('sky')" data-theme-name="sky" class="theme-card bg-gradient-to-br from-sky-100 to-blue-200 border-sky-300 text-sky-950 shadow-md">
+                <div class="text-[9px] text-cyan-700 font-bold">💎 Och Neon Tsian</div>
+                <div class="font-extrabold text-sky-950">Cyber Ice Frost</div>
             </div>
         </div>
     </div>
@@ -3409,15 +3400,11 @@ function appendAIMessage(htmlContent) {
 // 8. SUBPAGE, MAVZU VA LOKATSIYA BOSHQARUVI
 // ============================================================================
 function setTheme(themeName) {
-    currentTheme = themeName;
-    localStorage.setItem('app_theme', themeName);
-    if (themeName === 'default') {
-        document.body.removeAttribute('data-theme');
-    } else {
-        document.body.setAttribute('data-theme', themeName);
-    }
+    currentTheme = themeName || 'default';
+    localStorage.setItem('app_theme', currentTheme);
+    document.body.setAttribute('data-theme', currentTheme);
     document.querySelectorAll('.theme-card').forEach(c => c.classList.remove('active'));
-    const activeCard = document.querySelector(\`[data-theme-name="\${themeName}"]\`);
+    const activeCard = document.querySelector(\`[data-theme-name="\${currentTheme}"]\`);
     if (activeCard) activeCard.classList.add('active');
 }
 

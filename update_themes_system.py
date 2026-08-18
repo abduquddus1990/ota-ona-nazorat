@@ -1,4 +1,7 @@
-/* ==========================================================================
+﻿import re
+
+# 1. Update styles.css
+styles_content = """/* ==========================================================================
    QALQON AI (GUARDIAN INTELLIGENCE) — STITCH DESIGN SYSTEM
    Automatic Dual-Wolf Backgrounds + 10 Full Custom Themes
    ========================================================================== */
@@ -500,3 +503,83 @@ body[data-theme="sky"] .nav-btn.active {
     -ms-overflow-style: none;
     scrollbar-width: none;
 }
+"""
+
+with open("styles.css", "w", encoding="utf-8") as f:
+    f.write(styles_content)
+print("Updated styles.css with dual-wolf automatic background rules & 10 themes!")
+
+# 2. Update modal-themes in index.html & telegram_miniapp/index.html
+new_modal_themes = """    <!-- 🎨 MODAL: FONLAR GALEREYASI -->
+    <div id="modal-themes" class="subpage-modal space-y-4">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+            <button onclick="closeSubpage()" class="text-xs font-bold text-emerald-400" data-i18n="backBtn">← Orqaga</button>
+            <h2 class="text-xs font-bold text-white" data-i18n="themeSelect">Fonlar Tanlovi</h2>
+            <span class="w-8"></span>
+        </div>
+
+        <div class="p-2.5 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-[10px] text-cyan-300 flex items-center gap-2">
+            <span>ℹ️</span>
+            <span>Bo'ri maskotlari avtomatik ravishda Ota-ona panelida Katta Bo'ri, Farzand panelida Kichik Bo'ri holatida aks etadi.</span>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+            <div onclick="setTheme('default')" data-theme-name="default" class="theme-card active bg-gradient-to-br from-slate-900 to-slate-950 border-slate-800 text-emerald-400">
+                <div class="text-[9px] text-emerald-500">🌌 Qorong'i</div>
+                <div>Cyber Dark</div>
+            </div>
+            <div onclick="setTheme('aurora')" data-theme-name="aurora" class="theme-card bg-gradient-to-br from-sky-950 to-emerald-950 border-sky-800 text-sky-400">
+                <div class="text-[9px] text-sky-500">🌌 Shimoliy Nur</div>
+                <div>Aurora Borealis</div>
+            </div>
+            <div onclick="setTheme('nebula')" data-theme-name="nebula" class="theme-card bg-gradient-to-br from-purple-950 to-pink-950 border-purple-800 text-purple-400">
+                <div class="text-[9px] text-purple-400">🌌 Fazoviy Tuman</div>
+                <div>Deep Space Nebula</div>
+            </div>
+            <div onclick="setTheme('sunset')" data-theme-name="sunset" class="theme-card bg-gradient-to-br from-amber-950 to-red-950 border-amber-800 text-amber-400">
+                <div class="text-[9px] text-amber-400">🌅 Quyosh Botishi</div>
+                <div>Sunset Glow</div>
+            </div>
+            <div onclick="setTheme('emerald')" data-theme-name="emerald" class="theme-card bg-gradient-to-br from-emerald-950 to-slate-950 border-emerald-800 text-emerald-300">
+                <div class="text-[9px] text-emerald-400">🌲 Zumrad Matrix</div>
+                <div>Emerald Matrix</div>
+            </div>
+            <div onclick="setTheme('sakura')" data-theme-name="sakura" class="theme-card bg-gradient-to-br from-pink-950 to-slate-950 border-pink-800 text-pink-300">
+                <div class="text-[9px] text-pink-400">🌸 Pushti Sakura</div>
+                <div>Sakura Mist</div>
+            </div>
+            <div onclick="setTheme('gold')" data-theme-name="gold" class="theme-card bg-gradient-to-br from-yellow-950 to-slate-950 border-yellow-800 text-yellow-300">
+                <div class="text-[9px] text-yellow-400">👑 Qirollik Oltini</div>
+                <div>Obsidian Gold</div>
+            </div>
+            <div onclick="setTheme('cyberpunk')" data-theme-name="cyberpunk" class="theme-card bg-gradient-to-br from-cyan-950 to-fuchsia-950 border-cyan-800 text-cyan-300">
+                <div class="text-[9px] text-cyan-400">⚡ Neon Shahar</div>
+                <div>Cyberpunk Night</div>
+            </div>
+            <div onclick="setTheme('silver')" data-theme-name="silver" class="theme-card bg-gradient-to-br from-slate-100 to-slate-300 border-slate-300 text-slate-900 shadow-md">
+                <div class="text-[9px] text-sky-700 font-bold">🌟 Och Kumush</div>
+                <div class="font-extrabold text-slate-900">Titanium Silver</div>
+            </div>
+            <div onclick="setTheme('sky')" data-theme-name="sky" class="theme-card bg-gradient-to-br from-sky-100 to-blue-200 border-sky-300 text-sky-950 shadow-md">
+                <div class="text-[9px] text-cyan-700 font-bold">💎 Och Neon Tsian</div>
+                <div class="font-extrabold text-sky-950">Cyber Ice Frost</div>
+            </div>
+        </div>
+    </div>"""
+
+for fp in ["index.html", "telegram_miniapp/index.html"]:
+    with open(fp, "r", encoding="utf-8") as f:
+        html = f.read()
+    start_tag = '<div id="modal-themes"'
+    end_tag = '</div>\n    </div>'
+    start_idx = html.find(start_tag)
+    if start_idx != -1:
+        # Find next modal or end of modal
+        end_idx = html.find('<!-- 🌐 MODAL: TILNI TANLASH -->', start_idx)
+        if end_idx != -1:
+            html = html[:start_idx] + new_modal_themes.strip() + "\n\n    " + html[end_idx:]
+            with open(fp, "w", encoding="utf-8") as f:
+                f.write(html)
+            print(f"Updated modal-themes in {fp}")
+
+print("Themes system update script executed successfully!")
