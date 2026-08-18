@@ -14,7 +14,7 @@ MINI_APP_URL = "https://abduquddus1990.github.io/ota-ona-nazorat/?v=3.0"
 TELEGRAM_API = f"https://api.telegram.org/bot{BOT_TOKEN}"
 
 # Dynamic Admin & Partner Storage
-ADMIN_USERNAMES = {"ai_loyihachi", "mirkamolov13"}
+ADMIN_USERNAMES = {"ai_loyihachi"}
 ADMIN_CHAT_IDS = set()
 USER_APPROVAL_STATUS = {}
 USER_LANG = {}

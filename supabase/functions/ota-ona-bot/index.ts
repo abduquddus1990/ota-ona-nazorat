@@ -11,7 +11,7 @@ const MINI_APP_URL = Deno.env.get("MINI_APP_URL") || "https://abduquddus1990.git
 const TELEGRAM_API = `https://api.telegram.org/bot${BOT_TOKEN}`;
 
 // Dynamic Admin IDs Store & Known Admin Usernames (Sheriklar ro'yxati)
-const ADMIN_USERNAMES = new Set<string>(["ai_loyihachi", "mirkamolov13"]);
+const ADMIN_USERNAMES = new Set<string>(["ai_loyihachi"]);
 const ADMIN_CHAT_IDS = new Set<string | number>();
 const USER_LANG: Record<string | number, string> = {};
 const USER_APPROVAL_STATUS: Record<string, "pending" | "approved" | "rejected"> = {};
