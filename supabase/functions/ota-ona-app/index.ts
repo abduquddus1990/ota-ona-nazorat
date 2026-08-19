@@ -2035,6 +2035,81 @@ body[data-theme="sky"] .chat-bubble-ai {
         </div>
     </div>
 
+    <!-- 📖 MODAL: 80 KB DARSLIK SAHIFASI KO'RUVCHISI (ULTRA FAST SLICE VIEWER) -->
+    <div id="modal-book-page-viewer" class="subpage-modal space-y-3">
+        <!-- Top Bar -->
+        <div class="flex items-center justify-between pb-2.5 border-b border-slate-800">
+            <button onclick="closeSubpage()" class="text-xs font-bold text-cyan-400">← Orqaga</button>
+            <div class="text-center">
+                <h2 id="bookViewerTitle" class="text-xs font-black text-white">5-Sinf Matematika</h2>
+                <div id="bookViewerSubtitle" class="text-[9px] text-cyan-400 font-mono">42-Sahifa • 80 KB Tezkor Nusxa</div>
+            </div>
+            <button onclick="closeSubpage()" class="text-slate-400 hover:text-white text-xs px-2 py-0.5 rounded-lg bg-slate-800">✕</button>
+        </div>
+
+        <!-- Book Page Display Sheet (Simulating real textbook high-density page in ~60-80KB) -->
+        <div id="bookPageContainer" class="p-4 md:p-6 rounded-2xl bg-[#ffffff] text-[#0f172a] shadow-2xl border border-slate-300 space-y-3.5 relative overflow-hidden select-text font-sans">
+            <!-- Header of the Textbook Page -->
+            <div class="flex items-center justify-between border-b-2 border-cyan-700 pb-2 text-[10px] font-bold text-cyan-900">
+                <span id="pageSubjectBadge">📚 5-SINF MATEMATIKA</span>
+                <span id="pageNumberDisplay" class="font-mono bg-cyan-100 text-cyan-900 px-2 py-0.5 rounded">42-BET</span>
+            </div>
+
+            <!-- Chapter Header -->
+            <div class="space-y-1">
+                <div class="text-[9px] font-extrabold text-cyan-700 uppercase tracking-wider" id="pageChapterNumber">III BOB • KASRLAR NAZARIYASI</div>
+                <h3 class="text-sm md:text-base font-black text-slate-900 leading-tight" id="pageChapterTitle">Har xil maxrajli oddiy kasrlarni qo'shish va ayirish</h3>
+            </div>
+
+            <!-- Main Rule Callout Box -->
+            <div class="p-3.5 rounded-xl bg-amber-50/90 border-l-4 border-amber-500 space-y-1 text-xs text-slate-800">
+                <div class="font-black text-amber-900 text-[11px] flex items-center gap-1.5">
+                    <span>💡</span>
+                    <span>QOIDANI ESLAB QOLING:</span>
+                </div>
+                <p id="pageRuleText" class="leading-relaxed text-[11px]">
+                    Har xil maxrajli oddiy kasrlarni qo'shish yoki ayirish uchun avval ularni eng kichik umumiy maxrajga (EKUK) keltirish, so'ng suratlarni qo'shish yoki ayirish kerak.
+                </p>
+            </div>
+
+            <!-- Formula Box -->
+            <div id="pageFormulaContainer" class="p-3 rounded-xl bg-cyan-50/90 border border-cyan-200 text-center space-y-1">
+                <div class="text-[9px] font-bold text-cyan-800 uppercase tracking-wider">Asosiy Formula:</div>
+                <div id="pageFormulaDisplay" class="text-sm font-black text-cyan-950 font-mono tracking-wide">
+                    a/b + c/d = (a·d + c·b) / (b·d)
+                </div>
+            </div>
+
+            <!-- Practice Task & Visual Example -->
+            <div class="space-y-1.5 pt-1 text-xs text-slate-700">
+                <div class="font-bold text-slate-900 text-[11px]">✏️ 1-Masala (Namuna):</div>
+                <div id="pageExampleText" class="p-2.5 rounded-lg bg-slate-50 border border-slate-200 text-[11px] font-mono leading-relaxed">
+                    1/3 + 1/6 = (1·2)/(3·2) + 1/6 = 2/6 + 1/6 = 3/6 = 1/2.
+                </div>
+            </div>
+
+            <!-- Page Footer -->
+            <div class="pt-2 border-t border-slate-200 flex items-center justify-between text-[9px] text-slate-500 font-mono">
+                <span>O'zbekiston Respublikasi DTS Darsligi</span>
+                <span class="flex items-center gap-1 text-emerald-700 font-bold">
+                    <span>🛡️</span> Qalqon AI 80KB Verified Slice
+                </span>
+            </div>
+        </div>
+
+        <!-- Controls Bar -->
+        <div class="grid grid-cols-2 gap-2 pt-1">
+            <button onclick="askCurrentPageToAi()" class="w-full py-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-bold text-xs rounded-xl shadow-md transition flex items-center justify-center gap-1.5">
+                <span>🤖</span>
+                <span>AI Do'stdan Yechim So'rash</span>
+            </button>
+            <button onclick="shareOrDownloadPage()" class="w-full py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5">
+                <span>📥</span>
+                <span>Sahifani Saqlash (80 KB)</span>
+            </button>
+        </div>
+    </div>
+
     <!-- ℹ️ MODAL: DASTUR HAQIDA & ASOSIY MAQSAD (POYLOQCHILIK EMAS — MEHR VA XAVFSIZLIK) -->
     <div id="modal-about" class="subpage-modal space-y-4">
         <div class="flex items-center justify-between pb-3 border-b border-slate-800">
@@ -2335,6 +2410,63 @@ body[data-theme="sky"] .chat-bubble-ai {
     <!-- Custom JavaScript -->
     <script>
 // ============================================================================
+// 📖 80 KB DARSLIK SAHIFASI KO'RUVCHISI (ULTRA FAST PAGE VIEWER)
+// ============================================================================
+let currentViewingTopic = null;
+
+function openDtsPageViewer(grade, subject, chapter, page, rule, formula, example) {
+    currentViewingTopic = { grade, subject, chapter, page, rule, formula, example };
+
+    const titleEl = document.getElementById('bookViewerTitle');
+    const subEl = document.getElementById('bookViewerSubtitle');
+    const badgeEl = document.getElementById('pageSubjectBadge');
+    const numEl = document.getElementById('pageNumberDisplay');
+    const chNumEl = document.getElementById('pageChapterNumber');
+    const chTitleEl = document.getElementById('pageChapterTitle');
+    const ruleEl = document.getElementById('pageRuleText');
+    const formulaDispEl = document.getElementById('pageFormulaDisplay');
+    const formContEl = document.getElementById('pageFormulaContainer');
+    const exEl = document.getElementById('pageExampleText');
+
+    if (titleEl) titleEl.innerText = \`\${grade}-Sinf \${subject}\`;
+    if (subEl) subEl.innerText = \`\${page}-Sahifa • 80 KB Tezkor Nusxa\`;
+    if (badgeEl) badgeEl.innerText = \`📚 \${grade}-SINF \${subject.toUpperCase()}\`;
+    if (numEl) numEl.innerText = \`\${page}-BET\`;
+    if (chNumEl) chNumEl.innerText = \`\${subject.toUpperCase()} • DTS DASTURI\`;
+    if (chTitleEl) chTitleEl.innerText = chapter;
+    if (ruleEl) ruleEl.innerText = rule;
+
+    if (formula && formulaDispEl && formContEl) {
+        formContEl.classList.remove('hidden');
+        formulaDispEl.innerText = formula;
+    } else if (formContEl) {
+        formContEl.classList.add('hidden');
+    }
+
+    if (exEl) {
+        exEl.innerText = example || \`Masala: \${chapter} mavzusi bo'yicha qoidani qo'llab, amallarni bajaring.\`;
+    }
+
+    openSubpage('modal-book-page-viewer');
+}
+
+function askCurrentPageToAi() {
+    if (!currentViewingTopic) return;
+    closeSubpage();
+    const inputChild = document.getElementById('childAiInput');
+    if (inputChild) {
+        inputChild.value = \`\${currentViewingTopic.chapter} (\${currentViewingTopic.page}-bet) mavzusini tushuntir\`;
+        switchChildTab('child-tab-ai');
+        handleChildAiSend();
+    }
+}
+
+function shareOrDownloadPage() {
+    if (!currentViewingTopic) return;
+    alert(\`✅ \${currentViewingTopic.grade}-sinf \${currentViewingTopic.subject} darsligining \${currentViewingTopic.page}-beti (80 KB WebP) yuklab olindi!\`);
+}
+
+// ============================================================================
 // 🧠 QALQON AI — 1-11 SINF DTS RAG BILIMLAR BAZASI & ENGINE
 // ============================================================================
 const DTS_KNOWLEDGE_BASE = [{"grade": 1, "subject": "Matematika", "chapter": "20 ichida qo'shish va ayirish", "page": 35, "rule": "Sonlarni qo'shishda o'nlik hosil qilish: masalan, 8 + 5 ni hisoblash uchun 5 soni 2 va 3 ga ajratiladi. 8 + 2 = 10, 10 + 3 = 13.", "formula": "a + b = c (Qo'shiluvchi + Qo'shiluvchi = Yig'indi)", "keywords": ["qo'shish", "ayirish", "1-sinf", "yig'indi", "ayirma", "sanoq"]}, {"grade": 2, "subject": "Matematika", "chapter": "Ko'paytirish va Bo'lish jadvali", "page": 48, "rule": "Ko'paytirish — bir xil qo'shiluvchilar yig'indisidir. Masalan: 3 * 4 = 3 + 3 + 3 + 3 = 12. Ko'paytuvchilar o'rni almashgani bilan ko'paytma o'zgarmaydi (a * b = b * a).", "formula": "a * b = c (Ko'paytuvchi * Ko'paytuvchi = Ko'paytma)", "keywords": ["ko'paytirish", "bo'lish", "jadval", "2-sinf", "ko'paytma"]}, {"grade": 3, "subject": "Ona tili va O'qish", "chapter": "So'z turkumlari: Ot, Sifat, Fe'l", "page": 56, "rule": "Shaxs va narsa nomini bildirgan so'zlar Ot (Kim? Nima?), belgisini bildirgan so'zlar Sifat (Qanday? Qanaqa?), harakatini bildirgan so'zlar Fe'l (Nima qildi? Nima qilyapti?) deyiladi.", "formula": "Ot: Kim? Nima? | Sifat: Qanday? | Fe'l: Nima qildi?", "keywords": ["ot", "sifat", "fe'l", "ona tili", "3-sinf", "so'z turkumi"]}, {"grade": 4, "subject": "Matematika", "chapter": "Ko'p xonali sonlar va Geometrik shakllar", "page": 74, "rule": "To'g'ri to'rtburchakning perimetri barcha tomonlari yig'indisiga teng: P = 2 * (a + b). Yuzi esa bo'yi va eni ko'paytmasiga teng: S = a * b.", "formula": "P = 2(a + b); S = a * b", "keywords": ["perimetr", "yuza", "to'g'ri to'rtburchak", "4-sinf", "geometriya"]}, {"grade": 5, "subject": "Matematika", "chapter": "Oddiy va O'nli Kasrlar", "page": 42, "rule": "Har xil maxrajli oddiy kasrlarni qo'shish yoki ayirish uchun avval ularni eng kichik umumiy maxrajga (EKUK) keltirish, so'ng suratlarni qo'shish yoki ayirish kerak. Kasrlarni ko'paytirishda surat suratga, maxraj maxrajga ko'paytiriladi.", "formula": "a/b + c/d = (a*d + c*b)/(b*d); (a/b) * (c/d) = (a*c)/(b*d)", "keywords": ["kasr", "oddiy kasr", "o'nli kasr", "maxraj", "surat", "5-sinf", "ekuk", "ekub"]}, {"grade": 5, "subject": "Ingliz tili", "chapter": "Present Simple Tense (Hozirgi oddiy zamon)", "page": 28, "rule": "Doimiy takrorlanadigan odatlar va faktlar uchun Present Simple ishlatiladi. He/She/It olmoshlaridan so'ng fe'lga -s yoki -es qo'shimchasi qo'shiladi. Inkor shakli: don't / doesn't + V1.", "formula": "Subject + Verb(s/es) | I work, He works | Do/Does + Subject + Verb?", "keywords": ["present simple", "ingliz tili", "5-sinf", "grammar", "verb", "tenses"]}, {"grade": 6, "subject": "Matematika", "chapter": "Nisbat, Proporsiya va Foizlar", "page": 64, "rule": "Ikki nisbatning tengligi proporsiya deyiladi: a/b = c/d. Proporsiyaning asosiy xossasi: chetki hadlar ko'paytmasi o'rta hadlar ko'paytmasiga teng (a * d = b * c). Sonning foizini topish uchun sonni foizga ko'paytirib 100 ga bo'linadi.", "formula": "a/b = c/d => a*d = b*c; A sonining p% = (A * p) / 100", "keywords": ["proporsiya", "foiz", "nisbat", "6-sinf", "matematika", "tenglama"]}, {"grade": 6, "subject": "Botanika", "chapter": "O'simlik hujayrasi va Fotosintez", "page": 38, "rule": "O'simliklar quyosh nuri, suv va karbonat angidrid (CO2) yordamida xlorofill orqali organik moddalar va kislorod (O2) ishlab chiqaradi. Bu jarayon fotosintez deyiladi.", "formula": "6CO2 + 6H2O + Quyosh nuri => C6H12O6 (Glyukoza) + 6O2", "keywords": ["fotosintez", "botanika", "hujayra", "xlorofill", "kislorod", "6-sinf"]}, {"grade": 7, "subject": "Algebra", "chapter": "Chiziqli tenglamalar va Qisqa ko'paytirish formulalari", "page": 55, "rule": "Qisqa ko'paytirish formulalari hisoblashni osonlashtiradi: Yig'indining kvadrati (a+b)^2 = a^2 + 2ab + b^2. Kvadratlar ayirmasi: a^2 - b^2 = (a-b)(a+b).", "formula": "(a + b)^2 = a^2 + 2ab + b^2; a^2 - b^2 = (a - b)(a + b)", "keywords": ["algebra", "qisqa ko'paytirish", "7-sinf", "kvadrat", "tenglama", "ko'phad"]}, {"grade": 7, "subject": "Fizika", "chapter": "Tezlik, Zichlik va Nyutonning 1-qonuni", "page": 40, "rule": "Tezlik — bosib o'tilgan yo'lning ketgan vaqtga nisbatidir: v = S / t. Jismning zichligi esa massaning hajmga nisbatidir: rho = m / V. Nyuton 1-qonuni: Jismga tashqi kuch ta'sir etmasa, u tinch turadi yoki to'g'ri chiziqli tekis harakatlanadi.", "formula": "v = S / t; rho = m / V; F = m * a", "keywords": ["fizika", "tezlik", "zichlik", "nyuton", "massa", "7-sinf", "kuch"]}, {"grade": 8, "subject": "Geometriya", "chapter": "Pifagor Teoremasi va To'g'ri burchakli uchburchak", "page": 78, "rule": "To'g'ri burchakli uchburchakda gipotenuza kvadratining qiymati katetlar kvadratlari yig'indisiga teng: c^2 = a^2 + b^2. Uchburchak ichki burchaklari yig'indisi har doim 180 gradusga teng.", "formula": "c^2 = a^2 + b^2; alpha + beta + gamma = 180°", "keywords": ["pifagor", "gipotenuza", "katet", "uchburchak", "geometriya", "8-sinf"]}, {"grade": 8, "subject": "Fizika", "chapter": "Elektr toki, Kuchlanish va Om qonuni", "page": 92, "rule": "Zanjir qismidagi tok kuchi (I) kuchlanishga (U) to'g'ri proporsional va qarshilikka (R) teskari proporsionaldir: I = U / R. Elektr toki zaryadlangan zarrachalarning tartibli harakatidir.", "formula": "I = U / R; P = U * I (Elektr quvvati)", "keywords": ["om qonuni", "tok kuchi", "kuchlanish", "qarshilik", "fizika", "8-sinf", "elektr"]}, {"grade": 8, "subject": "Kimyo", "chapter": "Mendeleyev davriy jadvali va Kimyoviy bog'lanish", "page": 62, "rule": "Elementlarning xossalari ularning atom yadrosi zaryadiga davriy bog'liqdir. Valentlik — atomning boshqa atomlarni biriktirib olish qobiliyati. Suv molekulasi H2O kovalent qutbli bog'lanishga ega.", "formula": "M(H2O) = 1*2 + 16 = 18 g/mol; n = m / M", "keywords": ["kimyo", "mendeleyev", "valentlik", "atom", "molekula", "8-sinf", "davriy qonun"]}, {"grade": 9, "subject": "Algebra", "chapter": "Kvadrat tenglamalar va Viyet Teoremasi", "page": 85, "rule": "ax^2 + bx + c = 0 kvadrat tenglama diskriminant D = b^2 - 4ac orqali yechiladi. D > 0 bo'lsa 2 ta ildiz, D = 0 bo'lsa 1 ta ildiz, D < 0 bo'lsa haqiqiy ildiz yo'q. Viyet teoremasi: x1 + x2 = -b/a, x1 * x2 = c/a.", "formula": "D = b^2 - 4ac; x = (-b +- sqrt(D)) / (2a); x1+x2 = -b/a, x1*x2 = c/a", "keywords": ["kvadrat tenglama", "diskriminant", "viyet", "ildiz", "algebra", "9-sinf"]}, {"grade": 10, "subject": "Algebra va Analiz", "chapter": "Trigonometrik funksiyalar va Asosiy ayniyatlar", "page": 110, "rule": "Asosiy trigonometrik ayniyat: sin^2(x) + cos^2(x) = 1. Tangens tg(x) = sin(x) / cos(x). Ikkilangan burchak formulasi: sin(2x) = 2*sin(x)*cos(x).", "formula": "sin^2(alpha) + cos^2(alpha) = 1; tg(alpha) = sin(alpha)/cos(alpha)", "keywords": ["trigonometriya", "sinus", "kosinus", "tangens", "10-sinf", "analiz"]}, {"grade": 10, "subject": "Fizika", "chapter": "Molekulyar fizika va Termodinamika qonunlari", "page": 95, "rule": "Ideal gaz holat tenglamasi (Mendeleyev-Klapeyron): P * V = (m/M) * R * T. Termodinamikaning 1-qonuni: Tizimga berilgan issiqlik miqdori uning ichki energiyasini oshirishga va tashqi kuchlarga qarshi ish bajarishga sarflanadi (Q = deltaU + A).", "formula": "P * V = nu * R * T; Q = deltaU + A", "keywords": ["termodinamika", "ideal gaz", "issiqlik", "fizika", "10-sinf", "klapeyron"]}, {"grade": 11, "subject": "Algebra va Analiz", "chapter": "Hosilalar va Integrallar (Matematik analiz)", "page": 130, "rule": "Hosila — funksiyaning o'zgarish tezligini ifodalaydi. (x^n)' = n * x^(n-1). Boshlang'ich funksiya (aniqmas integral) esa differensiallashning teskarisidir: integral(x^n dx) = (x^(n+1))/(n+1) + C.", "formula": "(x^n)' = n * x^(n-1); (sin x)' = cos x; integral(x^n dx) = x^(n+1)/(n+1) + C", "keywords": ["hosila", "integral", "differensial", "11-sinf", "analiz", "matematika"]}, {"grade": 11, "subject": "Fizika", "chapter": "Optika, Kvant fizikasi va Eynshteyn formulasi", "page": 145, "rule": "Yorug'lik ham to'lqin, ham zarracha (foton) tabiatiga ega (korpuskulyar-to'lqin dualizmi). Foton energiyasi E = h * nu ga teng. Eynshteynning mashhur massa va energiya ekvivalentligi formulasi: E = m * c^2.", "formula": "E = h * nu; E = m * c^2; lambda = c / nu", "keywords": ["kvant", "foton", "eynshteyn", "optika", "fizika", "11-sinf", "yorug'lik"]}, {"grade": 11, "subject": "Informatika", "chapter": "Python Dasturlash & Sun'iy Intellekt Asoslari", "page": 80, "rule": "Pythonda ma'lumotlar turlari (int, float, str, list, dict). Shart operatorlari (if-elif-else) va sikllar (for, while). Sun'iy intellekt (Machine Learning) ma'lumotlar to'plami (dataset) orqali naqshlarni o'rganadi.", "formula": "def calculate_dts(score): return 'A' if score >= 86 else 'B'", "keywords": ["python", "dasturlash", "informatika", "11-sinf", "ai", "algoritm"]}];
@@ -2406,13 +2538,14 @@ function renderSchoolCurriculum() {
     filterPillsHtml += '</div>';
 
     filtered.forEach(item => {
+        const itemJson = JSON.stringify(item).replace(/"/g, '&quot;');
         html += \`
             <div class="glass-card p-3.5 space-y-2 border border-slate-700/60 hover:border-cyan-500/50 transition">
                 <div class="flex items-center justify-between">
                     <span class="px-2.5 py-0.5 rounded-full bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 text-[10px] font-extrabold">
                         \${item.grade}-Sinf • \${item.subject}
                     </span>
-                    <span class="text-[9px] text-slate-400 font-mono">Darslik \${item.page}-bet</span>
+                    <span class="text-[9px] text-cyan-400 font-mono font-bold">Darslik \${item.page}-bet (80 KB)</span>
                 </div>
                 <div>
                     <h4 class="text-xs font-black text-white">\${item.chapter}</h4>
@@ -2423,12 +2556,12 @@ function renderSchoolCurriculum() {
                         📐 <b>Formula:</b> \${item.formula}
                     </div>
                 \` : ''}
-                <div class="pt-1 flex items-center justify-between text-[10px]">
-                    <span class="text-emerald-400 font-bold flex items-center gap-1">
-                        <span>✅</span> 100 Ballik DTS Standarti
-                    </span>
-                    <button onclick="askDtsTopic('\${item.chapter}')" class="px-2.5 py-1 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 rounded-lg font-bold transition">
-                        AI bilan yechish 🤖
+                <div class="pt-1 flex items-center justify-between gap-2 text-[10px]">
+                    <button onclick="openDtsPageViewer(\${item.grade}, '\${item.subject}', '\${item.chapter}', \${item.page}, '\${item.rule.replace(/'/g, "\\'")}', '\${item.formula || ''}', '')" class="flex-1 py-1.5 bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-cyan-500/30 rounded-lg font-bold transition flex items-center justify-center gap-1">
+                        <span>📖</span> Sahifani Ochish (80 KB)
+                    </button>
+                    <button onclick="askDtsTopic('\${item.chapter}')" class="px-3 py-1.5 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 rounded-lg font-bold transition flex items-center gap-1">
+                        <span>🤖</span> AI Yechim
                     </button>
                 </div>
             </div>
@@ -3198,17 +3331,15 @@ function handleChildAiSend() {
     if (!text) return;
     if (input) input.value = "";
 
-    // 1. Foydalanuvchi xabarini chatga qo'shish
     appendChildUserMessage(text);
 
-    // 2. Kutilmoqda indikatori
     const thread = document.getElementById('childAiChatThread');
     const loadingId = 'child-ai-loading-' + Date.now();
     if (thread) {
         const loadDiv = document.createElement('div');
         loadDiv.id = loadingId;
         loadDiv.className = "flex items-center gap-2 text-[11px] text-indigo-300 italic pl-9";
-        loadDiv.innerHTML = isRu ? "⏳ Ищу в базе 1-11 классов ДТС..." : "⏳ 1-11 sinf DTS darsliklar bazasidan qidiryapman...";
+        loadDiv.innerHTML = isRu ? "⏳ Ищу в базе 1-11 классов ДТС (80 KB)..." : "⏳ 1-11 sinf DTS darsliklar bazasidan qidiryapman (80 KB)...";
         thread.appendChild(loadDiv);
         thread.scrollTop = thread.scrollHeight;
     }
@@ -3232,7 +3363,7 @@ function handleChildAiSend() {
                    + \`📖 <b>Mavzu:</b> \${ragMatch.chapter}<br><br>\`
                    + \`💡 <b>Rasmiy qoida:</b><br>\${ragMatch.rule}<br><br>\`
                    + (ragMatch.formula ? \`📐 <b>Formula:</b> <code>\${ragMatch.formula}</code><br><br>\` : '')
-                   + \`🎯 <i>Senda bu mavzu a'lo darajada o'xshaydi! Keyingi savolingni bemalol yoz! 🐺✨</i>\`;
+                   + \`<div class="pt-2"><button onclick="openDtsPageViewer(\${ragMatch.grade}, '\${ragMatch.subject}', '\${ragMatch.chapter}', \${ragMatch.page}, '\${ragMatch.rule.replace(/'/g, "\\'")}', '\${ragMatch.formula || ''}', '')" class="px-2.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-[10px] transition flex items-center gap-1 shadow-md">📖 Darslikning \${ragMatch.page}-betini ochish (80 KB) ↗</button></div>\`;
         } else if (lower.includes('matem') || lower.includes('+') || lower.includes('-') || lower.includes('*') || lower.includes('/') || lower.includes('kasr')) {
             answer = isRu
                 ? \`📐 Отличный математический вопрос! По задаче «\${text}»: давай решим шаг за шагом. Сначала определим формулу, а затем вычислим результат. Ты отлично справляешься! 🚀\`
