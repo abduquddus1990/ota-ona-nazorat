@@ -10,7 +10,7 @@ import time
 import sys
 
 BOT_TOKEN = "8992925094:AAE5K1N8VVxiCh9P6H1j7hCrYoTeIBmC8r0"
-MINI_APP_URL = "https://abduquddus1990.github.io/ota-ona-nazorat/?v=3.0"
+MINI_APP_URL = "https://abduquddus1990.github.io/ota-ona-nazorat/?v=5.3"
 TELEGRAM_API = f"https://api.telegram.org/bot{BOT_TOKEN}"
 
 # Dynamic Admin & Partner Storage
