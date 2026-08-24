@@ -249,26 +249,14 @@ def handle_update(update):
                     clean_code = generate_family_code(chat_id)
                 
                 child_start_msg = (
-                    "🐺 <b>ASSALOMU ALAYKUM, YOSH QAHRAMON!</b>
-
-"
-                    "Sizni ota-onangiz «Qalqon AI» xavfsizlik va dars yordamchisi tizimiga taklif qildi! 🌟
-
-"
-                    "<b>Dasturdagi 4 ta asosiy imkoniyat:</b>
-"
-                    "• 📍 <b>Jonli radar va xavfsiz joylashuv</b>
-"
-                    "• 🎬 <b>YouTube va video qiziqishlari tahlili</b>
-"
-                    "• 📱 <b>Ekran vaqti va ilovalar balansi</b>
-"
-                    "• 📚 <b>1-11 sinf DTS darsliklari va Gemini AI do'st</b>
-
-"
-                    f"🔑 <b>Oila kodingiz:</b> <code>{clean_code}</code>
-
-"
+                    "🐺 <b>ASSALOMU ALAYKUM, YOSH QAHRAMON!</b>\n\n"
+                    "Sizni ota-onangiz «Qalqon AI» xavfsizlik va dars yordamchisi tizimiga taklif qildi! 🌟\n\n"
+                    "<b>Dasturdagi 4 ta asosiy imkoniyat:</b>\n"
+                    "• 📍 <b>Jonli radar va xavfsiz joylashuv</b>\n"
+                    "• 🎬 <b>YouTube va video qiziqishlari tahlili</b>\n"
+                    "• 📱 <b>Ekran vaqti va ilovalar balansi</b>\n"
+                    "• 📚 <b>1-11 sinf DTS darsliklari va Gemini AI do'st</b>\n\n"
+                    f"🔑 <b>Oila kodingiz:</b> <code>{clean_code}</code>\n\n"
                     "Pastdagi tugmani bosing va 4 ta jabha bo'yicha qoidalar bilan tanishib, tasdiqlang:"
                 )
                 child_markup = {
