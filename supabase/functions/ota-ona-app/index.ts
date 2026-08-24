@@ -562,8 +562,8 @@ body[data-theme="sky"] .chat-bubble-ai {
 <!-- ==================================================================== -->
     <!-- 🤝 TO'LIQ EKRANLI FARZAND ROZILIK & ULANISH MODALI -->
     <!-- ==================================================================== -->
-    <div id="childConsentOverlay" class="fixed inset-0 z-[100001] bg-[#13131b] flex flex-col justify-between p-5 overflow-y-auto hidden" style="background-image: linear-gradient(rgba(19,19,27,0.92), rgba(19,19,27,0.98)), url('assets/wolf_pup_hero.png'); background-size: 360px auto; background-position: center 60px; background-repeat: no-repeat;">
-        <div class="space-y-4 pt-4">
+    <div id="childConsentOverlay" class="fixed inset-0 z-[100001] bg-[#13131b] flex flex-col justify-between p-4 md:p-6 overflow-y-auto hidden" style="background-image: linear-gradient(rgba(19,19,27,0.94), rgba(19,19,27,0.98)), url('assets/wolf_pup_hero.png'); background-size: 360px auto; background-position: center 50px; background-repeat: no-repeat;">
+        <div class="space-y-3.5 pt-2">
             <!-- Mascot & Brand -->
             <div class="flex items-center justify-center gap-2.5">
                 <div class="w-12 h-12 rounded-2xl bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center shadow-[0_0_20px_rgba(129,140,248,0.4)]">
@@ -571,9 +571,87 @@ body[data-theme="sky"] .chat-bubble-ai {
                 </div>
                 <div>
                     <h1 class="font-display-brand text-base text-indigo-300 font-black tracking-wider leading-none">QALQON AI</h1>
-                    <p class="text-[10px] text-slate-400 mt-0.5">Yosh Qahramon Aqlli Do'sti</p>
+                    <p class="text-[10px] text-slate-400 mt-0.5">Yosh Qahramon Xavfsizlik & Do'stlik Qalqoni</p>
                 </div>
             </div>
+
+            <!-- Psychological Trust Header -->
+            <div class="glass-panel p-4 space-y-3 border-indigo-500/40 bg-slate-900/90 rounded-3xl text-center shadow-xl">
+                <h2 class="text-sm font-black text-white leading-snug flex items-center justify-center gap-1.5">
+                    <span>🌟</span>
+                    <span>Salom, Yosh Qahramon!</span>
+                </h2>
+                <div class="p-2.5 rounded-xl bg-indigo-950/50 border border-indigo-500/30 text-left text-xs text-indigo-200 leading-relaxed">
+                    <b>Bizning qat'iy kafolatimiz:</b> Sening ota-onang seni <u>hech qachon poylamaydi</u> va shaxsiy yozishmalaringni o'qimaydi. Tizim faqat sening xavfsizliging va darslarda eng yuqori 100 ball olishing uchun ishlaydi. 🐺✨
+                </div>
+
+                <!-- 4 Ta Aniq Ota-onaga Uzatiladigan Ruxsatlar va Ma'lumotlar -->
+                <div class="space-y-2 text-left pt-1">
+                    <div class="text-[11px] font-black text-white uppercase tracking-wider flex items-center gap-1">
+                        <span>📋</span>
+                        <span>Ota-onangizga ko'rinadigan 4 ta ma'lumot:</span>
+                    </div>
+
+                    <!-- 1. Lokatsiya -->
+                    <div class="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800 flex items-start gap-2.5">
+                        <span class="text-base flex-shrink-0">📍</span>
+                        <div class="text-[11px]">
+                            <b class="text-cyan-300">1. Jonli Lokatsiya va Xavfsiz Hududlar:</b>
+                            <p class="text-slate-300 text-[10px] leading-tight mt-0.5">Darsdan so'ng maktabdan eson-omon chiqqaningizni va xavfsiz joydaligingizni bilish uchun.</p>
+                        </div>
+                    </div>
+
+                    <!-- 2. YouTube & Insta -->
+                    <div class="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800 flex items-start gap-2.5">
+                        <span class="text-base flex-shrink-0">🎬</span>
+                        <div class="text-[11px]">
+                            <b class="text-pink-300">2. YouTube & Instagram Qiziqish Mavzulari:</b>
+                            <p class="text-slate-300 text-[10px] leading-tight mt-0.5">Shaxsiy chatlar o'qilmaydi! Faqat IT, ilm-fan, mantiq yoki o'yin qiziqishlari foizlarda tahlil qilinadi.</p>
+                        </div>
+                    </div>
+
+                    <!-- 3. Ilovalar va Ekran vaqti -->
+                    <div class="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800 flex items-start gap-2.5">
+                        <span class="text-base flex-shrink-0">📱</span>
+                        <div class="text-[11px]">
+                            <b class="text-amber-300">3. Ko'p Ishlatilayotgan Ilovalar va Ekran Vaqti:</b>
+                            <p class="text-slate-300 text-[10px] leading-tight mt-0.5">Ko'z salomatligi va dars vaqtida diqqatni jamlash me'yorini saqlash uchun.</p>
+                        </div>
+                    </div>
+
+                    <!-- 4. e-Maktab baholari -->
+                    <div class="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800 flex items-start gap-2.5">
+                        <span class="text-base flex-shrink-0">📚</span>
+                        <div class="text-[11px]">
+                            <b class="text-emerald-300">4. e-Maktab 100 Ballik Baholar va Rag'batlar:</b>
+                            <p class="text-slate-300 text-[10px] leading-tight mt-0.5">Darslardagi a'lochi natijalaringiz uchun ota-onangizdan yutuq va sovg'alar olishingiz uchun.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Family Code Input (Oral code from parents) -->
+                <div class="space-y-1.5 text-left pt-2 border-t border-slate-800">
+                    <label class="text-[11px] font-bold text-slate-300 block">
+                        🔑 6 Xonali Oila Kodi <span class="text-[10px] text-indigo-300 font-normal">(Ota-onangizdan og'zaki oling):</span>
+                    </label>
+                    <input type="text" id="childConsentFamilyCode" placeholder="Masalan: 849-210" maxlength="7" class="w-full bg-slate-950 border-2 border-indigo-500/60 rounded-2xl px-4 py-3 text-center text-lg font-black text-white font-mono tracking-widest focus:outline-none focus:border-cyan-400 placeholder-slate-600 transition">
+                    <p id="childConsentError" class="text-[10px] text-rose-400 font-bold text-center hidden">⚠️ Iltimos, 6 xonali oila kodini to'liq kiriting!</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="space-y-2 pb-3 pt-2">
+            <button onclick="handleChildConsentAccept()" class="w-full py-3.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-black text-xs md:text-sm rounded-2xl transition shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2">
+                <span>✅</span>
+                <span>Barchasini Tushundim, Roziman va Ulanaman</span>
+            </button>
+            <button onclick="handleChildConsentDecline()" class="w-full py-2.5 bg-slate-900/90 hover:bg-slate-800 border border-slate-700 text-slate-400 hover:text-white font-bold text-xs rounded-2xl transition">
+                <span>❌</span>
+                <span>Qarshiman (Hozircha emas)</span>
+            </button>
+        </div>
+    </div>
 
             <!-- Psychological Trust Card -->
             <div class="glass-panel p-5 space-y-3.5 border-indigo-500/40 bg-slate-900/90 rounded-3xl text-center shadow-xl">
@@ -2110,6 +2188,119 @@ body[data-theme="sky"] .chat-bubble-ai {
         </div>
     </div>
 
+    <!-- 👨‍👩‍👧 MODAL: OTA-ONA DASTLABKI PROFILI & OILANI SOZLASH (INITIAL ONBOARDING) -->
+    <div id="modal-parent-onboarding" class="subpage-modal space-y-4">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+            <span class="w-8"></span>
+            <h2 class="text-xs font-bold text-white">Oila va Profilni Sozlash</h2>
+            <button onclick="closeSubpage()" class="text-slate-400 hover:text-white text-xs px-2 py-0.5 rounded-lg bg-slate-800">✕</button>
+        </div>
+
+        <div class="glass-card p-4 space-y-3.5">
+            <div class="text-center space-y-1">
+                <span class="text-3xl">👨‍👩‍👧</span>
+                <h3 class="text-sm font-black text-white">Xush kelibsiz!</h3>
+                <p class="text-[11px] text-slate-300 leading-relaxed">
+                    Boshqaruv panelidan to'laqonli foydalanish uchun o'zingiz va oilangiz haqidagi asosiy ma'lumotlarni kiriting.
+                </p>
+            </div>
+
+            <div class="space-y-2.5 pt-1 text-xs">
+                <div>
+                    <label class="text-[11px] font-bold text-slate-300 block mb-1">Oila Nomi / Familiyasi</label>
+                    <input type="text" id="onboardFamilyName" placeholder="Masalan: Valijonovlar Oilasi" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500">
+                </div>
+
+                <div>
+                    <label class="text-[11px] font-bold text-slate-300 block mb-1">Sizning Ismingiz (Ota / Ona)</label>
+                    <input type="text" id="onboardParentName" placeholder="Masalan: Abduquddus" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500">
+                </div>
+
+                <div>
+                    <label class="text-[11px] font-bold text-slate-300 block mb-1">Telefon Raqamingiz</label>
+                    <input type="tel" id="onboardParentPhone" placeholder="+998 90 123 45 67" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500">
+                </div>
+
+                <!-- Birinchi Farzand Ma'lumotlari -->
+                <div class="p-3 rounded-xl bg-slate-950/80 border border-cyan-500/30 space-y-2">
+                    <div class="text-[11px] font-bold text-cyan-400 flex items-center gap-1">
+                        <span>👦</span>
+                        <span>Birinchi Farzandingiz:</span>
+                    </div>
+                    <div>
+                        <label class="text-[10px] text-slate-300 block mb-1">Farzand Ism-Familiyasi</label>
+                        <input type="text" id="onboardChildName" placeholder="Masalan: Aliyor Valijonov" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-500">
+                    </div>
+                    <div>
+                        <label class="text-[10px] text-slate-300 block mb-1">Sinfi (1-11 Sinf DTS)</label>
+                        <select id="onboardChildGrade" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-500">
+                            <option value="1">1-sinf</option>
+                            <option value="2">2-sinf</option>
+                            <option value="3">3-sinf</option>
+                            <option value="4">4-sinf</option>
+                            <option value="5" selected>5-sinf</option>
+                            <option value="6">6-sinf</option>
+                            <option value="7">7-sinf</option>
+                            <option value="8">8-sinf</option>
+                            <option value="9">9-sinf</option>
+                            <option value="10">10-sinf</option>
+                            <option value="11">11-sinf</option>
+                        </select>
+                    </div>
+                </div>
+
+                <button onclick="saveParentOnboarding()" class="w-full py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-bold text-xs rounded-xl shadow-lg shadow-emerald-500/20 transition">
+                    💾 Saqlash va Dashboardga O'tish
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ➕ MODAL: YANGI FARZAND QO'SHISH -->
+    <div id="modal-add-child" class="subpage-modal space-y-4">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+            <button onclick="closeSubpage()" class="text-xs font-bold text-emerald-400">← Orqaga</button>
+            <h2 class="text-xs font-bold text-white">Yangi Farzand Qo'shish</h2>
+            <span class="w-8"></span>
+        </div>
+
+        <div class="glass-card p-4 space-y-3">
+            <div class="text-center space-y-1">
+                <span class="text-3xl">👦</span>
+                <h3 class="text-sm font-bold text-white">Farzand Profilini Yaratish</h3>
+                <p class="text-[11px] text-slate-300">Har bir farzand uchun alohida unikal ID va darsliklar dasturi biriktiriladi.</p>
+            </div>
+
+            <div class="space-y-2.5 pt-1 text-xs">
+                <div>
+                    <label class="text-[11px] font-bold text-slate-300 block mb-1">Farzand Ism-Familiyasi</label>
+                    <input type="text" id="newChildNameInput" placeholder="Masalan: Jasur Alimov" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500">
+                </div>
+
+                <div>
+                    <label class="text-[11px] font-bold text-slate-300 block mb-1">Sinfi (1-11 Sinf DTS)</label>
+                    <select id="newChildGradeInput" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500">
+                        <option value="1">1-sinf</option>
+                        <option value="2">2-sinf</option>
+                        <option value="3">3-sinf</option>
+                        <option value="4">4-sinf</option>
+                        <option value="5" selected>5-sinf</option>
+                        <option value="6">6-sinf</option>
+                        <option value="7">7-sinf</option>
+                        <option value="8">8-sinf</option>
+                        <option value="9">9-sinf</option>
+                        <option value="10">10-sinf</option>
+                        <option value="11">11-sinf</option>
+                    </select>
+                </div>
+
+                <button onclick="handleAddNewChildSubmit()" class="w-full py-2.5 bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white font-bold text-xs rounded-xl shadow-lg shadow-cyan-500/20 transition">
+                    ➕ Ro'yxatga Qo'shish
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- ℹ️ MODAL: DASTUR HAQIDA & ASOSIY MAQSAD (POYLOQCHILIK EMAS — MEHR VA XAVFSIZLIK) -->
     <div id="modal-about" class="subpage-modal space-y-4">
         <div class="flex items-center justify-between pb-3 border-b border-slate-800">
@@ -2920,9 +3111,10 @@ const I18N = {
     }
 };
 
-// 3. KO'P FARZANDLIK TIZIMI MA'LUMOTLARI
-let childrenDatabase = {
-    "child_1": {
+// 3. DINAMIK KO'P FARZANDLIK VA PROFIL BOSHQARUVI (LOCALSTORAGE & UNIQUE ID)
+const DEFAULT_INITIAL_CHILDREN = {
+    "CH-101": {
+        id: "CH-101",
         name: "Aliyor Valijonov",
         name_ru: "Алиёр Валиджонов",
         username: "@aliyor_v",
@@ -2930,27 +3122,27 @@ let childrenDatabase = {
         emaktabLogin: "aliyor_kundalik",
         emaktabPassword: "••••••••",
         grade: 5,
-        battery: 84,
-        screenTime: "3s 20d",
-        screenTime_ru: "3ч 20м",
-        remaining: "1s 15d",
-        remaining_ru: "1ч 15м",
+        battery: 86,
+        screenTime: "2s 45d",
+        screenTime_ru: "2ч 45м",
+        remaining: "1s 30d",
+        remaining_ru: "1ч 30м",
         location: {
             lat: 41.3145,
             lng: 69.2812,
             address: "Yunusobod 4-mavze, 24-maktab",
             address_ru: "Юнусабад 4-й квартал, 24-я школа",
             geofences: [
-                { name: "🏠 Uy / Дом (Yunusobod)", status: "Tashqarisida / Снаружи", color: "text-slate-400" },
-                { name: "🏫 24-Maktab / 24-Школа", status: "Ichida (Faol) / Внутри (Активен)", color: "text-emerald-400" }
+                { name: "🏠 Uy / Дом", status: "Xavfsiz / Безопасно", color: "text-emerald-400" },
+                { name: "🏫 24-Maktab / 24-Школа", status: "Ichida (Faol) / Внутри", color: "text-sky-400" }
             ]
         },
         apps: [
-            { name: "YouTube", time: "1s 20d", percent: 35, category: "Ta'lim / Video", category_ru: "Видео / Обучение", color: "bg-red-500", icon: "▶️" },
-            { name: "Instagram (Reels)", time: "55d", percent: 24, category: "Ijtimoiy Tarmoq", category_ru: "Соцсеть", color: "bg-pink-500", icon: "📸" },
-            { name: "Telegram", time: "45d", percent: 20, category: "Muloqot", category_ru: "Общение", color: "bg-sky-500", icon: "💬" },
-            { name: "Duolingo", time: "30d", percent: 13, category: "Til O'rganish", category_ru: "Изучение языков", color: "bg-emerald-500", icon: "🦉" },
-            { name: "PUBG Mobile", time: "15d", percent: 8, category: "O'yin", category_ru: "Игры", color: "bg-amber-500", icon: "🎮" }
+            { name: "YouTube", time: "1s 15d", percent: 35, category: "Ta'lim / Video", color: "bg-red-500", icon: "▶️" },
+            { name: "Instagram (Reels)", time: "45d", percent: 25, category: "Ijtimoiy Tarmoq", color: "bg-pink-500", icon: "📸" },
+            { name: "Telegram", time: "35d", percent: 20, category: "Muloqot", color: "bg-sky-500", icon: "💬" },
+            { name: "Duolingo", time: "25d", percent: 12, category: "Til O'rganish", color: "bg-emerald-500", icon: "🦉" },
+            { name: "O'yinlar", time: "15d", percent: 8, category: "O'yin", color: "bg-amber-500", icon: "🎮" }
         ],
         interests: {
             uz: [
@@ -2961,91 +3153,183 @@ let childrenDatabase = {
             ru: [
                 { topic: "Программирование и IT", percent: 85, color: "bg-emerald-500" },
                 { topic: "Робототехника и Физика", percent: 72, color: "bg-sky-500" },
-                { topic: "Английская речь и общение", percent: 65, color: "bg-purple-500" }
-            ]
-        }
-    },
-    "child_2": {
-        name: "Madina Valijonova",
-        name_ru: "Мадина Валиджонова",
-        username: "@madina_v",
-        phone: "+998 90 987 65 43",
-        emaktabLogin: "madina_kundalik",
-        emaktabPassword: "••••••••",
-        grade: 3,
-        battery: 92,
-        screenTime: "2s 10d",
-        screenTime_ru: "2ч 10м",
-        remaining: "50d",
-        remaining_ru: "50м",
-        location: {
-            lat: 41.3110,
-            lng: 69.2797,
-            address: "Mirzo Ulug'bek, San'at Maktabi",
-            address_ru: "Мирзо Улугбек, Школа искусств",
-            geofences: [
-                { name: "🏠 Uy / Дом", status: "Tashqarisida / Снаружи", color: "text-slate-400" },
-                { name: "🎨 San'at Maktabi / Школа искусств", status: "Ichida / Внутри", color: "text-emerald-400" }
-            ]
-        },
-        apps: [
-            { name: "YouTube Kids", time: "1s 10d", percent: 54, category: "Multfilm / Ta'lim", category_ru: "Мультфильмы", color: "bg-amber-500", icon: "🧸" },
-            { name: "Picsart", time: "40d", percent: 30, category: "San'at va Ijod", category_ru: "Творчество", color: "bg-purple-500", icon: "🎨" },
-            { name: "Telegram", time: "20d", percent: 16, category: "Oila guruhi", category_ru: "Семейная группа", color: "bg-sky-500", icon: "💬" }
-        ],
-        interests: {
-            uz: [
-                { topic: "Tasviriy San'at va Rassomlik", percent: 92, color: "bg-pink-500" },
-                { topic: "Ertaklar va O'qish", percent: 80, color: "bg-emerald-500" }
-            ],
-            ru: [
-                { topic: "Изобразительное искусство", percent: 92, color: "bg-pink-500" },
-                { topic: "Сказки и Чтение", percent: 80, color: "bg-emerald-500" }
-            ]
-        }
-    },
-    "child_3": {
-        name: "Temur Valijonov",
-        name_ru: "Темур Валиджонов",
-        username: "@temur_v",
-        phone: "+998 90 555 44 33",
-        emaktabLogin: "temur_kundalik",
-        emaktabPassword: "••••••••",
-        grade: 9,
-        battery: 76,
-        screenTime: "4s 15d",
-        screenTime_ru: "4ч 15м",
-        remaining: "45d",
-        remaining_ru: "45м",
-        location: {
-            lat: 41.3200,
-            lng: 69.2850,
-            address: "Shayxontohur, O'quv Markazi",
-            address_ru: "Шайхантахур, Учебный центр",
-            geofences: [
-                { name: "🏠 Uy / Дом", status: "Tashqarisida / Снаружи", color: "text-slate-400" },
-                { name: "💻 IT Markazi / IT Центр", status: "Ichida / Внутри", color: "text-emerald-400" }
-            ]
-        },
-        apps: [
-            { name: "VS Code / GitHub", time: "2s 10d", percent: 51, category: "Dasturlash", category_ru: "Разработка", color: "bg-sky-500", icon: "💻" },
-            { name: "Telegram", time: "1s 15d", percent: 30, category: "Guruhlar", category_ru: "Группы", color: "bg-sky-500", icon: "💬" },
-            { name: "YouTube", time: "50d", percent: 19, category: "Darsliklar", category_ru: "Уроки", color: "bg-red-500", icon: "▶️" }
-        ],
-        interests: {
-            uz: [
-                { topic: "Frontend & Backend Development", percent: 94, color: "bg-emerald-500" },
-                { topic: "Matematika va Algoritmlar", percent: 88, color: "bg-sky-500" }
-            ],
-            ru: [
-                { topic: "Frontend & Backend разработка", percent: 94, color: "bg-emerald-500" },
-                { topic: "Математика и Алгоритмы", percent: 88, color: "bg-sky-500" }
+                { topic: "Английский разговорный", percent: 65, color: "bg-purple-500" }
             ]
         }
     }
 };
 
-let currentChildKey = "child_1";
+function loadChildrenDatabase() {
+    try {
+        const saved = localStorage.getItem('qalqon_children_database');
+        if (saved) {
+            const parsed = JSON.parse(saved);
+            if (parsed && Object.keys(parsed).length > 0) return parsed;
+        }
+    } catch(e) {}
+    return DEFAULT_INITIAL_CHILDREN;
+}
+
+function saveChildrenDatabase() {
+    try {
+        localStorage.setItem('qalqon_children_database', JSON.stringify(childrenDatabase));
+    } catch(e) {}
+}
+
+let childrenDatabase = loadChildrenDatabase();
+let currentChildKey = Object.keys(childrenDatabase)[0] || "CH-101";
+
+function renderChildSelectDropdown() {
+    const select = document.getElementById('childSelect');
+    if (!select) return;
+    select.innerHTML = Object.keys(childrenDatabase).map(k => {
+        const c = childrenDatabase[k];
+        const isSelected = (k === currentChildKey) ? 'selected' : '';
+        return \`<option value="\${k}" \${isSelected}>👦 \${c.name} (\${c.grade}-sinf [ID: \${k}])</option>\`;
+    }).join('');
+}
+
+function switchChild(childKey) {
+    if (childrenDatabase[childKey]) {
+        currentChildKey = childKey;
+        renderActiveChild();
+        renderSchoolCurriculum();
+        updateMapCoordinates();
+    }
+}
+
+function handleAddNewChildSubmit() {
+    const nameInput = document.getElementById('newChildNameInput');
+    const gradeSelect = document.getElementById('newChildGradeInput');
+    const name = nameInput ? nameInput.value.trim() : "";
+    const grade = gradeSelect ? parseInt(gradeSelect.value) : 5;
+
+    if (!name) {
+        alert("Iltimos, farzandingizning ism-familiyasini kiriting!");
+        return;
+    }
+
+    const newId = "CH-" + Math.floor(1000 + Math.random() * 9000);
+    childrenDatabase[newId] = {
+        id: newId,
+        name: name,
+        name_ru: name,
+        username: "@" + name.toLowerCase().replace(/\\s+/g, '_'),
+        phone: "+998 90 --- -- --",
+        grade: grade,
+        battery: 92,
+        screenTime: "1s 30d",
+        screenTime_ru: "1ч 30м",
+        remaining: "2s 30d",
+        remaining_ru: "2ч 30м",
+        location: {
+            lat: 41.311081,
+            lng: 69.240562,
+            address: "Toshkent shahri (Yangi profil)",
+            address_ru: "г. Ташкент (Новый профиль)",
+            geofences: [
+                { name: "🏠 Uy / Дом", status: "Xavfsiz / Безопасно", color: "text-emerald-400" },
+                { name: "🏫 Maktab / Школа", status: "Xavfsiz / Безопасно", color: "text-sky-400" }
+            ]
+        },
+        apps: [
+            { name: "YouTube", time: "45d", percent: 40, category: "Ta'lim / Video", color: "bg-red-500", icon: "▶️" },
+            { name: "Telegram", time: "30d", percent: 30, category: "Muloqot", color: "bg-sky-500", icon: "💬" },
+            { name: "Duolingo", time: "20d", percent: 20, category: "Ta'lim", color: "bg-emerald-500", icon: "🦉" },
+            { name: "O'yinlar", time: "10d", percent: 10, category: "O'yin", color: "bg-amber-500", icon: "🎮" }
+        ],
+        interests: {
+            uz: [
+                { topic: "Dasturlash va IT", percent: 80, color: "bg-emerald-500" },
+                { topic: "Matematika va Mantiq", percent: 75, color: "bg-sky-500" }
+            ],
+            ru: [
+                { topic: "Программирование и IT", percent: 80, color: "bg-emerald-500" },
+                { topic: "Математика и Логика", percent: 75, color: "bg-sky-500" }
+            ]
+        }
+    };
+
+    saveChildrenDatabase();
+    currentChildKey = newId;
+    renderChildSelectDropdown();
+    renderActiveChild();
+    renderSchoolCurriculum();
+    closeSubpage();
+
+    if (nameInput) nameInput.value = "";
+    alert(\`🎉 Yangi farzand profili muvaffaqiyatli yaratildi! (ID: \${newId})\`);
+}
+
+function handleDeleteActiveChild() {
+    const child = childrenDatabase[currentChildKey];
+    if (!child) return;
+
+    const count = Object.keys(childrenDatabase).length;
+    if (count <= 1) {
+        alert("⚠️ Sizda kamida 1 ta farzand profili bo'lishi kerak. O'chirishdan oldin yangisini qo'shing!");
+        return;
+    }
+
+    const confirmDelete = confirm(\`Haqiqatan ham «\${child.name} (ID: \${currentChildKey})» profilini ro'yxatdan butunlay olib tashlamoqchimisiz?\`);
+    if (confirmDelete) {
+        delete childrenDatabase[currentChildKey];
+        saveChildrenDatabase();
+        currentChildKey = Object.keys(childrenDatabase)[0];
+        renderChildSelectDropdown();
+        renderActiveChild();
+        renderSchoolCurriculum();
+        alert("✅ Farzand profili ro'yxatdan muvaffaqiyatli olib tashlandi!");
+    }
+}
+
+function saveParentOnboarding() {
+    const fam = document.getElementById('onboardFamilyName');
+    const par = document.getElementById('onboardParentName');
+    const pho = document.getElementById('onboardParentPhone');
+    const chName = document.getElementById('onboardChildName');
+    const chGrade = document.getElementById('onboardChildGrade');
+
+    const familyName = fam ? fam.value.trim() : "";
+    const parentName = par ? par.value.trim() : "";
+    const phone = pho ? pho.value.trim() : "";
+    const childName = chName ? chName.value.trim() : "";
+    const grade = chGrade ? parseInt(chGrade.value) : 5;
+
+    if (!parentName || !childName) {
+        alert("Iltimos, o'z ismingiz va birinchi farzandingiz ismini kiriting!");
+        return;
+    }
+
+    localStorage.setItem('parent_onboarded', 'true');
+    localStorage.setItem('parent_name', parentName);
+    localStorage.setItem('family_name', familyName);
+    localStorage.setItem('parent_phone', phone);
+
+    if (childrenDatabase[currentChildKey]) {
+        childrenDatabase[currentChildKey].name = childName;
+        childrenDatabase[currentChildKey].name_ru = childName;
+        childrenDatabase[currentChildKey].grade = grade;
+    }
+    saveChildrenDatabase();
+
+    renderChildSelectDropdown();
+    renderActiveChild();
+    renderSchoolCurriculum();
+    closeSubpage();
+    alert("🎉 Oila va farzand ma'lumotlari muvaffaqiyatli saqlandi!");
+}
+
+function checkParentOnboarding() {
+    const isParent = (currentAppRole === 'parent');
+    const onboarded = localStorage.getItem('parent_onboarded') === 'true';
+    if (isParent && !onboarded) {
+        setTimeout(() => {
+            openSubpage('modal-parent-onboarding');
+        }, 300);
+    }
+}
+
 let currentLang = new URLSearchParams(window.location.search).get('lang') || localStorage.getItem('app_lang') || 'uz';
 let currentTheme = localStorage.getItem('app_theme') || 'default';
 let userPlan = localStorage.getItem('user_plan') || 'pro'; // 'free' or 'pro'
@@ -4206,9 +4490,11 @@ document.addEventListener('DOMContentLoaded', () => {
     applyLanguageTranslations();
     updateAuthUI();
     switchAppRole(currentAppRole);
+    renderChildSelectDropdown();
     renderActiveChild();
     renderSchoolCurriculum();
     initRadarMap();
+    checkParentOnboarding();
 });
 
 </script>
