@@ -46,10 +46,31 @@ def save_admins():
 def save_users():
     save_json(USERS_FILE, USER_APPROVAL_STATUS)
 
+FAMILY_CODES_FILE = "family_codes.json"
+FAMILY_CODES = load_json(FAMILY_CODES_FILE, {})
+
+def get_unique_family_code(user_id):
+    uid_str = str(user_id)
+    if uid_str in FAMILY_CODES:
+        return FAMILY_CODES[uid_str]
+    
+    existing_codes = set(FAMILY_CODES.values())
+    for attempt in range(1000):
+        # 6 xonali unikal takrorlanmas kod
+        num = random.randint(100000, 999999)
+        code_str = f"{str(num)[:3]}-{str(num)[3:6]}"
+        if code_str not in existing_codes:
+            FAMILY_CODES[uid_str] = code_str
+            save_json(FAMILY_CODES_FILE, FAMILY_CODES)
+            return code_str
+    # Fallback
+    fallback = f"849-{abs(int(user_id)) % 900 + 100}"
+    FAMILY_CODES[uid_str] = fallback
+    save_json(FAMILY_CODES_FILE, FAMILY_CODES)
+    return fallback
+
 def generate_family_code(user_id):
-    num = abs((int(user_id) * 31 + 7919) % 900000) + 100000
-    s = str(num)
-    return f"{s[:3]}-{s[3:6]}"
+    return get_unique_family_code(user_id)
 
 def call_tg(method, data=None):
     url = f"{TELEGRAM_API}/{method}"
@@ -245,6 +266,31 @@ def handle_update(update):
                 )
 
             send_message(chat_id, get_start_menu_text(chat_id, lang, True, is_admin), get_start_keyboard(chat_id, lang))
+            return
+
+        if text.startswith("/taklif_farzand") or text.startswith("/invite"):
+            parts = text.split()
+            code = generate_family_code(chat_id)
+            parent_name = f"@{raw_username}" if raw_username else "Ota-onangiz"
+            if len(parts) > 1:
+                child_target = parts[1].replace("@", "").strip()
+                send_message(chat_id, f"🎙️ <b>OVOZLI TAKLIF YUBORILDI:</b>\n\nFarzandingiz @{child_target} ga ovozli xabar va ulanish havolasi tayyorlandi!\n\n🔗 Farzand ulanish kodi: <code>{code}</code>")
+                # Farzandga yuboriladigan ovozli taklif matni va tugma
+                child_invite_msg = (
+                    f"🎙️ <b>OVOZLI XABAR — QALQON AI:</b>\n\n"
+                    f"<i>«Assalomu alaykum, aziz do'stim! 🌟 {parent_name} sizni o'z farzandi sifatida ko'rsatdi va «Qalqon AI» xavfsizlik hamda dars yordamchisi dasturiga ulanishingizni so'ramoqda.\n\n"
+                    f"Dasturda 1-11 sinf darsliklari, Gemini AI do'st va a'lo baholar uchun yutuqlar bor! Pastdagi tugmani bosing va 4 ta qoida bilan tanishing.»</i>\n\n"
+                    f"🔑 <b>Oila kodingiz:</b> <code>{code}</code>"
+                )
+                child_markup = {
+                    "inline_keyboard": [
+                        [{"text": "🌟 Qalqon AI Bolalar Panelini Ochish", "web_app": {"url": f"{MINI_APP_URL}&role=child&code={code}&parent={raw_username}"}}]
+                    ]
+                }
+                # Farzand chatiga xabar (agar ma'lum bo'lsa yoki admin orqali)
+                send_message(chat_id, f"📋 <b>Farzand uchun tayyor taklifnoma:</b>\n\n{child_invite_msg}", child_markup)
+            else:
+                send_message(chat_id, f"⚠️ Foydalanish: <code>/invite @farzand_username</code>\n\n🔑 Oila kodingiz: <code>{code}</code>")
             return
 
         if text.startswith("/farzand"):
