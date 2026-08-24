@@ -129,9 +129,7 @@ def handle_update(update):
             send_message(chat_id, f"✅ <b>Muvaffaqiyatli:</b> @{target_username} ({target_chat_id}) uchun to'liq foydalanishga ruxsat berildi!")
             
             # Send message to the user
-            send_message(target_chat_id, f"🎉 <b>Tabriklaymiz!</b>
-
-Bosh administrator @ai_loyihachi sizning hisobingizni tasdiqladi! Endi barcha imkoniyatlar (lokatsiya, RAG darsliklar, AI tahlil) siz uchun to'liq faollashtirildi.", {
+            send_message(target_chat_id, "🎉 <b>Tabriklaymiz!</b>\n\nBosh administrator @ai_loyihachi sizning hisobingizni tasdiqladi! Endi barcha imkoniyatlar (lokatsiya, RAG darsliklar, AI tahlil) siz uchun to'liq faollashtirildi.", {
                 "inline_keyboard": [
                     [{"text": "🚀 Boshqaruv Panelini Ochish (Mini App)", "web_app": {"url": f"{MINI_APP_URL}&lang=uz"}}]
                 ]
@@ -251,7 +249,7 @@ Bosh administrator @ai_loyihachi sizning hisobingizni tasdiqladi! Endi barcha im
                     ]
                 }
                 notify_admins(
-                    f"👤 <b>YANGI OTA-ONA ULANI SH SO'ROVI:</b>\n\n"
+                    f"👤 <b>YANGI OTA-ONA ULANISH SO'ROVI:</b>\n\n"
                     f"• <b>Username:</b> @{raw_username}\n"
                     f"• <b>Telegram ID:</b> <code>{chat_id}</code>\n"
                     f"• <b>Oila kodi:</b> <code>{generate_family_code(chat_id)}</code>\n\n"
