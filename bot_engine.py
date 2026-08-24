@@ -14,7 +14,7 @@ MINI_APP_URL = "https://abduquddus1990.github.io/ota-ona-nazorat/?v=5.3"
 TELEGRAM_API = f"https://api.telegram.org/bot{BOT_TOKEN}"
 
 # Dynamic Admin & Partner Storage
-ADMIN_USERNAMES = {"ai_loyihachi", "superman_uzb"}
+ADMIN_USERNAMES = {"ai_loyihachi"}
 ADMIN_CHAT_IDS = set()
 USER_APPROVAL_STATUS = {}
 USER_LANG = {}
@@ -122,15 +122,28 @@ def handle_update(update):
         call_tg("answerCallbackQuery", {"callback_query_id": cb["id"]})
 
         if data.startswith("admin_approve_"):
-            target = data.replace("admin_approve_", "")
-            USER_APPROVAL_STATUS[target] = "approved"
-            send_message(chat_id, f"✅ <b>Muvaffaqiyatli:</b> {target} uchun tizimdan foydalanish va farzand qo'shishga to'liq ruxsat berildi!")
+            parts = data.replace("admin_approve_", "").split("_")
+            target_chat_id = parts[0]
+            target_username = parts[1] if len(parts) > 1 else ""
+            USER_APPROVAL_STATUS[target_chat_id] = "approved"
+            send_message(chat_id, f"✅ <b>Muvaffaqiyatli:</b> @{target_username} ({target_chat_id}) uchun to'liq foydalanishga ruxsat berildi!")
+            
+            # Send message to the user
+            send_message(target_chat_id, f"🎉 <b>Tabriklaymiz!</b>
+
+Bosh administrator @ai_loyihachi sizning hisobingizni tasdiqladi! Endi barcha imkoniyatlar (lokatsiya, RAG darsliklar, AI tahlil) siz uchun to'liq faollashtirildi.", {
+                "inline_keyboard": [
+                    [{"text": "🚀 Boshqaruv Panelini Ochish (Mini App)", "web_app": {"url": f"{MINI_APP_URL}&lang=uz"}}]
+                ]
+            })
             return
 
         if data.startswith("admin_reject_"):
-            target = data.replace("admin_reject_", "")
-            USER_APPROVAL_STATUS[target] = "rejected"
-            send_message(chat_id, f"❌ <b>Rad etildi:</b> {target} so'rovi rad etildi (Test rejimida qoladi).")
+            parts = data.replace("admin_reject_", "").split("_")
+            target_chat_id = parts[0]
+            target_username = parts[1] if len(parts) > 1 else ""
+            USER_APPROVAL_STATUS[target_chat_id] = "rejected"
+            send_message(chat_id, f"❌ <b>Rad etildi:</b> @{target_username} ({target_chat_id}) so'rovi test rejimida qoldirildi.")
             return
 
         if data.startswith("action_pair"):
@@ -225,6 +238,26 @@ def handle_update(update):
             if "pair_" in text:
                 send_message(chat_id, "✅ <b>Siz ota-onangizning profiliga muvaffaqiyatli bog'landingiz!</b> Barcha darsliklar va imkoniyatlar faollashtirildi.")
                 return
+
+            
+            if not is_admin and raw_username:
+                # Notify admin about new user registration request
+                admin_markup = {
+                    "inline_keyboard": [
+                        [
+                            {"text": "✅ To'liq Ruxsat Berish", "callback_data": f"admin_approve_{chat_id}_{raw_username}"},
+                            {"text": "❌ Test Rejimida Qoldirish", "callback_data": f"admin_reject_{chat_id}_{raw_username}"}
+                        ]
+                    ]
+                }
+                notify_admins(
+                    f"👤 <b>YANGI OTA-ONA ULANI SH SO'ROVI:</b>\n\n"
+                    f"• <b>Username:</b> @{raw_username}\n"
+                    f"• <b>Telegram ID:</b> <code>{chat_id}</code>\n"
+                    f"• <b>Oila kodi:</b> <code>{generate_family_code(chat_id)}</code>\n\n"
+                    f"<i>Ushbu foydalanuvchiga to'liq (test bo'lmagan) variantdan foydalanishiga ruxsat berasizmi?</i>",
+                    admin_markup
+                )
 
             send_message(chat_id, get_start_menu_text(chat_id, lang, True, is_admin), get_start_keyboard(chat_id, lang))
             return
