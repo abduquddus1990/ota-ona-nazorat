@@ -243,8 +243,40 @@ def handle_update(update):
             except Exception:
                 pass
 
-            if "pair_" in text:
-                send_message(chat_id, "✅ <b>Siz ota-onangizning profiliga muvaffaqiyatli bog'landingiz!</b> Barcha darsliklar va imkoniyatlar faollashtirildi.")
+            if "child_" in text or "pair_" in text:
+                clean_code = text.replace("/start", "").replace("child_", "").replace("pair_", "").strip()
+                if not clean_code:
+                    clean_code = generate_family_code(chat_id)
+                
+                child_start_msg = (
+                    "🐺 <b>ASSALOMU ALAYKUM, YOSH QAHRAMON!</b>
+
+"
+                    "Sizni ota-onangiz «Qalqon AI» xavfsizlik va dars yordamchisi tizimiga taklif qildi! 🌟
+
+"
+                    "<b>Dasturdagi 4 ta asosiy imkoniyat:</b>
+"
+                    "• 📍 <b>Jonli radar va xavfsiz joylashuv</b>
+"
+                    "• 🎬 <b>YouTube va video qiziqishlari tahlili</b>
+"
+                    "• 📱 <b>Ekran vaqti va ilovalar balansi</b>
+"
+                    "• 📚 <b>1-11 sinf DTS darsliklari va Gemini AI do'st</b>
+
+"
+                    f"🔑 <b>Oila kodingiz:</b> <code>{clean_code}</code>
+
+"
+                    "Pastdagi tugmani bosing va 4 ta jabha bo'yicha qoidalar bilan tanishib, tasdiqlang:"
+                )
+                child_markup = {
+                    "inline_keyboard": [
+                        [{"text": "🌟 Bola Panelini Ochish & Rozilik Berish", "web_app": {"url": f"{MINI_APP_URL}&role=child&code={clean_code}"}}]
+                    ]
+                }
+                send_message(chat_id, child_start_msg, child_markup)
                 return
 
             if not is_admin and raw_username:

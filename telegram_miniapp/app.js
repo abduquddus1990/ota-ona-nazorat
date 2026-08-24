@@ -718,6 +718,31 @@ function saveParentOnboarding() {
     alert("🎉 Oila va farzand ma'lumotlari muvaffaqiyatli saqlandi!");
 }
 
+
+function checkChildConsentStatus() {
+    if (currentAppRole === 'child') {
+        const consented = localStorage.getItem('child_consented') === 'true';
+        const overlay = document.getElementById('childConsentOverlay');
+        const codeInput = document.getElementById('childConsentFamilyCode');
+        
+        if (codeInput && familyCode) {
+            codeInput.value = familyCode.replace('child_', '').replace('pair_', '');
+        }
+
+        if (overlay) {
+            if (!consented) {
+                overlay.classList.remove('hidden');
+            } else {
+                overlay.classList.add('hidden');
+            }
+        }
+        
+        // Farzand panelini majburiy tanlash
+        switchChildTab('child-tab-home');
+    }
+}
+
+
 function checkParentOnboarding() {
     const isParent = (currentAppRole === 'parent');
     const onboarded = localStorage.getItem('parent_onboarded') === 'true';
@@ -728,14 +753,24 @@ function checkParentOnboarding() {
     }
 }
 
-let currentLang = new URLSearchParams(window.location.search).get('lang') || localStorage.getItem('app_lang') || 'uz';
+const urlParams = new URLSearchParams(window.location.search);
+const urlRole = urlParams.get('role');
+const urlCode = urlParams.get('code') || urlParams.get('start');
+
+let currentLang = urlParams.get('lang') || localStorage.getItem('app_lang') || 'uz';
 let currentTheme = localStorage.getItem('app_theme') || 'default';
-let userPlan = localStorage.getItem('user_plan') || 'pro'; // 'free' or 'pro'
+let userPlan = localStorage.getItem('user_plan') || 'pro';
 let activeSchoolPeriod = 'weekly';
 let isRecordingVoice = false;
 let uploadedImageBase64 = null;
-let familyCode = "849-210";
-let currentAppRole = localStorage.getItem('app_role') || 'parent'; // 'parent' or 'child'
+let familyCode = urlCode || "849-210";
+
+// Agar havola bola uchun bo'lsa
+let currentAppRole = urlRole || localStorage.getItem('app_role') || 'parent';
+if (urlRole === 'child' || (urlCode && (urlCode.startsWith('child') || urlCode.startsWith('pair')))) {
+    currentAppRole = 'child';
+    localStorage.setItem('app_role', 'child');
+} // 'parent' or 'child'
 
 // Ota-ona autentifikatsiyasi va admin tasdiq holati
 let currentAuthUser = JSON.parse(localStorage.getItem('auth_user') || 'null');
@@ -1893,4 +1928,5 @@ document.addEventListener('DOMContentLoaded', () => {
     renderSchoolCurriculum();
     initRadarMap();
     checkParentOnboarding();
+    checkChildConsentStatus();
 });
