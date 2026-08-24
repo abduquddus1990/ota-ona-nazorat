@@ -1,8 +1,16 @@
-﻿import urllib.request
+import urllib.request
 import json
 import time
 import sys
 import os
+
+# Fix Windows console UTF-8 output
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+        sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+    except Exception:
+        pass
 
 BOT_TOKEN = "8992925094:AAE5K1N8VVxiCh9P6H1j7hCrYoTeIBmC8r0"
 MINI_APP_URL = "https://abduquddus1990.github.io/ota-ona-nazorat/?v=5.4"
@@ -271,9 +279,9 @@ def setup_bot_commands():
 
 def main():
     print("="*60)
-    print("🛡️ QALQON AI TELEGRAM BOT ENGINE IS RUNNING 24/7...")
-    print(f"👑 Sole Admin: @ai_loyihachi")
-    print(f"📌 Admin Chat IDs cached: {list(ADMIN_CHAT_IDS)}")
+    print("[QALQON AI] Telegram Bot Engine is running 24/7...")
+    print(f"[QALQON AI] Sole Admin: @ai_loyihachi")
+    print(f"[QALQON AI] Admin Chat IDs cached: {list(ADMIN_CHAT_IDS)}")
     print("="*60)
     setup_bot_commands()
 
