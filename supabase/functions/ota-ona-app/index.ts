@@ -556,6 +556,33 @@ body[data-theme="sky"] .chat-bubble-ai {
     border-color: #cbd5e1 !important;
 }
 
+/* 🌟 YORQIN FONLARDA KATAKLAR VA HARFLARNING YUQORI KONTRASTI */
+body[data-theme="silver"] input,
+body[data-theme="silver"] select,
+body[data-theme="silver"] textarea,
+body[data-theme="sky"] input,
+body[data-theme="sky"] select,
+body[data-theme="sky"] textarea {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    border: 1.5px solid #64748b !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08) !important;
+    font-weight: 600 !important;
+}
+
+body[data-theme="silver"] input::placeholder,
+body[data-theme="sky"] input::placeholder {
+    color: #64748b !important;
+    font-weight: 500 !important;
+}
+
+body[data-theme="silver"] .subpage-modal,
+body[data-theme="sky"] .subpage-modal {
+    background-color: #f1f5f9 !important;
+    color: #0f172a !important;
+    background-image: linear-gradient(rgba(241, 245, 249, 0.94), rgba(226, 232, 240, 0.98)), url('assets/wolf_adult_hero.png') !important;
+}
+
 </style>
 </head>
 <body class="p-3 max-w-md mx-auto relative antialiased text-slate-200">
@@ -653,44 +680,7 @@ body[data-theme="sky"] .chat-bubble-ai {
         </div>
     </div>
 
-            <!-- Psychological Trust Card -->
-            <div class="glass-panel p-5 space-y-3.5 border-indigo-500/40 bg-slate-900/90 rounded-3xl text-center shadow-xl">
-                <span class="text-3xl">🛡️✨</span>
-                <h2 class="text-sm font-black text-white leading-snug">
-                    Salom, Yosh Qahramon! 🌟
-                </h2>
-                <div class="p-3.5 rounded-2xl bg-indigo-950/40 border border-indigo-500/30 text-left space-y-2 text-xs text-slate-200 leading-relaxed">
-                    <p>
-                        <b>Bizning asosiy qoidamiz:</b> Sening ota-onang seni <u>hech qachon poylamaydi</u> va shaxsiy yozishmalaringni o'qimaydi.
-                    </p>
-                    <p class="text-[11px] text-indigo-200">
-                        Sening o'z roziligingsiz hech qanday xavfsizlik funksiyalari yoqilmaydi. Bu ilova darslarda a'lochi bo'lishing, qiyin misollarni oson yechishing va xavfsizligingda senga eng yaqin do'st bo'lish uchun yaratilgan! 🐺
-                    </p>
-                </div>
-
-                <!-- Family Code Input (Oral code from parents) -->
-                <div class="space-y-1.5 text-left pt-1">
-                    <label class="text-[11px] font-bold text-slate-300 block">
-                        🔑 6 Xonali Oila Kodi <span class="text-[10px] text-indigo-300 font-normal">(Ota-onangizdan og'zaki oling):</span>
-                    </label>
-                    <input type="text" id="childConsentFamilyCode" placeholder="Masalan: 849-210" maxlength="7" class="w-full bg-slate-950 border-2 border-indigo-500/60 rounded-2xl px-4 py-3 text-center text-lg font-black text-white font-mono tracking-widest focus:outline-none focus:border-cyan-400 placeholder-slate-600 transition">
-                    <p id="childConsentError" class="text-[10px] text-rose-400 font-bold text-center hidden">⚠️ Iltimos, 6 xonali oila kodini to'liq kiriting!</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Action Buttons -->
-        <div class="space-y-2.5 pb-4 pt-3">
-            <button onclick="handleChildConsentAccept()" class="w-full py-3.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-black text-sm rounded-2xl transition shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2">
-                <span>✅</span>
-                <span>Roziman va Ulanaman</span>
-            </button>
-            <button onclick="handleChildConsentDecline()" class="w-full py-2.5 bg-slate-900/90 hover:bg-slate-800 border border-slate-700 text-slate-400 hover:text-white font-bold text-xs rounded-2xl transition">
-                <span>❌</span>
-                <span>Qarshiman (Hozircha emas)</span>
-            </button>
-        </div>
-    </div>
+            
 
     <div class="ambient-glow-bg"></div>
 
@@ -2064,12 +2054,12 @@ body[data-theme="sky"] .chat-bubble-ai {
         </div>
     </div>
 
-    <!-- 💎 MODAL: TARIFLAR VA OBUNA (10,000 SO'M / HAR BIR BOLA UCHUN) -->
+    <!-- 💎 MODAL: TARIFLAR, TELEGRAM YULDUZLARI (STARS) & TO'LOV -->
     <div id="modal-plans" class="subpage-modal space-y-4">
         <div class="flex items-center justify-between pb-3 border-b border-slate-800">
-            <button onclick="closeSubpage()" class="text-xs font-bold text-emerald-400" data-i18n="backBtn">← Orqaga</button>
-            <h2 class="text-xs font-bold text-white" data-i18n="plansSelect">Tarif Rejalari / Тарифы</h2>
-            <span class="w-8"></span>
+            <button onclick="closeSubpage()" class="text-xs font-bold text-emerald-400">← Orqaga</button>
+            <h2 class="text-xs font-bold text-white">Tariflar & Pro Obuna</h2>
+            <button onclick="closeSubpage()" class="text-slate-400 hover:text-white text-xs px-2 py-0.5 rounded-lg bg-slate-800">✕</button>
         </div>
 
         <div class="space-y-3">
@@ -2077,37 +2067,56 @@ body[data-theme="sky"] .chat-bubble-ai {
             <div class="glass-card p-4 border-emerald-500/40 relative overflow-hidden">
                 <div class="flex justify-between items-start">
                     <div>
-                        <span class="text-[9px] font-bold text-emerald-400 bg-emerald-500/20 px-2 py-0.5 rounded-full" data-i18n="freePlanBadge">Bepul Tarif (Free)</span>
-                        <h3 class="text-sm font-bold text-white mt-1" data-i18n="freePlanTitle">Free Basic</h3>
-                        <p class="text-[11px] text-slate-400 mt-1" data-i18n="freePlanDesc">📍 Jonli Lokatsiya & Radar (100% Bepul), batareya va umumiy ekran vaqti</p>
+                        <span class="text-[9px] font-bold text-emerald-400 bg-emerald-500/20 px-2 py-0.5 rounded-full">Bepul Reja (Free)</span>
+                        <h3 class="text-sm font-bold text-white mt-1">Free Basic</h3>
+                        <p class="text-[11px] text-slate-400 mt-1">📍 Jonli Lokatsiya & Radar (100% Bepul), batareya va umumiy ekran vaqti</p>
                     </div>
                     <div class="text-right">
-                        <div class="text-base font-black text-white" data-i18n="freePrice">0 so'm</div>
-                        <span class="text-[10px] text-slate-500" data-i18n="foreverFree">Hozirda bepul</span>
+                        <div class="text-base font-black text-white">0 so'm</div>
+                        <span class="text-[10px] text-slate-500">Hozirda bepul</span>
                     </div>
-                </div>
-                <!-- Sifat va Barqarorlik Ogohlantirishi -->
-                <div class="mt-2.5 p-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-[10px] text-amber-300/90 leading-tight flex items-start gap-1.5">
-                    <span class="text-xs">⚠️</span>
-                    <span data-i18n="freeQualityNotice">Eslatma: Tizim sifati va serverlar barqarorligini ta'minlash maqsadida kelajakda bepul versiyaga ham juda kam (ramziy) miqdorda to'lov joriy etilishi mumkin.</span>
                 </div>
             </div>
 
-            <!-- Pro Plan (10,000 so'm har bir bola uchun) -->
-            <div class="glass-card p-4 border-amber-500/50 bg-amber-500/5 relative overflow-hidden">
+            <!-- Pro Plan (10,000 so'm / 50 Telegram Yulduzlari) -->
+            <div class="glass-card p-4 border-amber-500/50 bg-amber-500/5 relative overflow-hidden space-y-3">
                 <div class="flex justify-between items-start">
                     <div>
-                        <span class="text-[9px] font-bold text-amber-400 bg-amber-500/20 px-2 py-0.5 rounded-full" data-i18n="proPlanBadge">Premium Farzand Nazorati</span>
-                        <h3 class="text-sm font-bold text-white mt-1" data-i18n="proPlanTitle">Pro Versiya 💎</h3>
-                        <p class="text-[11px] text-slate-300 mt-1" data-i18n="proPlanDesc">🧠 Gemini AI Murabbiy (Ovoz/Rasm/Matn), 📚 1-11 Sinf DTS e-Maktab 100 ballik tahlil va 🎬 Reels chuqur tahlili</p>
+                        <span class="text-[9px] font-bold text-amber-400 bg-amber-500/20 px-2 py-0.5 rounded-full">Premium Farzand Nazorati</span>
+                        <h3 class="text-sm font-bold text-white mt-1">Pro Versiya 💎</h3>
+                        <p class="text-[11px] text-slate-300 mt-1">🧠 Gemini AI Murabbiy (Ovoz/Rasm/Matn), 📚 1-11 Sinf DTS e-Maktab 100 ballik tahlil va 🎬 Reels tahlili</p>
                     </div>
                     <div class="text-right">
-                        <div class="text-base font-black text-amber-400" data-i18n="proPrice">10,000</div>
-                        <span class="text-[10px] text-slate-400" data-i18n="perChildMonth">so'm / oy (1 bola uchun)</span>
+                        <div class="text-base font-black text-amber-400">10,000 so'm</div>
+                        <span class="text-[10px] text-slate-400">yoki ⭐ 50 Stars / oy</span>
                     </div>
                 </div>
-                <button onclick="togglePlanUpgrade()" id="btnPlanToggle" class="w-full mt-3 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-amber-500/20" data-i18n="activateProBtn">
-                    💎 Pro Versiyani Faollashtirish
+
+                <!-- Telegram Stars To'lov Tugmasi -->
+                <div class="pt-2 border-t border-slate-800 space-y-2">
+                    <button onclick="handlePayWithStars()" class="w-full py-2.5 bg-gradient-to-r from-amber-500 via-yellow-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-slate-950 font-black text-xs rounded-xl shadow-lg shadow-amber-500/25 transition flex items-center justify-center gap-2">
+                        <span>⭐</span>
+                        <span>50 Telegram Yulduzlari Bilan To'lash (10,000 so'm)</span>
+                    </button>
+                    
+                    <button onclick="handlePayWithCardOrTon()" class="w-full py-2 bg-slate-900/90 hover:bg-slate-800 border border-slate-700 text-slate-300 font-bold text-xs rounded-xl transition flex items-center justify-center gap-2">
+                        <span>💳</span>
+                        <span>Karta (Click / Payme) yoki 💎 TON Hamyon</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Yulduzcha Sotib Olish Bo'limi -->
+            <div class="p-3.5 rounded-2xl bg-slate-900/90 border border-indigo-500/30 space-y-2 text-xs">
+                <div class="font-bold text-indigo-300 flex items-center gap-1.5">
+                    <span>⭐</span>
+                    <span>Hisobingizda Yulduzcha (Stars) Yo'qmi?</span>
+                </div>
+                <p class="text-[11px] text-slate-400 leading-relaxed">
+                    Siz rasmiy Telegram platformasi orqali yoki to'g'ridan-to'g'ri kartangiz bilan yulduzchalarni tezkor xarid qilishingiz mumkin. Hech qanday murakkab qog'ozbozliksiz 1 soniyada faollashadi.
+                </p>
+                <button onclick="openStarsBuyBot()" class="w-full py-2 bg-indigo-600/30 hover:bg-indigo-600/50 border border-indigo-500/40 text-indigo-200 font-bold text-xs rounded-xl transition">
+                    ⭐ Yulduzcha Xarid Qilish (Bot orqali) ↗
                 </button>
             </div>
         </div>
@@ -3327,9 +3336,8 @@ function checkChildConsentStatus() {
         const overlay = document.getElementById('childConsentOverlay');
         const codeInput = document.getElementById('childConsentFamilyCode');
         
-        if (codeInput && familyCode) {
-            codeInput.value = familyCode.replace('child_', '').replace('pair_', '');
-        }
+        // Farzand og'zaki kodni qo'lda kiritadi
+        if (codeInput) codeInput.value = "";
 
         if (overlay) {
             if (!consented) {

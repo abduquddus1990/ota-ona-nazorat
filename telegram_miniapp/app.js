@@ -725,9 +725,8 @@ function checkChildConsentStatus() {
         const overlay = document.getElementById('childConsentOverlay');
         const codeInput = document.getElementById('childConsentFamilyCode');
         
-        if (codeInput && familyCode) {
-            codeInput.value = familyCode.replace('child_', '').replace('pair_', '');
-        }
+        // Farzand og'zaki kodni qo'lda kiritadi
+        if (codeInput) codeInput.value = "";
 
         if (overlay) {
             if (!consented) {

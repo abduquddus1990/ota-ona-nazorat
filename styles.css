@@ -533,3 +533,30 @@ body[data-theme="sky"] .chat-bubble-ai {
     color: #0f172a !important;
     border-color: #cbd5e1 !important;
 }
+
+/* 🌟 YORQIN FONLARDA KATAKLAR VA HARFLARNING YUQORI KONTRASTI */
+body[data-theme="silver"] input,
+body[data-theme="silver"] select,
+body[data-theme="silver"] textarea,
+body[data-theme="sky"] input,
+body[data-theme="sky"] select,
+body[data-theme="sky"] textarea {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    border: 1.5px solid #64748b !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08) !important;
+    font-weight: 600 !important;
+}
+
+body[data-theme="silver"] input::placeholder,
+body[data-theme="sky"] input::placeholder {
+    color: #64748b !important;
+    font-weight: 500 !important;
+}
+
+body[data-theme="silver"] .subpage-modal,
+body[data-theme="sky"] .subpage-modal {
+    background-color: #f1f5f9 !important;
+    color: #0f172a !important;
+    background-image: linear-gradient(rgba(241, 245, 249, 0.94), rgba(226, 232, 240, 0.98)), url('assets/wolf_adult_hero.png') !important;
+}

