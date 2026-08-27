@@ -1929,3 +1929,76 @@ document.addEventListener('DOMContentLoaded', () => {
     checkParentOnboarding();
     checkChildConsentStatus();
 });
+
+function openUsernameGuideModal() {
+    closeSubpage();
+    openSubpage('modal-username-guide');
+}
+
+function toggleQuickMenu() {
+    const menu = document.getElementById('quickMenuDropdown');
+    if (menu) menu.classList.toggle('hidden');
+}
+
+function handleCompleteParentOnboarding() {
+    const familyName = document.getElementById('onboardFamilyName')?.value.trim() || "Bizning Oila";
+    const parentName = document.getElementById('onboardParentName')?.value.trim() || "Ota";
+    const parentPhone = document.getElementById('onboardParentPhone')?.value.trim() || "";
+    const parentUsername = document.getElementById('onboardParentUsername')?.value.trim().replace('@', '') || "";
+    
+    const motherName = document.getElementById('onboardMotherName')?.value.trim() || "";
+    const motherPhone = document.getElementById('onboardMotherPhone')?.value.trim() || "";
+    const motherUsername = document.getElementById('onboardMotherUsername')?.value.trim().replace('@', '') || "";
+
+    const childName = document.getElementById('onboardChildName')?.value.trim() || "Aliyor";
+    const childGrade = document.getElementById('onboardChildGrade')?.value || "5";
+    const childUsername = document.getElementById('onboardChildUsername')?.value.trim().replace('@', '') || "";
+
+    const familyData = {
+        familyName,
+        father: { name: parentName, phone: parentPhone, username: parentUsername },
+        mother: { name: motherName, phone: motherPhone, username: motherUsername },
+        children: [{ name: childName, grade: childGrade, username: childUsername, consented: false }],
+        code: familyCode || "849-210",
+        status: "pending"
+    };
+
+    localStorage.setItem('qalqon_family_profile', JSON.stringify(familyData));
+    localStorage.setItem('parent_onboarded', 'true');
+    localStorage.setItem('auth_status', 'pending');
+
+    // Yangi farzandni bazaga qo'shish
+    if (childName) {
+        const childId = `CH-${Math.floor(100 + Math.random() * 900)}`;
+        childrenDatabase[childId] = {
+            id: childId,
+            name: `${childName} (${childGrade}-sinf)`,
+            grade: parseInt(childGrade),
+            username: childUsername,
+            avatar: "👦",
+            battery: 92,
+            streak: 5,
+            points: 120,
+            consented: false,
+            location: { lat: 41.3111, lng: 69.2797, address: "Toshkent shahri (Rozilik kutilmoqda)" },
+            schedule: [
+                { time: "08:00", subject: "Matematika", room: "204-xona", status: "finished" }
+            ],
+            apps: [
+                { name: "YouTube", time: "45d", percent: 40, category: "Ta'lim / Video", color: "bg-red-500", icon: "▶️" }
+            ]
+        };
+        saveChildrenDatabase();
+        currentChildKey = childId;
+        renderChildSelectDropdown();
+        renderActiveChild();
+    }
+
+    closeSubpage();
+
+    // Show pending approval modal
+    const pendingOverlay = document.getElementById('pendingApprovalOverlay');
+    if (pendingOverlay) pendingOverlay.classList.remove('hidden');
+
+    alert("✅ Oila ma'lumotlari saqlandi va Bosh administrator (@ai_loyihachi) tasdig'iga yuborildi!");
+}
