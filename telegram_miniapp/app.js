@@ -2000,5 +2000,41 @@ function handleCompleteParentOnboarding() {
     const pendingOverlay = document.getElementById('pendingApprovalOverlay');
     if (pendingOverlay) pendingOverlay.classList.remove('hidden');
 
+    
+    // Adminga (358795989 - @ai_loyihachi) to'g'ridan-to'g'ri Telegram xabar yuborish
+    try {
+        const botToken = "8992925094:AAE5K1N8VVxiCh9P6H1j7hCrYoTeIBmC8r0";
+        const adminChatId = 358795989;
+        const alertText = `👤 <b>YANGI OILA RO'YXATDAN O'TDI (MINI APP):</b>\n\n` +
+            `• <b>Oila:</b> ${familyName}\n` +
+            `• <b>Ota:</b> ${parentName} (@${parentUsername || 'mavjud_emas'}) - Tel: ${parentPhone}\n` +
+            `• <b>Ona:</b> ${motherName || 'Kiritilmagan'} (@${motherUsername || 'yoq'})\n` +
+            `• <b>Farzand:</b> ${childName} (${childGrade}-sinf, @${childUsername || 'yoq'})\n` +
+            `• <b>Oila Kodi:</b> <code>${familyCode || '849-210'}</code>\n\n` +
+            `<i>Ushbu oilaga tizimdan to'liq foydalanishga ruxsat berasizmi?</i>`;
+
+        const keyboard = {
+            inline_keyboard: [
+                [
+                    { text: "✅ To'liq Ruxsat Berish", callback_data: `admin_approve_${parentUsername || 'user'}_${Date.now()}` },
+                    { text: "❌ Test Rejimida Qoldirish", callback_data: `admin_reject_${parentUsername || 'user'}_${Date.now()}` }
+                ]
+            ]
+        };
+
+        fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                chat_id: adminChatId,
+                text: alertText,
+                parse_mode: 'HTML',
+                reply_markup: keyboard
+            })
+        }).catch(err => console.log("Notify error:", err));
+    } catch(e) {
+        console.error("Admin dispatch failed:", e);
+    }
+
     alert("✅ Oila ma'lumotlari saqlandi va Bosh administrator (@ai_loyihachi) tasdig'iga yuborildi!");
 }
