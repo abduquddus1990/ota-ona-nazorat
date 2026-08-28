@@ -2003,7 +2003,8 @@ function handleCompleteParentOnboarding() {
     
     // Adminga (358795989 - @ai_loyihachi) to'g'ridan-to'g'ri Telegram xabar yuborish
     try {
-        const botToken = "8992925094:AAE5K1N8VVxiCh9P6H1j7hCrYoTeIBmC8r0";
+        // Tokenlar xavfsiz server tomonida saqlanadi
+        const botToken = "";
         const adminChatId = 358795989;
         const alertText = `👤 <b>YANGI OILA RO'YXATDAN O'TDI (MINI APP):</b>\n\n` +
             `• <b>Oila:</b> ${familyName}\n` +

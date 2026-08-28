@@ -29,3 +29,11 @@ yarn-error.log
 Thumbs.db
 
 cloudflared.exe
+
+.env
+.env.local
+*.log
+__pycache__/
+admin_ids.json
+users_db.json
+family_codes.json

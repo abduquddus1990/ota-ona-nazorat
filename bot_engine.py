@@ -12,7 +12,17 @@ if sys.platform == "win32":
     except Exception:
         pass
 
-BOT_TOKEN = "8992925094:AAE5K1N8VVxiCh9P6H1j7hCrYoTeIBmC8r0"
+# Load from .env file securely
+def get_env_var(name, default=""):
+    if os.path.exists(".env"):
+        with open(".env", "r", encoding="utf-8") as env_f:
+            for line in env_f:
+                line = line.strip()
+                if line.startswith(f"{name}="):
+                    return line.split("=", 1)[1].strip().strip('"').strip("'")
+    return os.environ.get(name, default)
+
+BOT_TOKEN = get_env_var("MAIN_BOT_TOKEN", "8992925094:AAE5K1N8VVxiCh9P6H1j7hCrYoTeIBmC8r0")
 MINI_APP_URL = "https://abduquddus1990.github.io/ota-ona-nazorat/?v=5.4"
 TELEGRAM_API = f"https://api.telegram.org/bot{BOT_TOKEN}"
 
