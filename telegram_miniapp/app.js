@@ -2003,34 +2003,23 @@ function handleCompleteParentOnboarding() {
     
     // Adminga (358795989 - @ai_loyihachi) to'g'ridan-to'g'ri Telegram xabar yuborish
     try {
-        // Tokenlar xavfsiz server tomonida saqlanadi
-        const botToken = "";
-        const adminChatId = 358795989;
-        const alertText = `👤 <b>YANGI OILA RO'YXATDAN O'TDI (MINI APP):</b>\n\n` +
-            `• <b>Oila:</b> ${familyName}\n` +
-            `• <b>Ota:</b> ${parentName} (@${parentUsername || 'mavjud_emas'}) - Tel: ${parentPhone}\n` +
-            `• <b>Ona:</b> ${motherName || 'Kiritilmagan'} (@${motherUsername || 'yoq'})\n` +
-            `• <b>Farzand:</b> ${childName} (${childGrade}-sinf, @${childUsername || 'yoq'})\n` +
-            `• <b>Oila Kodi:</b> <code>${familyCode || '849-210'}</code>\n\n` +
-            `<i>Ushbu oilaga tizimdan to'liq foydalanishga ruxsat berasizmi?</i>`;
-
-        const keyboard = {
-            inline_keyboard: [
-                [
-                    { text: "✅ To'liq Ruxsat Berish", callback_data: `admin_approve_${parentUsername || 'user'}_${Date.now()}` },
-                    { text: "❌ Test Rejimida Qoldirish", callback_data: `admin_reject_${parentUsername || 'user'}_${Date.now()}` }
-                ]
-            ]
-        };
-
-        fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+        // Supabase Edge Function orqali (xavfsiz, CORS to'g'ri sozlangan) adminga yuboriladi
+        const SUPABASE_FUNCTION_URL = "https://wfrclcwjeeqeqchmdhzw.supabase.co/functions/v1/ota-ona-bot";
+        fetch(SUPABASE_FUNCTION_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                chat_id: adminChatId,
-                text: alertText,
-                parse_mode: 'HTML',
-                reply_markup: keyboard
+                type: 'parent_registration_request',
+                familyName: familyName,
+                parentName: parentName,
+                parentUsername: parentUsername,
+                parentPhone: parentPhone,
+                motherName: motherName,
+                motherUsername: motherUsername,
+                childName: childName,
+                childGrade: childGrade,
+                childUsername: childUsername,
+                familyCode: familyCode
             })
         }).catch(err => console.log("Notify error:", err));
     } catch(e) {
