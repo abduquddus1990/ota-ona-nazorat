@@ -800,9 +800,6 @@ if (tg) {
         authStatus = 'approved';
         localStorage.setItem('auth_user', JSON.stringify(currentAuthUser));
         localStorage.setItem('auth_status', authStatus);
-    } else if (rawUsername.includes('aliyor') || rawUsername.includes('madina') || rawUsername.includes('temur')) {
-        currentAppRole = 'child';
-        localStorage.setItem('app_role', 'child');
     } else if (rawUsername && !currentAuthUser) {
         currentAuthUser = {
             username: `@${rawUsername}`,
@@ -1180,10 +1177,22 @@ function handleChildPairingSubmit() {
             body: JSON.stringify({
                 type: 'child_paired_event',
                 familyCode: codeInput,
-                childName: childrenDatabase[currentChildKey]?.name || "Aliyor Valijonov",
+                childName: childrenDatabase[currentChildKey]?.name || "Farzand",
                 timestamp: new Date().toISOString()
             })
         }).catch(e => console.log('Child paired notification dispatched'));
+        // Ma'lumotlar bazasida ham rozilik berilganini belgilaymiz
+        fetch('https://wfrclcwjeeqeqchmdhzw.supabase.co/functions/v1/ota-ona-bot', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                type: 'child_consent',
+                username: (typeof tg !== 'undefined' && tg?.initDataUnsafe?.user?.username) || null,
+                telegramId: (typeof tg !== 'undefined' && tg?.initDataUnsafe?.user?.id) || null,
+                familyCode: codeInput,
+                childName: childrenDatabase[currentChildKey]?.name || "Farzand"
+            })
+        }).catch(e => console.log('Child consent dispatched'));
     } catch(e) {}
 
     if (successBox) successBox.classList.remove('hidden');
@@ -1916,11 +1925,37 @@ function updateMapCoordinates() {
     }
 }
 
+// Backend (Supabase) orqali "bu foydalanuvchi ota-onami yoki farzandmi" ekanini
+// haqiqiy ma'lumotlar bazasidan tekshiradi (eski hardcoded ism ro'yxati o'rniga).
+async function fetchAndApplyRole() {
+    if (urlRole) return; // Havolada aniq rol ko'rsatilgan bo'lsa (masalan admin tugmasi), shuni ustun qo'yamiz
+    const uname = (typeof tg !== 'undefined' && tg?.initDataUnsafe?.user?.username) || null;
+    const tid = (typeof tg !== 'undefined' && tg?.initDataUnsafe?.user?.id) || null;
+    if (!uname && !tid) return;
+    try {
+        const resp = await fetch('https://wfrclcwjeeqeqchmdhzw.supabase.co/functions/v1/ota-ona-bot', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'check_role', username: uname, telegramId: tid })
+        });
+        const data = await resp.json();
+        if (data.role === 'child') {
+            currentAppRole = 'child';
+            localStorage.setItem('app_role', 'child');
+        } else if (data.role === 'parent') {
+            currentAppRole = 'parent';
+            localStorage.setItem('app_role', 'parent');
+        }
+    } catch (e) {
+        console.error('check_role sorovida xato:', e);
+    }
+}
 // DOM Init
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     setTheme(currentTheme);
     applyLanguageTranslations();
     updateAuthUI();
+    await fetchAndApplyRole();
     switchAppRole(currentAppRole);
     renderChildSelectDropdown();
     renderActiveChild();
