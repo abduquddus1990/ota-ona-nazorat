@@ -719,6 +719,60 @@ function saveParentOnboarding() {
 }
 
 
+function handleChildConsentAccept() {
+    const codeInput = document.getElementById('childConsentFamilyCode')?.value.trim();
+    const errorBox = document.getElementById('childConsentError');
+    if (!codeInput || codeInput.length < 5) {
+        if (errorBox) errorBox.classList.remove('hidden');
+        return;
+    }
+    if (errorBox) errorBox.classList.add('hidden');
+
+    localStorage.setItem('child_consented', 'true');
+    localStorage.setItem('child_family_code', codeInput);
+
+    const overlay = document.getElementById('childConsentOverlay');
+    if (overlay) overlay.classList.add('hidden');
+
+    const childFullName = (typeof tg !== 'undefined' && tg?.initDataUnsafe?.user)
+        ? `${tg.initDataUnsafe.user.first_name || ''} ${tg.initDataUnsafe.user.last_name || ''}`.trim()
+        : "Farzand";
+
+    try {
+        fetch('https://wfrclcwjeeqeqchmdhzw.supabase.co/functions/v1/ota-ona-bot', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                type: 'child_consent',
+                username: (typeof tg !== 'undefined' && tg?.initDataUnsafe?.user?.username) || null,
+                telegramId: (typeof tg !== 'undefined' && tg?.initDataUnsafe?.user?.id) || null,
+                familyCode: codeInput,
+                childName: childFullName || "Farzand"
+            })
+        }).catch(e => console.log('Child consent dispatched'));
+
+        fetch('https://wfrclcwjeeqeqchmdhzw.supabase.co/functions/v1/ota-ona-bot', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                type: 'child_paired_event',
+                familyCode: codeInput,
+                childName: childFullName || "Farzand",
+                timestamp: new Date().toISOString()
+            })
+        }).catch(e => console.log('Child paired notification dispatched'));
+    } catch (e) {}
+
+    switchChildTab('child-tab-home');
+}
+
+function handleChildConsentDecline() {
+    const isRu = (currentLang === 'ru');
+    alert(isRu
+        ? "Для использования приложения необходимо согласие. Пожалуйста, поговорите с родителями."
+        : "Ilovadan foydalanish uchun rozilik zarur. Iltimos, ota-onangiz bilan gaplashing.");
+}
+
 function checkChildConsentStatus() {
     if (currentAppRole === 'child') {
         const consented = localStorage.getItem('child_consented') === 'true';
