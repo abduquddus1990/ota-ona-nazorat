@@ -1,15 +1,31 @@
+"""Qalqon AI backend — barcha routerlar birlashtirilgan (production).
+
+TUZATISHLAR (2026-08-31):
+1) Barcha 7 router (geofence, curfew, homework, vision_tutor, telemetry,
+   parent_dashboard, emaktab_sync) birlashtirildi. Avval faqat 3 tasi
+   (telemetry/parent_dashboard/emaktab_sync) ulangan edi — shu sabab
+   /api/v1/tutor/vision umuman ishlamasdi.
+2) StaticFiles mount ("/" ga telegram_miniapp'ni ulash) OLIB TASHLANDI.
+   Sabab: Mini App allaqachon GitHub Pages orqali alohida joylashtirilgan;
+   bu yerda qoldirilsa, mos router topilmagan har qanday POST so'rovi
+   (masalan /api/v1/tutor/vision) StaticFiles'ga tushib, 405 xato berardi.
+3) Har bir router xato bo'lsa ham butun serverni yiqitmasin uchun
+   xavfsiz yuklash (_include) barcha routerlar uchun qo'llanildi.
+"""
+from dotenv import load_dotenv
+load_dotenv()
+
+import os
+import importlib
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from config import settings
-from routes.telemetry import router as telemetry_router
-from routes.parent_dashboard import router as parent_router
-from routes.emaktab_sync import router as emaktab_router
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
     docs_url=None if settings.ENVIRONMENT == "production" else "/docs",
-    redoc_url=None
+    redoc_url=None,
 )
 
 # 1. OWASP Security Headers Middleware
@@ -23,7 +39,7 @@ async def apply_security_headers(request: Request, call_next):
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     return response
 
-# 2. CORS Sozlamalari (Faqat Telegram Mini App va ishonchli domenlar)
+# 2. CORS Sozlamalari (config.py > ALLOWED_ORIGINS orqali boshqariladi)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.ALLOWED_ORIGINS,
@@ -32,10 +48,22 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 3. Routerlarni ulash
-app.include_router(telemetry_router)
-app.include_router(parent_router)
-app.include_router(emaktab_router)
+# 3. Routerlarni xavfsiz (bittasi xato bersa ham server yiqilmaydigan) usulda ulash
+def _include(modname: str) -> None:
+    try:
+        mod = importlib.import_module(modname)
+        app.include_router(mod.router)
+        print(f"OK router {modname}")
+    except Exception as exc:
+        print(f"SKIP router {modname}: {exc}")
+
+_include("routes.geofence")
+_include("routes.curfew")
+_include("routes.homework")
+_include("routes.vision_tutor")
+_include("routes.telemetry")
+_include("routes.parent_dashboard")
+_include("routes.emaktab_sync")
 
 # 4. Free-Tier Liveness / Keepalive Endpoint (Hibernation'ga yo'l qo'ymaslik)
 @app.get("/healthz", tags=["Health"])
@@ -43,22 +71,9 @@ async def healthz():
     return {
         "status": "healthy",
         "service": "Parental Guard AI Engine",
-        "zero_trust": "enforced"
+        "zero_trust": "enforced",
     }
-
-# 5. Telegram Mini App Frontendni to'g'ridan-to'g'ri ulash (Zero-Config Hosting)
-import os
-from fastapi.staticfiles import StaticFiles
-
-frontend_dir = os.path.join(os.path.dirname(__file__), "..", "telegram_miniapp")
-if not os.path.exists(os.path.join(frontend_dir, "index.html")):
-    frontend_dir = os.path.join(os.path.dirname(__file__), "telegram_miniapp")
-if not os.path.exists(os.path.join(frontend_dir, "index.html")):
-    frontend_dir = os.path.join(os.path.dirname(__file__), "..")
-
-if os.path.exists(os.path.join(frontend_dir, "index.html")):
-    app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="frontend")
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=int(os.environ.get("PORT", 8000)), reload=True)
