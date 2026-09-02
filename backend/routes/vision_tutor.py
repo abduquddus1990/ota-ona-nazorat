@@ -71,12 +71,15 @@ async def tutor_vision(
         answer = (resp.text or "").strip()
     except Exception as exc:
         msg = str(exc)
+        print(f"VISION_TUTOR XATO: {type(exc).__name__}: {msg}", flush=True)
+        import traceback
+        traceback.print_exc()
         if "API_KEY_INVALID" in msg or "API key not valid" in msg or "INVALID_ARGUMENT" in msg and "key" in msg.lower():
             raise HTTPException(
                 status_code=401,
                 detail="Gemini kalit yaroqsiz. AI Studio dan yangi kalit qo'y.",
             ) from exc
-        raise HTTPException(status_code=502, detail="Gemini javob bermadi") from exc
+        raise HTTPException(status_code=502, detail=f"Gemini javob bermadi: {msg[:200]}") from exc
 
     if not answer:
         raise HTTPException(status_code=502, detail="Gemini bo'sh javob qaytardi")
