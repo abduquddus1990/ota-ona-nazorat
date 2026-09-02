@@ -56,19 +56,37 @@ async def tutor_vision(
         "keyin qisqa yechim yo'lini tushuntir."
     )
 
+    import time
+    MAX_RETRIES = 3
+    RETRY_DELAY_SECONDS = 4
+    last_exc = None
+    answer = ""
     try:
         client = genai.Client(api_key=api_key)
-        resp = client.models.generate_content(
-            model=model,
-            contents=[
-                types.Part.from_bytes(data=data, mime_type=mime),
-                user_text,
-            ],
-            config=types.GenerateContentConfig(
-                system_instruction=_system_prompt(),
-            ),
-        )
-        answer = (resp.text or "").strip()
+        for attempt in range(1, MAX_RETRIES + 1):
+            try:
+                resp = client.models.generate_content(
+                    model=model,
+                    contents=[
+                        types.Part.from_bytes(data=data, mime_type=mime),
+                        user_text,
+                    ],
+                    config=types.GenerateContentConfig(
+                        system_instruction=_system_prompt(),
+                    ),
+                )
+                answer = (resp.text or "").strip()
+                last_exc = None
+                break
+            except Exception as inner_exc:
+                last_exc = inner_exc
+                msg_inner = str(inner_exc)
+                is_retryable = "503" in msg_inner or "UNAVAILABLE" in msg_inner or "high demand" in msg_inner.lower()
+                print(f"VISION_TUTOR urinish {attempt}/{MAX_RETRIES} xato: {msg_inner}", flush=True)
+                if is_retryable and attempt < MAX_RETRIES:
+                    time.sleep(RETRY_DELAY_SECONDS)
+                    continue
+                raise
     except Exception as exc:
         msg = str(exc)
         print(f"VISION_TUTOR XATO: {type(exc).__name__}: {msg}", flush=True)
