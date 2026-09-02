@@ -1722,7 +1722,48 @@ function sendQuickPrompt(promptText) {
     sendTextMessage();
 }
 
+async function callRealVisionBackend(query, imageBase64) {
+    const child = childrenDatabase[currentChildKey];
+    const isRu = (currentLang === 'ru');
+    const thinkingMsg = isRu
+        ? '\ud83e\udd14 Анализирую фото задания, подождите немного (может занять до минуты при первом запросе)...'
+        : '\ud83e\udd14 Mashqni tahlil qilyapman, biroz kuting (birinchi so\'rovda bir daqiqagacha vaqt olishi mumkin)...';
+    appendAIMessage(thinkingMsg);
+    try {
+        const blob = await (await fetch(imageBase64)).blob();
+        const formData = new FormData();
+        formData.append('image', blob, 'exercise.jpg');
+        formData.append('child_id', currentChildKey || 'unknown');
+        formData.append('grade', String(child?.grade || 5));
+        formData.append('subject', 'Umumiy');
+        const resp = await fetch('https://qalqon-backend.onrender.com/api/v1/tutor/vision', {
+            method: 'POST',
+            body: formData
+        });
+        const data = await resp.json();
+        if (data.ok && data.answer) {
+            appendAIMessage(data.answer.replace(/\n/g, '<br>'));
+        } else {
+            appendAIMessage(isRu ? 'Извините, произошла ошибка при анализе. Попробуйте ещё раз.' : 'Kechirasiz, tahlil qilishda xatolik yuz berdi. Qayta urinib ko\'ring.');
+        }
+    } catch (e) {
+        console.error('Vision backend error:', e);
+        const isRu2 = (currentLang === 'ru');
+        appendAIMessage(isRu2 ? '\u26a0\ufe0f Сервер временно недоступен. Попробуйте через минуту.' : '\u26a0\ufe0f Server vaqtincha javob bermayapti. Bir daqiqadan keyin qayta urinib ko\'ring.');
+    }
+}
+
 function generateAIResponse(query, imageBase64) {
+    if (imageBase64) {
+        callRealVisionBackend(query, imageBase64);
+        return;
+    }
+    const isRuNoImg = (currentLang === 'ru');
+    appendAIMessage(isRuNoImg
+        ? '\ud83d\udcf8 Пожалуйста, прикрепите фото задания (учебника) \u2014 я анализирую именно фотографии, чтобы дать точный ответ по вашей теме.'
+        : '\ud83d\udcf8 Iltimos, mashq yoki darslik sahifasining rasmini biriktiring \u2014 men rasm orqali aniq va to\'g\'ri javob beraman.');
+    return;
+
     const child = childrenDatabase[currentChildKey];
     const qLower = (query || "").toLowerCase();
     const isRu = (currentLang === 'ru');
