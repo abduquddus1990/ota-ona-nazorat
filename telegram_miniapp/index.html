@@ -427,6 +427,8 @@
 
             <!-- Input Bar -->
             <div class="flex items-center gap-2 pt-1 border-t border-slate-800">
+                <input type="file" id="childImageInput" accept="image/*" class="hidden" onchange="handleChildImageSelected(event)">
+                <button onclick="document.getElementById('childImageInput').click()" class="p-2 rounded-xl bg-slate-800/70 border border-slate-700 text-slate-300 hover:text-purple-400 hover:border-purple-500/40 transition" title="Mashq rasmini yuklash">📷</button>
                 <input type="text" id="childAiInput" placeholder="Savolingni yoz..." class="flex-1 bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition" onkeypress="if(event.key==='Enter') handleChildAiSend()">
                 <button onclick="handleChildAiSend()" class="p-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white text-xs font-bold transition shadow-md shadow-indigo-500/20">
                     ➤

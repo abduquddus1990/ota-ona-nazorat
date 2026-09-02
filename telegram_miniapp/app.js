@@ -1090,13 +1090,63 @@ function appendChildAiMessage(htmlContent) {
     thread.scrollTop = thread.scrollHeight;
 }
 
+let uploadedChildImageBase64 = null;
+
+function handleChildImageSelected(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        uploadedChildImageBase64 = e.target.result;
+        handleChildAiSend();
+    };
+    reader.readAsDataURL(file);
+}
+
+async function callRealVisionBackendForChild(query, imageBase64) {
+    const child = childrenDatabase[currentChildKey];
+    const isRu = (currentLang === 'ru');
+    appendChildAiMessage(isRu
+        ? '\ud83e\udd14 Анализирую фото задания, подождите (может занять до минуты)...'
+        : '\ud83e\udd14 Mashq rasmini tahlil qilyapman, kuting (bir daqiqagacha vaqt olishi mumkin)...');
+    try {
+        const blob = await (await fetch(imageBase64)).blob();
+        const formData = new FormData();
+        formData.append('image', blob, 'exercise.jpg');
+        formData.append('child_id', currentChildKey || 'unknown');
+        formData.append('grade', String(child?.grade || 5));
+        formData.append('subject', 'Umumiy');
+        const resp = await fetch('https://qalqon-backend.onrender.com/api/v1/tutor/vision', {
+            method: 'POST',
+            body: formData
+        });
+        const data = await resp.json();
+        if (data.ok && data.answer) {
+            appendChildAiMessage(data.answer.replace(/\n/g, '<br>'));
+        } else {
+            appendChildAiMessage(isRu ? 'Ошибка анализа. Попробуйте ещё раз.' : 'Tahlilda xatolik yuz berdi. Qayta urinib ko\'ring.');
+        }
+    } catch (e) {
+        console.error('Child vision backend error:', e);
+        appendChildAiMessage(isRu ? '\u26a0\ufe0f Сервер временно недоступен.' : '\u26a0\ufe0f Server vaqtincha javob bermayapti.');
+    }
+}
+
 function handleChildAiSend() {
     const input = document.getElementById('childAiInput');
     const text = input ? input.value.trim() : "";
     const isRu = (currentLang === 'ru');
-
-    if (!text) return;
+    if (!text && !uploadedChildImageBase64) return;
     if (input) input.value = "";
+
+    if (uploadedChildImageBase64) {
+        appendChildUserMessage(text || (isRu ? '[\u0424\u043e\u0442\u043e \u0437\u0430\u0434\u0430\u043d\u0438\u044f]' : '[Mashq rasmi]'));
+        const imgToSend = uploadedChildImageBase64;
+        uploadedChildImageBase64 = null;
+        callRealVisionBackendForChild(text, imgToSend);
+        return;
+    }
+
 
     appendChildUserMessage(text);
 
@@ -1678,6 +1728,10 @@ function renderActiveChild() {
 // ============================================================================
 // 7. GEMINI AI TIZIMI (CHAT, FOTO, OVOZ VA REELS TAHLILI)
 // ============================================================================
+function handleImageSelected(event) {
+    handleImageUpload(event);
+}
+
 function handleImageUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
