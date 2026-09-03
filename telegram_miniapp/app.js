@@ -915,6 +915,10 @@ function switchAppRole(role) {
     if (quickMenuFab) {
         quickMenuFab.classList.toggle('hidden', !isParent);
     }
+    const authBannerBtnRole = document.getElementById('authBannerBtn');
+    if (authBannerBtnRole) {
+        authBannerBtnRole.classList.toggle('hidden', !isParent);
+    }
     const roleBtnParent = document.getElementById('roleBtnParent');
     const roleBtnChild = document.getElementById('roleBtnChild');
     const parentHeader = document.getElementById('mainParentHeader');
