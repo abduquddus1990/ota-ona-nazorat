@@ -906,6 +906,10 @@ function switchAppRole(role) {
     localStorage.setItem('app_role', role);
 
     const isParent = (role === 'parent');
+    const quickMenuFab = document.getElementById('quickMenuFab');
+    if (quickMenuFab) {
+        quickMenuFab.classList.toggle('hidden', !isParent);
+    }
     const roleBtnParent = document.getElementById('roleBtnParent');
     const roleBtnChild = document.getElementById('roleBtnChild');
     const parentHeader = document.getElementById('mainParentHeader');
