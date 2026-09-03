@@ -854,6 +854,8 @@ if (tg) {
         authStatus = 'approved';
         localStorage.setItem('auth_user', JSON.stringify(currentAuthUser));
         localStorage.setItem('auth_status', authStatus);
+        // Super admin uchun ota-ona ro'yxatdan o'tish oynasi hech qachon ko'rsatilmasin
+        localStorage.setItem('parent_onboarded', 'true');
     } else if (rawUsername && !currentAuthUser) {
         currentAuthUser = {
             username: `@${rawUsername}`,
