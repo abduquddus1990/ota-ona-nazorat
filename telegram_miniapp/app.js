@@ -790,6 +790,11 @@ function checkChildConsentStatus() {
             }
         }
         
+        const pairingSection = document.getElementById('childPairingSection');
+        if (pairingSection) {
+            pairingSection.classList.toggle('hidden', consented);
+        }
+
         // Farzand panelini majburiy tanlash
         switchChildTab('child-tab-home');
     }
