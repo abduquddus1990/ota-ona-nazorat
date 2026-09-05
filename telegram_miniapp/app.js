@@ -596,12 +596,74 @@ function switchChild(childKey) {
     }
 }
 
-function handleAddNewChildSubmit() {
+async function handleAddNewChildSubmit() {
     const nameInput = document.getElementById('newChildNameInput');
     const gradeSelect = document.getElementById('newChildGradeInput');
+    const usernameInput = document.getElementById('newChildUsernameInput');
+    const resultBox = document.getElementById('addChildResultBox');
+    const submitBtn = document.getElementById('addChildSubmitBtn');
+    const isRuAdd = (currentLang === 'ru');
+
     const name = nameInput ? nameInput.value.trim() : "";
     const grade = gradeSelect ? parseInt(gradeSelect.value) : 5;
+    const username = usernameInput ? usernameInput.value.trim().replace('@', '') : "";
 
+    if (!name) {
+        alert("Iltimos, farzandingizning ism-familiyasini kiriting!");
+        return;
+    }
+    if (!username) {
+        alert(isRuAdd ? "Пожалуйста, введите Telegram username ребёнка!" : "Iltimos, farzandingizning Telegram username'ini kiriting!");
+        return;
+    }
+
+    if (submitBtn) { submitBtn.disabled = true; submitBtn.innerText = '⏳ Yuborilmoqda...'; }
+
+    const parentTelegramId = (typeof tg !== 'undefined' && tg?.initDataUnsafe?.user?.id) || null;
+    const parentUsername = (typeof tg !== 'undefined' && tg?.initDataUnsafe?.user?.username) || null;
+
+    try {
+        const resp = await fetch('https://wfrclcwjeeqeqchmdhzw.supabase.co/functions/v1/ota-ona-bot', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                type: 'add_child_request',
+                parentTelegramId: parentTelegramId,
+                parentUsername: parentUsername,
+                familyCode: familyCode,
+                familyName: familyCode,
+                childName: name,
+                childGrade: grade,
+                childUsername: username
+            })
+        });
+        const data = await resp.json();
+
+        if (data.ok) {
+            const pairLink = `https://t.me/qalqon_aibot?start=pair_${familyCode}`;
+            if (resultBox) {
+                resultBox.classList.remove('hidden');
+                resultBox.innerHTML = `
+                    <div class="text-xs font-bold text-emerald-300">✅ ${name} ro'yxatga qo'shildi!</div>
+                    <div class="text-[10px] text-slate-300">Endi shu havolani farzandingizga yuboring — u kirib, 4 qoidaga rozilik bergach, uning paneli faollashadi:</div>
+                    <div class="text-[10px] font-mono text-cyan-300 bg-slate-950/60 p-2 rounded-lg break-all">${pairLink}</div>
+                    <div class="text-[10px] font-mono text-cyan-300">Oila kodi: <b>${familyCode}</b></div>
+                `;
+            }
+            if (nameInput) nameInput.value = '';
+            if (usernameInput) usernameInput.value = '';
+        } else {
+            alert(isRuAdd ? 'Ошибка. Попробуйте ещё раз.' : 'Xatolik yuz berdi. Qayta urinib ko\'ring.');
+        }
+    } catch (e) {
+        console.error('Add child error:', e);
+        alert(isRuAdd ? 'Сервер недоступен. Попробуйте позже.' : 'Server javob bermayapti. Keyinroq urinib ko\'ring.');
+    } finally {
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.innerText = "➕ Ro'yxatga Qo'shish"; }
+    }
+    return;
+
+    // (pastdagi eski demo-kod endi ishlatilmaydi, xavfsizlik uchun qoldirildi)
     if (!name) {
         alert("Iltimos, farzandingizning ism-familiyasini kiriting!");
         return;
@@ -1129,8 +1191,10 @@ async function callRealVisionBackendForChild(query, imageBase64) {
         const formData = new FormData();
         formData.append('image', blob, 'exercise.jpg');
         formData.append('child_id', currentChildKey || 'unknown');
-        formData.append('grade', String(child?.grade || 5));
+        formData.append('grade', String(realChildProfile?.grade || child?.grade || 5));
         formData.append('subject', 'Umumiy');
+        const childRealName = realChildProfile?.fullName || (typeof tg !== 'undefined' && tg?.initDataUnsafe?.user?.first_name) || '';
+        if (childRealName) formData.append('child_name', childRealName);
         const resp = await fetch('https://qalqon-backend.onrender.com/api/v1/tutor/vision', {
             method: 'POST',
             body: formData
@@ -2091,6 +2155,7 @@ function updateMapCoordinates() {
 
 // Backend (Supabase) orqali "bu foydalanuvchi ota-onami yoki farzandmi" ekanini
 // haqiqiy ma'lumotlar bazasidan tekshiradi (eski hardcoded ism ro'yxati o'rniga).
+let realChildProfile = null;
 async function fetchAndApplyRole() {
     if (urlRole) return; // Havolada aniq rol ko'rsatilgan bo'lsa (masalan admin tugmasi), shuni ustun qo'yamiz
     const uname = (typeof tg !== 'undefined' && tg?.initDataUnsafe?.user?.username) || null;
@@ -2106,6 +2171,7 @@ async function fetchAndApplyRole() {
         if (data.role === 'child') {
             currentAppRole = 'child';
             localStorage.setItem('app_role', 'child');
+            realChildProfile = data;
         } else if (data.role === 'parent') {
             currentAppRole = 'parent';
             localStorage.setItem('app_role', 'parent');

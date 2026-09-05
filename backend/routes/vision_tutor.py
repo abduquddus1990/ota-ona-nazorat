@@ -36,6 +36,7 @@ async def tutor_vision(
     grade: str = Form(...),
     subject: str = Form(...),
     image: UploadFile = File(...),
+    child_name: str = Form(None),
 ):
     api_key = (os.getenv("GEMINI_API_KEY") or "").strip()
     if not api_key:
@@ -50,10 +51,12 @@ async def tutor_vision(
     if not mime.startswith("image/"):
         raise HTTPException(status_code=400, detail="faqat rasm qabul qilinadi")
 
+    name_part = f"O'quvchining ismi: {child_name}. " if child_name else ""
     user_text = (
-        f"O'quvchi id: {child_id}. Sinf: {grade}. Fan: {subject}. "
+        f"O'quvchi id: {child_id}. {name_part}Sinf: {grade}. Fan: {subject}. "
         "Rasmni tahlil qil. Nima berilganini ayt, xato bo'lsa ko'rsat, "
-        "keyin qisqa yechim yo'lini tushuntir."
+        "keyin qisqa yechim yo'lini tushuntir. "
+        + ("Agar o'quvchining ismi berilgan bo'lsa, javobingizda kamida bir marta shu ism bilan murojaat qiling." if child_name else "")
     )
 
     import time

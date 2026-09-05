@@ -1876,6 +1876,12 @@
                 </div>
 
                 <div>
+                    <label class="text-[11px] font-bold text-slate-300 block mb-1">Farzandning Telegram Username'i</label>
+                    <input type="text" id="newChildUsernameInput" placeholder="Masalan: jasur_a (@ belgisiz)" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500">
+                    <p class="text-[10px] text-slate-500 mt-1">Farzandingiz Telegram'da shu username bilan ro'yxatdan o'tgan bo'lishi kerak.</p>
+                </div>
+
+                <div>
                     <label class="text-[11px] font-bold text-slate-300 block mb-1">Sinfi (1-11 Sinf DTS)</label>
                     <select id="newChildGradeInput" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500">
                         <option value="1">1-sinf</option>
@@ -1892,9 +1898,10 @@
                     </select>
                 </div>
 
-                <button onclick="handleAddNewChildSubmit()" class="w-full py-2.5 bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white font-bold text-xs rounded-xl shadow-lg shadow-cyan-500/20 transition">
+                <button onclick="handleAddNewChildSubmit()" id="addChildSubmitBtn" class="w-full py-2.5 bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white font-bold text-xs rounded-xl shadow-lg shadow-cyan-500/20 transition">
                     ➕ Ro'yxatga Qo'shish
                 </button>
+                <div id="addChildResultBox" class="hidden p-3 rounded-xl bg-emerald-500/15 border border-emerald-500/40 space-y-2"></div>
             </div>
         </div>
     </div>
