@@ -87,7 +87,7 @@ async def handle_start(message: types.Message):
         [
             InlineKeyboardButton(
                 text="🔗 Farzandni Ulash Havolasi", 
-                url=f"https://t.me/farzand_nazorat_bot?start=pair_{pairing_code}"
+                url=f"https://t.me/qalqon_aibot?start=pair_{pairing_code}"
             )
         ]
     ])
@@ -96,7 +96,7 @@ async def handle_start(message: types.Message):
         f"Assalomu alaykum, {user_name}! 🛡️\n\n"
         f"**Shield Parental Guard** — Zero-Trust ota-ona nazorati va AI pedagogika tizimiga xush kelibsiz.\n\n"
         f"Farzandingizni ulash uchun quyidagi havolani uning Telegramiga yuboring:\n"
-        f"`https://t.me/farzand_nazorat_bot?start=pair_{pairing_code}`\n\n"
+        f"`https://t.me/qalqon_aibot?start=pair_{pairing_code}`\n\n"
         f"Yoki boshqaruv panelini oching 👇",
         reply_markup=keyboard,
         parse_mode="Markdown"
