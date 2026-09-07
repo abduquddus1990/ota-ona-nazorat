@@ -6,7 +6,10 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-const BOT_TOKEN = Deno.env.get("BOT_TOKEN") || "8992925094:AAE5K1N8VVxiCh9P6H1j7hCrYoTeIBmC8r0";
+const BOT_TOKEN = Deno.env.get("BOT_TOKEN") || Deno.env.get("MAIN_BOT_TOKEN") || "";
+if (!BOT_TOKEN) {
+  console.error("BOT_TOKEN missing");
+}
 const MINI_APP_URL = Deno.env.get("MINI_APP_URL") || "https://abduquddus1990.github.io/ota-ona-nazorat/?v=3.0";
 const TELEGRAM_API = `https://api.telegram.org/bot${BOT_TOKEN}`;
 
@@ -17,8 +20,9 @@ const USER_LANG: Record<string | number, string> = {};
 const USER_APPROVAL_STATUS: Record<string, "pending" | "approved" | "rejected"> = {};
 
 function generateFamilyCode(userId: string | number): string {
+  // 6 raqam, chiziqsiz (masalan 849210)
   const num = Math.abs((Number(userId) * 31 + 7919) % 900000) + 100000;
-  return `${String(num).slice(0, 3)}-${String(num).slice(3, 6)}`;
+  return String(num).padStart(6, "0");
 }
 
 async function sendMessage(chatId: number | string, htmlText: string, replyMarkup?: any) {
@@ -159,7 +163,7 @@ function getStartKeyboard(userId: string | number, lang: string = "uz"): any {
 
 function getPairingText(userId: string | number, lang: string = "uz", isApproved: boolean = false): string {
   const code = generateFamilyCode(userId);
-  const pairLink = `https://t.me/farzand_nazorat_bot?start=pair_${code.replace("-", "")}`;
+  const pairLink = `https://t.me/qalqon_aibot?start=pair_${code}`;
   
   if (!isApproved) {
     if (lang === "ru") {
@@ -201,7 +205,7 @@ serve(async (req) => {
     // 0. Mini App'dan to'g'ridan-to'g'ri ro'yxatdan o'tish so'rovi kelganda
     if (payload.type === "parent_registration_request") {
       const username = payload.username || "@noma'lum";
-      const familyCode = payload.familyCode || "849-210";
+      const familyCode = payload.familyCode || "849210";
       
       const adminNotice = `🔔 <b>YANGI OTA-ONA RO'YXATDAN O'TMOQCHI!</b>\n\n👤 <b>Username:</b> ${username}\n🔑 <b>Oila Kodi:</b> <code>${familyCode}</code>\n📅 <b>Vaqt:</b> ${new Date().toLocaleString("uz-UZ")}\n\nUshbu foydalanuvchiga to'liq foydalanish (farzand qo'shish)ga ruxsat berasizmi?`;
 
@@ -220,7 +224,7 @@ serve(async (req) => {
 
     // 0.1 Farzand rozilik berib, 6 xonali kod bilan ulanganda
     if (payload.type === "child_paired_event") {
-      const familyCode = payload.familyCode || "849-210";
+      const familyCode = payload.familyCode || "849210";
       const childName = payload.childName || "Farzand";
       
       const alertMsg = `🎉 <b>FARZAND ROZILIK BILAN ULANDI!</b>\n\n👦 <b>Farzand:</b> ${childName}\n🔑 <b>Oila Kodi:</b> <code>${familyCode}</code>\n📅 <b>Vaqt:</b> ${new Date().toLocaleString("uz-UZ")}\n\n✨ Farzand barcha 4 ta qoidalar bilan tanishdi va ulanishga to'liq rozilik berdi.\nEndi jonli lokatsiya, darsliklar bahosi va qiziqishlar tahlili to'liq ishlaydi!`;
@@ -233,7 +237,7 @@ serve(async (req) => {
     if (payload.type === "child_status_alert") {
       const childName = payload.childName || "Farzand";
       const statusText = payload.statusText || "Xabar keldi";
-      const familyCode = payload.familyCode || "849-210";
+      const familyCode = payload.familyCode || "849210";
 
       const alertMsg = `📍 <b>FARZANDINGIZDAN TEZKOR XABAR!</b>\n\n👦 <b>Farzand:</b> ${childName}\n💬 <b>Xabar:</b> <b>${statusText}</b>\n🔑 <b>Oila Kodi:</b> <code>${familyCode}</code>\n📅 <b>Vaqt:</b> ${new Date().toLocaleString("uz-UZ")}`;
 

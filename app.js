@@ -1,3 +1,4 @@
+let currentChildSubject = "Matematika";
 // ============================================================================
 // 📖 80 KB DARSLIK SAHIFASI KO'RUVCHISI (ULTRA FAST PAGE VIEWER)
 // ============================================================================
@@ -59,6 +60,36 @@ function shareOrDownloadPage() {
 // 🧠 QALQON AI — 1-11 SINF DTS RAG BILIMLAR BAZASI & ENGINE
 // ============================================================================
 const DTS_KNOWLEDGE_BASE = [{"grade": 1, "subject": "Matematika", "chapter": "20 ichida qo'shish va ayirish", "page": 35, "rule": "Sonlarni qo'shishda o'nlik hosil qilish: masalan, 8 + 5 ni hisoblash uchun 5 soni 2 va 3 ga ajratiladi. 8 + 2 = 10, 10 + 3 = 13.", "formula": "a + b = c (Qo'shiluvchi + Qo'shiluvchi = Yig'indi)", "keywords": ["qo'shish", "ayirish", "1-sinf", "yig'indi", "ayirma", "sanoq"]}, {"grade": 2, "subject": "Matematika", "chapter": "Ko'paytirish va Bo'lish jadvali", "page": 48, "rule": "Ko'paytirish — bir xil qo'shiluvchilar yig'indisidir. Masalan: 3 * 4 = 3 + 3 + 3 + 3 = 12. Ko'paytuvchilar o'rni almashgani bilan ko'paytma o'zgarmaydi (a * b = b * a).", "formula": "a * b = c (Ko'paytuvchi * Ko'paytuvchi = Ko'paytma)", "keywords": ["ko'paytirish", "bo'lish", "jadval", "2-sinf", "ko'paytma"]}, {"grade": 3, "subject": "Ona tili va O'qish", "chapter": "So'z turkumlari: Ot, Sifat, Fe'l", "page": 56, "rule": "Shaxs va narsa nomini bildirgan so'zlar Ot (Kim? Nima?), belgisini bildirgan so'zlar Sifat (Qanday? Qanaqa?), harakatini bildirgan so'zlar Fe'l (Nima qildi? Nima qilyapti?) deyiladi.", "formula": "Ot: Kim? Nima? | Sifat: Qanday? | Fe'l: Nima qildi?", "keywords": ["ot", "sifat", "fe'l", "ona tili", "3-sinf", "so'z turkumi"]}, {"grade": 4, "subject": "Matematika", "chapter": "Ko'p xonali sonlar va Geometrik shakllar", "page": 74, "rule": "To'g'ri to'rtburchakning perimetri barcha tomonlari yig'indisiga teng: P = 2 * (a + b). Yuzi esa bo'yi va eni ko'paytmasiga teng: S = a * b.", "formula": "P = 2(a + b); S = a * b", "keywords": ["perimetr", "yuza", "to'g'ri to'rtburchak", "4-sinf", "geometriya"]}, {"grade": 5, "subject": "Matematika", "chapter": "Oddiy va O'nli Kasrlar", "page": 42, "rule": "Har xil maxrajli oddiy kasrlarni qo'shish yoki ayirish uchun avval ularni eng kichik umumiy maxrajga (EKUK) keltirish, so'ng suratlarni qo'shish yoki ayirish kerak. Kasrlarni ko'paytirishda surat suratga, maxraj maxrajga ko'paytiriladi.", "formula": "a/b + c/d = (a*d + c*b)/(b*d); (a/b) * (c/d) = (a*c)/(b*d)", "keywords": ["kasr", "oddiy kasr", "o'nli kasr", "maxraj", "surat", "5-sinf", "ekuk", "ekub"]}, {"grade": 5, "subject": "Ingliz tili", "chapter": "Present Simple Tense (Hozirgi oddiy zamon)", "page": 28, "rule": "Doimiy takrorlanadigan odatlar va faktlar uchun Present Simple ishlatiladi. He/She/It olmoshlaridan so'ng fe'lga -s yoki -es qo'shimchasi qo'shiladi. Inkor shakli: don't / doesn't + V1.", "formula": "Subject + Verb(s/es) | I work, He works | Do/Does + Subject + Verb?", "keywords": ["present simple", "ingliz tili", "5-sinf", "grammar", "verb", "tenses"]}, {"grade": 6, "subject": "Matematika", "chapter": "Nisbat, Proporsiya va Foizlar", "page": 64, "rule": "Ikki nisbatning tengligi proporsiya deyiladi: a/b = c/d. Proporsiyaning asosiy xossasi: chetki hadlar ko'paytmasi o'rta hadlar ko'paytmasiga teng (a * d = b * c). Sonning foizini topish uchun sonni foizga ko'paytirib 100 ga bo'linadi.", "formula": "a/b = c/d => a*d = b*c; A sonining p% = (A * p) / 100", "keywords": ["proporsiya", "foiz", "nisbat", "6-sinf", "matematika", "tenglama"]}, {"grade": 6, "subject": "Botanika", "chapter": "O'simlik hujayrasi va Fotosintez", "page": 38, "rule": "O'simliklar quyosh nuri, suv va karbonat angidrid (CO2) yordamida xlorofill orqali organik moddalar va kislorod (O2) ishlab chiqaradi. Bu jarayon fotosintez deyiladi.", "formula": "6CO2 + 6H2O + Quyosh nuri => C6H12O6 (Glyukoza) + 6O2", "keywords": ["fotosintez", "botanika", "hujayra", "xlorofill", "kislorod", "6-sinf"]}, {"grade": 7, "subject": "Algebra", "chapter": "Chiziqli tenglamalar va Qisqa ko'paytirish formulalari", "page": 55, "rule": "Qisqa ko'paytirish formulalari hisoblashni osonlashtiradi: Yig'indining kvadrati (a+b)^2 = a^2 + 2ab + b^2. Kvadratlar ayirmasi: a^2 - b^2 = (a-b)(a+b).", "formula": "(a + b)^2 = a^2 + 2ab + b^2; a^2 - b^2 = (a - b)(a + b)", "keywords": ["algebra", "qisqa ko'paytirish", "7-sinf", "kvadrat", "tenglama", "ko'phad"]}, {"grade": 7, "subject": "Fizika", "chapter": "Tezlik, Zichlik va Nyutonning 1-qonuni", "page": 40, "rule": "Tezlik — bosib o'tilgan yo'lning ketgan vaqtga nisbatidir: v = S / t. Jismning zichligi esa massaning hajmga nisbatidir: rho = m / V. Nyuton 1-qonuni: Jismga tashqi kuch ta'sir etmasa, u tinch turadi yoki to'g'ri chiziqli tekis harakatlanadi.", "formula": "v = S / t; rho = m / V; F = m * a", "keywords": ["fizika", "tezlik", "zichlik", "nyuton", "massa", "7-sinf", "kuch"]}, {"grade": 8, "subject": "Geometriya", "chapter": "Pifagor Teoremasi va To'g'ri burchakli uchburchak", "page": 78, "rule": "To'g'ri burchakli uchburchakda gipotenuza kvadratining qiymati katetlar kvadratlari yig'indisiga teng: c^2 = a^2 + b^2. Uchburchak ichki burchaklari yig'indisi har doim 180 gradusga teng.", "formula": "c^2 = a^2 + b^2; alpha + beta + gamma = 180°", "keywords": ["pifagor", "gipotenuza", "katet", "uchburchak", "geometriya", "8-sinf"]}, {"grade": 8, "subject": "Fizika", "chapter": "Elektr toki, Kuchlanish va Om qonuni", "page": 92, "rule": "Zanjir qismidagi tok kuchi (I) kuchlanishga (U) to'g'ri proporsional va qarshilikka (R) teskari proporsionaldir: I = U / R. Elektr toki zaryadlangan zarrachalarning tartibli harakatidir.", "formula": "I = U / R; P = U * I (Elektr quvvati)", "keywords": ["om qonuni", "tok kuchi", "kuchlanish", "qarshilik", "fizika", "8-sinf", "elektr"]}, {"grade": 8, "subject": "Kimyo", "chapter": "Mendeleyev davriy jadvali va Kimyoviy bog'lanish", "page": 62, "rule": "Elementlarning xossalari ularning atom yadrosi zaryadiga davriy bog'liqdir. Valentlik — atomning boshqa atomlarni biriktirib olish qobiliyati. Suv molekulasi H2O kovalent qutbli bog'lanishga ega.", "formula": "M(H2O) = 1*2 + 16 = 18 g/mol; n = m / M", "keywords": ["kimyo", "mendeleyev", "valentlik", "atom", "molekula", "8-sinf", "davriy qonun"]}, {"grade": 9, "subject": "Algebra", "chapter": "Kvadrat tenglamalar va Viyet Teoremasi", "page": 85, "rule": "ax^2 + bx + c = 0 kvadrat tenglama diskriminant D = b^2 - 4ac orqali yechiladi. D > 0 bo'lsa 2 ta ildiz, D = 0 bo'lsa 1 ta ildiz, D < 0 bo'lsa haqiqiy ildiz yo'q. Viyet teoremasi: x1 + x2 = -b/a, x1 * x2 = c/a.", "formula": "D = b^2 - 4ac; x = (-b +- sqrt(D)) / (2a); x1+x2 = -b/a, x1*x2 = c/a", "keywords": ["kvadrat tenglama", "diskriminant", "viyet", "ildiz", "algebra", "9-sinf"]}, {"grade": 10, "subject": "Algebra va Analiz", "chapter": "Trigonometrik funksiyalar va Asosiy ayniyatlar", "page": 110, "rule": "Asosiy trigonometrik ayniyat: sin^2(x) + cos^2(x) = 1. Tangens tg(x) = sin(x) / cos(x). Ikkilangan burchak formulasi: sin(2x) = 2*sin(x)*cos(x).", "formula": "sin^2(alpha) + cos^2(alpha) = 1; tg(alpha) = sin(alpha)/cos(alpha)", "keywords": ["trigonometriya", "sinus", "kosinus", "tangens", "10-sinf", "analiz"]}, {"grade": 10, "subject": "Fizika", "chapter": "Molekulyar fizika va Termodinamika qonunlari", "page": 95, "rule": "Ideal gaz holat tenglamasi (Mendeleyev-Klapeyron): P * V = (m/M) * R * T. Termodinamikaning 1-qonuni: Tizimga berilgan issiqlik miqdori uning ichki energiyasini oshirishga va tashqi kuchlarga qarshi ish bajarishga sarflanadi (Q = deltaU + A).", "formula": "P * V = nu * R * T; Q = deltaU + A", "keywords": ["termodinamika", "ideal gaz", "issiqlik", "fizika", "10-sinf", "klapeyron"]}, {"grade": 11, "subject": "Algebra va Analiz", "chapter": "Hosilalar va Integrallar (Matematik analiz)", "page": 130, "rule": "Hosila — funksiyaning o'zgarish tezligini ifodalaydi. (x^n)' = n * x^(n-1). Boshlang'ich funksiya (aniqmas integral) esa differensiallashning teskarisidir: integral(x^n dx) = (x^(n+1))/(n+1) + C.", "formula": "(x^n)' = n * x^(n-1); (sin x)' = cos x; integral(x^n dx) = x^(n+1)/(n+1) + C", "keywords": ["hosila", "integral", "differensial", "11-sinf", "analiz", "matematika"]}, {"grade": 11, "subject": "Fizika", "chapter": "Optika, Kvant fizikasi va Eynshteyn formulasi", "page": 145, "rule": "Yorug'lik ham to'lqin, ham zarracha (foton) tabiatiga ega (korpuskulyar-to'lqin dualizmi). Foton energiyasi E = h * nu ga teng. Eynshteynning mashhur massa va energiya ekvivalentligi formulasi: E = m * c^2.", "formula": "E = h * nu; E = m * c^2; lambda = c / nu", "keywords": ["kvant", "foton", "eynshteyn", "optika", "fizika", "11-sinf", "yorug'lik"]}, {"grade": 11, "subject": "Informatika", "chapter": "Python Dasturlash & Sun'iy Intellekt Asoslari", "page": 80, "rule": "Pythonda ma'lumotlar turlari (int, float, str, list, dict). Shart operatorlari (if-elif-else) va sikllar (for, while). Sun'iy intellekt (Machine Learning) ma'lumotlar to'plami (dataset) orqali naqshlarni o'rganadi.", "formula": "def calculate_dts(score): return 'A' if score >= 86 else 'B'", "keywords": ["python", "dasturlash", "informatika", "11-sinf", "ai", "algoritm"]}];
+
+
+function escapeHtml(str) {
+    if (str == null) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function safeAiHtml(text) {
+    return escapeHtml(text).replace(/\n/g, '<br>');
+}
+
+function getTutorSubject() {
+    const sel = document.getElementById('childAiSubject') || document.getElementById('aiSubject');
+    if (sel && sel.value) return sel.value;
+    return (typeof currentChildSubject === 'string' && currentChildSubject) ? currentChildSubject : 'Matematika';
+}
+
+function telegramInitDataHeader() {
+    try {
+        const raw = (typeof tg !== 'undefined' && tg?.initData) ? tg.initData : '';
+        return raw ? { 'X-Telegram-Init-Data': raw } : {};
+    } catch (e) {
+        return {};
+    }
+}
 
 function searchDtsKnowledge(query, gradeFilter = null) {
     if (!query) return null;
@@ -299,7 +330,7 @@ const I18N = {
         childPairingHeader: "Oila Profiliga Ulanish & Rozilik",
         childPairingSub: "Ota-onang bergan 6 xonali Oila Kodini kirit",
         childConsentLabel: "Men yuqoridagi barcha 4 ta qoida bilan tanishdim va ota-onam bilan tizimga ulanishga roziman.",
-        childInputCodeLabel: "6 Xonali Oila Kodi (masalan: 849-210):",
+        childInputCodeLabel: "6 Xonali Oila Kodi (masalan: 849210):",
         btnChildConnect: "Oila Profiliga Ulanish",
         childPairedSuccess: "🎉 Tabriklaymiz! Siz Oila Profiliga Muvaffaqiyatli Ulandingiz!",
         childPairedSub: "Ota-onangizning Telegram botiga xabar yuborildi.",
@@ -465,7 +496,7 @@ const I18N = {
         childPairingHeader: "Подключение к Семье с Согласием",
         childPairingSub: "Введите 6-значный семейный код от родителей",
         childConsentLabel: "Я ознакомился со всеми 4 правилами и согласен на подключение к родительскому профилю.",
-        childInputCodeLabel: "6-значный Код Семьи (например: 849-210):",
+        childInputCodeLabel: "6-значный Код Семьи (например: 849210):",
         btnChildConnect: "Подключиться к Семье",
         childPairedSuccess: "🎉 Поздравляем! Вы успешно подключены к семейному профилю!",
         childPairedSub: "Уведомление отправлено родителям в Telegram-бот.",
@@ -596,12 +627,74 @@ function switchChild(childKey) {
     }
 }
 
-function handleAddNewChildSubmit() {
+async function handleAddNewChildSubmit() {
     const nameInput = document.getElementById('newChildNameInput');
     const gradeSelect = document.getElementById('newChildGradeInput');
+    const usernameInput = document.getElementById('newChildUsernameInput');
+    const resultBox = document.getElementById('addChildResultBox');
+    const submitBtn = document.getElementById('addChildSubmitBtn');
+    const isRuAdd = (currentLang === 'ru');
+
     const name = nameInput ? nameInput.value.trim() : "";
     const grade = gradeSelect ? parseInt(gradeSelect.value) : 5;
+    const username = usernameInput ? usernameInput.value.trim().replace('@', '') : "";
 
+    if (!name) {
+        alert("Iltimos, farzandingizning ism-familiyasini kiriting!");
+        return;
+    }
+    if (!username) {
+        alert(isRuAdd ? "Пожалуйста, введите Telegram username ребёнка!" : "Iltimos, farzandingizning Telegram username'ini kiriting!");
+        return;
+    }
+
+    if (submitBtn) { submitBtn.disabled = true; submitBtn.innerText = '⏳ Yuborilmoqda...'; }
+
+    const parentTelegramId = (typeof tg !== 'undefined' && tg?.initDataUnsafe?.user?.id) || null;
+    const parentUsername = (typeof tg !== 'undefined' && tg?.initDataUnsafe?.user?.username) || null;
+
+    try {
+        const resp = await fetch('https://wfrclcwjeeqeqchmdhzw.supabase.co/functions/v1/ota-ona-bot', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                type: 'add_child_request',
+                parentTelegramId: parentTelegramId,
+                parentUsername: parentUsername,
+                familyCode: familyCode,
+                familyName: familyCode,
+                childName: name,
+                childGrade: grade,
+                childUsername: username
+            })
+        });
+        const data = await resp.json();
+
+        if (data.ok) {
+            const pairLink = `https://t.me/qalqon_aibot?start=pair_${familyCode}`;
+            if (resultBox) {
+                resultBox.classList.remove('hidden');
+                resultBox.innerHTML = `
+                    <div class="text-xs font-bold text-emerald-300">✅ ${name} ro'yxatga qo'shildi!</div>
+                    <div class="text-[10px] text-slate-300">Endi shu havolani farzandingizga yuboring — u kirib, 4 qoidaga rozilik bergach, uning paneli faollashadi:</div>
+                    <div class="text-[10px] font-mono text-cyan-300 bg-slate-950/60 p-2 rounded-lg break-all">${pairLink}</div>
+                    <div class="text-[10px] font-mono text-cyan-300">Oila kodi: <b>${familyCode}</b></div>
+                `;
+            }
+            if (nameInput) nameInput.value = '';
+            if (usernameInput) usernameInput.value = '';
+        } else {
+            alert(isRuAdd ? 'Ошибка. Попробуйте ещё раз.' : 'Xatolik yuz berdi. Qayta urinib ko\'ring.');
+        }
+    } catch (e) {
+        console.error('Add child error:', e);
+        alert(isRuAdd ? 'Сервер недоступен. Попробуйте позже.' : 'Server javob bermayapti. Keyinroq urinib ko\'ring.');
+    } finally {
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.innerText = "➕ Ro'yxatga Qo'shish"; }
+    }
+    return;
+
+    // (pastdagi eski demo-kod endi ishlatilmaydi, xavfsizlik uchun qoldirildi)
     if (!name) {
         alert("Iltimos, farzandingizning ism-familiyasini kiriting!");
         return;
@@ -719,6 +812,60 @@ function saveParentOnboarding() {
 }
 
 
+function handleChildConsentAccept() {
+    const codeInput = document.getElementById('childConsentFamilyCode')?.value.trim();
+    const errorBox = document.getElementById('childConsentError');
+    if (!codeInput || codeInput.length < 5) {
+        if (errorBox) errorBox.classList.remove('hidden');
+        return;
+    }
+    if (errorBox) errorBox.classList.add('hidden');
+
+    localStorage.setItem('child_consented', 'true');
+    localStorage.setItem('child_family_code', codeInput);
+
+    const overlay = document.getElementById('childConsentOverlay');
+    if (overlay) overlay.classList.add('hidden');
+
+    const childFullName = (typeof tg !== 'undefined' && tg?.initDataUnsafe?.user)
+        ? `${tg.initDataUnsafe.user.first_name || ''} ${tg.initDataUnsafe.user.last_name || ''}`.trim()
+        : "Farzand";
+
+    try {
+        fetch('https://wfrclcwjeeqeqchmdhzw.supabase.co/functions/v1/ota-ona-bot', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                type: 'child_consent',
+                username: (typeof tg !== 'undefined' && tg?.initDataUnsafe?.user?.username) || null,
+                telegramId: (typeof tg !== 'undefined' && tg?.initDataUnsafe?.user?.id) || null,
+                familyCode: codeInput,
+                childName: childFullName || "Farzand"
+            })
+        }).catch(e => console.log('Child consent dispatched'));
+
+        fetch('https://wfrclcwjeeqeqchmdhzw.supabase.co/functions/v1/ota-ona-bot', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                type: 'child_paired_event',
+                familyCode: codeInput,
+                childName: childFullName || "Farzand",
+                timestamp: new Date().toISOString()
+            })
+        }).catch(e => console.log('Child paired notification dispatched'));
+    } catch (e) {}
+
+    switchChildTab('child-tab-home');
+}
+
+function handleChildConsentDecline() {
+    const isRu = (currentLang === 'ru');
+    alert(isRu
+        ? "Для использования приложения необходимо согласие. Пожалуйста, поговорите с родителями."
+        : "Ilovadan foydalanish uchun rozilik zarur. Iltimos, ota-onangiz bilan gaplashing.");
+}
+
 function checkChildConsentStatus() {
     if (currentAppRole === 'child') {
         const consented = localStorage.getItem('child_consented') === 'true';
@@ -736,6 +883,11 @@ function checkChildConsentStatus() {
             }
         }
         
+        const pairingSection = document.getElementById('childPairingSection');
+        if (pairingSection) {
+            pairingSection.classList.toggle('hidden', consented);
+        }
+
         // Farzand panelini majburiy tanlash
         switchChildTab('child-tab-home');
     }
@@ -762,7 +914,7 @@ let userPlan = localStorage.getItem('user_plan') || 'pro';
 let activeSchoolPeriod = 'weekly';
 let isRecordingVoice = false;
 let uploadedImageBase64 = null;
-let familyCode = urlCode || "849-210";
+let familyCode = urlCode || "849210";
 
 // Agar havola bola uchun bo'lsa
 let currentAppRole = urlRole || localStorage.getItem('app_role') || 'parent';
@@ -800,9 +952,8 @@ if (tg) {
         authStatus = 'approved';
         localStorage.setItem('auth_user', JSON.stringify(currentAuthUser));
         localStorage.setItem('auth_status', authStatus);
-    } else if (rawUsername.includes('aliyor') || rawUsername.includes('madina') || rawUsername.includes('temur')) {
-        currentAppRole = 'child';
-        localStorage.setItem('app_role', 'child');
+        // Super admin uchun ota-ona ro'yxatdan o'tish oynasi hech qachon ko'rsatilmasin
+        localStorage.setItem('parent_onboarded', 'true');
     } else if (rawUsername && !currentAuthUser) {
         currentAuthUser = {
             username: `@${rawUsername}`,
@@ -853,6 +1004,14 @@ function switchAppRole(role) {
     localStorage.setItem('app_role', role);
 
     const isParent = (role === 'parent');
+    const quickMenuFab = document.getElementById('quickMenuFab');
+    if (quickMenuFab) {
+        quickMenuFab.classList.toggle('hidden', !isParent);
+    }
+    const authBannerBtnRole = document.getElementById('authBannerBtn');
+    if (authBannerBtnRole) {
+        authBannerBtnRole.classList.toggle('hidden', !isParent);
+    }
     const roleBtnParent = document.getElementById('roleBtnParent');
     const roleBtnChild = document.getElementById('roleBtnChild');
     const parentHeader = document.getElementById('mainParentHeader');
@@ -1039,15 +1198,101 @@ function appendChildAiMessage(htmlContent) {
     thread.scrollTop = thread.scrollHeight;
 }
 
+let uploadedChildImageBase64 = null;
+
+function handleChildImageSelected(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        uploadedChildImageBase64 = e.target.result;
+        handleChildAiSend();
+    };
+    reader.readAsDataURL(file);
+}
+
+
+async function callRealTextBackendForChild(message) {
+    const child = childrenDatabase[currentChildKey];
+    const isRu = (currentLang === 'ru');
+    appendChildAiMessage(isRu ? '⏳ Думаю…' : '⏳ O\'ylayapman…');
+    try {
+        const formData = new FormData();
+        formData.append('message', message);
+        formData.append('child_id', currentChildKey || 'unknown');
+        formData.append('grade', String(realChildProfile?.grade || child?.grade || 5));
+        formData.append('subject', getTutorSubject());
+        const childRealName = realChildProfile?.fullName || (typeof tg !== 'undefined' && tg?.initDataUnsafe?.user?.first_name) || '';
+        if (childRealName) formData.append('child_name', childRealName);
+        const resp = await fetch('https://qalqon-backend.onrender.com/api/v1/tutor/chat', {
+            method: 'POST',
+            headers: { ...telegramInitDataHeader() },
+            body: formData
+        });
+        const data = await resp.json();
+        if (data.ok && data.answer) {
+            appendChildAiMessage(safeAiHtml(data.answer));
+        } else {
+            appendChildAiMessage(isRu ? 'Ошибка. Попробуйте ещё раз.' : 'Xatolik. Qayta urinib ko\'ring.');
+        }
+    } catch (e) {
+        console.error('Child text backend error:', e);
+        appendChildAiMessage(isRu ? '⚠️ Сервер временно недоступен.' : '⚠️ Server vaqtincha javob bermayapti.');
+    }
+}
+
+async function callRealVisionBackendForChild(query, imageBase64) {
+    const child = childrenDatabase[currentChildKey];
+    const isRu = (currentLang === 'ru');
+    appendChildAiMessage(isRu
+        ? '\ud83e\udd14 Анализирую фото задания, подождите (может занять до минуты)...'
+        : '\ud83e\udd14 Mashq rasmini tahlil qilyapman, kuting (bir daqiqagacha vaqt olishi mumkin)...');
+    try {
+        const blob = await (await fetch(imageBase64)).blob();
+        const formData = new FormData();
+        formData.append('image', blob, 'exercise.jpg');
+        formData.append('child_id', currentChildKey || 'unknown');
+        formData.append('grade', String(realChildProfile?.grade || child?.grade || 5));
+        formData.append('subject', getTutorSubject());
+        if (query) formData.append('query', query);
+        const childRealName = realChildProfile?.fullName || (typeof tg !== 'undefined' && tg?.initDataUnsafe?.user?.first_name) || '';
+        if (childRealName) formData.append('child_name', childRealName);
+        const resp = await fetch('https://qalqon-backend.onrender.com/api/v1/tutor/vision', {
+            method: 'POST',
+            headers: { ...telegramInitDataHeader() },
+            body: formData
+        });
+        const data = await resp.json();
+        if (data.ok && data.answer) {
+            appendChildAiMessage(safeAiHtml(data.answer));
+        } else {
+            appendChildAiMessage(isRu ? 'Ошибка анализа. Попробуйте ещё раз.' : 'Tahlilda xatolik yuz berdi. Qayta urinib ko\'ring.');
+        }
+    } catch (e) {
+        console.error('Child vision backend error:', e);
+        appendChildAiMessage(isRu ? '\u26a0\ufe0f Сервер временно недоступен.' : '\u26a0\ufe0f Server vaqtincha javob bermayapti.');
+    }
+}
+
 function handleChildAiSend() {
     const input = document.getElementById('childAiInput');
     const text = input ? input.value.trim() : "";
     const isRu = (currentLang === 'ru');
-
-    if (!text) return;
+    if (!text && !uploadedChildImageBase64) return;
     if (input) input.value = "";
 
+    if (uploadedChildImageBase64) {
+        appendChildUserMessage(text || (isRu ? '[\u0424\u043e\u0442\u043e \u0437\u0430\u0434\u0430\u043d\u0438\u044f]' : '[Mashq rasmi]'));
+        const imgToSend = uploadedChildImageBase64;
+        uploadedChildImageBase64 = null;
+        callRealVisionBackendForChild(text, imgToSend);
+        return;
+    }
+
+
     appendChildUserMessage(text);
+    callRealTextBackendForChild(text);
+    return;
 
     const thread = document.getElementById('childAiChatThread');
     const loadingId = 'child-ai-loading-' + Date.now();
@@ -1163,8 +1408,8 @@ function handleChildPairingSubmit() {
     if (!codeInput || codeInput.length < 5) {
         if (errorBox) {
             errorBox.innerText = (currentLang === 'ru') 
-                ? "⚠️ Введите корректный 6-значный семейный код (например: 849-210)!" 
-                : "⚠️ Ota-onangiz bergan to'g'ri 6 xonali oila kodini kiriting (masalan: 849-210)!";
+                ? "⚠️ Введите корректный 6-значный семейный код (например: 849210)!" 
+                : "⚠️ Ota-onangiz bergan to'g'ri 6 xonali oila kodini kiriting (masalan: 849210)!";
             errorBox.classList.remove('hidden');
         }
         return;
@@ -1180,10 +1425,22 @@ function handleChildPairingSubmit() {
             body: JSON.stringify({
                 type: 'child_paired_event',
                 familyCode: codeInput,
-                childName: childrenDatabase[currentChildKey]?.name || "Aliyor Valijonov",
+                childName: childrenDatabase[currentChildKey]?.name || "Farzand",
                 timestamp: new Date().toISOString()
             })
         }).catch(e => console.log('Child paired notification dispatched'));
+        // Ma'lumotlar bazasida ham rozilik berilganini belgilaymiz
+        fetch('https://wfrclcwjeeqeqchmdhzw.supabase.co/functions/v1/ota-ona-bot', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                type: 'child_consent',
+                username: (typeof tg !== 'undefined' && tg?.initDataUnsafe?.user?.username) || null,
+                telegramId: (typeof tg !== 'undefined' && tg?.initDataUnsafe?.user?.id) || null,
+                familyCode: codeInput,
+                childName: childrenDatabase[currentChildKey]?.name || "Farzand"
+            })
+        }).catch(e => console.log('Child consent dispatched'));
     } catch(e) {}
 
     if (successBox) successBox.classList.remove('hidden');
@@ -1615,6 +1872,10 @@ function renderActiveChild() {
 // ============================================================================
 // 7. GEMINI AI TIZIMI (CHAT, FOTO, OVOZ VA REELS TAHLILI)
 // ============================================================================
+function handleImageSelected(event) {
+    handleImageUpload(event);
+}
+
 function handleImageUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -1659,7 +1920,75 @@ function sendQuickPrompt(promptText) {
     sendTextMessage();
 }
 
+
+async function callRealTextBackend(message) {
+    const child = childrenDatabase[currentChildKey];
+    const isRu = (currentLang === 'ru');
+    appendAIMessage(isRu ? '⏳ Думаю…' : '⏳ O\'ylayapman…');
+    try {
+        const formData = new FormData();
+        formData.append('message', message || '');
+        formData.append('child_id', currentChildKey || 'unknown');
+        formData.append('grade', String(child?.grade || 5));
+        formData.append('subject', getTutorSubject());
+        const resp = await fetch('https://qalqon-backend.onrender.com/api/v1/tutor/chat', {
+            method: 'POST',
+            headers: { ...telegramInitDataHeader() },
+            body: formData
+        });
+        const data = await resp.json();
+        if (data.ok && data.answer) {
+            appendAIMessage(safeAiHtml(data.answer));
+        } else {
+            appendAIMessage(isRu ? 'Ошибка анализа.' : 'Tahlilda xatolik.');
+        }
+    } catch (e) {
+        console.error('Text backend error:', e);
+        appendAIMessage(isRu ? '⚠️ Сервер временно недоступен.' : '⚠️ Server vaqtincha javob bermayapti.');
+    }
+}
+
+async function callRealVisionBackend(query, imageBase64) {
+    const child = childrenDatabase[currentChildKey];
+    const isRu = (currentLang === 'ru');
+    const thinkingMsg = isRu
+        ? '\ud83e\udd14 Анализирую фото задания, подождите немного (может занять до минуты при первом запросе)...'
+        : '\ud83e\udd14 Mashqni tahlil qilyapman, biroz kuting (birinchi so\'rovda bir daqiqagacha vaqt olishi mumkin)...';
+    appendAIMessage(thinkingMsg);
+    try {
+        const blob = await (await fetch(imageBase64)).blob();
+        const formData = new FormData();
+        formData.append('image', blob, 'exercise.jpg');
+        formData.append('child_id', currentChildKey || 'unknown');
+        formData.append('grade', String(child?.grade || 5));
+        formData.append('subject', getTutorSubject());
+        if (query) formData.append('query', query);
+        const resp = await fetch('https://qalqon-backend.onrender.com/api/v1/tutor/vision', {
+            method: 'POST',
+            headers: { ...telegramInitDataHeader() },
+            body: formData
+        });
+        const data = await resp.json();
+        if (data.ok && data.answer) {
+            appendAIMessage(safeAiHtml(data.answer));
+        } else {
+            appendAIMessage(isRu ? 'Извините, произошла ошибка при анализе. Попробуйте ещё раз.' : 'Kechirasiz, tahlil qilishda xatolik yuz berdi. Qayta urinib ko\'ring.');
+        }
+    } catch (e) {
+        console.error('Vision backend error:', e);
+        const isRu2 = (currentLang === 'ru');
+        appendAIMessage(isRu2 ? '\u26a0\ufe0f Сервер временно недоступен. Попробуйте через минуту.' : '\u26a0\ufe0f Server vaqtincha javob bermayapti. Bir daqiqadan keyin qayta urinib ko\'ring.');
+    }
+}
+
 function generateAIResponse(query, imageBase64) {
+    if (imageBase64) {
+        callRealVisionBackend(query, imageBase64);
+        return;
+    }
+    callRealTextBackend(query);
+    return;
+
     const child = childrenDatabase[currentChildKey];
     const qLower = (query || "").toLowerCase();
     const isRu = (currentLang === 'ru');
@@ -1872,7 +2201,7 @@ function triggerVoiceAlert() {
 }
 
 function copyPairingLink() {
-    const link = `https://t.me/farzand_nazorat_bot?start=pair_${familyCode.replace("-", "")}`;
+    const link = `https://t.me/qalqon_aibot?start=pair_${familyCode.replace("-", "")}`;
     navigator.clipboard.writeText(link).then(() => {
         const msg = (currentLang === 'ru') 
             ? "✅ Ссылка для подключения скопирована!"
@@ -1916,11 +2245,39 @@ function updateMapCoordinates() {
     }
 }
 
+// Backend (Supabase) orqali "bu foydalanuvchi ota-onami yoki farzandmi" ekanini
+// haqiqiy ma'lumotlar bazasidan tekshiradi (eski hardcoded ism ro'yxati o'rniga).
+let realChildProfile = null;
+async function fetchAndApplyRole() {
+    if (urlRole) return; // Havolada aniq rol ko'rsatilgan bo'lsa (masalan admin tugmasi), shuni ustun qo'yamiz
+    const uname = (typeof tg !== 'undefined' && tg?.initDataUnsafe?.user?.username) || null;
+    const tid = (typeof tg !== 'undefined' && tg?.initDataUnsafe?.user?.id) || null;
+    if (!uname && !tid) return;
+    try {
+        const resp = await fetch('https://wfrclcwjeeqeqchmdhzw.supabase.co/functions/v1/ota-ona-bot', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'check_role', username: uname, telegramId: tid })
+        });
+        const data = await resp.json();
+        if (data.role === 'child') {
+            currentAppRole = 'child';
+            localStorage.setItem('app_role', 'child');
+            realChildProfile = data;
+        } else if (data.role === 'parent') {
+            currentAppRole = 'parent';
+            localStorage.setItem('app_role', 'parent');
+        }
+    } catch (e) {
+        console.error('check_role sorovida xato:', e);
+    }
+}
 // DOM Init
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     setTheme(currentTheme);
     applyLanguageTranslations();
     updateAuthUI();
+    await fetchAndApplyRole();
     switchAppRole(currentAppRole);
     renderChildSelectDropdown();
     renderActiveChild();
@@ -1959,7 +2316,7 @@ function handleCompleteParentOnboarding() {
         father: { name: parentName, phone: parentPhone, username: parentUsername },
         mother: { name: motherName, phone: motherPhone, username: motherUsername },
         children: [{ name: childName, grade: childGrade, username: childUsername, consented: false }],
-        code: familyCode || "849-210",
+        code: familyCode || "849210",
         status: "pending"
     };
 
@@ -2003,34 +2360,23 @@ function handleCompleteParentOnboarding() {
     
     // Adminga (358795989 - @ai_loyihachi) to'g'ridan-to'g'ri Telegram xabar yuborish
     try {
-        // Tokenlar xavfsiz server tomonida saqlanadi
-        const botToken = "";
-        const adminChatId = 358795989;
-        const alertText = `👤 <b>YANGI OILA RO'YXATDAN O'TDI (MINI APP):</b>\n\n` +
-            `• <b>Oila:</b> ${familyName}\n` +
-            `• <b>Ota:</b> ${parentName} (@${parentUsername || 'mavjud_emas'}) - Tel: ${parentPhone}\n` +
-            `• <b>Ona:</b> ${motherName || 'Kiritilmagan'} (@${motherUsername || 'yoq'})\n` +
-            `• <b>Farzand:</b> ${childName} (${childGrade}-sinf, @${childUsername || 'yoq'})\n` +
-            `• <b>Oila Kodi:</b> <code>${familyCode || '849-210'}</code>\n\n` +
-            `<i>Ushbu oilaga tizimdan to'liq foydalanishga ruxsat berasizmi?</i>`;
-
-        const keyboard = {
-            inline_keyboard: [
-                [
-                    { text: "✅ To'liq Ruxsat Berish", callback_data: `admin_approve_${parentUsername || 'user'}_${Date.now()}` },
-                    { text: "❌ Test Rejimida Qoldirish", callback_data: `admin_reject_${parentUsername || 'user'}_${Date.now()}` }
-                ]
-            ]
-        };
-
-        fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+        // Supabase Edge Function orqali (xavfsiz, CORS to'g'ri sozlangan) adminga yuboriladi
+        const SUPABASE_FUNCTION_URL = "https://wfrclcwjeeqeqchmdhzw.supabase.co/functions/v1/ota-ona-bot";
+        fetch(SUPABASE_FUNCTION_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                chat_id: adminChatId,
-                text: alertText,
-                parse_mode: 'HTML',
-                reply_markup: keyboard
+                type: 'parent_registration_request',
+                familyName: familyName,
+                parentName: parentName,
+                parentUsername: parentUsername,
+                parentPhone: parentPhone,
+                motherName: motherName,
+                motherUsername: motherUsername,
+                childName: childName,
+                childGrade: childGrade,
+                childUsername: childUsername,
+                familyCode: familyCode
             })
         }).catch(err => console.log("Notify error:", err));
     } catch(e) {
