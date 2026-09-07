@@ -1,4 +1,4 @@
-// api/webhook.js
+﻿// api/webhook.js
 // Vercel Serverless Function — Telegram Bot Webhook (pair_ deep-link capable)
 //
 // CONFLICT NOTE:
@@ -45,6 +45,13 @@ export default async function handler(req, res) {
     });
   };
 
+  const boshlashReplyKeyboard = () => ({
+    keyboard: [[{ text: 'Start' }]],
+    resize_keyboard: true,
+    is_persistent: true,
+    one_time_keyboard: false
+  });
+
   try {
     const update = req.body;
 
@@ -73,7 +80,11 @@ export default async function handler(req, res) {
     if (update && update.message) {
       const msg = update.message;
       const chatId = msg.chat.id;
-      const text = msg.text || '';
+      let text = msg.text || '';
+      const textNorm = text.trim().replace(/[«»]/g, '').toLowerCase();
+      if (textNorm === 'boshlash' || textNorm === 'start' || textNorm === 'бошлаш') {
+        text = '/start';
+      }
 
       if (text.startsWith('/start')) {
         const payload = text.slice('/start'.length).trim();
@@ -111,6 +122,11 @@ export default async function handler(req, res) {
             [{ text: '📊 Ota-ona Boshqaruv Panelini Ochish (Mini App)', web_app: { url: MINI_APP_URL } }]
           ]
         });
+        await sendMessage(
+          chatId,
+          '👇 <b>Boshlash</b> tugmasi doim pastda — / kerak emas.',
+          boshlashReplyKeyboard()
+        );
         return res.status(200).json({ ok: true });
       }
 
@@ -153,7 +169,7 @@ export default async function handler(req, res) {
       } else {
         await sendMessage(
           chatId,
-          `💡 Boshqaruv panelini ochish uchun /start bosing.`
+          `💡 Boshqaruv panelini ochish uchun pastdagi «Boshlash» tugmasini bosing (yoki /start).`
         );
       }
     }

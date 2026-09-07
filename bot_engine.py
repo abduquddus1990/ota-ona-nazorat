@@ -1,4 +1,4 @@
-import urllib.request
+﻿import urllib.request
 import json
 import time
 import sys
@@ -156,6 +156,15 @@ def call_tg(method, data=None):
         print(f"Telegram API Error [{method}]:", e)
         return {"ok": False, "error": str(e)}
 
+
+def boshlash_reply_keyboard():
+    """Persistent ReplyKeyboard: one clear Boshlash button (same as /start)."""
+    return {
+        "keyboard": [[{"text": "Start"}]],
+        "resize_keyboard": True,
+        "is_persistent": True,
+        "one_time_keyboard": False,
+    }
 def send_message(chat_id, html_text, reply_markup=None):
     payload = {
         "chat_id": chat_id,
@@ -207,22 +216,22 @@ def get_start_menu_text(user_id, lang="uz", is_approved=True, is_admin=False):
 
 def get_start_keyboard(user_id, lang="uz"):
     code = generate_family_code(user_id)
+    # Inline: only pairing + language. Reels/Taklif removed from start UX.
     if lang == "ru":
         return {
             "inline_keyboard": [
-                [{"text": "🚀 Открыть Панель Управления (Mini App)", "web_app": {"url": f"{MINI_APP_URL}&lang=ru"}}],
-                [{"text": "🔗 Подключить Ребёнка", "callback_data": f"action_pair_{code}"}, {"text": "🎬 Анализ Reels и Видео", "callback_data": "action_reels"}],
-                [{"text": "💡 Отзывы и Предложения", "callback_data": "action_feedback"}, {"text": "🌐 Til / Язык (UZ/RU)", "callback_data": "action_lang"}]
+                [{"text": "📱 Открыть панель", "web_app": {"url": MINI_APP_URL}}],
+                [{"text": "👶 Подключить ребёнка", "callback_data": f"action_pair_{code}"}],
+                [{"text": "🌐 Til / Язык (UZ/RU)", "callback_data": "action_lang"}],
             ]
         }
     return {
         "inline_keyboard": [
-            [{"text": "🚀 Ota-ona Boshqaruv Panelini Ochish (Mini App)", "web_app": {"url": f"{MINI_APP_URL}&lang=uz"}}],
-            [{"text": "🔗 Farzandni Ulash", "callback_data": f"action_pair_{code}"}, {"text": "🎬 Reels & Video Tahlili", "callback_data": "action_reels"}],
-            [{"text": "💡 Taklif va Fikrlar", "callback_data": "action_feedback"}, {"text": "🌐 Til / Яzyк (UZ/RU)", "callback_data": "action_lang"}]
+            [{"text": "📱 Ota-ona paneli", "web_app": {"url": MINI_APP_URL}}],
+            [{"text": "👶 Farzandni ulash", "callback_data": f"action_pair_{code}"}],
+            [{"text": "🌐 Til / Язык (UZ/RU)", "callback_data": "action_lang"}],
         ]
     }
-
 def begin_child_onboard(chat_id, clean_code, parent_id):
     PENDING_CHILD[str(chat_id)] = {
         "code": normalize_code(clean_code),
@@ -353,10 +362,12 @@ def handle_update(update):
             USER_LANG[chat_id] = "uz"
             send_message(chat_id, "🇺🇿 Til o'zbekchaga o'zgartirildi!")
             send_message(chat_id, get_start_menu_text(chat_id, "uz", True, is_admin), get_start_keyboard(chat_id, "uz"))
+            send_message(chat_id, "👇 <b>Start</b> tugmasi doim pastda — / kerak emas.", boshlash_reply_keyboard())
         elif data == "set_lang_ru":
             USER_LANG[chat_id] = "ru"
             send_message(chat_id, "🇷🇺 Язык изменён на русский!")
             send_message(chat_id, get_start_menu_text(chat_id, "ru", True, is_admin), get_start_keyboard(chat_id, "ru"))
+            send_message(chat_id, "👇 <b>Start</b> всегда внизу — / не нужен.", boshlash_reply_keyboard())
         return
 
     if "message" in update:
@@ -372,7 +383,12 @@ def handle_update(update):
 
         lang = USER_LANG.get(chat_id, "uz")
 
-        # Age / sinf onboarding after pair_ deep link
+        # ReplyKeyboard «Boshlash» / Start → same handler as /start (before age/sinf pending)
+        text_norm = (text or "").strip().replace("«", "").replace("»", "").strip().lower()
+        if text_norm in ("boshlash", "start", "бошлаш"):
+            text = "/start"
+
+        # Age / sinf onboarding after pair_ deep link (skip when restarting via Boshlash)
         if text and not text.startswith("/") and handle_pending_child(chat_id, text):
             return
 
@@ -422,6 +438,7 @@ def handle_update(update):
                 )
 
             send_message(chat_id, get_start_menu_text(chat_id, lang, True, is_admin), get_start_keyboard(chat_id, lang))
+            send_message(chat_id, "👇 <b>Start</b> tugmasi doim pastda — / kerak emas.", boshlash_reply_keyboard())
             return
 
         if text.startswith("/taklif_farzand") or text.startswith("/invite"):
@@ -466,19 +483,10 @@ def handle_update(update):
 
 def setup_bot_commands():
     commands = [
-        {"command": "start", "description": "🚀 Asosiy boshqaruv menyusi"},
-        {"command": "farzand", "description": "🔗 Farzandni ulash kodi va havolasi"},
-        {"command": "reels", "description": "🎬 Reels va video tahlili"},
-        {"command": "taklif", "description": "💡 Taklif va mulohaza yuborish"}
+        {"command": "start", "description": "Boshlash"}
     ]
     call_tg("setMyCommands", {"commands": commands})
-    call_tg("setChatMenuButton", {
-        "menu_button": {
-            "type": "web_app",
-            "text": "📊 Ota-Ona Paneli",
-            "web_app": {"url": MINI_APP_URL}
-        }
-    })
+    call_tg("setChatMenuButton", {"menu_button": {"type": "commands"}})
 
 def main():
     print("="*60)

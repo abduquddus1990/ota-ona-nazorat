@@ -1,4 +1,4 @@
-// supabase/functions/ota-ona-bot/index.ts
+﻿// supabase/functions/ota-ona-bot/index.ts
 //
 // QALQON AI — ADVANCED 24/7 SUPABASE SERVERLESS BOT
 // Multi-Admin / Partner Management (@ai_loyihachi & partners), HTML Parse Mode (Zero parsing errors),
@@ -12,6 +12,39 @@ if (!BOT_TOKEN) {
 }
 const MINI_APP_URL = Deno.env.get("MINI_APP_URL") || "https://abduquddus1990.github.io/ota-ona-nazorat/?v=3.0";
 const TELEGRAM_API = `https://api.telegram.org/bot${BOT_TOKEN}`;
+
+async function ensureBotCommands() {
+  try {
+    await fetch(`${TELEGRAM_API}/deleteMyCommands`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    await fetch(`${TELEGRAM_API}/deleteMyCommands`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ scope: { type: "all_private_chats" } }),
+    });
+    const commands = [{ command: "start", description: "Boshlash" }];
+    await fetch(`${TELEGRAM_API}/setMyCommands`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ commands }),
+    });
+    await fetch(`${TELEGRAM_API}/setMyCommands`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ commands, scope: { type: "all_private_chats" } }),
+    });
+    await fetch(`${TELEGRAM_API}/setChatMenuButton`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ menu_button: { type: "commands" } }),
+    });
+  } catch (e) {
+    console.error("ensureBotCommands failed", e);
+  }
+}
 
 // Dynamic Admin IDs Store & Known Admin Usernames (Sheriklar ro'yxati)
 const ADMIN_USERNAMES = new Set<string>(["ai_loyihachi"]);
@@ -120,47 +153,33 @@ Quyidagi bo'limlardan birini tanlang:`;
 
 function getStartKeyboard(userId: string | number, lang: string = "uz"): any {
   const code = generateFamilyCode(userId);
-  
   if (lang === "ru") {
     return {
       inline_keyboard: [
-        [
-          {
-            text: "🚀 Открыть Панель Управления (Mini App)",
-            web_app: { url: `${MINI_APP_URL}&lang=ru` },
-          },
-        ],
-        [
-          { text: "🔗 Подключить Ребёнка", callback_data: `action_pair_${code}` },
-          { text: "🎬 Анализ Reels и Видео", callback_data: "action_reels" },
-        ],
-        [
-          { text: "💡 Отзывы и Предложения", callback_data: "action_feedback" },
-          { text: "🌐 Til / Язык (UZ/RU)", callback_data: "action_lang" },
-        ],
+        [{ text: "📱 Открыть панель (Mini App)", web_app: { url: `${MINI_APP_URL}&lang=ru` } }],
+        [{ text: "👶 Подключить ребёнка", callback_data: `action_pair_${code}` }],
+        [{ text: "🌐 Til / Язык (UZ/RU)", callback_data: "action_lang" }],
       ],
     };
   }
   return {
     inline_keyboard: [
-      [
-        {
-          text: "🚀 Ota-ona Boshqaruv Panelini Ochish (Mini App)",
-          web_app: { url: `${MINI_APP_URL}&lang=uz` },
-        },
-      ],
-      [
-        { text: "🔗 Farzandni Ulash", callback_data: `action_pair_${code}` },
-        { text: "🎬 Reels & Video Tahlili", callback_data: "action_reels" },
-      ],
-      [
-        { text: "💡 Taklif va Fikrlar", callback_data: "action_feedback" },
-        { text: "🌐 Til / Язык (UZ/RU)", callback_data: "action_lang" },
-      ],
+      [{ text: "📱 Ota-ona paneli (Mini App)", web_app: { url: `${MINI_APP_URL}&lang=uz` } }],
+      [{ text: "👶 Farzandni ulash", callback_data: `action_pair_${code}` }],
+      [{ text: "🌐 Til / Язык (UZ/RU)", callback_data: "action_lang" }],
     ],
   };
 }
 
+function boshlashReplyKeyboard(): any {
+  // Persistent ReplyKeyboard: one Boshlash button (= /start)
+  return {
+    keyboard: [[{ text: "Start" }]],
+    resize_keyboard: true,
+    is_persistent: true,
+    one_time_keyboard: false,
+  };
+}
 function getPairingText(userId: string | number, lang: string = "uz", isApproved: boolean = false): string {
   const code = generateFamilyCode(userId);
   const pairLink = `https://t.me/qalqon_aibot?start=pair_${code}`;
@@ -193,6 +212,7 @@ function getFeedbackText(lang: string = "uz"): string {
 }
 
 serve(async (req) => {
+  await ensureBotCommands();
   if (req.method === "GET") {
     return new Response(JSON.stringify({ status: "OK", service: "Qalqon AI Bot" }), {
       headers: { "Content-Type": "application/json" },
@@ -298,9 +318,11 @@ serve(async (req) => {
       } else if (data === "set_lang_uz") {
         USER_LANG[chatId] = "uz";
         await sendMessage(chatId, "✅ Til o'zbekchaga o'zgartirildi!", getStartKeyboard(chatId, "uz"));
+      await sendMessage(chatId, "👇 <b>Start</b> tugmasi doim pastda.", boshlashReplyKeyboard());
       } else if (data === "set_lang_ru") {
         USER_LANG[chatId] = "ru";
         await sendMessage(chatId, "✅ Язык успешно изменён на русский!", getStartKeyboard(chatId, "ru"));
+        await sendMessage(chatId, "👇 <b>Start</b> всегда внизу — / не нужен.", boshlashReplyKeyboard());
       }
       return new Response(JSON.stringify({ ok: true }), { status: 200 });
     }
@@ -309,7 +331,7 @@ serve(async (req) => {
     if (update.message) {
       const msg = update.message;
       const chatId = msg.chat.id;
-      const text = (msg.text || "").trim();
+      let text = (msg.text || "").trim();
       const lang = USER_LANG[chatId] || "uz";
       const rawUsername = (msg.from.username || "").toLowerCase().replace("@", "");
       const isAdmin = ADMIN_USERNAMES.has(rawUsername);
@@ -365,6 +387,10 @@ serve(async (req) => {
       }
 
       // /start [payload] komandasi
+      const textNorm = (text || "").trim().replace(/[«»]/g, "").toLowerCase();
+      if (textNorm === "boshlash" || textNorm === "start" || textNorm === "бошлаш") {
+        text = "/start";
+      }
       if (text.startsWith("/start")) {
         // Force-remove old reply keyboard (location sharing button) from user's Telegram client cache
         try {
@@ -387,7 +413,7 @@ serve(async (req) => {
           }
         } catch (_) {}
 
-        if (text.includes("pair_")) {
+        if (text.includes("pair_") || text.includes("child_")) {
           const reply = lang === "ru" 
             ? "✅ <b>Вы успешно привязаны к родительскому аккаунту!</b> Все школьные предметы и функции активированы."
             : "✅ <b>Siz ota-onangizning profiliga muvaffaqiyatli bog'landingiz!</b> Barcha darsliklar va imkoniyatlar faollashtirildi.";
@@ -396,6 +422,7 @@ serve(async (req) => {
         }
 
         await sendMessage(chatId, getStartMenuText(chatId, lang, true, isAdmin), getStartKeyboard(chatId, lang));
+        await sendMessage(chatId, "👇 <b>Start</b> tugmasi doim pastda — / kerak emas.", boshlashReplyKeyboard());
         return new Response(JSON.stringify({ ok: true }), { status: 200 });
       }
 
