@@ -14,10 +14,9 @@ class GeminiAIEngine:
     3. YouTube / Reels mavzularini tahlil qilib, ota-onaga professional pedagogik tavsiya berish.
     """
     def __init__(self, api_key: str = None):
-        self.api_key = api_key or os.getenv(
-            "GEMINI_API_KEY", 
-            ""
-        )
+        self.api_key = api_key or os.getenv("GEMINI_API_KEY", "").strip()
+        if not self.api_key:
+            raise ValueError("GEMINI_API_KEY topilmadi")
         self.base_url = "https://generativelanguage.googleapis.com/v1beta/models"
 
     async def analyze_battery_screenshot(self, image_bytes: bytes, lang: str = "uz") -> Dict[str, Any]:
@@ -97,7 +96,7 @@ class GeminiAIEngine:
         }
 
     async def generate_parenting_insights(self, interests: List[str], screen_data: dict, lang: str = "uz") -> Dict[str, Any]:
-        """Stub: not wired."""
+        """Stub: real insights not wired. Do not invent metrics."""
         raise NotImplementedError("generate_parenting_insights not implemented")
     async def analyze_reels_and_videos(self, video_history: List[str], lang: str = "uz") -> Dict[str, Any]:
         """

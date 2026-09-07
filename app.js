@@ -299,7 +299,7 @@ const I18N = {
         childPairingHeader: "Oila Profiliga Ulanish & Rozilik",
         childPairingSub: "Ota-onang bergan 6 xonali Oila Kodini kirit",
         childConsentLabel: "Men yuqoridagi barcha 4 ta qoida bilan tanishdim va ota-onam bilan tizimga ulanishga roziman.",
-        childInputCodeLabel: "6 Xonali Oila Kodi (masalan: 849-210):",
+        childInputCodeLabel: "6 Xonali Oila Kodi (masalan: 849210):",
         btnChildConnect: "Oila Profiliga Ulanish",
         childPairedSuccess: "🎉 Tabriklaymiz! Siz Oila Profiliga Muvaffaqiyatli Ulandingiz!",
         childPairedSub: "Ota-onangizning Telegram botiga xabar yuborildi.",
@@ -465,7 +465,7 @@ const I18N = {
         childPairingHeader: "Подключение к Семье с Согласием",
         childPairingSub: "Введите 6-значный семейный код от родителей",
         childConsentLabel: "Я ознакомился со всеми 4 правилами и согласен на подключение к родительскому профилю.",
-        childInputCodeLabel: "6-значный Код Семьи (например: 849-210):",
+        childInputCodeLabel: "6-значный Код Семьи (например: 849210):",
         btnChildConnect: "Подключиться к Семье",
         childPairedSuccess: "🎉 Поздравляем! Вы успешно подключены к семейному профилю!",
         childPairedSub: "Уведомление отправлено родителям в Telegram-бот.",
@@ -762,7 +762,7 @@ let userPlan = localStorage.getItem('user_plan') || 'pro';
 let activeSchoolPeriod = 'weekly';
 let isRecordingVoice = false;
 let uploadedImageBase64 = null;
-let familyCode = urlCode || "849-210";
+let familyCode = urlCode || "849210";
 
 // Agar havola bola uchun bo'lsa
 let currentAppRole = urlRole || localStorage.getItem('app_role') || 'parent';
@@ -1163,8 +1163,8 @@ function handleChildPairingSubmit() {
     if (!codeInput || codeInput.length < 5) {
         if (errorBox) {
             errorBox.innerText = (currentLang === 'ru') 
-                ? "⚠️ Введите корректный 6-значный семейный код (например: 849-210)!" 
-                : "⚠️ Ota-onangiz bergan to'g'ri 6 xonali oila kodini kiriting (masalan: 849-210)!";
+                ? "⚠️ Введите корректный 6-значный семейный код (например: 849210)!" 
+                : "⚠️ Ota-onangiz bergan to'g'ri 6 xonali oila kodini kiriting (masalan: 849210)!";
             errorBox.classList.remove('hidden');
         }
         return;
@@ -1872,7 +1872,7 @@ function triggerVoiceAlert() {
 }
 
 function copyPairingLink() {
-    const link = `https://t.me/farzand_nazorat_bot?start=pair_${familyCode.replace("-", "")}`;
+    const link = `https://t.me/qalqon_aibot?start=pair_${familyCode.replace("-", "")}`;
     navigator.clipboard.writeText(link).then(() => {
         const msg = (currentLang === 'ru') 
             ? "✅ Ссылка для подключения скопирована!"
@@ -1959,7 +1959,7 @@ function handleCompleteParentOnboarding() {
         father: { name: parentName, phone: parentPhone, username: parentUsername },
         mother: { name: motherName, phone: motherPhone, username: motherUsername },
         children: [{ name: childName, grade: childGrade, username: childUsername, consented: false }],
-        code: familyCode || "849-210",
+        code: familyCode || "849210",
         status: "pending"
     };
 
@@ -2011,7 +2011,7 @@ function handleCompleteParentOnboarding() {
             `• <b>Ota:</b> ${parentName} (@${parentUsername || 'mavjud_emas'}) - Tel: ${parentPhone}\n` +
             `• <b>Ona:</b> ${motherName || 'Kiritilmagan'} (@${motherUsername || 'yoq'})\n` +
             `• <b>Farzand:</b> ${childName} (${childGrade}-sinf, @${childUsername || 'yoq'})\n` +
-            `• <b>Oila Kodi:</b> <code>${familyCode || '849-210'}</code>\n\n` +
+            `• <b>Oila Kodi:</b> <code>${familyCode || '849210'}</code>\n\n` +
             `<i>Ushbu oilaga tizimdan to'liq foydalanishga ruxsat berasizmi?</i>`;
 
         const keyboard = {

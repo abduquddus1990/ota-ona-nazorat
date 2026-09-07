@@ -71,19 +71,24 @@ function escapeHtml(str) {
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
 }
+
 function safeAiHtml(text) {
     return escapeHtml(text).replace(/\n/g, '<br>');
 }
+
 function getTutorSubject() {
     const sel = document.getElementById('childAiSubject') || document.getElementById('aiSubject');
     if (sel && sel.value) return sel.value;
     return (typeof currentChildSubject === 'string' && currentChildSubject) ? currentChildSubject : 'Matematika';
 }
+
 function telegramInitDataHeader() {
     try {
         const raw = (typeof tg !== 'undefined' && tg?.initData) ? tg.initData : '';
         return raw ? { 'X-Telegram-Init-Data': raw } : {};
-    } catch (e) { return {}; }
+    } catch (e) {
+        return {};
+    }
 }
 
 function searchDtsKnowledge(query, gradeFilter = null) {
@@ -1225,11 +1230,14 @@ async function callRealTextBackendForChild(message) {
             body: formData
         });
         const data = await resp.json();
-        if (data.ok && data.answer) appendChildAiMessage(safeAiHtml(data.answer));
-        else appendChildAiMessage(isRu ? 'Ошибка.' : 'Xatolik.');
+        if (data.ok && data.answer) {
+            appendChildAiMessage(safeAiHtml(data.answer));
+        } else {
+            appendChildAiMessage(isRu ? 'Ошибка. Попробуйте ещё раз.' : 'Xatolik. Qayta urinib ko\'ring.');
+        }
     } catch (e) {
         console.error('Child text backend error:', e);
-        appendChildAiMessage(isRu ? '⚠️ Сервер недоступен.' : '⚠️ Server javob bermayapti.');
+        appendChildAiMessage(isRu ? '⚠️ Сервер временно недоступен.' : '⚠️ Server vaqtincha javob bermayapti.');
     }
 }
 
@@ -1929,11 +1937,14 @@ async function callRealTextBackend(message) {
             body: formData
         });
         const data = await resp.json();
-        if (data.ok && data.answer) appendAIMessage(safeAiHtml(data.answer));
-        else appendAIMessage(isRu ? 'Ошибка.' : 'Xatolik.');
+        if (data.ok && data.answer) {
+            appendAIMessage(safeAiHtml(data.answer));
+        } else {
+            appendAIMessage(isRu ? 'Ошибка анализа.' : 'Tahlilda xatolik.');
+        }
     } catch (e) {
         console.error('Text backend error:', e);
-        appendAIMessage(isRu ? '⚠️ Сервер недоступен.' : '⚠️ Server javob bermayapti.');
+        appendAIMessage(isRu ? '⚠️ Сервер временно недоступен.' : '⚠️ Server vaqtincha javob bermayapti.');
     }
 }
 
@@ -2190,7 +2201,7 @@ function triggerVoiceAlert() {
 }
 
 function copyPairingLink() {
-    const link = `https://t.me/farzand_nazorat_bot?start=pair_${familyCode.replace("-", "")}`;
+    const link = `https://t.me/qalqon_aibot?start=pair_${familyCode.replace("-", "")}`;
     navigator.clipboard.writeText(link).then(() => {
         const msg = (currentLang === 'ru') 
             ? "✅ Ссылка для подключения скопирована!"
