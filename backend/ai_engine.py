@@ -16,7 +16,7 @@ class GeminiAIEngine:
     def __init__(self, api_key: str = None):
         self.api_key = api_key or os.getenv(
             "GEMINI_API_KEY", 
-            "AQ.Ab8RN6KCZ3EdAeuYRiW8frqMgD2A3JVmiA5gtVWF_pCzJw6WhQ"
+            ""
         )
         self.base_url = "https://generativelanguage.googleapis.com/v1beta/models"
 
@@ -97,6 +97,8 @@ class GeminiAIEngine:
         }
 
     async def generate_parenting_insights(self, interests: List[str], screen_data: dict, lang: str = "uz") -> Dict[str, Any]:
+        """Stub: not wired."""
+        raise NotImplementedError("generate_parenting_insights not implemented")
     async def analyze_reels_and_videos(self, video_history: List[str], lang: str = "uz") -> Dict[str, Any]:
         """
         Farzand ko'rayotgan Instagram Reels, YouTube Shorts va videolarni
