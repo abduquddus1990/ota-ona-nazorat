@@ -661,7 +661,7 @@ body[data-theme="sky"] .subpage-modal {
                     <label class="text-[11px] font-bold text-slate-300 block">
                         🔑 6 Xonali Oila Kodi <span class="text-[10px] text-indigo-300 font-normal">(Ota-onangizdan og'zaki oling):</span>
                     </label>
-                    <input type="text" id="childConsentFamilyCode" placeholder="Masalan: 849-210" maxlength="7" class="w-full bg-slate-950 border-2 border-indigo-500/60 rounded-2xl px-4 py-3 text-center text-lg font-black text-white font-mono tracking-widest focus:outline-none focus:border-cyan-400 placeholder-slate-600 transition">
+                    <input type="text" id="childConsentFamilyCode" placeholder="Masalan: 849210" maxlength="7" class="w-full bg-slate-950 border-2 border-indigo-500/60 rounded-2xl px-4 py-3 text-center text-lg font-black text-white font-mono tracking-widest focus:outline-none focus:border-cyan-400 placeholder-slate-600 transition">
                     <p id="childConsentError" class="text-[10px] text-rose-400 font-bold text-center hidden">⚠️ Iltimos, 6 xonali oila kodini to'liq kiriting!</p>
                 </div>
             </div>
@@ -937,8 +937,8 @@ body[data-theme="sky"] .subpage-modal {
 
             <!-- 6 Xonali Kod Kiritish -->
             <div class="space-y-1.5">
-                <label class="text-[11px] font-bold text-sky-400 block" data-i18n="childInputCodeLabel">6 Xonali Oila Kodi (masalan: 849-210):</label>
-                <input type="text" id="childFamilyCodeInput" placeholder="849-210" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2.5 text-sm font-mono text-center font-bold text-emerald-400 tracking-widest focus:outline-none focus:border-emerald-500 uppercase">
+                <label class="text-[11px] font-bold text-sky-400 block" data-i18n="childInputCodeLabel">6 Xonali Oila Kodi (masalan: 849210):</label>
+                <input type="text" id="childFamilyCodeInput" placeholder="849210" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2.5 text-sm font-mono text-center font-bold text-emerald-400 tracking-widest focus:outline-none focus:border-emerald-500 uppercase">
             </div>
 
             <div id="childPairErrorMsg" class="hidden p-2 rounded-lg bg-rose-500/10 border border-rose-500/30 text-[10px] text-rose-400 font-medium"></div>
@@ -2331,7 +2331,7 @@ body[data-theme="sky"] .subpage-modal {
                     <span class="text-xs text-slate-300">Ota, ona va farzandlar bitta kod orqali ulanadi.</span>
                 </div>
                 <div class="text-sm font-black text-cyan-400 font-mono px-3 py-1 bg-slate-900 rounded-xl border border-cyan-500/40">
-                    849-210
+                    849210
                 </div>
             </div>
 
@@ -2676,7 +2676,7 @@ body[data-theme="sky"] .subpage-modal {
             
             <!-- 6 Xonali Oila Kodi -->
             <div class="p-3 rounded-xl bg-slate-900/90 border border-emerald-500/40 text-center space-y-1">
-                <div class="text-2xl font-black text-emerald-400 tracking-wider font-mono" id="displayFamilyCode">849-210</div>
+                <div class="text-2xl font-black text-emerald-400 tracking-wider font-mono" id="displayFamilyCode">849210</div>
                 <div class="text-[10px] text-slate-400" data-i18n="familyCodeHint">Farzand telefonida kiritiladi yoki havolani yuboring</div>
             </div>
 
@@ -3061,7 +3061,7 @@ const I18N = {
         childPairingHeader: "Oila Profiliga Ulanish & Rozilik",
         childPairingSub: "Ota-onang bergan 6 xonali Oila Kodini kirit",
         childConsentLabel: "Men yuqoridagi barcha 4 ta qoida bilan tanishdim va ota-onam bilan tizimga ulanishga roziman.",
-        childInputCodeLabel: "6 Xonali Oila Kodi (masalan: 849-210):",
+        childInputCodeLabel: "6 Xonali Oila Kodi (masalan: 849210):",
         btnChildConnect: "Oila Profiliga Ulanish",
         childPairedSuccess: "🎉 Tabriklaymiz! Siz Oila Profiliga Muvaffaqiyatli Ulandingiz!",
         childPairedSub: "Ota-onangizning Telegram botiga xabar yuborildi.",
@@ -3227,7 +3227,7 @@ const I18N = {
         childPairingHeader: "Подключение к Семье с Согласием",
         childPairingSub: "Введите 6-значный семейный код от родителей",
         childConsentLabel: "Я ознакомился со всеми 4 правилами и согласен на подключение к родительскому профилю.",
-        childInputCodeLabel: "6-значный Код Семьи (например: 849-210):",
+        childInputCodeLabel: "6-значный Код Семьи (например: 849210):",
         btnChildConnect: "Подключиться к Семье",
         childPairedSuccess: "🎉 Поздравляем! Вы успешно подключены к семейному профилю!",
         childPairedSub: "Уведомление отправлено родителям в Telegram-бот.",
@@ -3524,7 +3524,7 @@ let userPlan = localStorage.getItem('user_plan') || 'pro';
 let activeSchoolPeriod = 'weekly';
 let isRecordingVoice = false;
 let uploadedImageBase64 = null;
-let familyCode = urlCode || "849-210";
+let familyCode = urlCode || "849210";
 
 // Agar havola bola uchun bo'lsa
 let currentAppRole = urlRole || localStorage.getItem('app_role') || 'parent';
@@ -3925,8 +3925,8 @@ function handleChildPairingSubmit() {
     if (!codeInput || codeInput.length < 5) {
         if (errorBox) {
             errorBox.innerText = (currentLang === 'ru') 
-                ? "⚠️ Введите корректный 6-значный семейный код (например: 849-210)!" 
-                : "⚠️ Ota-onangiz bergan to'g'ri 6 xonali oila kodini kiriting (masalan: 849-210)!";
+                ? "⚠️ Введите корректный 6-значный семейный код (например: 849210)!" 
+                : "⚠️ Ota-onangiz bergan to'g'ri 6 xonali oila kodini kiriting (masalan: 849210)!";
             errorBox.classList.remove('hidden');
         }
         return;
@@ -4634,7 +4634,7 @@ function triggerVoiceAlert() {
 }
 
 function copyPairingLink() {
-    const link = \`https://t.me/farzand_nazorat_bot?start=pair_\${familyCode.replace("-", "")}\`;
+    const link = \`https://t.me/qalqon_aibot?start=pair_\${familyCode}\`;
     navigator.clipboard.writeText(link).then(() => {
         const msg = (currentLang === 'ru') 
             ? "✅ Ссылка для подключения скопирована!"
@@ -4721,7 +4721,7 @@ function handleCompleteParentOnboarding() {
         father: { name: parentName, phone: parentPhone, username: parentUsername },
         mother: { name: motherName, phone: motherPhone, username: motherUsername },
         children: [{ name: childName, grade: childGrade, username: childUsername, consented: false }],
-        code: familyCode || "849-210",
+        code: familyCode || "849210",
         status: "pending"
     };
 
@@ -4772,7 +4772,7 @@ function handleCompleteParentOnboarding() {
             \`• <b>Ota:</b> \${parentName} (@\${parentUsername || 'mavjud_emas'}) - Tel: \${parentPhone}\\n\` +
             \`• <b>Ona:</b> \${motherName || 'Kiritilmagan'} (@\${motherUsername || 'yoq'})\\n\` +
             \`• <b>Farzand:</b> \${childName} (\${childGrade}-sinf, @\${childUsername || 'yoq'})\\n\` +
-            \`• <b>Oila Kodi:</b> <code>\${familyCode || '849-210'}</code>\\n\\n\` +
+            \`• <b>Oila Kodi:</b> <code>\${familyCode || '849210'}</code>\\n\\n\` +
             \`<i>Ushbu oilaga tizimdan to'liq foydalanishga ruxsat berasizmi?</i>\`;
 
         const keyboard = {

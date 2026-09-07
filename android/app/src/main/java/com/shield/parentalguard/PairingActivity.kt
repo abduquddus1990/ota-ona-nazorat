@@ -59,11 +59,12 @@ class PairingActivity : Activity() {
         btnGrantAccessibility = findViewById(R.id.btnGrantAccessibility)
 
         btnPair.setOnClickListener {
-            val code = etPairingCode.text.toString().trim().uppercase()
-            if (code.length >= 4) {
+            // Dashless 6-digit family code only (e.g. 849210)
+            val code = etPairingCode.text.toString().trim().replace("-", "")
+            if (code.length == 6 && code.all { it.isDigit() }) {
                 savePairingCode(code)
             } else {
-                Toast.makeText(this, "Kodni to'liq kiriting / Введите полный код", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "6 xonali kod kiriting (masalan: 849210)", Toast.LENGTH_SHORT).show()
             }
         }
 

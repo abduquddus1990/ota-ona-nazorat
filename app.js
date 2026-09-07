@@ -1872,7 +1872,7 @@ function triggerVoiceAlert() {
 }
 
 function copyPairingLink() {
-    const link = `https://t.me/qalqon_aibot?start=pair_${familyCode.replace("-", "")}`;
+    const link = `https://t.me/qalqon_aibot?start=pair_${familyCode}`;
     navigator.clipboard.writeText(link).then(() => {
         const msg = (currentLang === 'ru') 
             ? "✅ Ссылка для подключения скопирована!"

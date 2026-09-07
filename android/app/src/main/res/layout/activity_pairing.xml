@@ -58,7 +58,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Ota-onangizning Telegram botidagi 6 xonali kod (masalan: 849-210)"
+                android:text="Ota-onangizning Telegram botidagi 6 xonali kod (masalan: 849210)"
                 android:textColor="#64748b"
                 android:textSize="11sp"
                 android:layout_marginTop="2dp" />
@@ -72,7 +72,7 @@
                 android:textSize="16sp"
                 android:textStyle="bold"
                 android:gravity="center"
-                android:hint="849-210"
+                android:hint="849210"
                 android:textColorHint="#475569"
                 android:layout_marginTop="14dp" />
 

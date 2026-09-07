@@ -19,9 +19,11 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("ParentalGuardBot")
 
 # Bot Token va Konfiguratsiya
-BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "8992925094:AAE5K1N8VVxiCh9P6H1j7hCrYoTeIBmC8r0")
+BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN") or os.getenv("BOT_TOKEN") or os.getenv("MAIN_BOT_TOKEN") or ""
 MINI_APP_URL = os.getenv("MINI_APP_URL", "https://sacred-maine-participated-termination.trycloudflare.com")
 
+if not BOT_TOKEN:
+    raise RuntimeError("TELEGRAM_BOT_TOKEN / BOT_TOKEN / MAIN_BOT_TOKEN missing from environment")
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 

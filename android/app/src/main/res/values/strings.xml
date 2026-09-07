@@ -1,4 +1,6 @@
 <resources>
     <string name="app_name">Shield Parental Guard</string>
     <string name="accessibility_service_description">Farzand xavfsizligini ta\'minlash, nomaqbul kontentlarni filtrlash va foydalanish vaqtini nazorat qilish uchun ochiq himoya xizmati.</string>
+    <string name="family_code_hint">6 xonali oila kodi (masalan: 849210)</string>
+    <string name="bot_username">@qalqon_aibot</string>
 </resources>

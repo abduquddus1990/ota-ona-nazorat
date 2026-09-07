@@ -14,10 +14,25 @@ class GeminiAIEngine:
     3. YouTube / Reels mavzularini tahlil qilib, ota-onaga professional pedagogik tavsiya berish.
     """
     def __init__(self, api_key: str = None):
-        self.api_key = api_key or os.getenv("GEMINI_API_KEY", "").strip()
+        key = (api_key or os.getenv("GEMINI_API_KEY") or "").strip()
+        if not key:
+            # Load backend/.env without printing secrets
+            env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+            if os.path.exists(env_path):
+                with open(env_path, "r", encoding="utf-8") as ef:
+                    for line in ef:
+                        line = line.strip()
+                        if line.startswith("GEMINI_API_KEY="):
+                            key = line.split("=", 1)[1].strip().strip('"').strip("'")
+                            break
+        self.api_key = key
         if not self.api_key:
-            raise ValueError("GEMINI_API_KEY topilmadi")
+            print("[GeminiAIEngine] ERROR: GEMINI_API_KEY missing from env/.env — AI calls will fail.")
         self.base_url = "https://generativelanguage.googleapis.com/v1beta/models"
+
+    def _require_key(self):
+        if not self.api_key:
+            raise RuntimeError("GEMINI_API_KEY missing from environment")
 
     async def analyze_battery_screenshot(self, image_bytes: bytes, lang: str = "uz") -> Dict[str, Any]:
         """
@@ -38,6 +53,8 @@ class GeminiAIEngine:
             "}\n"
             "Faqat toza JSON qaytaring, boshqa matn yozmang."
         )
+
+        self._require_key()
 
         b64_image = base64.b64encode(image_bytes).decode("utf-8")
         payload = {
@@ -96,8 +113,28 @@ class GeminiAIEngine:
         }
 
     async def generate_parenting_insights(self, interests: List[str], screen_data: dict, lang: str = "uz") -> Dict[str, Any]:
-        """Stub: real insights not wired. Do not invent metrics."""
-        raise NotImplementedError("generate_parenting_insights not implemented")
+        """Pedagogik tahlil — qiziqishlar va ekran vaqti asosida."""
+        screen_data = screen_data or {}
+        age = int(screen_data.get("age", 12) or 12)
+        apps = screen_data.get("apps", []) if isinstance(screen_data, dict) else []
+        advice = await self.get_parenting_advice(
+            child_age=age,
+            app_usage_summary=apps if isinstance(apps, list) else [],
+            interests=interests or [],
+            lang=lang,
+        )
+        reels = await self.analyze_reels_and_videos(
+            video_history=[str(x) for x in (interests or [])],
+            lang=lang,
+        )
+        return {
+            "insights": advice,
+            "interests": interests or [],
+            "screen_summary": screen_data,
+            "reels": reels,
+            "lang": lang,
+        }
+
     async def analyze_reels_and_videos(self, video_history: List[str], lang: str = "uz") -> Dict[str, Any]:
         """
         Farzand ko'rayotgan Instagram Reels, YouTube Shorts va videolarni
