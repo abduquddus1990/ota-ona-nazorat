@@ -95,7 +95,7 @@
                     <label class="text-[11px] font-bold text-slate-300 block">
                         🔑 6 Xonali Oila Kodi <span class="text-[10px] text-indigo-300 font-normal">(Ota-onangizdan og'zaki oling):</span>
                     </label>
-                    <input type="text" id="childConsentFamilyCode" placeholder="Masalan: 849210" maxlength="6" class="w-full bg-slate-950 border-2 border-indigo-500/60 rounded-2xl px-4 py-3 text-center text-lg font-black text-white font-mono tracking-widest focus:outline-none focus:border-cyan-400 placeholder-slate-600 transition">
+                    <input type="text" id="childConsentFamilyCode" placeholder="______" maxlength="6" class="w-full bg-slate-950 border-2 border-indigo-500/60 rounded-2xl px-4 py-3 text-center text-lg font-black text-white font-mono tracking-widest focus:outline-none focus:border-cyan-400 placeholder-slate-600 transition">
                     <p id="childConsentError" class="text-[10px] text-rose-400 font-bold text-center hidden">⚠️ Iltimos, 6 xonali oila kodini to'liq kiriting!</p>
                 </div>
             </div>
@@ -371,8 +371,8 @@
 
             <!-- 6 Xonali Kod Kiritish -->
             <div class="space-y-1.5">
-                <label class="text-[11px] font-bold text-sky-400 block" data-i18n="childInputCodeLabel">6 Xonali Oila Kodi (masalan: 849210):</label>
-                <input type="text" id="childFamilyCodeInput" placeholder="849210" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2.5 text-sm font-mono text-center font-bold text-emerald-400 tracking-widest focus:outline-none focus:border-emerald-500 uppercase">
+                <label class="text-[11px] font-bold text-sky-400 block" data-i18n="childInputCodeLabel">6 Xonali Oila Kodi (6 raqam):</label>
+                <input type="text" id="childFamilyCodeInput" placeholder="______" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2.5 text-sm font-mono text-center font-bold text-emerald-400 tracking-widest focus:outline-none focus:border-emerald-500 uppercase">
             </div>
 
             <div id="childPairErrorMsg" class="hidden p-2 rounded-lg bg-rose-500/10 border border-rose-500/30 text-[10px] text-rose-400 font-medium"></div>
@@ -1764,9 +1764,7 @@
                     <span class="text-[10px] text-indigo-300 font-bold block">🔑 Barcha A'zolar Uchun Yagona Oila Kodi:</span>
                     <span class="text-xs text-slate-300">Ota, ona va farzandlar bitta kod orqali ulanadi.</span>
                 </div>
-                <div class="text-sm font-black text-cyan-400 font-mono px-3 py-1 bg-slate-900 rounded-xl border border-cyan-500/40">
-                    849210
-                </div>
+                <div class="text-sm font-black text-cyan-400 font-mono px-3 py-1 bg-slate-900 rounded-xl border border-cyan-500/40"><span id="onboardDisplayFamilyCode">———</span></div>
             </div>
 
             <!-- Submit Button -->
@@ -2110,7 +2108,7 @@
             
             <!-- 6 Xonali Oila Kodi -->
             <div class="p-3 rounded-xl bg-slate-900/90 border border-emerald-500/40 text-center space-y-1">
-                <div class="text-2xl font-black text-emerald-400 tracking-wider font-mono" id="displayFamilyCode">849210</div>
+                <div class="text-2xl font-black text-emerald-400 tracking-wider font-mono" id="displayFamilyCode">———</div>
                 <div class="text-[10px] text-slate-400" data-i18n="familyCodeHint">Farzand telefonida kiritiladi yoki havolani yuboring</div>
             </div>
 

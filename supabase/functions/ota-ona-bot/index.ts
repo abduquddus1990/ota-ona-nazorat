@@ -53,7 +53,7 @@ const USER_LANG: Record<string | number, string> = {};
 const USER_APPROVAL_STATUS: Record<string, "pending" | "approved" | "rejected"> = {};
 
 function generateFamilyCode(userId: string | number): string {
-  // 6 raqam, chiziqsiz (masalan 849210)
+  // 6 raqam, chiziqsiz (masalan 6 raqam)
   const num = Math.abs((Number(userId) * 31 + 7919) % 900000) + 100000;
   return String(num).padStart(6, "0");
 }
@@ -225,7 +225,7 @@ serve(async (req) => {
     // 0. Mini App'dan to'g'ridan-to'g'ri ro'yxatdan o'tish so'rovi kelganda
     if (payload.type === "parent_registration_request") {
       const username = payload.username || "@noma'lum";
-      const familyCode = payload.familyCode || "849210";
+      const familyCode = payload.familyCode || "";
       
       const adminNotice = `🔔 <b>YANGI OTA-ONA RO'YXATDAN O'TMOQCHI!</b>\n\n👤 <b>Username:</b> ${username}\n🔑 <b>Oila Kodi:</b> <code>${familyCode}</code>\n📅 <b>Vaqt:</b> ${new Date().toLocaleString("uz-UZ")}\n\nUshbu foydalanuvchiga to'liq foydalanish (farzand qo'shish)ga ruxsat berasizmi?`;
 
@@ -244,7 +244,7 @@ serve(async (req) => {
 
     // 0.1 Farzand rozilik berib, 6 xonali kod bilan ulanganda
     if (payload.type === "child_paired_event") {
-      const familyCode = payload.familyCode || "849210";
+      const familyCode = payload.familyCode || "";
       const childName = payload.childName || "Farzand";
       
       const alertMsg = `🎉 <b>FARZAND ROZILIK BILAN ULANDI!</b>\n\n👦 <b>Farzand:</b> ${childName}\n🔑 <b>Oila Kodi:</b> <code>${familyCode}</code>\n📅 <b>Vaqt:</b> ${new Date().toLocaleString("uz-UZ")}\n\n✨ Farzand barcha 4 ta qoidalar bilan tanishdi va ulanishga to'liq rozilik berdi.\nEndi jonli lokatsiya, darsliklar bahosi va qiziqishlar tahlili to'liq ishlaydi!`;
@@ -257,7 +257,7 @@ serve(async (req) => {
     if (payload.type === "child_status_alert") {
       const childName = payload.childName || "Farzand";
       const statusText = payload.statusText || "Xabar keldi";
-      const familyCode = payload.familyCode || "849210";
+      const familyCode = payload.familyCode || "";
 
       const alertMsg = `📍 <b>FARZANDINGIZDAN TEZKOR XABAR!</b>\n\n👦 <b>Farzand:</b> ${childName}\n💬 <b>Xabar:</b> <b>${statusText}</b>\n🔑 <b>Oila Kodi:</b> <code>${familyCode}</code>\n📅 <b>Vaqt:</b> ${new Date().toLocaleString("uz-UZ")}`;
 

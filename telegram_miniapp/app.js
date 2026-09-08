@@ -330,7 +330,7 @@ const I18N = {
         childPairingHeader: "Oila Profiliga Ulanish & Rozilik",
         childPairingSub: "Ota-onang bergan 6 xonali Oila Kodini kirit",
         childConsentLabel: "Men yuqoridagi barcha 4 ta qoida bilan tanishdim va ota-onam bilan tizimga ulanishga roziman.",
-        childInputCodeLabel: "6 Xonali Oila Kodi (masalan: 849210):",
+        childInputCodeLabel: "6 Xonali Oila Kodi (6 raqam):",
         btnChildConnect: "Oila Profiliga Ulanish",
         childPairedSuccess: "🎉 Tabriklaymiz! Siz Oila Profiliga Muvaffaqiyatli Ulandingiz!",
         childPairedSub: "Ota-onangizning Telegram botiga xabar yuborildi.",
@@ -496,7 +496,7 @@ const I18N = {
         childPairingHeader: "Подключение к Семье с Согласием",
         childPairingSub: "Введите 6-значный семейный код от родителей",
         childConsentLabel: "Я ознакомился со всеми 4 правилами и согласен на подключение к родительскому профилю.",
-        childInputCodeLabel: "6-значный Код Семьи (например: 849210):",
+        childInputCodeLabel: "6-значный Код Семьи (6 цифр):",
         btnChildConnect: "Подключиться к Семье",
         childPairedSuccess: "🎉 Поздравляем! Вы успешно подключены к семейному профилю!",
         childPairedSub: "Уведомление отправлено родителям в Telegram-бот.",
@@ -914,7 +914,53 @@ let userPlan = localStorage.getItem('user_plan') || 'pro';
 let activeSchoolPeriod = 'weekly';
 let isRecordingVoice = false;
 let uploadedImageBase64 = null;
-let familyCode = urlCode || "849210";
+
+function generateFamilyCode(userId) {
+    // Same algorithm as live supabase ota-ona-bot (per Telegram userId)
+    const num = Math.abs((Number(userId) * 31 + 7919) % 900000) + 100000;
+    return String(num).padStart(6, "0");
+}
+
+function normalizeFamilyCodeDigits(raw) {
+    return String(raw || "").replace(/^pair_/i, "").replace(/^child_/i, "").replace(/\D/g, "");
+}
+
+function resolveInitialFamilyCode(urlCodeValue) {
+    let code = normalizeFamilyCodeDigits(urlCodeValue);
+    if (code.length === 6) return code;
+    try {
+        const profile = JSON.parse(localStorage.getItem("qalqon_family_profile") || "null");
+        code = normalizeFamilyCodeDigits(profile && profile.code);
+        if (code.length === 6) return code;
+    } catch (e) {}
+    code = normalizeFamilyCodeDigits(
+        localStorage.getItem("parent_family_code") || localStorage.getItem("child_family_code") || ""
+    );
+    if (code.length === 6) return code;
+    // Child role must never get a self-derived "family code" from their own Telegram id
+    try {
+        const roleHint = (new URLSearchParams(window.location.search).get("role") || localStorage.getItem("app_role") || "").toLowerCase();
+        const startHint = String(urlCodeValue || "").toLowerCase();
+        if (roleHint === "child" || startHint.startsWith("child") || startHint.startsWith("pair_")) {
+            // pair_ without digits already failed normalize; do not invent
+            if (!(code.length === 6)) return "";
+        }
+    } catch (e) {}
+    const tgId = window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user && window.Telegram.WebApp.initDataUnsafe.user.id;
+    if (tgId) return generateFamilyCode(tgId);
+    return "";
+}
+
+function updateDisplayFamilyCode() {
+    const shown = (familyCode && String(familyCode).length === 6) ? String(familyCode) : "———";
+    const el = document.getElementById("displayFamilyCode");
+    if (el) el.textContent = shown;
+    const el2 = document.getElementById("onboardDisplayFamilyCode");
+    if (el2) el2.textContent = shown;
+}
+
+let familyCode = resolveInitialFamilyCode(urlCode);
+updateDisplayFamilyCode();
 
 // Agar havola bola uchun bo'lsa
 let currentAppRole = urlRole || localStorage.getItem('app_role') || 'parent';
@@ -940,6 +986,16 @@ const tg = window.Telegram?.WebApp;
 if (tg) {
     tg.ready();
     tg.expand();
+    // Ensure parent family code from Telegram userId (align with bot generateFamilyCode)
+    // Never invent a code for child role — children must use parent's pair code / typed code.
+    if (currentAppRole !== 'child' && (!familyCode || String(familyCode).length !== 6)) {
+        const tid = tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id;
+        if (tid) {
+            familyCode = generateFamilyCode(tid);
+            localStorage.setItem('parent_family_code', familyCode);
+        }
+    }
+    updateDisplayFamilyCode();
     const rawUsername = (tg.initDataUnsafe?.user?.username || "").toLowerCase();
     
     if (rawUsername === 'ai_loyihachi' || rawUsername === 'mirkamolov13') {
@@ -1408,8 +1464,8 @@ function handleChildPairingSubmit() {
     if (!codeInput || codeInput.length < 5) {
         if (errorBox) {
             errorBox.innerText = (currentLang === 'ru') 
-                ? "⚠️ Введите корректный 6-значный семейный код (например: 849210)!" 
-                : "⚠️ Ota-onangiz bergan to'g'ri 6 xonali oila kodini kiriting (masalan: 849210)!";
+                ? "⚠️ Введите корректный 6-значный семейный код!" 
+                : "⚠️ Ota-onangiz bergan to'g'ri 6 xonali oila kodini kiriting!";
             errorBox.classList.remove('hidden');
         }
         return;
@@ -2201,6 +2257,12 @@ function triggerVoiceAlert() {
 }
 
 function copyPairingLink() {
+    if (!familyCode || String(familyCode).length !== 6) {
+        updateDisplayFamilyCode();
+        const msgEmpty = (currentLang === 'ru') ? 'Семейный код ещё не готов' : 'Oila kodi hali tayyor emas';
+        if (tg && tg.showAlert) tg.showAlert(msgEmpty); else alert(msgEmpty);
+        return;
+    }
     const link = `https://t.me/qalqon_aibot?start=pair_${familyCode}`;
     navigator.clipboard.writeText(link).then(() => {
         const msg = (currentLang === 'ru') 
@@ -2316,11 +2378,27 @@ function handleCompleteParentOnboarding() {
         father: { name: parentName, phone: parentPhone, username: parentUsername },
         mother: { name: motherName, phone: motherPhone, username: motherUsername },
         children: [{ name: childName, grade: childGrade, username: childUsername, consented: false }],
-        code: familyCode || "849210",
+        code: (function() {
+            if (familyCode && String(familyCode).length === 6) return String(familyCode);
+            const tgId = window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user && window.Telegram.WebApp.initDataUnsafe.user.id;
+            if (tgId) {
+                const derived = generateFamilyCode(tgId);
+                familyCode = derived;
+                localStorage.setItem("parent_family_code", derived);
+                updateDisplayFamilyCode();
+                return derived;
+            }
+            return null;
+        })(),
         status: "pending"
     };
 
     localStorage.setItem('qalqon_family_profile', JSON.stringify(familyData));
+    if (familyData.code) {
+        familyCode = String(familyData.code);
+        localStorage.setItem('parent_family_code', familyCode);
+        updateDisplayFamilyCode();
+    }
     localStorage.setItem('parent_onboarded', 'true');
     localStorage.setItem('auth_status', 'pending');
 
