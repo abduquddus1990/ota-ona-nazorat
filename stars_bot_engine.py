@@ -12,9 +12,33 @@ if sys.platform == "win32":
     except Exception:
         pass
 
-STARS_BOT_TOKEN = "8746113611:AAFGsysUKD9r_q31sC-VfDn025KYXCUmRmk"
-TELEGRAM_API = f"https://api.telegram.org/bot{STARS_BOT_TOKEN}"
-MAIN_APP_URL = "https://abduquddus1990.github.io/ota-ona-nazorat/?v=5.7"
+def get_env_var(name, default=""):
+    env_val = os.environ.get(name)
+    if env_val:
+        return env_val.strip().strip('"').strip("'")
+    here = os.path.dirname(os.path.abspath(__file__))
+    candidates = [
+        os.path.join(here, ".env"),
+        os.path.join(here, "backend", ".env"),
+        ".env",
+        os.path.join("backend", ".env"),
+    ]
+    for env_path in candidates:
+        if not os.path.exists(env_path):
+            continue
+        with open(env_path, "r", encoding="utf-8") as env_f:
+            for line in env_f:
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                if line.startswith(f"{name}="):
+                    return line.split("=", 1)[1].strip().strip('"').strip("'")
+    return default
+
+# Require env — never ship a hardcoded Telegram token
+STARS_BOT_TOKEN = get_env_var("STARS_BOT_TOKEN", "") or get_env_var("BOT_TOKEN", "")
+TELEGRAM_API = f"https://api.telegram.org/bot{STARS_BOT_TOKEN}" if STARS_BOT_TOKEN else ""
+MAIN_APP_URL = get_env_var("MINI_APP_URL", "https://abduquddus1990.github.io/ota-ona-nazorat/?v=5.7")
 
 USERS_FILE = "users_db.json"
 
@@ -35,6 +59,9 @@ def save_json(filepath, data):
         print(f"Error saving {filepath}:", e)
 
 def call_tg(method, data=None):
+    if not STARS_BOT_TOKEN or not TELEGRAM_API:
+        print("Telegram API Error: STARS_BOT_TOKEN missing from env/.env")
+        return {"ok": False, "error": "missing_bot_token"}
     url = f"{TELEGRAM_API}/{method}"
     try:
         if data:
@@ -222,3 +249,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
