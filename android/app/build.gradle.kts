@@ -36,7 +36,11 @@ android {
     signingConfigs {
         if (hasReleaseKeystore) {
             create("release") {
-                storeFile = file(keystoreProperties["storeFile"] as String)
+                // rootProject.file() — chunki keystore.properties ham,
+                // .jks fayl ham android/ papkada turadi. Oddiy file()
+                // ishlatilsa, yo'l android/app/ ga nisbatan hisoblanib,
+                // "keystore topilmadi" xatosi chiqadi.
+                storeFile = rootProject.file(keystoreProperties["storeFile"] as String)
                 storePassword = keystoreProperties["storePassword"] as String
                 keyAlias = keystoreProperties["keyAlias"] as String
                 keyPassword = keystoreProperties["keyPassword"] as String

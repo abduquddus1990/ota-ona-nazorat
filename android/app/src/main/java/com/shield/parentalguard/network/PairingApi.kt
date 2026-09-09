@@ -19,11 +19,21 @@ object PairingApi {
 
     const val TELEGRAM_BOT_USERNAME = "qalqon_aibot"
 
+    /**
+     * Qurilma modeli uchun YAGONA manba. Ham serverga yuboriladigan
+     * payload'da (deviceModel), ham lokal child_id hisoblashda shu
+     * ishlatiladi — ikki joyda ikki xil zaxira qiymat ("android" va
+     * "device") ishlatilsa, Build.MODEL bo'sh bo'lgan qurilmada
+     * serverdagi yozuv bilan qurilmadagi child_id mos kelmay qoladi.
+     */
+    val deviceModel: String
+        get() = Build.MODEL?.takeIf { it.isNotBlank() } ?: "android"
+
     // Backend uchun bir xil child_id — Deno funksiyasidagi resolveChildId()
     // bilan bitta xil natija berishi SHART (supabase/functions/ota-ona-bot/index.ts),
     // aks holda pairing paytida yozilgan qator bilan keyingi telemetriya/lokatsiya
     // so'rovlaridagi child_id mos kelmay, "juftlashmagan" deb rad etiladi.
-    fun deviceChildId(familyCode: String, deviceModel: String): String {
+    fun deviceChildId(familyCode: String, deviceModel: String = this.deviceModel): String {
         val digits = familyCode.filter { it.isDigit() }
         return "android_${digits}_${deviceModel}".replace(Regex("\\s+"), "_")
     }
@@ -51,7 +61,7 @@ object PairingApi {
             .put("familyCode", digits)
             .put("childName", deviceLabel)
             .put("source", "android_parental_guard")
-            .put("deviceModel", Build.MODEL ?: "android")
+            .put("deviceModel", deviceModel)
             .put("timestamp", timestamp)
             .toString()
             .toRequestBody(jsonMedia)
@@ -77,6 +87,10 @@ object PairingApi {
                 .put("familyCode", digits)
                 .put("childName", deviceLabel)
                 .put("source", "android_parental_guard")
+                // deviceModel SHART: usiz serverdagi resolveChildId() bu
+                // so'rovni Android sifatida taniy olmay, "pending_" zaxira
+                // kalitiga tushib, ikkinchi (keraksiz) qator yaratardi.
+                .put("deviceModel", deviceModel)
                 .put("telegramId", JSONObject.NULL)
                 .put("username", JSONObject.NULL)
                 .toString()

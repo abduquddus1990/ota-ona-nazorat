@@ -146,7 +146,7 @@ class PairingActivity : Activity() {
         btnPair.isEnabled = false
         btnPair.text = "Ulanmoqda... / Подключение..."
 
-        val deviceLabel = "Android ${Build.MODEL ?: "device"}"
+        val deviceLabel = "Android ${PairingApi.deviceModel}"
 
         ioExecutor.execute {
             val result = try {
@@ -191,7 +191,7 @@ class PairingActivity : Activity() {
     }
 
     private fun savePairingCode(code: String) {
-        val childId = PairingApi.deviceChildId(code, Build.MODEL ?: "device")
+        val childId = PairingApi.deviceChildId(code)
         prefs.edit()
             .putString("family_code", code)
             .putString("child_id", childId)

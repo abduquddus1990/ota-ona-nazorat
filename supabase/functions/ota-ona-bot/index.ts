@@ -33,20 +33,25 @@ if (!db) {
  *    qayta ulansa ham bitta qatorga tushishi uchun, timestamp ishlatilmaydi).
  * 3) Aks holda — oila kodiga bog'langan zaxira kalit.
  */
-function resolveChildId(payload: any, familyCode: string): string {
+function resolveChildId(payload: any, familyCode: string): string | null {
   if (payload.telegramId) return `tg_${payload.telegramId}`;
   if (payload.source === "android_parental_guard" && payload.deviceModel) {
     return `android_${familyCode}_${payload.deviceModel}`.replace(/\s+/g, "_");
   }
-  return `pending_${familyCode}`;
+  // Ishonchli identifikator yo'q (masalan Mini App'ning birinchi
+  // child_paired_event so'rovida Telegram ID yuborilmaydi). Bunday holda
+  // hech narsa yozmaymiz — aks holda bazada keraksiz "pending_..." qatori
+  // qolib, ota-ona panelida arvoh farzand bo'lib ko'rinardi. Haqiqiy
+  // yozuv keyingi child_consent so'rovida (Telegram ID bilan) amalga oshadi.
+  return null;
 }
 
 async function upsertPairing(
   familyCode: string,
-  childId: string,
+  childId: string | null,
   info: { childName: string; deviceLabel: string | null; source: string }
 ) {
-  if (!db || !familyCode) return;
+  if (!db || !familyCode || !childId) return;
   const { error } = await db.from("child_pairings").upsert(
     {
       family_code: familyCode,
@@ -296,10 +301,10 @@ serve(async (req) => {
       const familyCode = payload.familyCode || "";
       const childName = payload.childName || "Farzand";
 
-      // Bu chaqiruvda ishonchli Telegram ID kelmaydi (Mini App uni faqat
-      // keyingi child_consent so'rovida yuboradi) — shuning uchun faqat
-      // adminga ogohlantirish yuboramiz; bazaga real yozuv child_consent
-      // (yoki Android uchun quyidagi resolveChildId) orqali amalga oshadi.
+      // Mini App bu so'rovda Telegram ID yubormaydi — u holda resolveChildId()
+      // null qaytaradi va bazaga hech narsa yozilmaydi (yozuv keyingi
+      // child_consent so'rovida bo'ladi). Android esa deviceModel yuboradi,
+      // shuning uchun bu yerdayoq barqaror child_id bilan yoziladi.
       await upsertPairing(familyCode, resolveChildId(payload, familyCode), {
         childName,
         deviceLabel: payload.deviceModel || null,
