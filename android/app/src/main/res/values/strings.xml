@@ -1,4 +1,13 @@
 <resources>
     <string name="app_name">Shield Parental Guard</string>
     <string name="accessibility_service_description">Farzand xavfsizligini ta\'minlash, nomaqbul kontentlarni filtrlash va foydalanish vaqtini nazorat qilish uchun ochiq himoya xizmati.</string>
+    <string name="pairing_subtitle">Farzand Xavfsizligi &amp; Ota-Ona Nazorati</string>
+    <string name="family_code_title">Oila Kodini Kiriting / Введите код семьи:</string>
+    <string name="family_code_hint">Ota-onangizning Telegram botidagi 6 xonali kod (masalan: ______)</string>
+    <string name="family_code_example_hint">______</string>
+    <string name="btn_pair_label">Ulash / Подключить</string>
+    <string name="btn_telegram_pair_label">Telegram bot orqali (pair_) / Через Telegram</string>
+    <string name="permissions_title">Kerakli Ruxsatlar / Необходимые разрешения:</string>
+    <string name="device_protected">Qurilma himoyalangan va ulangan!\nУстройство защищено и подключено!</string>
+    <string name="bot_username">@qalqon_aibot</string>
 </resources>

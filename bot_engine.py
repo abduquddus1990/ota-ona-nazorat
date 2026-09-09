@@ -1,8 +1,9 @@
-import urllib.request
+﻿import urllib.request
 import json
 import time
 import sys
 import os
+import random
 
 # Fix Windows console UTF-8 output
 if sys.platform == "win32":
@@ -14,21 +15,42 @@ if sys.platform == "win32":
 
 # Load from .env file securely
 def get_env_var(name, default=""):
-    if os.path.exists(".env"):
-        with open(".env", "r", encoding="utf-8") as env_f:
+    # Prefer process env, then .env next to this file, then backend/.env
+    env_val = os.environ.get(name)
+    if env_val:
+        return env_val.strip().strip('"').strip("'")
+    here = os.path.dirname(os.path.abspath(__file__))
+    candidates = [
+        os.path.join(here, ".env"),
+        os.path.join(here, "backend", ".env"),
+        ".env",
+        os.path.join("backend", ".env"),
+    ]
+    for env_path in candidates:
+        if not os.path.exists(env_path):
+            continue
+        with open(env_path, "r", encoding="utf-8") as env_f:
             for line in env_f:
                 line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
                 if line.startswith(f"{name}="):
                     return line.split("=", 1)[1].strip().strip('"').strip("'")
-    return os.environ.get(name, default)
+    return default
 
-BOT_TOKEN = get_env_var("MAIN_BOT_TOKEN", "8992925094:AAE5K1N8VVxiCh9P6H1j7hCrYoTeIBmC8r0")
-MINI_APP_URL = "https://abduquddus1990.github.io/ota-ona-nazorat/?v=5.4"
-TELEGRAM_API = f"https://api.telegram.org/bot{BOT_TOKEN}"
+BOT_TOKEN = get_env_var("MAIN_BOT_TOKEN", "")
+if not BOT_TOKEN:
+    # Also accept BOT_TOKEN for webhook/env parity
+    BOT_TOKEN = get_env_var("BOT_TOKEN", "")
+
+MINI_APP_URL = get_env_var("MINI_APP_URL", "https://abduquddus1990.github.io/ota-ona-nazorat/?v=5.4")
+TELEGRAM_API = f"https://api.telegram.org/bot{BOT_TOKEN}" if BOT_TOKEN else ""
 
 ADMIN_USERNAMES = {"ai_loyihachi"}
 ADMIN_FILE = "admin_ids.json"
 USERS_FILE = "users_db.json"
+FAMILY_CODES_FILE = "family_codes.json"
+PENDING_FILE = "pending_child_onboard.json"
 
 def load_json(filepath, default):
     if os.path.exists(filepath):
@@ -50,6 +72,8 @@ ADMIN_CHAT_IDS = set(load_json(ADMIN_FILE, [358795989]))
 ADMIN_CHAT_IDS.add(358795989)
 USER_APPROVAL_STATUS = load_json(USERS_FILE, {})
 USER_LANG = {}
+FAMILY_CODES = load_json(FAMILY_CODES_FILE, {})
+PENDING_CHILD = load_json(PENDING_FILE, {})  # chat_id -> {code, parent_id, step, age?}
 
 def save_admins():
     save_json(ADMIN_FILE, list(ADMIN_CHAT_IDS))
@@ -57,33 +81,69 @@ def save_admins():
 def save_users():
     save_json(USERS_FILE, USER_APPROVAL_STATUS)
 
-FAMILY_CODES_FILE = "family_codes.json"
-FAMILY_CODES = load_json(FAMILY_CODES_FILE, {})
+def save_pending():
+    save_json(PENDING_FILE, PENDING_CHILD)
+
+def normalize_code(code):
+    """Store/compare family codes as plain digits (no hyphen required)."""
+    return "".join(ch for ch in str(code or "") if ch.isdigit())
 
 def get_unique_family_code(user_id):
     uid_str = str(user_id)
     if uid_str in FAMILY_CODES:
-        return FAMILY_CODES[uid_str]
-    
-    existing_codes = set(FAMILY_CODES.values())
-    for attempt in range(1000):
-        # 6 xonali unikal takrorlanmas kod
-        num = random.randint(100000, 999999)
-        code_str = f"{str(num)[:3]}-{str(num)[3:6]}"
+        code = normalize_code(FAMILY_CODES[uid_str])
+        if len(code) == 6 and code != FAMILY_CODES[uid_str]:
+            FAMILY_CODES[uid_str] = code
+            save_json(FAMILY_CODES_FILE, FAMILY_CODES)
+        elif len(code) == 6:
+            return code
+        # Invalid legacy value — regenerate below
+    existing_codes = {normalize_code(c) for c in FAMILY_CODES.values() if isinstance(c, str) and normalize_code(c)}
+    for _ in range(10000):
+        code_str = f"{random.randint(100000, 999999)}"
         if code_str not in existing_codes:
             FAMILY_CODES[uid_str] = code_str
             save_json(FAMILY_CODES_FILE, FAMILY_CODES)
             return code_str
-    # Fallback
-    fallback = f"849-{abs(int(user_id)) % 900 + 100}"
-    FAMILY_CODES[uid_str] = fallback
-    save_json(FAMILY_CODES_FILE, FAMILY_CODES)
-    return fallback
+    raise RuntimeError("Could not allocate a unique 6-digit family code")
 
 def generate_family_code(user_id):
     return get_unique_family_code(user_id)
 
+def find_parent_by_code(code):
+    digits = normalize_code(code)
+    if len(digits) != 6:
+        return None
+    for uid, stored in FAMILY_CODES.items():
+        if not isinstance(stored, str):
+            continue
+        if normalize_code(stored) == digits:
+            return uid
+    return None
+
+def pair_deep_link(code):
+    digits = normalize_code(code)
+    return f"https://t.me/qalqon_aibot?start=pair_{digits}"
+
+def persist_child_profile(child_chat_id, parent_id, code, age, sinf):
+    uid = str(child_chat_id)
+    existing = USER_APPROVAL_STATUS.get(uid)
+    profile = existing if isinstance(existing, dict) else {}
+    profile.update({
+        "role": "child",
+        "family_code": normalize_code(code),
+        "parent_id": str(parent_id) if parent_id else None,
+        "age": int(age),
+        "sinf": int(sinf),
+        "status": "paired",
+    })
+    USER_APPROVAL_STATUS[uid] = profile
+    save_users()
+
 def call_tg(method, data=None):
+    if not BOT_TOKEN or not TELEGRAM_API:
+        print("Telegram API Error: MAIN_BOT_TOKEN / BOT_TOKEN missing from env/.env")
+        return {"ok": False, "error": "missing_bot_token"}
     url = f"{TELEGRAM_API}/{method}"
     try:
         if data:
@@ -96,6 +156,15 @@ def call_tg(method, data=None):
         print(f"Telegram API Error [{method}]:", e)
         return {"ok": False, "error": str(e)}
 
+
+def boshlash_reply_keyboard():
+    """Persistent ReplyKeyboard: one clear Boshlash button (same as /start)."""
+    return {
+        "keyboard": [[{"text": "Start"}]],
+        "resize_keyboard": True,
+        "is_persistent": True,
+        "one_time_keyboard": False,
+    }
 def send_message(chat_id, html_text, reply_markup=None):
     payload = {
         "chat_id": chat_id,
@@ -147,21 +216,94 @@ def get_start_menu_text(user_id, lang="uz", is_approved=True, is_admin=False):
 
 def get_start_keyboard(user_id, lang="uz"):
     code = generate_family_code(user_id)
+    # Inline: only pairing + language. Reels/Taklif removed from start UX.
     if lang == "ru":
         return {
             "inline_keyboard": [
-                [{"text": "🚀 Открыть Панель Управления (Mini App)", "web_app": {"url": f"{MINI_APP_URL}&lang=ru"}}],
-                [{"text": "🔗 Подключить Ребёнка", "callback_data": f"action_pair_{code}"}, {"text": "🎬 Анализ Reels и Видео", "callback_data": "action_reels"}],
-                [{"text": "💡 Отзывы и Предложения", "callback_data": "action_feedback"}, {"text": "🌐 Til / Язык (UZ/RU)", "callback_data": "action_lang"}]
+                [{"text": "📱 Открыть панель", "web_app": {"url": MINI_APP_URL}}],
+                [{"text": "👶 Подключить ребёнка", "callback_data": f"action_pair_{code}"}],
+                [{"text": "🌐 Til / Язык (UZ/RU)", "callback_data": "action_lang"}],
             ]
         }
     return {
         "inline_keyboard": [
-            [{"text": "🚀 Ota-ona Boshqaruv Panelini Ochish (Mini App)", "web_app": {"url": f"{MINI_APP_URL}&lang=uz"}}],
-            [{"text": "🔗 Farzandni Ulash", "callback_data": f"action_pair_{code}"}, {"text": "🎬 Reels & Video Tahlili", "callback_data": "action_reels"}],
-            [{"text": "💡 Taklif va Fikrlar", "callback_data": "action_feedback"}, {"text": "🌐 Til / Яzyк (UZ/RU)", "callback_data": "action_lang"}]
+            [{"text": "📱 Ota-ona paneli", "web_app": {"url": MINI_APP_URL}}],
+            [{"text": "👶 Farzandni ulash", "callback_data": f"action_pair_{code}"}],
+            [{"text": "🌐 Til / Язык (UZ/RU)", "callback_data": "action_lang"}],
         ]
     }
+def begin_child_onboard(chat_id, clean_code, parent_id):
+    PENDING_CHILD[str(chat_id)] = {
+        "code": normalize_code(clean_code),
+        "parent_id": parent_id,
+        "step": "age",
+    }
+    save_pending()
+    child_start_msg = (
+        "🐺 <b>ASSALOMU ALAYKUM, YOSH QAHRAMON!</b>\n\n"
+        "Sizni ota-onangiz «Qalqon AI» xavfsizlik va dars yordamchisi tizimiga taklif qildi! 🌟\n\n"
+        f"🔑 <b>Oila kodingiz:</b> <code>{normalize_code(clean_code)}</code>\n\n"
+        "Avval <b>yoshingizni</b> yozing (masalan: <code>12</code>):"
+    )
+    send_message(chat_id, child_start_msg)
+
+def handle_pending_child(chat_id, text):
+    state = PENDING_CHILD.get(str(chat_id))
+    if not state:
+        return False
+    step = state.get("step")
+    raw = (text or "").strip()
+
+    if step == "age":
+        if not raw.isdigit() or not (3 <= int(raw) <= 25):
+            send_message(chat_id, "⚠️ Yoshingizni raqam bilan yozing (3–25), masalan: <code>12</code>")
+            return True
+        state["age"] = int(raw)
+        state["step"] = "sinf"
+        PENDING_CHILD[str(chat_id)] = state
+        save_pending()
+        send_message(chat_id, "📚 Endi <b>sinfingizni</b> yozing (1–11), masalan: <code>7</code>:")
+        return True
+
+    if step == "sinf":
+        if not raw.isdigit() or not (1 <= int(raw) <= 11):
+            send_message(chat_id, "⚠️ Sinf 1 dan 11 gacha bo'lishi kerak. Masalan: <code>7</code>")
+            return True
+        age = state.get("age")
+        code = state.get("code")
+        parent_id = state.get("parent_id")
+        sinf = int(raw)
+        persist_child_profile(chat_id, parent_id, code, age, sinf)
+        PENDING_CHILD.pop(str(chat_id), None)
+        save_pending()
+        child_markup = {
+            "inline_keyboard": [
+                [{"text": "🌟 Bola Panelini Ochish & Rozilik Berish", "web_app": {"url": f"{MINI_APP_URL}&role=child&code={normalize_code(code)}&age={age}&sinf={sinf}"}}]
+            ]
+        }
+        send_message(
+            chat_id,
+            f"✅ <b>Ulandi!</b>\n\n"
+            f"🔑 Oila kodi: <code>{normalize_code(code)}</code>\n"
+            f"🎂 Yosh: <b>{age}</b>\n"
+            f"🏫 Sinf: <b>{sinf}</b>\n\n"
+            f"Pastdagi tugma orqali panelni oching va 4 ta jabha bo'yicha qoidalar bilan tanishing:",
+            child_markup,
+        )
+        if parent_id:
+            try:
+                send_message(
+                    int(parent_id),
+                    f"🎉 Farzand ulandi!\n"
+                    f"👤 Child ID: <code>{chat_id}</code>\n"
+                    f"🎂 Yosh: <b>{age}</b> | 🏫 Sinf: <b>{sinf}</b>\n"
+                    f"🔑 Kod: <code>{normalize_code(code)}</code>",
+                )
+            except Exception:
+                pass
+        return True
+
+    return False
 
 def handle_update(update):
     if "callback_query" in update:
@@ -204,7 +346,7 @@ def handle_update(update):
 
         if data.startswith("action_pair"):
             code = generate_family_code(chat_id)
-            link = f"https://t.me/farzand_nazorat_bot?start=pair_{code.replace('-', '')}"
+            link = pair_deep_link(code)
             send_message(chat_id, f"🔗 <b>FARZANDNI ULASH YO'RIQNOMASI:</b>\n\n1. Farzandingiz ushbu havolani ochishi kifoya:\n👉 {link}\n\n2. Yoki 6 xonali oila kodingiz: <code>{code}</code>")
         elif data == "action_reels":
             send_message(chat_id, "🎬 <b>REELS VA VIDEO TAHLILI:</b>\n\n📊 • 💻 IT va Dasturlash: 45%\n• 🔬 Ilmiy tajribalar: 25%\n• 🎮 O'yinlar: 30%")
@@ -220,10 +362,12 @@ def handle_update(update):
             USER_LANG[chat_id] = "uz"
             send_message(chat_id, "🇺🇿 Til o'zbekchaga o'zgartirildi!")
             send_message(chat_id, get_start_menu_text(chat_id, "uz", True, is_admin), get_start_keyboard(chat_id, "uz"))
+            send_message(chat_id, "👇 <b>Start</b> tugmasi doim pastda — / kerak emas.", boshlash_reply_keyboard())
         elif data == "set_lang_ru":
             USER_LANG[chat_id] = "ru"
             send_message(chat_id, "🇷🇺 Язык изменён на русский!")
             send_message(chat_id, get_start_menu_text(chat_id, "ru", True, is_admin), get_start_keyboard(chat_id, "ru"))
+            send_message(chat_id, "👇 <b>Start</b> всегда внизу — / не нужен.", boshlash_reply_keyboard())
         return
 
     if "message" in update:
@@ -238,6 +382,15 @@ def handle_update(update):
             save_admins()
 
         lang = USER_LANG.get(chat_id, "uz")
+
+        # ReplyKeyboard «Boshlash» / Start → same handler as /start (before age/sinf pending)
+        text_norm = (text or "").strip().replace("«", "").replace("»", "").strip().lower()
+        if text_norm in ("boshlash", "start", "бошлаш"):
+            text = "/start"
+
+        # Age / sinf onboarding after pair_ deep link (skip when restarting via Boshlash)
+        if text and not text.startswith("/") and handle_pending_child(chat_id, text):
+            return
 
         if text.startswith("/start"):
             try:
@@ -254,28 +407,16 @@ def handle_update(update):
             except Exception:
                 pass
 
-            if "child_" in text or "pair_" in text:
-                clean_code = text.replace("/start", "").replace("child_", "").replace("pair_", "").strip()
-                if not clean_code:
-                    clean_code = generate_family_code(chat_id)
-                
-                child_start_msg = (
-                    "🐺 <b>ASSALOMU ALAYKUM, YOSH QAHRAMON!</b>\n\n"
-                    "Sizni ota-onangiz «Qalqon AI» xavfsizlik va dars yordamchisi tizimiga taklif qildi! 🌟\n\n"
-                    "<b>Dasturdagi 4 ta asosiy imkoniyat:</b>\n"
-                    "• 📍 <b>Jonli radar va xavfsiz joylashuv</b>\n"
-                    "• 🎬 <b>YouTube va video qiziqishlari tahlili</b>\n"
-                    "• 📱 <b>Ekran vaqti va ilovalar balansi</b>\n"
-                    "• 📚 <b>1-11 sinf DTS darsliklari va Gemini AI do'st</b>\n\n"
-                    f"🔑 <b>Oila kodingiz:</b> <code>{clean_code}</code>\n\n"
-                    "Pastdagi tugmani bosing va 4 ta jabha bo'yicha qoidalar bilan tanishib, tasdiqlang:"
-                )
-                child_markup = {
-                    "inline_keyboard": [
-                        [{"text": "🌟 Bola Panelini Ochish & Rozilik Berish", "web_app": {"url": f"{MINI_APP_URL}&role=child&code={clean_code}"}}]
-                    ]
-                }
-                send_message(chat_id, child_start_msg, child_markup)
+            payload = text[len("/start"):].strip()
+            if payload.startswith("child_") or payload.startswith("pair_"):
+                clean_code = normalize_code(payload.replace("child_", "").replace("pair_", ""))
+                if len(clean_code) != 6:
+                    send_message(chat_id, "⚠️ Noto'g'ri oila kodi. Ota-onangizdan 6 xonali kodni so'rang yoki to'g'ri havolani oching.")
+                    return
+                parent_id = find_parent_by_code(clean_code)
+                # Allow pairing even if parent code not yet in local JSON (e.g. first device)
+                # but prefer known parent when present.
+                begin_child_onboard(chat_id, clean_code, parent_id)
                 return
 
             if not is_admin and raw_username:
@@ -297,6 +438,7 @@ def handle_update(update):
                 )
 
             send_message(chat_id, get_start_menu_text(chat_id, lang, True, is_admin), get_start_keyboard(chat_id, lang))
+            send_message(chat_id, "👇 <b>Start</b> tugmasi doim pastda — / kerak emas.", boshlash_reply_keyboard())
             return
 
         if text.startswith("/taklif_farzand") or text.startswith("/invite"):
@@ -311,7 +453,8 @@ def handle_update(update):
                     f"🎙️ <b>OVOZLI XABAR — QALQON AI:</b>\n\n"
                     f"<i>«Assalomu alaykum, aziz do'stim! 🌟 {parent_name} sizni o'z farzandi sifatida ko'rsatdi va «Qalqon AI» xavfsizlik hamda dars yordamchisi dasturiga ulanishingizni so'ramoqda.\n\n"
                     f"Dasturda 1-11 sinf darsliklari, Gemini AI do'st va a'lo baholar uchun yutuqlar bor! Pastdagi tugmani bosing va 4 ta qoida bilan tanishing.»</i>\n\n"
-                    f"🔑 <b>Oila kodingiz:</b> <code>{code}</code>"
+                    f"🔑 <b>Oila kodingiz:</b> <code>{code}</code>\n"
+                    f"👉 Havola: {pair_deep_link(code)}"
                 )
                 child_markup = {
                     "inline_keyboard": [
@@ -321,12 +464,12 @@ def handle_update(update):
                 # Farzand chatiga xabar (agar ma'lum bo'lsa yoki admin orqali)
                 send_message(chat_id, f"📋 <b>Farzand uchun tayyor taklifnoma:</b>\n\n{child_invite_msg}", child_markup)
             else:
-                send_message(chat_id, f"⚠️ Foydalanish: <code>/invite @farzand_username</code>\n\n🔑 Oila kodingiz: <code>{code}</code>")
+                send_message(chat_id, f"⚠️ Foydalanish: <code>/invite @farzand_username</code>\n\n🔑 Oila kodingiz: <code>{code}</code>\n👉 {pair_deep_link(code)}")
             return
 
         if text.startswith("/farzand"):
             code = generate_family_code(chat_id)
-            link = f"https://t.me/farzand_nazorat_bot?start=pair_{code.replace('-', '')}"
+            link = pair_deep_link(code)
             send_message(chat_id, f"🔗 <b>FARZANDNI ULASH:</b>\n\n👉 {link}\n🔑 Oila kodi: <code>{code}</code>")
             return
 
@@ -340,25 +483,26 @@ def handle_update(update):
 
 def setup_bot_commands():
     commands = [
-        {"command": "start", "description": "🚀 Asosiy boshqaruv menyusi"},
-        {"command": "farzand", "description": "🔗 Farzandni ulash kodi va havolasi"},
-        {"command": "reels", "description": "🎬 Reels va video tahlili"},
-        {"command": "taklif", "description": "💡 Taklif va mulohaza yuborish"}
+        {"command": "start", "description": "Boshlash"}
     ]
     call_tg("setMyCommands", {"commands": commands})
-    call_tg("setChatMenuButton", {
-        "menu_button": {
-            "type": "web_app",
-            "text": "📊 Ota-Ona Paneli",
-            "web_app": {"url": MINI_APP_URL}
-        }
-    })
+    call_tg("setChatMenuButton", {"menu_button": {"type": "commands"}})
 
 def main():
     print("="*60)
     print("[QALQON AI] Telegram Bot Engine is running 24/7...")
+    if not BOT_TOKEN:
+        print("[QALQON AI] ERROR: MAIN_BOT_TOKEN (or BOT_TOKEN) missing from env/.env")
+        print("[QALQON AI] Set the token and restart. Refusing to poll.")
+        sys.exit(1)
+    token_hint = BOT_TOKEN[-4:] if len(BOT_TOKEN) >= 4 else "????"
+    print(f"[QALQON AI] Token loaded (ends …{token_hint})")
     print(f"[QALQON AI] Sole Admin: @ai_loyihachi")
     print(f"[QALQON AI] Admin Chat IDs cached: {list(ADMIN_CHAT_IDS)}")
+    print("[QALQON AI] Pairing path: LONG POLLING (getUpdates)")
+    print("[QALQON AI] Calling deleteWebhook so polling is not stolen by Vercel webhook…")
+    wh = call_tg("deleteWebhook", {"drop_pending_updates": False})
+    print(f"[QALQON AI] deleteWebhook ok={wh.get('ok')}")
     print("="*60)
     setup_bot_commands()
 
