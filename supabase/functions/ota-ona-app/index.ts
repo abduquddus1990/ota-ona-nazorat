@@ -4835,11 +4835,21 @@ function handleCompleteParentOnboarding() {
 </html>
 `;
 
+// DEPRECATED — bu funksiya ilgari Mini App'ning to'liq nusxasini (yuqoridagi
+// HTML) to'g'ridan-to'g'ri xizmat qilardi. Endi rasmiy hosting
+// telegram_miniapp/ (GitHub Pages, .github/workflows/deploy.yml orqali
+// avtomatik deploy qilinadi) — barcha bot havolalari shunga ishora qiladi.
+// Bu ikkinchi nusxa asl nusxadan sezilarli darajada eskirib qolgan edi va
+// aynan shu yerda (endi olib tashlangan) qattiq yozilgan bot tokeni sizib
+// chiqqan edi. Endigi vazifasi — kim bu eski manzilga kirsa, uni to'g'ri
+// (yangilanadigan) manzilga yo'naltirish, hech narsani sindirmasdan.
+const CANONICAL_MINI_APP_URL = "https://abduquddus1990.github.io/ota-ona-nazorat/";
+
 serve((req) => {
-  return new Response(HTML, {
-    headers: {
-      "Content-Type": "text/html; charset=utf-8",
-      "Access-Control-Allow-Origin": "*",
-    },
+  const url = new URL(req.url);
+  const redirectTo = CANONICAL_MINI_APP_URL + url.search;
+  return new Response(null, {
+    status: 302,
+    headers: { Location: redirectTo },
   });
 });

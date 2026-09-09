@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Qalqon AI — Maxfiylik siyosati</title>
+<style>
+  body { font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif; max-width: 760px; margin: 0 auto; padding: 24px 20px 60px; line-height: 1.65; color: #1a1a1a; background: #fff; }
+  h1 { font-size: 1.6rem; margin-top: 0; }
+  h2 { font-size: 1.15rem; margin-top: 2em; border-top: 1px solid #eee; padding-top: 1.2em; }
+  ul { padding-left: 1.2em; }
+  li { margin-bottom: 0.4em; }
+  .updated { color: #666; font-size: 0.9rem; }
+  .contact { background: #f4f6f8; border-radius: 10px; padding: 14px 18px; }
+  a { color: #0e63c9; }
+</style>
+</head>
+<body>
+
+<h1>Qalqon AI — Maxfiylik siyosati</h1>
+<p class="updated">Oxirgi yangilanish: 2026-yil</p>
+
+<p>Qalqon AI — bolalarni raqamli xavfsizlik xatarlaridan himoya qilish uchun ota-onalarga
+mo'ljallangan nazorat va yordamchi tizim (Telegram bot, Telegram Mini App va Android ilovasi).
+Ushbu sahifa qaysi ma'lumotlar yig'ilishini, nima uchun va qanday himoyalanishini tushuntiradi.</p>
+
+<h2>1. Kim uchun va qanday roziliksiz</h2>
+<ul>
+  <li>Xizmat ota-ona va uning farzandi (kamida ota-ona tomonidan roziligi berilgan) o'rtasida ishlaydi.</li>
+  <li>Farzand qurilmasi ota-onaning 6 xonali oila kodi orqali qo'lda ulanadi — ulanish avtomatik yoki
+  yashirin ravishda amalga oshmaydi.</li>
+  <li>Farzand ulanish jarayonida qoidalar bilan tanishtiriladi va ulanishga rozilik berish so'raladi
+  (Mini App'dagi rozilik oynasi).</li>
+  <li>Android ilovasi doimiy fon bildirishnomasi orqali monitoring faolligini har doim ochiq ko'rsatadi —
+  yashirin kuzatuv yo'q.</li>
+</ul>
+
+<h2>2. Qanday ma'lumotlar yig'iladi</h2>
+<ul>
+  <li><b>Telegram profil ma'lumotlari:</b> foydalanuvchi ID, username, ism — bot/Mini App orqali
+  identifikatsiya va ota-ona bilan farzandni bog'lash uchun.</li>
+  <li><b>Oila kodi va bog'lanish holati:</b> qaysi qurilma qaysi oilaga ulanganini bilish uchun.</li>
+  <li><b>Ekran vaqti va ilova kategoriyasi:</b> qaysi ilova qancha vaqt oldingi planda bo'lgani
+  (Android UsageStats orqali) — ilova ichidagi shaxsiy kontent (xabarlar, parollar) O'QILMAYDI.</li>
+  <li><b>Taxminiy joylashuv:</b> so'rov bo'yicha oxirgi ma'lum joylashuv (mobil internet/GPS asosida),
+  faqat ota-ona so'ragan yoki belgilangan geozona (uy/maktab) tekshirilganda ishlatiladi.</li>
+  <li><b>Komendant soati va uy vazifasi holati:</b> ota-ona belgilagan qoidalar va bajarilish holati.</li>
+  <li><b>AI repetitor bilan suhbat (ixtiyoriy):</b> farzand yozgan savol matni va/yoki rasm — javob
+  berish uchun Gemini AI xizmatiga yuboriladi. Yuborishdan oldin telefon raqami, karta raqami kabi
+  shaxsiy ma'lumotlar avtomatik niqoblanadi (PII tozalash).</li>
+  <li><b>Batareya darajasi va qurilma modeli:</b> texnik diagnostika uchun.</li>
+</ul>
+
+<h2>3. Nima yig'ilmaydi</h2>
+<ul>
+  <li>Ekrandagi matn, xabarlar mazmuni yoki boshqa ilovalarning shaxsiy kontenti o'qilmaydi.</li>
+  <li>Parol maydonlari yoki nozik kiritish maydonlari hech qachon qayd etilmaydi.</li>
+  <li>Qo'ng'iroqlar, mikrofon yoki kamera orqali tinglash/kuzatish amalga oshirilmaydi.</li>
+</ul>
+
+<h2>4. Ma'lumotlar qanday saqlanadi</h2>
+<ul>
+  <li>Ma'lumotlar Supabase (PostgreSQL) bazasida, qatorlar darajasidagi xavfsizlik (Row Level Security)
+  siyosati bilan saqlanadi.</li>
+  <li>Qurilmadan serverga yuborishdan oldin ayrim telemetriya apparat darajasidagi Keystore (AES-256-GCM)
+  bilan shifrlanadi.</li>
+  <li>Barcha aloqa TLS orqali shifrlangan holda amalga oshiriladi.</li>
+</ul>
+
+<h2>5. Kim ko'ra oladi</h2>
+<p>Faqat tegishli oila kodiga ulangan ota-ona farzandining ma'lumotlarini ko'ra oladi. Boshqa
+foydalanuvchilar yoki tashqi shaxslar ma'lumotlarga kira olmaydi.</p>
+
+<h2>6. Ma'lumotni o'chirish</h2>
+<p>Ota-ona yoki farzand istalgan vaqtda botga murojaat qilib, oila bog'lanishini uzishni va
+tegishli ma'lumotlarni o'chirishni so'rashi mumkin — quyidagi manzilga yozing.</p>
+
+<h2>7. Bog'lanish</h2>
+<div class="contact">
+  <p>Savollar yoki ma'lumotni o'chirish so'rovlari uchun:</p>
+  <p>Telegram: <a href="https://t.me/qalqon_aibot">@qalqon_aibot</a> orqali "Fikr-mulohaza" bo'limi</p>
+</div>
+
+</body>
+</html>

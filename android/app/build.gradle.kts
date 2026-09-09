@@ -1,6 +1,22 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+}
+
+// Release imzolash kaliti — HECH QACHON git'ga qo'shilmaydigan
+// android/keystore.properties fayldan o'qiladi (bu fayl yaratilishi kerak,
+// qarang: android/keystore.properties.example). Fayl topilmasa release
+// build debug kalit bilan yig'iladi va Play Console bunday AAB'ni RAD ETADI —
+// bu ataylab shunday, tasodifan debug-imzolangan build chiqarib
+// yubormaslik uchun.
+val keystorePropertiesFile = rootProject.file("keystore.properties")
+val keystoreProperties = Properties()
+val hasReleaseKeystore = keystorePropertiesFile.exists()
+if (hasReleaseKeystore) {
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
 
 android {
@@ -17,6 +33,17 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        if (hasReleaseKeystore) {
+            create("release") {
+                storeFile = file(keystoreProperties["storeFile"] as String)
+                storePassword = keystoreProperties["storePassword"] as String
+                keyAlias = keystoreProperties["keyAlias"] as String
+                keyPassword = keystoreProperties["keyPassword"] as String
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
@@ -25,7 +52,19 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            signingConfig = signingConfigs.getByName("debug") // Prodda release keystore ishlatiladi
+            // hasReleaseKeystore=false bo'lsa ataylab debug kalitda qoladi —
+            // shunda ham APK yig'iladi (lokal test uchun), lekin Play Store'ga
+            // yaroqsiz bo'lib qoladi (shu haqda ogohlantirish chiqadi).
+            signingConfig = if (hasReleaseKeystore) {
+                signingConfigs.getByName("release")
+            } else {
+                logger.warn(
+                    "OGOHLANTIRISH: android/keystore.properties topilmadi — " +
+                        "release build hali ham DEBUG kalit bilan imzolanmoqda. " +
+                        "Play Store'ga yuklashdan oldin android/keystore.properties.example'ga qarang."
+                )
+                signingConfigs.getByName("debug")
+            }
         }
         debug {
             isMinifyEnabled = false

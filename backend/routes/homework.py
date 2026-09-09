@@ -1,25 +1,28 @@
-"""Uy vazifasi holati â€” bola bajardi, ota-ona koâ€˜radi."""
+"""Uy vazifasi holati — bola bajardi, ota-ona ko'radi.
+
+Supabase'ning homework_items jadvaliga yozadi, Telegram Mini App
+initData orqali autentifikatsiya qilinadi (demo-stub emas).
+"""
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
-
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-try:
-    raise ImportError("local-demo")
-except ImportError:
-    def get_current_user():
-        return {"sub": "demo", "role": "student"}
+from config import settings
+from security.telegram_auth import require_family_access
+from supabase import create_client, Client
 
-from datetime import timezone, timedelta
+supabase: Client = create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_ROLE_KEY)
+
 TZ = timezone(timedelta(hours=5))
 router = APIRouter(prefix="/api/v1/homework", tags=["homework"])
 
 
 class HomeworkItem(BaseModel):
     id: str | None = None
+    family_code: str
     child_id: str
     grade: int = Field(..., ge=1, le=11)
     subject: str
@@ -29,41 +32,64 @@ class HomeworkItem(BaseModel):
     summary_uz: str = ""
 
 
-ITEMS: dict[str, HomeworkItem] = {}
-_seq = 0
-
-
 @router.post("/upsert")
-async def upsert(item: HomeworkItem, user: dict = Depends(get_current_user)):
-    global _seq
-    if not item.id:
-        _seq += 1
-        item.id = f"hw_{_seq}"
-    ITEMS[item.id] = item
+async def upsert(item: HomeworkItem, auth: dict = Depends(require_family_access)):
+    row = {
+        "family_code": item.family_code,
+        "child_id": item.child_id,
+        "grade": item.grade,
+        "subject": item.subject,
+        "title": item.exercise,
+        "done": item.status == "done",
+    }
+    try:
+        if item.id:
+            supabase.table("homework_items").update(row).eq("id", item.id).execute()
+        else:
+            resp = supabase.table("homework_items").insert(row).execute()
+            item.id = resp.data[0]["id"] if resp.data else None
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Uy vazifasini saqlashda xatolik: {e}")
     return {"ok": True, "item": item.model_dump()}
 
 
 @router.post("/{hw_id}/done")
-async def mark_done(hw_id: str, user: dict = Depends(get_current_user)):
-    item = ITEMS.get(hw_id)
-    if not item:
+async def mark_done(hw_id: str, auth: dict = Depends(require_family_access)):
+    try:
+        resp = (
+            supabase.table("homework_items")
+            .update({"done": True, "done_at": datetime.now(TZ).isoformat()})
+            .eq("id", hw_id)
+            .execute()
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Yangilashda xatolik: {e}")
+
+    if not resp.data:
         return {"ok": False, "error": "not_found"}
-    item.status = "done"
-    ITEMS[hw_id] = item
+
+    row = resp.data[0]
     return {
         "ok": True,
         "parent_event": {
             "type": "homework_done",
-            "child_id": item.child_id,
+            "family_code": row["family_code"],
+            "child_id": row["child_id"],
             "at": datetime.now(TZ).isoformat(),
-            "message_uz": (
-                f"{item.grade}-sinf {item.subject}: {item.exercise} bajarildi."
-            ),
+            "message_uz": f"{row['grade']}-sinf {row['subject']}: {row['title']} bajarildi.",
         },
     }
 
 
-@router.get("/child/{child_id}")
-async def list_for_parent(child_id: str, user: dict = Depends(get_current_user)):
-    rows = [i.model_dump() for i in ITEMS.values() if i.child_id == child_id]
-    return {"items": rows}
+@router.get("/child/{family_code}/{child_id}")
+async def list_for_parent(family_code: str, child_id: str, auth: dict = Depends(require_family_access)):
+    resp = (
+        supabase.table("homework_items")
+        .select("*")
+        .eq("family_code", family_code)
+        .eq("child_id", child_id)
+        .order("created_at", desc=True)
+        .limit(100)
+        .execute()
+    )
+    return {"items": resp.data}

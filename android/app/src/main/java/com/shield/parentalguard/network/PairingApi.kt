@@ -19,6 +19,15 @@ object PairingApi {
 
     const val TELEGRAM_BOT_USERNAME = "qalqon_aibot"
 
+    // Backend uchun bir xil child_id — Deno funksiyasidagi resolveChildId()
+    // bilan bitta xil natija berishi SHART (supabase/functions/ota-ona-bot/index.ts),
+    // aks holda pairing paytida yozilgan qator bilan keyingi telemetriya/lokatsiya
+    // so'rovlaridagi child_id mos kelmay, "juftlashmagan" deb rad etiladi.
+    fun deviceChildId(familyCode: String, deviceModel: String): String {
+        val digits = familyCode.filter { it.isDigit() }
+        return "android_${digits}_${deviceModel}".replace(Regex("\\s+"), "_")
+    }
+
     fun telegramPairDeepLink(familyCode: String): String {
         val digits = familyCode.filter { it.isDigit() }
         return "https://t.me/$TELEGRAM_BOT_USERNAME?start=pair_$digits"

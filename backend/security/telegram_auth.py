@@ -91,3 +91,78 @@ async def require_tutor_auth(
         return {"auth": "jwt", "user": user, "client": client}
 
     raise HTTPException(status_code=401, detail="Telegram initData yoki Bearer token kerak")
+
+
+_pairing_db = None
+
+
+def _pairing_client():
+    """Lazy singleton — geofence/curfew/homework/telemetry kabi Android
+    qurilmasi to'g'ridan-to'g'ri chaqiradigan endpointlar uchun."""
+    global _pairing_db
+    if _pairing_db is None:
+        from config import settings
+        from supabase import create_client
+
+        _pairing_db = create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_ROLE_KEY)
+    return _pairing_db
+
+
+async def require_family_access(
+    request: Request,
+    x_telegram_init_data: Optional[str] = Header(default=None, alias="X-Telegram-Init-Data"),
+    x_family_code: Optional[str] = Header(default=None, alias="X-Family-Code"),
+    x_child_id: Optional[str] = Header(default=None, alias="X-Child-Id"),
+    authorization: Optional[str] = Header(default=None),
+) -> dict:
+    """Ota-ona/Mini App (Telegram initData) YOKI juftlashgan Android qurilma
+    (X-Family-Code + X-Child-Id, child_pairings jadvalida faol yozuv borligi
+    tekshiriladi) uchun. Qalqon AI Telegram-native mahsulot — foydalanuvchilar
+    Supabase Auth orqali ro'yxatdan o'tmaydi, shuning uchun bu ikkalasi
+    haqiqatda mavjud bo'lgan yagona kimlik dalillari hisoblanadi.
+
+    DIQQAT: oila kodi 6 xonali va nisbatan zaif maxfiy kalit — bu v1 uchun
+    yetarli, lekin kelgusida har bir qurilmaga alohida imzolangan token
+    berish (pairing vaqtida) ancha mustahkamroq bo'ladi.
+    """
+    client = request.client.host if request.client else "unknown"
+
+    if x_telegram_init_data:
+        data = validate_telegram_init_data(x_telegram_init_data)
+        check_rate_limit(f"tg:{client}:{data.get('user', '')[:64]}")
+        return {"auth": "telegram", "init": data}
+
+    if x_family_code and x_child_id:
+        resp = (
+            _pairing_client()
+            .table("child_pairings")
+            .select("id")
+            .eq("family_code", x_family_code)
+            .eq("child_id", x_child_id)
+            .eq("is_active", True)
+            .limit(1)
+            .execute()
+        )
+        if not resp.data:
+            raise HTTPException(
+                status_code=403,
+                detail="Qurilma juftlashmagan yoki oila kodi noto'g'ri (avval /pair qiling).",
+            )
+        check_rate_limit(f"dev:{client}:{x_child_id[:64]}")
+        return {"auth": "device", "family_code": x_family_code, "child_id": x_child_id}
+
+    if os.getenv("TUTOR_AUTH_OPTIONAL", "").lower() in ("1", "true", "yes"):
+        check_rate_limit(f"dev:{client}")
+        return {"auth": "optional"}
+
+    if authorization:
+        from security.auth_middleware import get_current_user
+
+        user = get_current_user(authorization)
+        check_rate_limit(f"jwt:{client}:{user.get('sub', 'x')}")
+        return {"auth": "jwt", "user": user}
+
+    raise HTTPException(
+        status_code=401,
+        detail="Telegram initData yoki X-Family-Code/X-Child-Id header kerak",
+    )

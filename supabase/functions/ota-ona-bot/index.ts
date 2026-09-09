@@ -5,13 +5,62 @@
 // Child Status Alerts, Zero Location Demands, and Instant Approval Workflow.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const BOT_TOKEN = Deno.env.get("BOT_TOKEN") || "";
 if (!BOT_TOKEN) {
   console.error("BOT_TOKEN missing");
 }
-const MINI_APP_URL = Deno.env.get("MINI_APP_URL") || "https://abduquddus1990.github.io/ota-ona-nazorat/?v=3.0";
+const MINI_APP_URL = Deno.env.get("MINI_APP_URL") || "https://abduquddus1990.github.io/ota-ona-nazorat/?v=5.4";
 const TELEGRAM_API = `https://api.telegram.org/bot${BOT_TOKEN}`;
+
+// Pairing state persistence (child_pairings table — see
+// database/03_qalqon_realtime_features.sql). Telegram-native identity:
+// no Supabase Auth account is required for parents/children.
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+const db = SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY
+  ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+  : null;
+if (!db) {
+  console.error("SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY missing — pairing will NOT be persisted to the database");
+}
+
+/**
+ * Farzandning barqaror identifikatorini aniqlaydi:
+ * 1) Haqiqiy Telegram user id bo'lsa — shu (eng ishonchli, doim bir xil).
+ * 2) Android qurilma bo'lsa — oila kodi + qurilma modeli (bir xil qurilma
+ *    qayta ulansa ham bitta qatorga tushishi uchun, timestamp ishlatilmaydi).
+ * 3) Aks holda — oila kodiga bog'langan zaxira kalit.
+ */
+function resolveChildId(payload: any, familyCode: string): string {
+  if (payload.telegramId) return `tg_${payload.telegramId}`;
+  if (payload.source === "android_parental_guard" && payload.deviceModel) {
+    return `android_${familyCode}_${payload.deviceModel}`.replace(/\s+/g, "_");
+  }
+  return `pending_${familyCode}`;
+}
+
+async function upsertPairing(
+  familyCode: string,
+  childId: string,
+  info: { childName: string; deviceLabel: string | null; source: string }
+) {
+  if (!db || !familyCode) return;
+  const { error } = await db.from("child_pairings").upsert(
+    {
+      family_code: familyCode,
+      child_id: childId,
+      child_name: info.childName,
+      device_label: info.deviceLabel,
+      source: info.source,
+      is_active: true,
+      last_seen_at: new Date().toISOString(),
+    },
+    { onConflict: "family_code,child_id" }
+  );
+  if (error) console.error("child_pairings upsert failed:", error.message);
+}
 
 async function ensureBotCommands() {
   try {
@@ -246,10 +295,34 @@ serve(async (req) => {
     if (payload.type === "child_paired_event") {
       const familyCode = payload.familyCode || "";
       const childName = payload.childName || "Farzand";
-      
+
+      // Bu chaqiruvda ishonchli Telegram ID kelmaydi (Mini App uni faqat
+      // keyingi child_consent so'rovida yuboradi) — shuning uchun faqat
+      // adminga ogohlantirish yuboramiz; bazaga real yozuv child_consent
+      // (yoki Android uchun quyidagi resolveChildId) orqali amalga oshadi.
+      await upsertPairing(familyCode, resolveChildId(payload, familyCode), {
+        childName,
+        deviceLabel: payload.deviceModel || null,
+        source: payload.source || "telegram_miniapp",
+      });
+
       const alertMsg = `🎉 <b>FARZAND ROZILIK BILAN ULANDI!</b>\n\n👦 <b>Farzand:</b> ${childName}\n🔑 <b>Oila Kodi:</b> <code>${familyCode}</code>\n📅 <b>Vaqt:</b> ${new Date().toLocaleString("uz-UZ")}\n\n✨ Farzand barcha 4 ta qoidalar bilan tanishdi va ulanishga to'liq rozilik berdi.\nEndi jonli lokatsiya, darsliklar bahosi va qiziqishlar tahlili to'liq ishlaydi!`;
 
       await notifyAdmins(alertMsg);
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    }
+
+    // 0.1b Farzand roziligi (Mini App'ning ikkinchi chaqiruvi — bu yerda
+    // haqiqiy Telegram ID keladi, shuning uchun bazadagi yozuvni shu bilan
+    // to'ldiramiz/yangilaymiz)
+    if (payload.type === "child_consent") {
+      const familyCode = payload.familyCode || "";
+      const childName = payload.childName || "Farzand";
+      await upsertPairing(familyCode, resolveChildId(payload, familyCode), {
+        childName,
+        deviceLabel: payload.username ? `@${payload.username}` : null,
+        source: "telegram_miniapp",
+      });
       return new Response(JSON.stringify({ ok: true }), { status: 200 });
     }
 

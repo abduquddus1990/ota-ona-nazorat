@@ -20,7 +20,6 @@ import android.widget.Toast
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.shield.parentalguard.network.PairingApi
-import com.shield.parentalguard.services.PersistentGuardService
 import java.util.concurrent.Executors
 
 /**
@@ -192,8 +191,10 @@ class PairingActivity : Activity() {
     }
 
     private fun savePairingCode(code: String) {
+        val childId = PairingApi.deviceChildId(code, Build.MODEL ?: "device")
         prefs.edit()
             .putString("family_code", code)
+            .putString("child_id", childId)
             .putBoolean("is_paired", true)
             .apply()
         clearPairError()
@@ -277,12 +278,7 @@ class PairingActivity : Activity() {
     }
 
     private fun startGuardService() {
-        val serviceIntent = Intent(this, PersistentGuardService::class.java)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForegroundService(serviceIntent)
-        } else {
-            startService(serviceIntent)
-        }
+        com.shield.parentalguard.ParentalGuardApp.startMonitoring(applicationContext)
     }
 
     override fun onResume() {

@@ -48,7 +48,7 @@ class PersistentGuardService : Service() {
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Xavfsiz Qalqon Faol")
             .setContentText("Farzand qurilmasining xavfsizligi va vaqt balansi himoyalanmoqda.")
-            .setSmallIcon(android.R.drawable.ic_lock_idle_lock)
+            .setSmallIcon(com.shield.parentalguard.R.drawable.ic_notification)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(true) // Foydalanuvchi tomonidan bexosdan o'chirilishiga yo'l qo'ymaydi
             .build()

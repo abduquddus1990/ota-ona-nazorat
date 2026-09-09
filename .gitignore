@@ -19,6 +19,9 @@ ENV/
 .cxx
 *.apk
 *.aab
+*.jks
+*.keystore
+android/keystore.properties
 
 # Node / Web
 node_modules/

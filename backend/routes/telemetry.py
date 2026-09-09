@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from typing import Optional
 from config import settings
-from security.auth_middleware import get_current_user
+from security.telegram_auth import require_family_access
 from security.pii_sanitizer import pii_sanitizer
 from supabase import create_client, Client
 
@@ -10,6 +10,8 @@ router = APIRouter(prefix="/api/v1/telemetry", tags=["Telemetry"])
 supabase: Client = create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_ROLE_KEY)
 
 class TelemetryIngestRequest(BaseModel):
+    family_code: str
+    child_id: str
     app_package_name: str
     category: str = "General"
     screen_time_seconds: int = Field(ge=0)
@@ -22,9 +24,9 @@ class TelemetryIngestRequest(BaseModel):
 @router.post("/ingest", status_code=status.HTTP_201_CREATED)
 async def ingest_telemetry(
     dto: TelemetryIngestRequest,
-    user: dict = Depends(get_current_user)
+    auth: dict = Depends(require_family_access)
 ):
-    child_id = user.get("sub")
+    child_id = dto.child_id
     if not child_id:
         raise HTTPException(status_code=401, detail="Foydalanuvchi identifikatori topilmadi.")
 
@@ -41,9 +43,11 @@ async def ingest_telemetry(
         if any(keyword in clean_text.lower() for keyword in toxic_keywords):
             risk_level = "high"
 
-    # 2. Supabase ma'lumotlar bazasiga yozish
+    # 2. Supabase ma'lumotlar bazasiga yozish (device_telemetry — Telegram-native,
+    # family_code/child_id TEXT kalitlar bilan; qarang: database/03_qalqon_realtime_features.sql)
     try:
-        response = supabase.table("telemetry_logs").insert({
+        response = supabase.table("device_telemetry").insert({
+            "family_code": dto.family_code,
             "child_id": child_id,
             "app_package_name": dto.app_package_name,
             "category": dto.category,
