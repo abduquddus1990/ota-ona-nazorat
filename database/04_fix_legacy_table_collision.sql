@@ -1,4 +1,42 @@
 -- ============================================================================
+-- ONE-TIME FIX: legacy table collision in the shared "xodim-intizom" project
+--
+-- WHY THIS FILE EXISTS:
+--   03_qalqon_realtime_features.sql could not be applied to this project.
+--   Supabase's SQL Editor runs a script as a single transaction, and this
+--   statement in 03 aborted the whole thing (error 42703):
+--
+--     CREATE INDEX IF NOT EXISTS idx_homework_lookup
+--       ON public.homework_items(family_code, child_id, created_at DESC);
+--
+--   public.homework_items already existed in this project from an older,
+--   unrelated schema (id, child_id, grade, subject, exercise, source,
+--   status, summary_uz, updated_at) — no family_code, no created_at.
+--   Because 03 uses CREATE TABLE IF NOT EXISTS, the old table was silently
+--   kept instead of being replaced, and the index then failed against it.
+--   public.curfew_policies collided the same way (it had blocked_packages
+--   and no family_code, so backend/routes/curfew.py could never work).
+--
+--   Both colliding tables were verified EMPTY (0 rows) before dropping,
+--   so no data is lost. Plain DROP (no CASCADE) is deliberate: if anything
+--   unexpected depends on these tables, this transaction aborts instead of
+--   quietly destroying it.
+--
+-- HOW TO RUN: paste this whole file into the Supabase SQL Editor and Run.
+--   It is safe to run once; running it again is a no-op for the drops and
+--   harmless for the rest (everything below is IF NOT EXISTS).
+-- ============================================================================
+
+DROP TABLE IF EXISTS public.curfew_policies;
+DROP TABLE IF EXISTS public.homework_items;
+
+-- ============================================================================
+-- Below: the body of 03_qalqon_realtime_features.sql as it was applied to
+-- the wfrclcwjeeqeqchmdhzw project on 2026-09-10. 03 has since gained a
+-- header comment pointing here; the executable statements are unchanged.
+-- ============================================================================
+
+-- ============================================================================
 -- PROJECT: QALQON AI
 -- LAYER: REAL-TIME FAMILY FEATURES (pairing, location, curfew, homework)
 -- WHY A SEPARATE MIGRATION FROM 01_supabase_schema_and_rls.sql:
@@ -15,20 +53,6 @@
 --   backend has verified a genuine Telegram Mini App initData signature
 --   (see backend/security/telegram_auth.py) or the bot's own webhook.
 -- ============================================================================
-
--- ----------------------------------------------------------------------------
--- BEFORE APPLYING THIS FILE TO AN EXISTING PROJECT, READ THIS:
---   Every CREATE TABLE below is IF NOT EXISTS, which SILENTLY KEEPS an
---   existing table of the same name even when its columns are completely
---   different. A later CREATE INDEX on a column the old table lacks then
---   aborts the whole script (the Supabase SQL Editor runs it as one
---   transaction, so nothing at all gets created).
---   This is exactly what happened on the shared "xodim-intizom" project,
---   where public.curfew_policies and public.homework_items already existed
---   from an unrelated older schema. The recovery is documented and scripted
---   in 04_fix_legacy_table_collision.sql — use that file, not this one, on
---   any project that already has those two tables.
--- ----------------------------------------------------------------------------
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 

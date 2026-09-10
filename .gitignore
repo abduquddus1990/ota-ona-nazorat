@@ -40,3 +40,6 @@ __pycache__/
 admin_ids.json
 users_db.json
 family_codes.json
+
+# Supabase CLI local state (linked project ref, version cache) — machine-specific
+supabase/.temp/
