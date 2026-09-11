@@ -1,3 +1,35 @@
+// ============================================================================
+// XAVFSIZLIK: har bir bot so'roviga Telegram initData qo'shiladi.
+//
+// Edge Function endi imzolangan identitetni talab qiladi (ilgari u butunlay
+// ochiq edi — oddiy curl bilan istalgan oilaga bola qo'shish mumkin edi).
+// initData'ni har bir chaqiruv joyida qo'lda qo'shish o'rniga bitta yerda
+// qilamiz: bot URL'iga ketadigan so'rovlar o'nga yaqin joyda tarqalgan va
+// bittasi unutilsa, o'sha amal jimgina 401 bilan tushardi.
+//
+// Faqat shu bitta URL'ga tegadi; boshqa so'rovlar o'z holicha ketadi.
+// ============================================================================
+(function attachInitDataToBotCalls() {
+    const BOT_FN = 'https://wfrclcwjeeqeqchmdhzw.supabase.co/functions/v1/ota-ona-bot';
+    const nativeFetch = window.fetch.bind(window);
+    window.fetch = function (input, init) {
+        try {
+            const url = (typeof input === 'string') ? input : (input && input.url) || '';
+            if (url.indexOf(BOT_FN) === 0 && init && typeof init.body === 'string') {
+                const payload = JSON.parse(init.body);
+                if (payload && typeof payload === 'object' && !payload.initData) {
+                    payload.initData =
+                        (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) || '';
+                    init = Object.assign({}, init, { body: JSON.stringify(payload) });
+                }
+            }
+        } catch (e) {
+            // Body JSON emas — o'zgartirmasdan yuboramiz.
+        }
+        return nativeFetch(input, init);
+    };
+})();
+
 let currentChildSubject = "Matematika";
 // ============================================================================
 // 📖 80 KB DARSLIK SAHIFASI KO'RUVCHISI (ULTRA FAST PAGE VIEWER)
@@ -627,6 +659,65 @@ function switchChild(childKey) {
     }
 }
 
+// Ota-ona paneli farzandlar ro'yxatini serverdan oladi. Ilgari ro'yxat
+// faqat localStorage'dagi demo ma'lumotdan iborat edi — shuning uchun
+// boshqa qurilmadan kirilganda yoki ilova qayta o'rnatilganda qo'shilgan
+// farzandlar umuman ko'rinmasdi.
+//
+// So'rov backend'ning /api/v1/parent/children endpointiga emas, bot Edge
+// Function'iga boradi: backend Render'ning bepul tarifida sovuq startda
+// ~50 soniya javob bermaydi, Edge Function esa doim issiq.
+const QALQON_BOT_FN = 'https://wfrclcwjeeqeqchmdhzw.supabase.co/functions/v1/ota-ona-bot';
+
+function buildChildRecord(serverChild, existing) {
+    // Panelning qolgan qismi (xarita, ilovalar, qiziqishlar) hali demo
+    // ma'lumot bilan ishlaydi, shuning uchun yangi farzand uchun o'sha
+    // tuzilmadan nusxa olamiz va ustidan haqiqiy maydonlarni yozamiz.
+    const base = existing || JSON.parse(JSON.stringify(DEFAULT_INITIAL_CHILDREN["CH-101"]));
+    base.id = serverChild.child_id;
+    base.name = serverChild.child_name || base.name;
+    base.name_ru = base.name;
+    if (serverChild.grade) base.grade = serverChild.grade;
+    if (serverChild.telegram_username) base.username = '@' + serverChild.telegram_username;
+    else if (serverChild.device_label) base.username = serverChild.device_label;
+    // Ota-ona qo'shgan, lekin farzand hali rozilik bermagan yozuv.
+    base.pending = (serverChild.source === 'parent_invite');
+    return base;
+}
+
+async function syncChildrenFromServer() {
+    if (!familyCode || String(familyCode).length !== 6) return false;
+    try {
+        const resp = await fetch(QALQON_BOT_FN, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'list_children', familyCode: familyCode })
+        });
+        const data = await resp.json();
+        if (!data || !data.ok || !Array.isArray(data.children)) return false;
+
+        // Server 0 ta farzand qaytarsa mavjud ro'yxatni o'chirmaymiz: yangi
+        // o'rnatishda panel butunlay bo'sh va buzilgandek ko'rinardi.
+        if (data.children.length === 0) return true;
+
+        const next = {};
+        data.children.forEach(c => {
+            next[c.child_id] = buildChildRecord(c, childrenDatabase[c.child_id]);
+        });
+        childrenDatabase = next;
+        if (!childrenDatabase[currentChildKey]) {
+            currentChildKey = Object.keys(childrenDatabase)[0];
+        }
+        saveChildrenDatabase();
+        renderChildSelectDropdown();
+        renderActiveChild();
+        return true;
+    } catch (e) {
+        console.error('syncChildrenFromServer error:', e);
+        return false;
+    }
+}
+
 async function handleAddNewChildSubmit() {
     const nameInput = document.getElementById('newChildNameInput');
     const gradeSelect = document.getElementById('newChildGradeInput');
@@ -671,7 +762,7 @@ async function handleAddNewChildSubmit() {
         const data = await resp.json();
 
         if (data.ok) {
-            const pairLink = `https://t.me/qalqon_aibot?start=pair_${familyCode}`;
+            const pairLink = data.pairLink || `https://t.me/qalqon_aibot?start=pair_${familyCode}`;
             if (resultBox) {
                 resultBox.classList.remove('hidden');
                 resultBox.innerHTML = `
@@ -683,8 +774,16 @@ async function handleAddNewChildSubmit() {
             }
             if (nameInput) nameInput.value = '';
             if (usernameInput) usernameInput.value = '';
+            // Ro'yxatni serverdan qayta o'qiymiz — yangi farzand shu yerda
+            // paydo bo'ladi. Ilgari bu qadam yo'q edi, shuning uchun
+            // qo'shilgan farzand tanlash ro'yxatida hech qachon ko'rinmasdi.
+            await syncChildrenFromServer();
         } else {
-            alert(isRuAdd ? 'Ошибка. Попробуйте ещё раз.' : 'Xatolik yuz berdi. Qayta urinib ko\'ring.');
+            console.error('add_child_request rad etildi:', data);
+            alert(
+                (isRuAdd ? 'Ошибка: ' : 'Xatolik: ') +
+                (data.error || (isRuAdd ? 'Попробуйте ещё раз.' : "Qayta urinib ko'ring."))
+            );
         }
     } catch (e) {
         console.error('Add child error:', e);
@@ -812,7 +911,7 @@ function saveParentOnboarding() {
 }
 
 
-function handleChildConsentAccept() {
+async function handleChildConsentAccept() {
     const codeInput = document.getElementById('childConsentFamilyCode')?.value.trim();
     const errorBox = document.getElementById('childConsentError');
     if (!codeInput || codeInput.length < 5) {
@@ -821,29 +920,45 @@ function handleChildConsentAccept() {
     }
     if (errorBox) errorBox.classList.add('hidden');
 
-    localStorage.setItem('child_consented', 'true');
-    localStorage.setItem('child_family_code', codeInput);
-
-    const overlay = document.getElementById('childConsentOverlay');
-    if (overlay) overlay.classList.add('hidden');
-
     const childFullName = (typeof tg !== 'undefined' && tg?.initDataUnsafe?.user)
         ? `${tg.initDataUnsafe.user.first_name || ''} ${tg.initDataUnsafe.user.last_name || ''}`.trim()
         : "Farzand";
 
+    // DIQQAT: ilgari bu yerda child_consented darhol 'true' qilinib, oyna
+    // yopilar, so'rov natijasi esa umuman tekshirilmasdi. Server rad etsa ham
+    // farzandga "ulandingiz" deb ko'rinardi. Endi avval server javobini
+    // kutamiz va faqat muvaffaqiyatda davom etamiz.
+    const isRuC = (currentLang === 'ru');
     try {
-        fetch('https://wfrclcwjeeqeqchmdhzw.supabase.co/functions/v1/ota-ona-bot', {
+        const resp = await fetch('https://wfrclcwjeeqeqchmdhzw.supabase.co/functions/v1/ota-ona-bot', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 type: 'child_consent',
-                username: (typeof tg !== 'undefined' && tg?.initDataUnsafe?.user?.username) || null,
-                telegramId: (typeof tg !== 'undefined' && tg?.initDataUnsafe?.user?.id) || null,
                 familyCode: codeInput,
                 childName: childFullName || "Farzand"
             })
-        }).catch(e => console.log('Child consent dispatched'));
+        });
+        const data = await resp.json().catch(() => ({ ok: false }));
 
+        if (!data.ok) {
+            if (errorBox) {
+                errorBox.classList.remove('hidden');
+                errorBox.textContent = data.error ||
+                    (isRuC ? 'Не удалось подключиться. Проверьте код семьи.'
+                           : "Ulanmadi. Oila kodini tekshiring.");
+            } else {
+                alert(data.error || (isRuC ? 'Не удалось подключиться.' : "Ulanmadi."));
+            }
+            return;
+        }
+
+        localStorage.setItem('child_consented', 'true');
+        localStorage.setItem('child_family_code', codeInput);
+        const overlay = document.getElementById('childConsentOverlay');
+        if (overlay) overlay.classList.add('hidden');
+
+        // Adminga xabar — bu faqat bildirishnoma, muvaffaqiyatga ta'sir qilmaydi.
         fetch('https://wfrclcwjeeqeqchmdhzw.supabase.co/functions/v1/ota-ona-bot', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -853,8 +968,12 @@ function handleChildConsentAccept() {
                 childName: childFullName || "Farzand",
                 timestamp: new Date().toISOString()
             })
-        }).catch(e => console.log('Child paired notification dispatched'));
-    } catch (e) {}
+        }).catch(() => {});
+    } catch (e) {
+        console.error('child_consent error:', e);
+        alert(isRuC ? 'Сервер недоступен. Попробуйте позже.' : "Server javob bermayapti. Keyinroq urinib ko'ring.");
+        return;
+    }
 
     switchChildTab('child-tab-home');
 }
@@ -2347,6 +2466,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     initRadarMap();
     checkParentOnboarding();
     checkChildConsentStatus();
+    // Farzandlar ro'yxatini serverdan yangilaymiz. Fon rejimida:
+    // javob kelgach funksiya o'zi qayta render qiladi.
+    syncChildrenFromServer();
 });
 
 function openUsernameGuideModal() {
