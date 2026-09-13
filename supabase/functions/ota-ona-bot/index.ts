@@ -295,6 +295,96 @@ async function recordJoinAttempt(
   });
 }
 
+// ============================================================================
+// KIRISH OQIMI: taklif kodlari, urinishlar va blok
+//
+// Butun mantiq SHU YERDA, mijozda emas. Sabab: bir xil qoida Mini App,
+// Android va keyinchalik iPhone uchun kerak. Har bir ilovada qaytadan
+// yozilsa, uchta nusxa uchta xil xatti-harakat beradi va qoidani
+// o'zgartirish uch joyni tahrirlashni talab qilardi.
+// ============================================================================
+
+const ENTRY_MAX_ATTEMPTS = 3;
+const ENTRY_BAN_SECONDS = 180; // 3 daqiqa
+const INVITE_TTL_HOURS = 72;
+
+/** Chalkashadigan belgilarsiz kod (0/O, 1/I/L yo'q) — telefonda terish oson. */
+function makeInviteCode(): string {
+  const alphabet = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+  const bytes = crypto.getRandomValues(new Uint8Array(8));
+  return Array.from(bytes).map((b) => alphabet[b % alphabet.length]).join("");
+}
+
+/**
+ * Kirish darvozasi holati: bloklanganmi, qancha urinish qolgan.
+ * Hisob "oxirgi blok tugagan vaqtdan beri" yuritiladi — shunda blok
+ * tugagach farzand yana to'liq 3 ta urinishga ega bo'ladi.
+ */
+async function entryGate(
+  actorKey: string
+): Promise<{ banned: boolean; secondsLeft: number; attemptsLeft: number }> {
+  if (!db) return { banned: false, secondsLeft: 0, attemptsLeft: ENTRY_MAX_ATTEMPTS };
+
+  const { data: bans } = await db
+    .from("code_bans")
+    .select("banned_until")
+    .eq("actor_key", actorKey)
+    .limit(1);
+
+  const bannedUntil = bans && bans[0] ? new Date(bans[0].banned_until).getTime() : 0;
+  const now = Date.now();
+
+  if (bannedUntil > now) {
+    return {
+      banned: true,
+      secondsLeft: Math.ceil((bannedUntil - now) / 1000),
+      attemptsLeft: 0,
+    };
+  }
+
+  const since = new Date(bannedUntil || 0).toISOString();
+  const { data: fails } = await db
+    .from("code_attempts")
+    .select("id")
+    .eq("actor_key", actorKey)
+    .eq("succeeded", false)
+    .gt("created_at", since)
+    .limit(ENTRY_MAX_ATTEMPTS + 1);
+
+  const used = fails ? fails.length : 0;
+  return {
+    banned: false,
+    secondsLeft: 0,
+    attemptsLeft: Math.max(0, ENTRY_MAX_ATTEMPTS - used),
+  };
+}
+
+/** Muvaffaqiyatsiz urinishni yozadi va kerak bo'lsa blok qo'yadi. */
+async function registerFailedAttempt(
+  actorKey: string
+): Promise<{ banned: boolean; secondsLeft: number; attemptsLeft: number }> {
+  if (!db) return { banned: false, secondsLeft: 0, attemptsLeft: ENTRY_MAX_ATTEMPTS };
+
+  await db.from("code_attempts").insert({ actor_key: actorKey, succeeded: false });
+
+  const gate = await entryGate(actorKey);
+  if (gate.attemptsLeft > 0 || gate.banned) return gate;
+
+  const until = new Date(Date.now() + ENTRY_BAN_SECONDS * 1000).toISOString();
+  await db.from("code_bans").upsert(
+    { actor_key: actorKey, banned_until: until, reason: "3 ta noto'g'ri kod" },
+    { onConflict: "actor_key" }
+  );
+  return { banned: true, secondsLeft: ENTRY_BAN_SECONDS, attemptsLeft: 0 };
+}
+
+/** Muvaffaqiyatdan keyin hisobni tozalaydi. */
+async function clearEntryState(actorKey: string): Promise<void> {
+  if (!db) return;
+  await db.from("code_attempts").delete().eq("actor_key", actorKey);
+  await db.from("code_bans").delete().eq("actor_key", actorKey);
+}
+
 async function ensureBotCommands() {
   try {
     await fetch(`${TELEGRAM_API}/deleteMyCommands`, {
@@ -796,6 +886,227 @@ serve(async (req) => {
       });
     }
 
+    // 0.0e Ota-ona farzand uchun taklif yaratadi.
+    //
+    // Har bir farzandga ALOHIDA bir martalik kod beriladi. Ilgari hamma
+    // farzand bitta oila kodi bilan ulanardi va o'sha kod ota-onaning
+    // Telegram ID'sidan hisoblanardi — ya'ni sir emas edi.
+    if (payload.type === "create_child_invite") {
+      if (actor!.kind !== "telegram") return unauthorized("Faqat ota-ona");
+      if (!db) {
+        return new Response(JSON.stringify({ ok: false, error: "Baza ulanmagan" }), {
+          status: 500,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      const childName = String(payload.childName || "").trim();
+      if (!childName) {
+        return new Response(
+          JSON.stringify({ ok: false, error: "Farzand ismi majburiy" }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        );
+      }
+      const gradeRaw = Number(payload.childGrade);
+      const grade = Number.isFinite(gradeRaw) && gradeRaw > 0 ? gradeRaw : null;
+      const uname = normalizeUsername(payload.childUsername) || null;
+      const code = makeInviteCode();
+
+      const { error } = await db.from("child_invites").insert({
+        code,
+        family_code: actor!.familyCode,
+        child_name: childName,
+        child_grade: grade,
+        child_username: uname,
+        created_by_telegram_id: actor!.telegramId,
+        expires_at: new Date(Date.now() + INVITE_TTL_HOURS * 3600 * 1000).toISOString(),
+      });
+
+      if (error) {
+        console.error("child_invites insert failed:", error.message);
+        return new Response(JSON.stringify({ ok: false, error: error.message }), {
+          status: 500,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      // Panelda darhol "kutilmoqda" bo'lib ko'rinishi uchun.
+      await upsertPairing(actor!.familyCode, "invite_" + code, {
+        childName,
+        deviceLabel: null,
+        source: "parent_invite",
+        grade,
+        telegramUsername: uname,
+      });
+
+      // Havola ikkala yo'l uchun ham bir xil:
+      //  (a) ota-ona uni farzandga o'zi ulashadi;
+      //  (b) farzand bossa, bot /start inv_<kod> ni ko'radi va shundan keyin
+      //      unga o'zi yozib, kodni yuboradi. Telegram botga faqat o'ziga
+      //      yozgan odamga xabar yuborishga ruxsat beradi, shuning uchun
+      //      (b) faqat farzand havolani bosgandan keyin ishlaydi.
+      return new Response(
+        JSON.stringify({
+          ok: true,
+          code,
+          link: "https://t.me/qalqon_aiBot?start=inv_" + code,
+          expiresInHours: INVITE_TTL_HOURS,
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    // 0.0f Farzand kod kiritishdan oldin darvoza holatini so'raydi, shunda
+    // Mini App "bloklangansiz, N soniya qoldi" deb ko'rsata oladi.
+    if (payload.type === "entry_status") {
+      const actorKey =
+        actor!.kind === "telegram" ? "tg:" + actor!.telegramId : "dev:" + actor!.childId;
+      const gate = await entryGate(actorKey);
+      return new Response(JSON.stringify({ ok: true, ...gate }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    // 0.0g Farzand kodni kiritadi.
+    //
+    // 3 ta noto'g'ri urinishdan keyin 3 daqiqaga bloklanadi; blok tugagach
+    // yana to'liq 3 ta urinish beriladi. Mantiq shu yerda bo'lgani uchun
+    // Mini App, Android va iPhone uchun bir xil ishlaydi.
+    if (payload.type === "redeem_child_invite") {
+      if (!db) {
+        return new Response(JSON.stringify({ ok: false, error: "Baza ulanmagan" }), {
+          status: 500,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      const actorKey =
+        actor!.kind === "telegram" ? "tg:" + actor!.telegramId : "dev:" + actor!.childId;
+
+      const gate = await entryGate(actorKey);
+      if (gate.banned) {
+        return new Response(
+          JSON.stringify({
+            ok: false,
+            banned: true,
+            secondsLeft: gate.secondsLeft,
+            attemptsLeft: 0,
+            error:
+              "Juda ko'p noto'g'ri urinish. " +
+              gate.secondsLeft +
+              " soniyadan keyin qayta urinib ko'ring.",
+          }),
+          { status: 429, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      const code = String(payload.code || "").trim().toUpperCase();
+      const { data } = await db
+        .from("child_invites")
+        .select("code, family_code, child_name, child_grade, child_username, expires_at, used_at")
+        .eq("code", code)
+        .limit(1);
+
+      const inv = data && data[0];
+      const valid = !!(inv && !inv.used_at && new Date(inv.expires_at).getTime() > Date.now());
+
+      if (!valid) {
+        const after = await registerFailedAttempt(actorKey);
+        return new Response(
+          JSON.stringify({
+            ok: false,
+            banned: after.banned,
+            secondsLeft: after.secondsLeft,
+            attemptsLeft: after.attemptsLeft,
+            error: after.banned
+              ? "Juda ko'p noto'g'ri urinish. " +
+                after.secondsLeft +
+                " soniyadan keyin qayta urinib ko'ring."
+              : "Kod noto'g'ri. Yana " + after.attemptsLeft + " ta urinish qoldi.",
+          }),
+          {
+            status: after.banned ? 429 : 403,
+            headers: { "Content-Type": "application/json" },
+          }
+        );
+      }
+
+      // Bir martalik: kodni darhol kuydiramiz.
+      await db
+        .from("child_invites")
+        .update({
+          used_at: new Date().toISOString(),
+          used_by_telegram_id: actor!.kind === "telegram" ? actor!.telegramId : null,
+        })
+        .eq("code", code);
+
+      // child_id mijozdan emas, imzolangan identitetdan olinadi.
+      const childId =
+        actor!.kind === "telegram" ? "tg_" + actor!.telegramId : actor!.childId;
+
+      await upsertPairing(inv.family_code, childId, {
+        childName: inv.child_name || "Farzand",
+        deviceLabel:
+          actor!.kind === "telegram" && actor!.username ? "@" + actor!.username : null,
+        source: actor!.kind === "telegram" ? "telegram_miniapp" : "android_parental_guard",
+        grade: inv.child_grade,
+        telegramUsername:
+          actor!.kind === "telegram" ? actor!.username || null : inv.child_username,
+      });
+
+      // "Kutilmoqda" qatorini olib tashlaymiz, aks holda panelda bitta
+      // farzand ikki marta ko'rinardi.
+      await db
+        .from("child_pairings")
+        .delete()
+        .eq("family_code", inv.family_code)
+        .eq("child_id", "invite_" + code);
+
+      await clearEntryState(actorKey);
+
+      await notifyAdmins(
+        "\u{1F389} <b>FARZAND ULANDI</b>\n\n\u{1F466} <b>Farzand:</b> " +
+          (inv.child_name || "Farzand") +
+          "\n\u{1F511} <b>Oila:</b> <code>" +
+          inv.family_code +
+          "</code>"
+      );
+
+      return new Response(
+        JSON.stringify({ ok: true, childId, familyCode: inv.family_code }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    // 0.0h Ota-ona paneli o'z oila kodini SERVERDAN so'raydi.
+    //
+    // Ilgari Mini App kodni localStorage'dan o'qirdi va u yerda eski qiymat
+    // (masalan 849210) qolib ketardi — shu sabab har foydalanuvchida o'z
+    // kodi bo'lishi kerak bo'lsa ham, eskisi ko'rinaverardi.
+    if (payload.type === "my_family") {
+      if (actor!.kind !== "telegram") return unauthorized("Faqat ota-ona");
+      let status = "none";
+      if (db) {
+        const { data } = await db
+          .from("parent_registrations")
+          .select("status")
+          .eq("family_code", actor!.familyCode)
+          .limit(1);
+        if (data && data[0]) status = data[0].status;
+      }
+      return new Response(
+        JSON.stringify({
+          ok: true,
+          familyCode: actor!.familyCode,
+          telegramId: actor!.telegramId,
+          username: actor!.username,
+          registrationStatus: status,
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
     // 0.0c Ota-ona Android qurilmasi uchun bir martalik juftlash kodi so'raydi.
     //
     // Android endi oila kodi bilan tanitilmaydi. Sabab: oila kodi sir emas
@@ -1182,6 +1493,60 @@ serve(async (req) => {
             });
           }
         } catch (_) {}
+
+        // (b) yo'li: farzand ota-ona ulashgan taklif havolasini bosdi.
+        //
+        // Telegram botga faqat O'ZIGA yozgan odamga xabar yuborishga ruxsat
+        // beradi, shuning uchun bot farzandga birinchi bo'lib yoza olmaydi.
+        // Havola bosilishi /start ni yuboradi — aynan shu payt bot unga
+        // yozish huquqiga ega bo'ladi va kodni o'zi yetkazadi.
+        const invMatch = text.match(/inv_([A-Za-z0-9]{4,16})/);
+        if (invMatch) {
+          const invCode = invMatch[1].toUpperCase();
+          let inv: any = null;
+          if (db) {
+            const { data } = await db
+              .from("child_invites")
+              .select("code, child_name, expires_at, used_at")
+              .eq("code", invCode)
+              .limit(1);
+            inv = data && data[0];
+          }
+
+          const stillOpen =
+            inv && !inv.used_at && new Date(inv.expires_at).getTime() > Date.now();
+
+          if (!stillOpen) {
+            await sendMessage(
+              chatId,
+              "⚠️ <b>Bu taklif havolasi ishlamaydi.</b>\n\nU allaqachon ishlatilgan yoki muddati o'tgan. Ota-onangizdan yangi havola so'rang."
+            );
+            return new Response(JSON.stringify({ ok: true }), { status: 200 });
+          }
+
+          await sendMessage(
+            chatId,
+            "\u{1F44B} <b>Assalomu alaykum" +
+              (inv.child_name ? ", " + inv.child_name : "") +
+              "!</b>\n\n" +
+              "Ota-onangiz sizni Qalqon AI oilaviy himoyasiga taklif qildi.\n\n" +
+              "\u{1F511} <b>Sizning kodingiz:</b>\n<code>" +
+              invCode +
+              "</code>\n\n" +
+              "Pastdagi tugmani bosing, 4 ta qoida bilan tanishing va shu kodni kiriting.",
+            {
+              inline_keyboard: [
+                [
+                  {
+                    text: "\u{1F6E1}️ Qalqonni ochish",
+                    web_app: { url: MINI_APP_URL + "&role=child&inv=" + invCode },
+                  },
+                ],
+              ],
+            }
+          );
+          return new Response(JSON.stringify({ ok: true }), { status: 200 });
+        }
 
         if (text.includes("pair_") || text.includes("child_")) {
           const reply = lang === "ru" 

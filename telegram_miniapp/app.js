@@ -685,6 +685,52 @@ function buildChildRecord(serverChild, existing) {
     return base;
 }
 
+/**
+ * Oila kodini SERVERDAN oladi va ko'rsatadi.
+ *
+ * Ilgari kod resolveInitialFamilyCode() orqali localStorage'dan o'qilardi
+ * va u yerda eski qiymat (masalan 849210) turib qolardi — shuning uchun har
+ * foydalanuvchida o'z kodi bo'lishi kerak bo'lsa-da, telefonda saqlangan
+ * eskisi ko'rinaverardi. Endi manba faqat server: u kodni imzolangan
+ * Telegram identitetidan o'zi chiqaradi.
+ *
+ * Shu bilan birga admin tasdig'i holatini ham oladi va kerak bo'lsa
+ * "Admin Tasdig'i Kutilmoqda" oynasini ko'rsatadi (u index.html da bor edi,
+ * lekin hech qachon ochilmasdi).
+ */
+async function syncFamilyFromServer() {
+    try {
+        const resp = await fetch(QALQON_BOT_FN, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'my_family' })
+        });
+        const data = await resp.json();
+        if (!data || !data.ok || !data.familyCode) return false;
+
+        familyCode = String(data.familyCode);
+
+        // Telefonda qolgan eski kodni ham yangilaymiz, aks holda ilova
+        // keyingi ochilishida yana eskisini ko'rsatardi.
+        try {
+            localStorage.setItem('parent_family_code', familyCode);
+            const prof = JSON.parse(localStorage.getItem('qalqon_family_profile') || 'null') || {};
+            prof.code = familyCode;
+            localStorage.setItem('qalqon_family_profile', JSON.stringify(prof));
+        } catch (e) {}
+
+        updateDisplayFamilyCode();
+
+        if (data.registrationStatus === 'pending') {
+            openSubpage('modal-approval-notice');
+        }
+        return true;
+    } catch (e) {
+        console.error('syncFamilyFromServer error:', e);
+        return false;
+    }
+}
+
 async function syncChildrenFromServer() {
     if (!familyCode || String(familyCode).length !== 6) return false;
     try {
@@ -873,42 +919,6 @@ function handleDeleteActiveChild() {
     }
 }
 
-function saveParentOnboarding() {
-    const fam = document.getElementById('onboardFamilyName');
-    const par = document.getElementById('onboardParentName');
-    const pho = document.getElementById('onboardParentPhone');
-    const chName = document.getElementById('onboardChildName');
-    const chGrade = document.getElementById('onboardChildGrade');
-
-    const familyName = fam ? fam.value.trim() : "";
-    const parentName = par ? par.value.trim() : "";
-    const phone = pho ? pho.value.trim() : "";
-    const childName = chName ? chName.value.trim() : "";
-    const grade = chGrade ? parseInt(chGrade.value) : 5;
-
-    if (!parentName || !childName) {
-        alert("Iltimos, o'z ismingiz va birinchi farzandingiz ismini kiriting!");
-        return;
-    }
-
-    localStorage.setItem('parent_onboarded', 'true');
-    localStorage.setItem('parent_name', parentName);
-    localStorage.setItem('family_name', familyName);
-    localStorage.setItem('parent_phone', phone);
-
-    if (childrenDatabase[currentChildKey]) {
-        childrenDatabase[currentChildKey].name = childName;
-        childrenDatabase[currentChildKey].name_ru = childName;
-        childrenDatabase[currentChildKey].grade = grade;
-    }
-    saveChildrenDatabase();
-
-    renderChildSelectDropdown();
-    renderActiveChild();
-    renderSchoolCurriculum();
-    closeSubpage();
-    alert("🎉 Oila va farzand ma'lumotlari muvaffaqiyatli saqlandi!");
-}
 
 
 async function handleChildConsentAccept() {
@@ -2468,7 +2478,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     checkChildConsentStatus();
     // Farzandlar ro'yxatini serverdan yangilaymiz. Fon rejimida:
     // javob kelgach funksiya o'zi qayta render qiladi.
-    syncChildrenFromServer();
+    // Avval oila kodini serverdan olamiz (849210 kabi eski, telefonda
+    // qolgan kodlar shu yerda almashadi), keyin farzandlar ro'yxatini.
+    syncFamilyFromServer().then(() => syncChildrenFromServer());
 });
 
 function openUsernameGuideModal() {
