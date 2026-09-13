@@ -385,6 +385,240 @@ async function clearEntryState(actorKey: string): Promise<void> {
   await db.from("code_bans").delete().eq("actor_key", actorKey);
 }
 
+// ============================================================================
+// TARIF VA LOKATSIYA KVOTASI
+//
+// BEPUL  — 1 ta farzand, siljuvchi 48 soat ichida 2 ta lokatsiya so'rovi.
+// PRO    — o'sha oynadagi 3-so'rovdan va 2-farzandning har qanday
+//          so'rovidan boshlab talab qilinadi.
+//
+// Kvota SERVERDA hisoblanadi. Mijozda hisoblansa, Mini App'ning kodini
+// o'zgartirgan odam limitni erkin aylanib o'tardi.
+// ============================================================================
+
+const FREE_LOCATION_REQUESTS = 2;
+const FREE_WINDOW_HOURS = 48;
+const FREE_CHILD_LIMIT = 1;
+
+/** Oilaning amaldagi tarifi. Muddati o'tgan Pro avtomatik bepulga tushadi. */
+async function getPlan(familyCode: string): Promise<"free" | "pro"> {
+  if (!db) return "free";
+  const { data } = await db
+    .from("parent_registrations")
+    .select("plan, plan_expires_at")
+    .eq("family_code", familyCode)
+    .limit(1);
+
+  const row = data && data[0];
+  if (!row || row.plan !== "pro") return "free";
+  if (row.plan_expires_at && new Date(row.plan_expires_at).getTime() < Date.now()) {
+    return "free";
+  }
+  return "pro";
+}
+
+/**
+ * Bepul tarifda lokatsiya so'rash mumkin bo'lgan yagona farzand — oilaga
+ * eng avval ulangani. Eng yangisi tanlansa, ota-ona yangi farzand qo'shgani
+ * bilan bepul slot ko'chib yurardi.
+ */
+async function freeSlotChildId(familyCode: string): Promise<string | null> {
+  if (!db) return null;
+  const { data } = await db
+    .from("child_pairings")
+    .select("child_id, paired_at")
+    .eq("family_code", familyCode)
+    .eq("is_active", true)
+    .not("child_id", "like", "invite\\_%")
+    .order("paired_at", { ascending: true })
+    .limit(1);
+  return data && data[0] ? data[0].child_id : null;
+}
+
+/** Oxirgi 48 soatda shu farzand uchun nechta so'rov bo'lgan. */
+async function locationRequestsInWindow(
+  familyCode: string,
+  childId: string
+): Promise<number> {
+  if (!db) return 0;
+  const since = new Date(Date.now() - FREE_WINDOW_HOURS * 3600 * 1000).toISOString();
+  const { data } = await db
+    .from("location_requests")
+    .select("id")
+    .eq("family_code", familyCode)
+    .eq("child_id", childId)
+    .gte("created_at", since)
+    .limit(FREE_LOCATION_REQUESTS + 1);
+  return data ? data.length : 0;
+}
+
+/**
+ * Lokatsiya so'raladimi yoki Pro kerakmi — qaror shu yerda.
+ * Javob UI uchun ham tushunarli bo'lishi kerak: nechta qoldi, nega rad
+ * etildi, va Pro nima beradi.
+ */
+async function evaluateLocationQuota(
+  familyCode: string,
+  childId: string
+): Promise<{
+  allowed: boolean;
+  plan: "free" | "pro";
+  reason: string;
+  remaining: number;
+  upgradeRequired: boolean;
+  resetInHours: number;
+}> {
+  const plan = await getPlan(familyCode);
+
+  if (plan === "pro") {
+    return {
+      allowed: true,
+      plan,
+      reason: "Pro tarif - cheklovsiz",
+      remaining: -1,
+      upgradeRequired: false,
+      resetInHours: 0,
+    };
+  }
+
+  // Bepul tarif: avval qaysi farzand ekanligini tekshiramiz.
+  const slot = await freeSlotChildId(familyCode);
+  if (slot && childId !== slot) {
+    return {
+      allowed: false,
+      plan,
+      reason:
+        "Bepul tarifda faqat " +
+        FREE_CHILD_LIMIT +
+        " ta farzand joylashuvini kuzatish mumkin. Ikkinchi farzand uchun Pro kerak.",
+      remaining: 0,
+      upgradeRequired: true,
+      resetInHours: 0,
+    };
+  }
+
+  const used = await locationRequestsInWindow(familyCode, childId);
+  const remaining = Math.max(0, FREE_LOCATION_REQUESTS - used);
+
+  if (remaining <= 0) {
+    return {
+      allowed: false,
+      plan,
+      reason:
+        "Bepul tarifda " +
+        FREE_WINDOW_HOURS +
+        " soatda " +
+        FREE_LOCATION_REQUESTS +
+        " marta so'rash mumkin. Keyingi so'rov uchun Pro kerak.",
+      remaining: 0,
+      upgradeRequired: true,
+      resetInHours: FREE_WINDOW_HOURS,
+    };
+  }
+
+  return {
+    allowed: true,
+    plan,
+    reason: "Bepul tarif",
+    remaining,
+    upgradeRequired: false,
+    resetInHours: FREE_WINDOW_HOURS,
+  };
+}
+
+// ============================================================================
+// PRO IMKONIYATLARI
+//
+// Bepul tarifda ham ko'rinadi, lekin cheklangan holda: masalan joylashuv
+// tarixi bepulda faqat oxirgi nuqta, Pro'da 30 kun. Butunlay yashirish
+// o'rniga cheklangan ko'rinish berilishi ataylab - ota-ona nimadan
+// foydalanmayotganini ko'rsa, Pro'ning qiymati tushunarli bo'ladi.
+// ============================================================================
+
+const FREE_HISTORY_POINTS = 1;
+const PRO_HISTORY_DAYS = 30;
+const FREE_ZONE_LIMIT = 0; // xavfsiz hududlar butunlay Pro
+
+/** Yer yuzasidagi ikki nuqta orasidagi masofa (metr). */
+function distanceMeters(
+  lat1: number,
+  lng1: number,
+  lat2: number,
+  lng2: number
+): number {
+  const R = 6371000;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+}
+
+/**
+ * Yangi joylashuv kelganda xavfsiz hududlarni tekshiradi va kerak bo'lsa
+ * ogohlantirish yozadi.
+ *
+ * Ogohlantirish faqat HOLAT O'ZGARGANDA yoziladi (ichkarida -> tashqarida
+ * yoki aksincha). Har bir ping uchun yozilsa, ota-ona bir kunda yuzlab bir
+ * xil xabar olardi va ularning barchasini e'tiborsiz qoldirardi.
+ */
+async function evaluateGeofences(
+  familyCode: string,
+  childId: string,
+  lat: number,
+  lng: number
+): Promise<Array<{ zone: string; type: string; message: string }>> {
+  if (!db) return [];
+
+  const { data: zones } = await db
+    .from("geofence_zones")
+    .select("name, center_lat, center_lng, radius_m, arrive_by, weekdays")
+    .eq("family_code", familyCode)
+    .eq("child_id", childId);
+
+  if (!zones || zones.length === 0) return [];
+
+  const fired: Array<{ zone: string; type: string; message: string }> = [];
+
+  for (const z of zones) {
+    const dist = distanceMeters(lat, lng, z.center_lat, z.center_lng);
+    const inside = dist <= z.radius_m;
+
+    // Oldingi holat: shu hudud bo'yicha eng so'nggi ogohlantirish.
+    const { data: last } = await db
+      .from("geofence_alerts")
+      .select("alert_type")
+      .eq("family_code", familyCode)
+      .eq("child_id", childId)
+      .eq("zone_name", z.name)
+      .order("created_at", { ascending: false })
+      .limit(1);
+
+    const wasInside = last && last[0] ? last[0].alert_type === "enter" : null;
+    if (wasInside === inside) continue; // holat o'zgarmagan - jim turamiz
+
+    const type = inside ? "enter" : "exit";
+    const message = inside
+      ? z.name + " hududiga kirdi"
+      : z.name + " hududidan chiqdi";
+
+    await db.from("geofence_alerts").insert({
+      family_code: familyCode,
+      child_id: childId,
+      zone_name: z.name,
+      alert_type: type,
+      distance_m: dist,
+      message,
+    });
+
+    fired.push({ zone: z.name, type, message });
+  }
+
+  return fired;
+}
+
 async function ensureBotCommands() {
   try {
     await fetch(`${TELEGRAM_API}/deleteMyCommands`, {
@@ -1105,6 +1339,332 @@ serve(async (req) => {
         }),
         { status: 200, headers: { "Content-Type": "application/json" } }
       );
+    }
+
+    // 0.0i Ota-ona farzandning joylashuvini so'raydi.
+    //
+    // Kvota shu yerda tekshiriladi: bepul tarifda 1 ta farzand va 48 soatda
+    // 2 ta so'rov. Tekshiruv mijozda emas, serverda - aks holda Mini App
+    // kodini o'zgartirgan odam limitni aylanib o'tardi.
+    if (payload.type === "request_location") {
+      if (!db) {
+        return new Response(JSON.stringify({ ok: false, error: "Baza ulanmagan" }), {
+          status: 500,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      const familyCode = actor!.kind === "telegram" ? actor!.familyCode : actor!.familyCode;
+      const childId = String(payload.childId || "").trim();
+      if (!childId) {
+        return new Response(
+          JSON.stringify({ ok: false, error: "childId majburiy" }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      // Bu farzand haqiqatan shu oilaga tegishlimi.
+      const { data: own } = await db
+        .from("child_pairings")
+        .select("child_id")
+        .eq("family_code", familyCode)
+        .eq("child_id", childId)
+        .eq("is_active", true)
+        .limit(1);
+
+      if (!own || !own[0]) {
+        return new Response(
+          JSON.stringify({ ok: false, error: "Bu farzand sizning oilangizga ulanmagan" }),
+          { status: 403, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      const q = await evaluateLocationQuota(familyCode, childId);
+
+      if (!q.allowed) {
+        return new Response(
+          JSON.stringify({
+            ok: false,
+            upgradeRequired: q.upgradeRequired,
+            plan: q.plan,
+            remaining: 0,
+            resetInHours: q.resetInHours,
+            error: q.reason,
+          }),
+          { status: 402, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      // So'rovni yozamiz - kvota keyingi safar shundan hisoblanadi.
+      await db.from("location_requests").insert({
+        family_code: familyCode,
+        child_id: childId,
+        requested_by_telegram_id: actor!.kind === "telegram" ? actor!.telegramId : null,
+        plan_at_request: q.plan,
+      });
+
+      // Eng so'nggi ma'lum joylashuv (qurilma yuborgan).
+      const { data: pings } = await db
+        .from("location_pings")
+        .select("lat, lng, accuracy_m, recorded_at")
+        .eq("family_code", familyCode)
+        .eq("child_id", childId)
+        .order("recorded_at", { ascending: false })
+        .limit(1);
+
+      return new Response(
+        JSON.stringify({
+          ok: true,
+          plan: q.plan,
+          // Pro uchun -1 (cheklovsiz), bepul uchun bu so'rovdan keyin qolgani.
+          remaining: q.remaining > 0 ? q.remaining - 1 : q.remaining,
+          resetInHours: q.resetInHours,
+          location: pings && pings[0] ? pings[0] : null,
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    // 0.0j Panel tarif holatini va qolgan so'rovlar sonini ko'rsatishi uchun.
+    if (payload.type === "plan_status") {
+      if (actor!.kind !== "telegram") return unauthorized("Faqat ota-ona");
+      const plan = await getPlan(actor!.familyCode);
+      const slot = await freeSlotChildId(actor!.familyCode);
+      const used = slot ? await locationRequestsInWindow(actor!.familyCode, slot) : 0;
+
+      return new Response(
+        JSON.stringify({
+          ok: true,
+          plan,
+          freeChildLimit: FREE_CHILD_LIMIT,
+          freeRequestsPerWindow: FREE_LOCATION_REQUESTS,
+          windowHours: FREE_WINDOW_HOURS,
+          freeSlotChildId: slot,
+          remaining: plan === "pro" ? -1 : Math.max(0, FREE_LOCATION_REQUESTS - used),
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    // 0.0k Xavfsiz hudud qo'shish / yangilash (PRO).
+    if (payload.type === "save_geofence_zone") {
+      if (actor!.kind !== "telegram") return unauthorized("Faqat ota-ona");
+      if (!db) {
+        return new Response(JSON.stringify({ ok: false, error: "Baza ulanmagan" }), {
+          status: 500, headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      const plan = await getPlan(actor!.familyCode);
+      if (plan !== "pro" && FREE_ZONE_LIMIT === 0) {
+        return new Response(
+          JSON.stringify({
+            ok: false,
+            upgradeRequired: true,
+            plan,
+            error: "Xavfsiz hududlar (uy, maktab) Pro tarifda mavjud.",
+          }),
+          { status: 402, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      const childId = String(payload.childId || "").trim();
+      const name = String(payload.name || "").trim();
+      const lat = Number(payload.lat);
+      const lng = Number(payload.lng);
+      if (!childId || !name || !Number.isFinite(lat) || !Number.isFinite(lng)) {
+        return new Response(
+          JSON.stringify({ ok: false, error: "childId, name, lat, lng majburiy" }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      const radius = Number(payload.radiusM);
+      const { error } = await db.from("geofence_zones").upsert(
+        {
+          family_code: actor!.familyCode,
+          child_id: childId,
+          name,
+          center_lat: lat,
+          center_lng: lng,
+          radius_m: Number.isFinite(radius) && radius > 0 ? Math.round(radius) : 150,
+          arrive_by: payload.arriveBy || null,
+          leave_after: payload.leaveAfter || null,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "family_code,child_id,name" }
+      );
+
+      if (error) {
+        console.error("geofence_zones upsert failed:", error.message);
+        return new Response(JSON.stringify({ ok: false, error: error.message }), {
+          status: 500, headers: { "Content-Type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify({ ok: true }), {
+        status: 200, headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    // 0.0l Xavfsiz hududlar ro'yxati va so'nggi ogohlantirishlar.
+    if (payload.type === "list_geofences") {
+      if (actor!.kind !== "telegram") return unauthorized("Faqat ota-ona");
+      if (!db) {
+        return new Response(JSON.stringify({ ok: true, zones: [], alerts: [] }), {
+          status: 200, headers: { "Content-Type": "application/json" },
+        });
+      }
+      const plan = await getPlan(actor!.familyCode);
+      const childId = String(payload.childId || "").trim();
+
+      const { data: zones } = await db
+        .from("geofence_zones")
+        .select("name, center_lat, center_lng, radius_m, arrive_by, leave_after")
+        .eq("family_code", actor!.familyCode)
+        .eq("child_id", childId);
+
+      const { data: alerts } = await db
+        .from("geofence_alerts")
+        .select("zone_name, alert_type, message, distance_m, created_at")
+        .eq("family_code", actor!.familyCode)
+        .eq("child_id", childId)
+        .order("created_at", { ascending: false })
+        .limit(plan === "pro" ? 50 : 3);
+
+      return new Response(
+        JSON.stringify({ ok: true, plan, zones: zones || [], alerts: alerts || [] }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    // 0.0m Joylashuv tarixi. Bepulda oxirgi nuqta, Pro'da 30 kun.
+    //
+    // Bepul tarifda ham bo'sh emas, cheklangan javob qaytariladi: ota-ona
+    // nimadan foydalanmayotganini ko'rsa, Pro'ning qiymati tushunarli.
+    if (payload.type === "location_history") {
+      if (actor!.kind !== "telegram") return unauthorized("Faqat ota-ona");
+      if (!db) {
+        return new Response(JSON.stringify({ ok: true, points: [] }), {
+          status: 200, headers: { "Content-Type": "application/json" },
+        });
+      }
+      const plan = await getPlan(actor!.familyCode);
+      const childId = String(payload.childId || "").trim();
+
+      let q = db
+        .from("location_pings")
+        .select("lat, lng, accuracy_m, recorded_at")
+        .eq("family_code", actor!.familyCode)
+        .eq("child_id", childId)
+        .order("recorded_at", { ascending: false });
+
+      if (plan === "pro") {
+        const since = new Date(Date.now() - PRO_HISTORY_DAYS * 86400000).toISOString();
+        q = q.gte("recorded_at", since).limit(1000);
+      } else {
+        q = q.limit(FREE_HISTORY_POINTS);
+      }
+
+      const { data } = await q;
+      return new Response(
+        JSON.stringify({
+          ok: true,
+          plan,
+          points: data || [],
+          limitedTo: plan === "pro" ? PRO_HISTORY_DAYS + " kun" : FREE_HISTORY_POINTS + " nuqta",
+          upgradeHint: plan === "pro" ? null : "Pro tarifda " + PRO_HISTORY_DAYS + " kunlik yo'l xaritasi",
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    // 0.0n Ekran vaqti hisoboti (PRO).
+    if (payload.type === "screen_time_report") {
+      if (actor!.kind !== "telegram") return unauthorized("Faqat ota-ona");
+      const plan = await getPlan(actor!.familyCode);
+      if (plan !== "pro") {
+        return new Response(
+          JSON.stringify({
+            ok: false,
+            upgradeRequired: true,
+            plan,
+            error: "Ekran vaqti hisoboti Pro tarifda mavjud.",
+          }),
+          { status: 402, headers: { "Content-Type": "application/json" } }
+        );
+      }
+      if (!db) {
+        return new Response(JSON.stringify({ ok: true, apps: [] }), {
+          status: 200, headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      const childId = String(payload.childId || "").trim();
+      const days = Number(payload.days) > 0 ? Number(payload.days) : 7;
+      const since = new Date(Date.now() - days * 86400000).toISOString();
+
+      const { data } = await db
+        .from("device_telemetry")
+        .select("app_package_name, category, screen_time_seconds, risk_rating, created_at")
+        .eq("family_code", actor!.familyCode)
+        .eq("child_id", childId)
+        .gte("created_at", since)
+        .order("created_at", { ascending: false })
+        .limit(1000);
+
+      // Ilova bo'yicha yig'amiz - panel uchun tayyor ko'rinishda.
+      const totals: Record<string, { seconds: number; category: string; risk: string }> = {};
+      (data || []).forEach((r: any) => {
+        const k = r.app_package_name;
+        if (!totals[k]) totals[k] = { seconds: 0, category: r.category, risk: r.risk_rating };
+        totals[k].seconds += r.screen_time_seconds || 0;
+      });
+
+      const apps = Object.entries(totals)
+        .map(([name, v]) => ({ name, ...v }))
+        .sort((a, b) => b.seconds - a.seconds);
+
+      return new Response(JSON.stringify({ ok: true, plan, days, apps }), {
+        status: 200, headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    // 0.0o Qurilma joylashuv yuboradi (Android). Kvota bu yerga tegmaydi -
+    // kvota ota-onaning SO'RASHIGA tegishli, qurilmaning yuborishiga emas.
+    if (payload.type === "report_location") {
+      if (actor!.kind !== "device") return unauthorized("Faqat juftlashgan qurilma");
+      if (!db) {
+        return new Response(JSON.stringify({ ok: false, error: "Baza ulanmagan" }), {
+          status: 500, headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      const lat = Number(payload.lat);
+      const lng = Number(payload.lng);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+        return new Response(JSON.stringify({ ok: false, error: "lat/lng majburiy" }), {
+          status: 400, headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      await db.from("location_pings").insert({
+        family_code: actor!.familyCode,
+        child_id: actor!.childId,
+        lat,
+        lng,
+        accuracy_m: Number(payload.accuracyM) || null,
+      });
+
+      const fired = await evaluateGeofences(actor!.familyCode, actor!.childId, lat, lng);
+      for (const f of fired) {
+        await notifyAdmins(
+          "\u{1F4CD} <b>" + f.message + "</b>\n\n\u{1F511} <code>" + actor!.familyCode + "</code>"
+        );
+      }
+
+      return new Response(JSON.stringify({ ok: true, alerts: fired }), {
+        status: 200, headers: { "Content-Type": "application/json" },
+      });
     }
 
     // 0.0c Ota-ona Android qurilmasi uchun bir martalik juftlash kodi so'raydi.
