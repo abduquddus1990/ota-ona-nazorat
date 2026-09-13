@@ -854,6 +854,25 @@
             <!-- Leaflet Map Container -->
             <div id="map"></div>
 
+            <!-- Joylashuv so'rovi. Kvota serverda hisoblanadi; bu yerda
+                 faqat natija ko'rsatiladi. -->
+            <div class="flex items-center justify-between gap-2 pt-1">
+                <button id="requestLocationBtn" onclick="requestChildLocation()" class="flex-1 py-2.5 rounded-xl bg-cyan-500/15 border border-cyan-500/40 text-cyan-300 font-bold text-[11px] hover:bg-cyan-500/25 transition">
+                    &#128205; Joylashuvni so'rash
+                </button>
+                <span id="locationQuotaBadge" class="text-[10px] font-bold text-slate-400">&mdash;</span>
+            </div>
+
+            <!-- Tarif chegarasiga yetganda chiqadi (HTTP 402). Bu xato emas,
+                 shuning uchun xato oynasi emas, taklif ko'rinishida. -->
+            <div id="proOfferBox" class="hidden p-3 rounded-2xl bg-amber-500/10 border border-amber-500/40 space-y-2">
+                <div class="text-[11px] font-black text-amber-300">&#11088; Pro tarif kerak</div>
+                <div id="proOfferText" class="text-[10px] text-slate-300"></div>
+                <button onclick="openSubpage('modal-plans')" class="w-full py-2 rounded-xl bg-amber-500/20 border border-amber-500/50 text-amber-200 font-bold text-[10px]">
+                    Pro haqida batafsil
+                </button>
+            </div>
+
             <!-- Xavfsiz Hududlar (Geofences) -->
             <div class="space-y-2" id="geofenceZoneList">
                 <!-- JS orqali to'ldiriladi -->
@@ -938,7 +957,7 @@
                 </div>
                 <div>
                     <div class="text-xs font-bold text-white">Jonli Radar & Joylashuv</div>
-                    <div class="text-[9px] text-emerald-400 font-semibold">100% Bepul doimiy monitoring</div>
+                    <div class="text-[9px] text-emerald-400 font-semibold">Bepul: 1 farzand, 48 soatda 2 so'rov</div>
                 </div>
             </div>
             <button onclick="switchTab('tab-radar')" class="px-3 py-1.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 text-[10px] font-bold transition flex items-center gap-1">
@@ -1177,7 +1196,7 @@
                 </div>
                 <div>
                     <div class="text-xs font-bold text-white" data-i18n="plansSelect">Tariflar va Obuna</div>
-                    <div class="text-[10px] text-slate-400" data-i18n="plansSub">Free (Lokatsiya) / Pro (10,000 so'm)</div>
+                    <div class="text-[10px] text-slate-400" data-i18n="plansSub">Bepul: 1 farzand, 48 soatda 2 so'rov / Pro: cheklovsiz</div>
                 </div>
             </div>
             <span class="text-slate-500 text-sm font-bold">›</span>
@@ -1509,7 +1528,7 @@
                     <div>
                         <span class="text-[9px] font-bold text-emerald-400 bg-emerald-500/20 px-2 py-0.5 rounded-full">Bepul Reja (Free)</span>
                         <h3 class="text-sm font-bold text-white mt-1">Free Basic</h3>
-                        <p class="text-[11px] text-slate-400 mt-1">📍 Jonli Lokatsiya & Radar (100% Bepul), batareya va umumiy ekran vaqti</p>
+                        <p class="text-[11px] text-slate-400 mt-1">Jonli radar. Bepul: 1 farzand, 48 soatda 2 joylashuv so'rovi</p>
                     </div>
                     <div class="text-right">
                         <div class="text-base font-black text-white">0 so'm</div>
