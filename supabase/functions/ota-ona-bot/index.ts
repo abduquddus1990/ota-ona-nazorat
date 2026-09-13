@@ -1667,6 +1667,53 @@ serve(async (req) => {
       });
     }
 
+    // 0.0p Foydalanuvchi ota-onami yoki farzandmi.
+    //
+    // app.js dagi fetchAndApplyRole() bu so'rovni ancha vaqtdan beri
+    // yuborib kelgan, lekin bunday handler HECH QACHON bo'lmagan - javob
+    // e'tiborsiz qolib, rol faqat URL parametri yoki localStorage'dan
+    // aniqlanardi. Shu sabab boshqa qurilmadan kirgan farzand o'zini
+    // ota-ona panelida ko'rishi mumkin edi.
+    //
+    // Rol payload'dan emas, imzolangan identitetdan aniqlanadi.
+    if (payload.type === "check_role") {
+      if (actor!.kind === "device") {
+        return new Response(JSON.stringify({ ok: true, role: "child" }), {
+          status: 200, headers: { "Content-Type": "application/json" },
+        });
+      }
+      if (!db) {
+        return new Response(JSON.stringify({ ok: true, role: "parent" }), {
+          status: 200, headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      // Bu Telegram hisobi biror oilaga FARZAND sifatida ulanganmi.
+      const { data } = await db
+        .from("child_pairings")
+        .select("family_code, child_name")
+        .eq("child_id", "tg_" + actor!.telegramId)
+        .eq("is_active", true)
+        .limit(1);
+
+      if (data && data[0]) {
+        return new Response(
+          JSON.stringify({
+            ok: true,
+            role: "child",
+            familyCode: data[0].family_code,
+            childName: data[0].child_name,
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ ok: true, role: "parent", familyCode: actor!.familyCode }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
     // 0.0c Ota-ona Android qurilmasi uchun bir martalik juftlash kodi so'raydi.
     //
     // Android endi oila kodi bilan tanitilmaydi. Sabab: oila kodi sir emas

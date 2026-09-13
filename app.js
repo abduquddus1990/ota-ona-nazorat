@@ -309,7 +309,7 @@ const I18N = {
         langSelect: "Tilni O'zgartirish (Язык)",
         langSub: "O'zbekcha / Русский",
         plansSelect: "Tariflar va Obuna",
-        plansSub: "Free (Lokatsiya) / Pro (10,000 so'm)",
+        plansSub: "Bepul: 1 farzand / Pro: cheklovsiz",
         pairingSelect: "Farzandni Ulash & Android Ilova",
         pairingSub: "Oila kodi va avtomatik juftlash",
         feedbackTitle: "Taklif va Mulohazalar",
@@ -406,7 +406,7 @@ const I18N = {
         saveProfileBtn: "💾 Saqlash va Darsliklarni Yangilash",
         freePlanBadge: "Bepul Tarif (Free)",
         freePlanTitle: "Free Basic",
-        freePlanDesc: "📍 Jonli Lokatsiya & Radar (100% Bepul), batareya va umumiy ekran vaqti",
+        freePlanDesc: "Jonli radar. Bepul: 1 farzand, 48 soatda 2 joylashuv so'rovi",
         freePrice: "0 so'm",
         foreverFree: "Hozirda bepul",
         freeQualityNotice: "Eslatma: Tizim sifati va serverlar barqarorligini ta'minlash maqsadida kelajakda bepul versiyaga ham juda kam (ramziy) miqdorda to'lov joriy etilishi mumkin.",
@@ -554,7 +554,7 @@ const I18N = {
         saveProfileBtn: "💾 Сохранить и Обновить Учебники",
         freePlanBadge: "Бесплатный Тариф",
         freePlanTitle: "Free Basic",
-        freePlanDesc: "📍 Онлайн-Локация и Радар (100% Бесплатно), батарея и общее экранное время",
+        freePlanDesc: "Живой радар. Бесплатно: 1 ребёнок, 2 запроса за 48 часов",
         freePrice: "0 сум",
         foreverFree: "Сейчас бесплатно",
         freeQualityNotice: "Примечание: В целях повышения качества и стабильности серверов в будущем для бесплатной версии также может быть введена минимальная символическая плата.",
@@ -728,6 +728,153 @@ async function syncFamilyFromServer() {
     } catch (e) {
         console.error('syncFamilyFromServer error:', e);
         return false;
+    }
+}
+
+// ============================================================================
+// JOYLASHUV SO'ROVI VA TARIF CHEKLOVI (panel tomoni)
+//
+// Kvota SERVERDA hisoblanadi (Edge Function: request_location). Bu yerdagi
+// kod faqat natijani ko'rsatadi - hisobni takrorlamaydi. Aks holda ikki
+// joyda ikki xil hisob paydo bo'lib, biri ikkinchisiga yolg'on gapirardi.
+// ============================================================================
+
+/** Panelda "2 tadan 1 tasi qoldi" kabi yozuvni yangilaydi. */
+function renderQuotaBadge(remaining, plan) {
+    const el = document.getElementById('locationQuotaBadge');
+    if (!el) return;
+    if (plan === 'pro') {
+        el.textContent = 'Pro - cheklovsiz';
+        el.className = 'text-[10px] font-bold text-amber-300';
+        return;
+    }
+    el.textContent = remaining > 0
+        ? ('Bepul: yana ' + remaining + ' ta so\'rov')
+        : 'Bepul limit tugadi';
+    el.className = remaining > 0
+        ? 'text-[10px] font-bold text-slate-400'
+        : 'text-[10px] font-bold text-rose-400';
+}
+
+/** Pro taklifi. 402 javobidagi sabab shu yerda ko'rsatiladi. */
+function showProOffer(reason) {
+    const box = document.getElementById('proOfferBox');
+    if (!box) {
+        alert(reason);
+        return;
+    }
+    box.classList.remove('hidden');
+    const txt = document.getElementById('proOfferText');
+    if (txt) txt.textContent = reason;
+}
+
+/** Tarif holatini serverdan olib, panelga yozadi. */
+async function refreshPlanStatus() {
+    try {
+        const resp = await fetch(QALQON_BOT_FN, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'plan_status' })
+        });
+        const data = await resp.json();
+        if (!data || !data.ok) return;
+        renderQuotaBadge(data.remaining, data.plan);
+    } catch (e) {
+        console.error('refreshPlanStatus error:', e);
+    }
+}
+
+/**
+ * Farzandning joylashuvini so'raydi.
+ *
+ * Server 402 qaytarsa - bu xato emas, tarif chegarasi: shuning uchun
+ * "xatolik yuz berdi" emas, Pro taklifi ko'rsatiladi.
+ */
+async function requestChildLocation() {
+    const btn = document.getElementById('requestLocationBtn');
+    const childId = currentChildKey;
+    if (!childId) {
+        alert("Avval farzandni tanlang.");
+        return;
+    }
+
+    if (btn) { btn.disabled = true; btn.textContent = '📍 So\'ralmoqda...'; }
+    try {
+        const resp = await fetch(QALQON_BOT_FN, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'request_location', childId: childId })
+        });
+        const data = await resp.json();
+
+        if (resp.status === 402 || data.upgradeRequired) {
+            renderQuotaBadge(0, data.plan || 'free');
+            showProOffer(data.error || 'Bu imkoniyat Pro tarifda mavjud.');
+            return;
+        }
+        if (!data.ok) {
+            alert(data.error || "Joylashuvni olib bo'lmadi.");
+            return;
+        }
+
+        renderQuotaBadge(data.remaining, data.plan);
+
+        if (data.location) {
+            const addr = document.getElementById('radarAddress');
+            if (addr) {
+                addr.textContent = data.location.lat.toFixed(5) + ', ' + data.location.lng.toFixed(5);
+            }
+            if (typeof mapInstance !== 'undefined' && mapInstance && childMarker) {
+                childMarker.setLatLng([data.location.lat, data.location.lng]);
+                mapInstance.setView([data.location.lat, data.location.lng], 15);
+            }
+        } else {
+            alert("Farzand qurilmasidan hali joylashuv kelmagan. Android ilova o'rnatilganini tekshiring.");
+        }
+    } catch (e) {
+        console.error('requestChildLocation error:', e);
+        alert("Server javob bermayapti. Keyinroq urinib ko'ring.");
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '📍 Joylashuvni so\'rash'; }
+    }
+}
+
+/** Xavfsiz hududlar ro'yxati va so'nggi ogohlantirishlar (Pro). */
+async function loadGeofences() {
+    const list = document.getElementById('geofenceZoneList');
+    if (!list || !currentChildKey) return;
+    try {
+        const resp = await fetch(QALQON_BOT_FN, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'list_geofences', childId: currentChildKey })
+        });
+        const data = await resp.json();
+        if (!data || !data.ok) return;
+
+        const zones = data.zones || [];
+        const alerts = data.alerts || [];
+
+        if (zones.length === 0) {
+            list.innerHTML = data.plan === 'pro'
+                ? '<div class="text-[10px] text-slate-400">Hali xavfsiz hudud belgilanmagan.</div>'
+                : '<div class="text-[10px] text-slate-400">🔒 Xavfsiz hududlar (uy, maktab) Pro tarifda.</div>';
+            return;
+        }
+
+        list.innerHTML = zones.map(z => {
+            const last = alerts.find(a => a.zone_name === z.name);
+            const state = last
+                ? (last.alert_type === 'enter' ? 'Ichida' : 'Tashqarida')
+                : '—';
+            const color = last && last.alert_type === 'enter' ? 'text-emerald-400' : 'text-slate-400';
+            return '<div class="flex items-center justify-between py-1">' +
+                   '<span class="text-[11px] text-white">' + z.name + '</span>' +
+                   '<span class="text-[10px] font-bold ' + color + '">' + state + '</span>' +
+                   '</div>';
+        }).join('');
+    } catch (e) {
+        console.error('loadGeofences error:', e);
     }
 }
 
@@ -2480,7 +2627,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     // javob kelgach funksiya o'zi qayta render qiladi.
     // Avval oila kodini serverdan olamiz (849210 kabi eski, telefonda
     // qolgan kodlar shu yerda almashadi), keyin farzandlar ro'yxatini.
-    syncFamilyFromServer().then(() => syncChildrenFromServer());
+    syncFamilyFromServer()
+        .then(() => syncChildrenFromServer())
+        .then(() => { refreshPlanStatus(); loadGeofences(); });
 });
 
 function openUsernameGuideModal() {
