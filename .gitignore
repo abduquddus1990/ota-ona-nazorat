@@ -43,3 +43,35 @@ family_codes.json
 
 # Supabase CLI local state (linked project ref, version cache) — machine-specific
 supabase/.temp/
+
+# ----------------------------------------------------------------------------
+# Bir martalik kod-generator skriptlari (2026-09 auditda olib tashlandi).
+# Ular app.js / index.html ni bir marta tahrirlash uchun yozilgan edi va
+# natijasi allaqachon shu fayllarda. Repoda saqlansa, qaysi biri hali ham
+# haqiqiy manba ekanligi chalkashtiradi. Diskda qoladi, git'ga tushmaydi.
+# ----------------------------------------------------------------------------
+update_*.py
+fix_*.py
+apply_*.py
+add_*.py
+inject_*.py
+enlarge_*.py
+rename_*.py
+replace_*.py
+reset_*.py
+scan_*.py
+build_*.py
+check_*.py
+integrate_*.py
+refactor_*.py
+implement_*.py
+verify_*.py
+test_*.py
+
+# Vaqtinchalik/katta artefaktlar
+scratch_history*.db
+knowledge_base_dts.json
+
+# Hech qachon deploy qilinmagan Mini App nusxasi. Jonli Mini App GitHub
+# Pages'da (telegram_miniapp/), bu esa uning eskirgan ikkinchi nusxasi edi.
+supabase/functions/ota-ona-app/
