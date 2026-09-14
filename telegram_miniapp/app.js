@@ -1217,11 +1217,29 @@ function handleChildConsentDecline() {
 
 function checkChildConsentStatus() {
     if (currentAppRole === 'child') {
-        const consented = localStorage.getItem('child_consented') === 'true';
+        // Ulanish holatining MANBASI — server (check_role -> child_pairings).
+        // Ilgari bu faqat localStorage'dan o'qilardi, u esa shu brauzerda
+        // yashaydi va Telegram Mini App xotirasini tez-tez tozalaydi. Natijada
+        // allaqachon ulangan farzanddan har safar yana kod so'ralardi — kod
+        // bir martalik bo'lgani uchun u boshqa hech qachon ichkariga kira
+        // olmasdi. localStorage endi faqat zaxira (server javob bermasa).
+        const serverSaysPaired = !!(realChildProfile && realChildProfile.role === 'child');
+        const consented = serverSaysPaired || localStorage.getItem('child_consented') === 'true';
+
+        if (serverSaysPaired) {
+            try {
+                localStorage.setItem('child_consented', 'true');
+                if (realChildProfile.familyCode) {
+                    localStorage.setItem('child_family_code', realChildProfile.familyCode);
+                }
+            } catch (e) {}
+        }
+
         const overlay = document.getElementById('childConsentOverlay');
         const codeInput = document.getElementById('childConsentFamilyCode');
-        
-        // Farzand og'zaki kodni qo'lda kiritadi
+
+        // Farzand kodni qo'lda kiritadi (havolada ?inv= bo'lsa,
+        // prefillInviteCodeFromUrl() keyinroq uni o'zi to'ldiradi).
         if (codeInput) codeInput.value = "";
 
         if (overlay) {
@@ -2613,22 +2631,31 @@ function updateMapCoordinates() {
 // haqiqiy ma'lumotlar bazasidan tekshiradi (eski hardcoded ism ro'yxati o'rniga).
 let realChildProfile = null;
 async function fetchAndApplyRole() {
-    if (urlRole) return; // Havolada aniq rol ko'rsatilgan bo'lsa (masalan admin tugmasi), shuni ustun qo'yamiz
     const uname = (typeof tg !== 'undefined' && tg?.initDataUnsafe?.user?.username) || null;
     const tid = (typeof tg !== 'undefined' && tg?.initDataUnsafe?.user?.id) || null;
     if (!uname && !tid) return;
     try {
-        const resp = await fetch('https://wfrclcwjeeqeqchmdhzw.supabase.co/functions/v1/ota-ona-bot', {
+        const resp = await fetch(QALQON_BOT_FN, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ type: 'check_role', username: uname, telegramId: tid })
+            body: JSON.stringify({ type: 'check_role' })
         });
         const data = await resp.json();
+
+        // Server "bu hisob allaqachon ulangan farzand" desa, bu havoladagi
+        // role parametridan ham kuchliroq dalil: u child_pairings jadvalidagi
+        // haqiqiy yozuvga asoslanadi. Ilgali bu so'rov havolada role bo'lsa
+        // butunlay o'tkazib yuborilardi — bot esa har doim &role=child bilan
+        // yuboradi, ya'ni farzand uchun server hech qachon so'ralmasdi.
         if (data.role === 'child') {
             currentAppRole = 'child';
             localStorage.setItem('app_role', 'child');
             realChildProfile = data;
-        } else if (data.role === 'parent') {
+        } else if (data.role === 'parent' && !urlRole) {
+            // Havolada role=child bo'lsa uni buzmaymiz: hali ulanmagan farzand
+            // uchun server tabiiy ravishda "parent" deydi, chunki uning
+            // child_pairings'da yozuvi yo'q — aks holda u rozilik oynasini
+            // umuman ko'rmay, ota-ona panelini ochib yuborardi.
             currentAppRole = 'parent';
             localStorage.setItem('app_role', 'parent');
         }
