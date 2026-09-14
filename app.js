@@ -17,9 +17,19 @@
             const url = (typeof input === 'string') ? input : (input && input.url) || '';
             if (url.indexOf(BOT_FN) === 0 && init && typeof init.body === 'string') {
                 const payload = JSON.parse(init.body);
-                if (payload && typeof payload === 'object' && !payload.initData) {
-                    payload.initData =
+                if (payload && typeof payload === 'object' && !payload.initData && !payload.sessionToken) {
+                    const initData =
                         (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) || '';
+                    if (initData) {
+                        payload.initData = initData;
+                    } else {
+                        // Telegramdan tashqarida (oddiy brauzer) initData yo'q —
+                        // bu yerda login/parol orqali olingan seans ishlatiladi.
+                        try {
+                            const token = localStorage.getItem('web_session_token');
+                            if (token) payload.sessionToken = token;
+                        } catch (e) {}
+                    }
                     init = Object.assign({}, init, { body: JSON.stringify(payload) });
                 }
             }
@@ -688,8 +698,86 @@ function buildChildRecord(serverChild, existing) {
  * "Admin Tasdig'i Kutilmoqda" oynasini ko'rsatadi (u index.html da bor edi,
  * lekin hech qachon ochilmasdi).
  */
+// ============================================================================
+// TELEGRAMDAN TASHQARIDA KIRISH
+//
+// Telegram ichida initData bor — u imzolangan va paroldan kuchliroq, shuning
+// uchun u yerda hech qanday login so'ralmaydi. Oddiy brauzerda esa initData
+// yo'q: faqat shu holatda login/parol oynasi ochiladi.
+// ============================================================================
+function hasTelegramIdentity() {
+    return !!(window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData);
+}
+
+function webSessionToken() {
+    try { return localStorage.getItem('web_session_token'); } catch (e) { return null; }
+}
+
+function showWebLogin(show) {
+    const overlay = document.getElementById('webLoginOverlay');
+    if (overlay) overlay.classList.toggle('hidden', !show);
+}
+
+/** Kirish oynasi kerakmi: Telegram identifikatori ham, seans ham bo'lmasa. */
+function checkWebLoginNeeded() {
+    const wantsLogin = new URLSearchParams(window.location.search).get('mode') === 'login';
+    if (hasTelegramIdentity() && !wantsLogin) return false;
+    if (!hasTelegramIdentity() && !webSessionToken()) { showWebLogin(true); return true; }
+    if (wantsLogin && !hasTelegramIdentity()) { showWebLogin(true); return true; }
+    return false;
+}
+
+async function handleWebLogin() {
+    const userEl = document.getElementById('webLoginUsername');
+    const passEl = document.getElementById('webLoginPassword');
+    const errEl = document.getElementById('webLoginError');
+    const btn = document.getElementById('webLoginBtn');
+
+    const username = (userEl?.value || '').trim().replace('@', '');
+    const password = passEl?.value || '';
+
+    const fail = (msg) => {
+        if (errEl) { errEl.innerText = msg; errEl.classList.remove('hidden'); }
+    };
+
+    if (!username || !password) return fail('Login va parolni kiriting.');
+    if (errEl) errEl.classList.add('hidden');
+    if (btn) { btn.disabled = true; btn.innerText = '⏳ Tekshirilmoqda...'; }
+
+    try {
+        const resp = await fetch(QALQON_BOT_FN, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'web_login', username, password })
+        });
+        const data = await resp.json();
+        if (!data.ok) return fail(data.error || "Kirish amalga oshmadi.");
+
+        try {
+            localStorage.setItem('web_session_token', data.sessionToken);
+            if (data.familyCode) localStorage.setItem('parent_family_code', data.familyCode);
+        } catch (e) {}
+        showWebLogin(false);
+        window.location.reload();
+    } catch (e) {
+        console.error('web_login error:', e);
+        fail("Server javob bermayapti. Keyinroq urinib ko'ring.");
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerText = '🔐 Kirish'; }
+    }
+}
+
+// Parol allaqachon qo'yilganmi (serverdan). Parolning o'zi hech qachon
+// qaytarilmaydi — faqat shu belgi.
+let savedProfileHasPassword = false;
+
 /** Serverda saqlangan oila yozuvini ro'yxatdan o'tish formasiga qaytaradi. */
 function applySavedFamilyProfile(profile) {
+    savedProfileHasPassword = !!profile.password_set;
+    const pwField = document.getElementById('onboardPassword');
+    if (pwField && savedProfileHasPassword) {
+        pwField.placeholder = "Parol o'rnatilgan — o'zgartirish uchun yangisini yozing";
+    }
     const set = (id, value) => {
         const el = document.getElementById(id);
         if (el && value !== null && value !== undefined && value !== '') el.value = value;
@@ -2721,6 +2809,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderActiveChild();
     renderSchoolCurriculum();
     initRadarMap();
+    // Telegramdan tashqarida va seanssiz bo'lsa — avval kirish oynasi.
+    if (checkWebLoginNeeded()) return;
     checkChildConsentStatus();
     prefillInviteCodeFromUrl();
     // Farzandlar ro'yxatini serverdan yangilaymiz. Fon rejimida:
@@ -2769,6 +2859,22 @@ function handleCompleteParentOnboarding() {
     if (!childNameValue) {
         alert(isRu ? "⚠️ Введите имя ребёнка!" : "⚠️ Farzandning ismini kiriting!");
         document.getElementById('onboardChildName')?.focus();
+        return;
+    }
+
+    // Parol birinchi ro'yxatdan o'tishda majburiy. Keyin tahrirlashda bo'sh
+    // qoldirilsa — eskisi o'z holicha qoladi (server uni o'chirmaydi).
+    const password = document.getElementById('onboardPassword')?.value || '';
+    if (!savedProfileHasPassword && !password) {
+        alert(isRu
+            ? "⚠️ Придумайте пароль — он нужен для входа без Telegram."
+            : "⚠️ Parol o'ylab toping — u Telegramsiz kirish uchun kerak.");
+        document.getElementById('onboardPassword')?.focus();
+        return;
+    }
+    if (password && password.length < 6) {
+        alert(isRu ? "⚠️ Пароль — минимум 6 символов." : "⚠️ Parol kamida 6 ta belgidan iborat bo'lsin.");
+        document.getElementById('onboardPassword')?.focus();
         return;
     }
 
@@ -2859,7 +2965,9 @@ function handleCompleteParentOnboarding() {
             motherUsername: motherUsername,
             childName: childName,
             childGrade: childGrade,
-            childUsername: childUsername
+            childUsername: childUsername,
+            password: password || undefined,
+            ref: new URLSearchParams(window.location.search).get('ref') || undefined
         })
     }).then(r => r.json()).then(data => {
         if (data && data.alreadyApproved) {

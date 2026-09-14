@@ -20,6 +20,52 @@
     <link rel="stylesheet" href="styles.css?v=5.8">
 </head>
 <body class="p-3 max-w-md mx-auto relative antialiased text-slate-200">
+    <!-- ==================================================================== -->
+    <!-- 🔐 TELEGRAMDAN TASHQARIDA KIRISH (login va parol) -->
+    <!-- Telegram ichida ko'rsatilmaydi: u yerda initData paroldan kuchliroq. -->
+    <!-- ==================================================================== -->
+    <div id="webLoginOverlay" class="fixed inset-0 z-[100002] bg-[#13131b] flex flex-col justify-center p-5 overflow-y-auto hidden">
+        <div class="max-w-sm w-full mx-auto space-y-4">
+            <div class="text-center space-y-2">
+                <div class="w-14 h-14 mx-auto rounded-2xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-3xl">🛡</div>
+                <h1 class="text-base font-black text-white">Qalqon AI</h1>
+                <p class="text-[11px] text-slate-400 leading-relaxed">
+                    Telegram username'ingiz — login. Parolni ro'yxatdan o'tishda o'zingiz belgilagansiz.
+                </p>
+            </div>
+
+            <div class="glass-card p-4 space-y-3 rounded-2xl border-cyan-500/30">
+                <div>
+                    <label class="text-[11px] font-bold text-slate-300 block mb-1">Login (Telegram username)</label>
+                    <div class="relative">
+                        <span class="absolute left-3 top-2.5 text-xs text-slate-500 font-bold">@</span>
+                        <input type="text" id="webLoginUsername" autocomplete="username" placeholder="superman_uzb" class="w-full bg-slate-900 border border-slate-700 rounded-xl pl-7 pr-3 py-2.5 text-xs text-white font-mono focus:outline-none focus:border-cyan-500">
+                    </div>
+                </div>
+                <div>
+                    <label class="text-[11px] font-bold text-slate-300 block mb-1">Parol</label>
+                    <input type="password" id="webLoginPassword" autocomplete="current-password" placeholder="••••••••" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500">
+                </div>
+
+                <p id="webLoginError" class="text-[10px] text-rose-400 font-bold text-center hidden"></p>
+
+                <button onclick="handleWebLogin()" id="webLoginBtn" class="w-full py-3 bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white font-black text-xs rounded-2xl shadow-lg shadow-cyan-500/25 transition">
+                    🔐 Kirish
+                </button>
+
+                <div class="pt-1 text-center">
+                    <p class="text-[10px] text-slate-500 leading-relaxed">
+                        Parolni unutdingizmi yoki hali qo'ymaganmisiz? Telegram'da botni oching —
+                        u yerda parolsiz kirasiz va oila ma'lumotlaringizdan yangi parol qo'yasiz.
+                    </p>
+                    <a href="https://t.me/qalqon_aibot" target="_blank" class="inline-block mt-2 text-[11px] font-bold text-cyan-400 hover:underline">
+                        Telegram'da ochish →
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
 <!-- ==================================================================== -->
     <!-- 🤝 TO'LIQ EKRANLI FARZAND ROZILIK & ULANISH MODALI -->
     <!-- ==================================================================== -->
@@ -1764,6 +1810,20 @@
                     </div>
                     <p class="text-[9px] text-amber-300/80 mt-1">⚠️ Eslatma: Farzand ushbu username orqali 4 ta qoidaga rozilik bergach ma'lumotlar ko'rinadi.</p>
                 </div>
+            </div>
+
+            <!-- PAROL: Telegramdan tashqarida kirish uchun -->
+            <div class="space-y-2 p-3.5 rounded-2xl bg-slate-950/80 border border-amber-500/30">
+                <span class="text-xs font-bold text-amber-300 flex items-center gap-1.5">
+                    <span>🔐</span> 4. Parol (Telegramsiz kirish uchun)
+                </span>
+                <p class="text-[10px] text-slate-400 leading-tight">
+                    Telegram ichida parol kerak emas. Bu parol faqat oddiy brauzerdan
+                    (Telegramsiz) kirmoqchi bo'lganingizda ishlatiladi.
+                    <b>Login — yuqorida kiritgan Telegram username'ingiz.</b>
+                </p>
+                <input type="password" id="onboardPassword" autocomplete="new-password" placeholder="Kamida 6 ta belgi" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500">
+                <p class="text-[9px] text-slate-500">Parol shifrlangan holda saqlanadi — biz ham uni ko'ra olmaymiz.</p>
             </div>
 
             <!-- UNIFIED FAMILY CODE INFO -->

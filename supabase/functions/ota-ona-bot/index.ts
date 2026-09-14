@@ -158,6 +158,63 @@ async function sha256Hex(text: string): Promise<string> {
   return toHex(new Uint8Array(d));
 }
 
+// ============================================================================
+// PAROL (faqat Telegramdan tashqarida kirish uchun)
+//
+// Parolning O'ZI hech qachon saqlanmaydi. PBKDF2-HMAC-SHA256, har parolga
+// alohida tasodifiy salt va 120 000 iteratsiya: baza sizib chiqsa ham
+// parollarni tiklab bo'lmaydi, taxmin qilish esa qimmatga tushadi.
+// ============================================================================
+const PBKDF2_ITERATIONS = 120000;
+
+async function pbkdf2Hex(password: string, salt: Uint8Array, iterations: number): Promise<string> {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(password),
+    { name: "PBKDF2" },
+    false,
+    ["deriveBits"]
+  );
+  const bits = await crypto.subtle.deriveBits(
+    { name: "PBKDF2", salt, iterations, hash: "SHA-256" },
+    key,
+    256
+  );
+  return toHex(new Uint8Array(bits));
+}
+
+async function hashPassword(password: string): Promise<string> {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const hash = await pbkdf2Hex(password, salt, PBKDF2_ITERATIONS);
+  return `pbkdf2$${PBKDF2_ITERATIONS}$${toHex(salt)}$${hash}`;
+}
+
+async function verifyPassword(password: string, stored: string): Promise<boolean> {
+  try {
+    const [scheme, iterStr, saltHex, hashHex] = String(stored).split("$");
+    if (scheme !== "pbkdf2" || !iterStr || !saltHex || !hashHex) return false;
+    const salt = new Uint8Array(
+      (saltHex.match(/.{2}/g) || []).map((h) => parseInt(h, 16))
+    );
+    const calc = await pbkdf2Hex(password, salt, Number(iterStr));
+    return timingSafeEqual(calc, hashHex);
+  } catch (e) {
+    console.error("verifyPassword xatosi:", e);
+    return false;
+  }
+}
+
+/** Parol talablari — juda qisqa parol himoya bermaydi. */
+function passwordProblem(password: unknown): string | null {
+  const p = typeof password === "string" ? password : "";
+  if (p.length < 6) return "Parol kamida 6 ta belgidan iborat bo'lishi kerak.";
+  if (p.length > 128) return "Parol juda uzun.";
+  if (/^\d+$/.test(p)) return "Parol faqat raqamlardan iborat bo'lmasin.";
+  return null;
+}
+
+const WEB_SESSION_DAYS = 30;
+
 /** Doimiy vaqtli taqqoslash — hash'ni belgima-belgi taxmin qilishga qarshi. */
 function timingSafeEqual(a: string, b: string): boolean {
   if (a.length !== b.length) return false;
@@ -254,7 +311,59 @@ async function authenticate(payload: any): Promise<Actor | null> {
   }
   const dev = await verifyDeviceToken(payload?.deviceToken);
   if (dev) return { kind: "device", familyCode: dev.familyCode, childId: dev.childId };
+
+  // Brauzer seansi (Telegramdan tashqarida kirish). Seans login/parol orqali
+  // olinadi va o'sha oilaning Telegram identitetiga bog'langan bo'ladi, ya'ni
+  // qolgan barcha endpointlar hech qanday o'zgarishsiz ishlayveradi.
+  const web = await verifyWebSession(payload?.sessionToken);
+  if (web) {
+    return {
+      kind: "telegram",
+      telegramId: web.telegramId,
+      username: web.username,
+      familyCode: web.familyCode,
+    };
+  }
   return null;
+}
+
+/** Brauzer seans tokenini tekshiradi (token emas, faqat hash saqlanadi). */
+async function verifyWebSession(
+  token: unknown
+): Promise<{ familyCode: string; telegramId: number; username: string } | null> {
+  const raw = typeof token === "string" ? token.trim() : "";
+  if (!raw || !db) return null;
+
+  const { data } = await db
+    .from("web_sessions")
+    .select("id, family_code, telegram_id, expires_at, revoked_at")
+    .eq("token_hash", await sha256Hex(raw))
+    .is("revoked_at", null)
+    .limit(1);
+
+  const row = data && data[0];
+  if (!row) return null;
+  if (new Date(row.expires_at).getTime() < Date.now()) return null;
+
+  await db
+    .from("web_sessions")
+    .update({ last_used_at: new Date().toISOString() })
+    .eq("id", row.id);
+
+  // Username yozuvdan olinadi: seans faqat oilaga bog'langan.
+  let username = "";
+  const { data: reg } = await db
+    .from("parent_registrations")
+    .select("parent_username")
+    .eq("family_code", row.family_code)
+    .limit(1);
+  if (reg && reg[0] && reg[0].parent_username) username = reg[0].parent_username;
+
+  return {
+    familyCode: row.family_code,
+    telegramId: Number(row.telegram_id) || 0,
+    username,
+  };
 }
 
 function unauthorized(detail: string): Response {
@@ -944,6 +1053,82 @@ function getStartKeyboard(userId: string | number, lang: string = "uz", isChild:
   };
 }
 
+/**
+ * Birinchi ekran — hali ro'yxatdan o'tmagan odam uchun.
+ * Ilgari bot hammaga to'g'ridan-to'g'ri "Ota-ona paneli" tugmasini berardi:
+ * odam bot nima qilishini va qanday qoidalarga rozi bo'layotganini bilmasdan
+ * ichkariga kirib ketardi.
+ */
+function getWelcomeGateText(lang: string = "uz"): string {
+  if (lang === "ru") {
+    return `🛡 <b>QALQON AI — семейная защита</b>
+
+Помогает родителю знать, что ребёнок в безопасности, и договориться о здоровых цифровых привычках — <b>без слежки втайне</b>.
+
+<b>Что умеет:</b>
+• 📍 Где ребёнок сейчас, уведомления «пришёл в школу / вышел из дома»
+• 📱 Экранное время и приложения, ежевечерний короткий отчёт
+• 🆘 Кнопка SOS у ребёнка — сразу вам, с местоположением
+• 🧠 ИИ-помощник по школьной программе 1–11 классов
+
+<b>Наши правила:</b>
+1. Ребёнок <b>видит</b>, что подключён, и сам соглашается с 4 правилами.
+2. Переписка и содержимое экрана <b>не читаются</b> — никогда.
+3. Данные семьи видит <b>только эта семья</b>.
+4. Ребёнок может отключиться, сообщив родителю.
+
+Выберите действие ниже.`;
+  }
+  return `🛡 <b>QALQON AI — oilaviy himoya</b>
+
+Ota-onaga farzandi xavfsiz ekanini bilish va sog'lom raqamli odatlar haqida kelishib olishga yordam beradi — <b>yashirin kuzatuvsiz</b>.
+
+<b>Nima qila oladi:</b>
+• 📍 Farzand hozir qayerda, "maktabga yetdi / uydan chiqdi" xabarlari
+• 📱 Ekran vaqti va ilovalar, har kuni kechqurun qisqa hisobot
+• 🆘 Farzandda SOS tugmasi — joylashuvi bilan to'g'ridan-to'g'ri sizga
+• 🧠 1–11 sinf darsliklari bo'yicha AI yordamchi
+
+<b>Bizning qoidalarimiz:</b>
+1. Farzand ulanganini <b>ko'radi</b> va 4 ta qoidaga o'zi rozilik beradi.
+2. Yozishmalar va ekran mazmuni <b>o'qilmaydi</b> — hech qachon.
+3. Oila ma'lumotlarini <b>faqat o'sha oila</b> ko'radi.
+4. Farzand ota-onasiga aytib, ulanishni to'xtata oladi.
+
+Quyidan kerakli amalni tanlang.`;
+}
+
+function getWelcomeGateKeyboard(lang: string = "uz"): any {
+  return {
+    inline_keyboard: [
+      [
+        {
+          text: lang === "ru" ? "📝 Регистрация" : "📝 Ro'yxatdan o'tish",
+          web_app: { url: `${MINI_APP_URL}&lang=${lang}` },
+        },
+      ],
+      [
+        {
+          text: lang === "ru" ? "🔐 Вход (логин и пароль)" : "🔐 Kirish (login va parol)",
+          web_app: { url: `${MINI_APP_URL}&lang=${lang}&mode=login` },
+        },
+      ],
+      [{ text: "🌐 Til / Язык (UZ/RU)", callback_data: "action_lang" }],
+    ],
+  };
+}
+
+/** Bu Telegram hisobi uchun ro'yxat yozuvi bormi (holatidan qat'i nazar). */
+async function hasRegistration(userId: string | number): Promise<boolean> {
+  if (!db) return false;
+  const { data } = await db
+    .from("parent_registrations")
+    .select("family_code")
+    .eq("family_code", generateFamilyCode(userId))
+    .limit(1);
+  return !!(data && data[0]);
+}
+
 function getChildStartText(lang: string = "uz"): string {
   if (lang === "ru") {
     return `🌟 <b>Привет, юный герой!</b>\n\nТы уже подключён к семейному профилю. Нажми кнопку ниже — откроется <b>твоя</b> панель: ИИ-друг, учёба, награды и быстрые сообщения родителям.`;
@@ -1113,7 +1298,9 @@ async function handleRequest(req: Request): Promise<Response> {
     // serveridan keladi va quyida alohida ishlanadi.
     // device_pair — qurilmada hali hech qanday hisob ma'lumoti yo'q.
     // cron_daily_digest — ichki chaqiruv, o'zi maxfiy sarlavha bilan himoyalangan.
-    const NO_ACTOR_TYPES = ["device_pair", "cron_daily_digest"];
+    // web_login / web_logout — brauzerda Telegram imzosi yo'q; web_login o'zi
+    //   login/parolni tekshiradi va urinishlar soni cheklangan.
+    const NO_ACTOR_TYPES = ["device_pair", "cron_daily_digest", "web_login", "web_logout"];
     let actor: Actor | null = null;
     if (typeof payload?.type === "string" && !NO_ACTOR_TYPES.includes(payload.type)) {
       actor = await authenticate(payload);
@@ -1170,6 +1357,21 @@ async function handleRequest(req: Request): Promise<Response> {
         child_username: normalizeUsername(payload.childUsername) || null,
         updated_at: new Date().toISOString(),
       };
+
+      // Ro'yxatdan o'tishda parol ham beriladi (username = login). U faqat
+      // Telegramdan tashqarida kirish uchun kerak; Telegram ichida initData
+      // baribir kuchliroq. Parol bo'sh bo'lsa — hech narsa o'zgarmaydi,
+      // ya'ni ma'lumotni tahrirlash parolni o'chirib yubormaydi.
+      if (typeof payload.password === "string" && payload.password.length > 0) {
+        const pwProblem = passwordProblem(payload.password);
+        if (pwProblem) {
+          return new Response(JSON.stringify({ ok: false, error: pwProblem }), {
+            status: 400, headers: { "Content-Type": "application/json" },
+          });
+        }
+        (row as Record<string, unknown>).password_hash = await hashPassword(payload.password);
+        (row as Record<string, unknown>).password_set_at = new Date().toISOString();
+      }
 
       // Taklif kodi: faqat MAVJUD va o'zi bo'lmagan oila qabul qilinadi.
       // Mukofot bu yerda berilmaydi — admin tasdig'idan keyin beriladi.
@@ -1565,6 +1767,157 @@ async function handleRequest(req: Request): Promise<Response> {
     // Ilgari Mini App kodni localStorage'dan o'qirdi va u yerda eski qiymat
     // (masalan 849210) qolib ketardi — shu sabab har foydalanuvchida o'z
     // kodi bo'lishi kerak bo'lsa ham, eskisi ko'rinaverardi.
+    // 0.0t TELEGRAMDAN TASHQARIDA KIRISH: username + parol -> seans tokeni.
+    //
+    // Bu YAGONA endpoint initData'siz ishlaydi (device_pair kabi), chunki
+    // brauzerda Telegram imzosi yo'q. Shu sabab urinishlar cheklanadi va
+    // xato xabari "login yo'q" bilan "parol noto'g'ri"ni farqlamaydi —
+    // aks holda qaysi username ro'yxatda borligini bilib olish mumkin bo'lardi.
+    if (payload.type === "web_login") {
+      if (!db) {
+        return new Response(JSON.stringify({ ok: false, error: "Baza ulanmagan" }), {
+          status: 500, headers: { "Content-Type": "application/json" },
+        });
+      }
+      const actorKey = `weblogin:${clientKey(req)}`;
+      if (await joinRateLimited(actorKey)) {
+        return new Response(
+          JSON.stringify({ ok: false, error: "Juda ko'p urinish. Keyinroq qayta urinib ko'ring." }),
+          { status: 429, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      const username = normalizeUsername(payload.username);
+      const password = String(payload.password || "");
+      const failMsg = "Login yoki parol noto'g'ri.";
+
+      if (!username || !password) {
+        await recordJoinAttempt(actorKey, "", false);
+        return new Response(JSON.stringify({ ok: false, error: failMsg }), {
+          status: 401, headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      const { data } = await db
+        .from("parent_registrations")
+        .select("family_code, parent_telegram_id, password_hash, status")
+        .ilike("parent_username", username)
+        .limit(1);
+
+      const row = data && data[0];
+      const ok = !!(row && row.password_hash && (await verifyPassword(password, row.password_hash)));
+      await recordJoinAttempt(actorKey, row ? row.family_code : "", ok);
+
+      if (!ok) {
+        return new Response(JSON.stringify({ ok: false, error: failMsg }), {
+          status: 401, headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      const token = toHex(crypto.getRandomValues(new Uint8Array(32)));
+      const expiresAt = new Date(Date.now() + WEB_SESSION_DAYS * 86400000).toISOString();
+      const { error: sErr } = await db.from("web_sessions").insert({
+        token_hash: await sha256Hex(token),
+        family_code: row.family_code,
+        telegram_id: row.parent_telegram_id,
+        user_agent: (req.headers.get("user-agent") || "").slice(0, 200),
+        expires_at: expiresAt,
+      });
+      if (sErr) {
+        console.error("web_sessions insert xatosi:", sErr.message);
+        return new Response(JSON.stringify({ ok: false, error: sErr.message }), {
+          status: 500, headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      // Token faqat shu javobda ko'rinadi.
+      return new Response(
+        JSON.stringify({
+          ok: true,
+          sessionToken: token,
+          familyCode: row.family_code,
+          registrationStatus: row.status,
+          expiresAt,
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    // 0.0u Parol o'rnatish/almashtirish. Faqat Telegram ichidan — ya'ni parolni
+    // o'rnatish uchun odam avval Telegram imzosi bilan o'zini tanitishi shart.
+    // Shu sabab parolni "unutdim" oqimi ham kerak emas: Telegram orqali kirib,
+    // yangisini qo'yish yetarli.
+    if (payload.type === "set_password") {
+      if (actor!.kind !== "telegram") return unauthorized("Faqat ota-ona");
+      if (!db) {
+        return new Response(JSON.stringify({ ok: false, error: "Baza ulanmagan" }), {
+          status: 500, headers: { "Content-Type": "application/json" },
+        });
+      }
+      const problem = passwordProblem(payload.password);
+      if (problem) {
+        return new Response(JSON.stringify({ ok: false, error: problem }), {
+          status: 400, headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      const { data: reg } = await db
+        .from("parent_registrations")
+        .select("family_code, parent_username")
+        .eq("family_code", actor!.familyCode)
+        .limit(1);
+      if (!reg || !reg[0]) {
+        return new Response(
+          JSON.stringify({ ok: false, error: "Avval oila ma'lumotlarini saqlang." }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        );
+      }
+      if (!reg[0].parent_username) {
+        return new Response(
+          JSON.stringify({ ok: false, error: "Avval Telegram username'ingizni kiriting — u login bo'ladi." }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      const { error } = await db
+        .from("parent_registrations")
+        .update({
+          password_hash: await hashPassword(String(payload.password)),
+          password_set_at: new Date().toISOString(),
+        })
+        .eq("family_code", actor!.familyCode);
+      if (error) {
+        console.error("set_password xatosi:", error.message);
+        return new Response(JSON.stringify({ ok: false, error: error.message }), {
+          status: 500, headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      // Parol almashtirilganda eski brauzer seanslari bekor qilinadi.
+      await db
+        .from("web_sessions")
+        .update({ revoked_at: new Date().toISOString() })
+        .eq("family_code", actor!.familyCode)
+        .is("revoked_at", null);
+
+      return new Response(
+        JSON.stringify({ ok: true, login: reg[0].parent_username }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    if (payload.type === "web_logout") {
+      if (db && typeof payload.sessionToken === "string") {
+        await db
+          .from("web_sessions")
+          .update({ revoked_at: new Date().toISOString() })
+          .eq("token_hash", await sha256Hex(payload.sessionToken.trim()));
+      }
+      return new Response(JSON.stringify({ ok: true }), {
+        status: 200, headers: { "Content-Type": "application/json" },
+      });
+    }
+
     // 0.0r KUNLIK KECHKI XULOSA — ichki (cron) chaqiruv.
     //
     // Ota-ona ilovani ochmasa ham har kuni qiymat ko'rishi uchun: ekran vaqti,
@@ -1779,13 +2132,16 @@ async function handleRequest(req: Request): Promise<Response> {
         const { data } = await db
           .from("parent_registrations")
           .select(
-            "status, family_name, parent_name, parent_username, parent_phone, mother_name, mother_username, child_name, child_grade, child_username, parent_telegram_id"
+            "status, family_name, parent_name, parent_username, parent_phone, mother_name, mother_username, child_name, child_grade, child_username, parent_telegram_id, password_hash"
           )
           .eq("family_code", actor!.familyCode)
           .limit(1);
         if (data && data[0]) {
           status = data[0].status;
           profile = data[0];
+          // Parolning O'ZI ham, hash'i ham qaytarilmaydi — faqat "qo'yilganmi".
+          (profile as Record<string, unknown>).password_set = !!data[0].password_hash;
+          delete (profile as Record<string, unknown>).password_hash;
         }
 
         // parent_telegram_id'ni to'ldirib qo'yamiz: bu maydon ilgari hech
@@ -2744,12 +3100,46 @@ async function handleRequest(req: Request): Promise<Response> {
         // Kim ekani BAZADAN aniqlanadi: ulangan farzandga ota-ona paneli
         // tugmasi ko'rsatilmaydi.
         const startIsChild = await isPairedChild(chatId);
+
+        // Hali ro'yxatdan o'tmagan odam avval maqsad va qoidalarni ko'radi,
+        // so'ng o'zi tanlaydi: ro'yxatdan o'tish yoki kirish.
+        if (!startIsChild && !isAdmin && !(await hasRegistration(chatId))) {
+          await sendMessage(chatId, getWelcomeGateText(lang), getWelcomeGateKeyboard(lang));
+          await sendMessage(chatId, "👇 <b>Start</b> tugmasi doim pastda — / kerak emas.", boshlashReplyKeyboard());
+          return new Response(JSON.stringify({ ok: true }), { status: 200 });
+        }
+
         await sendMessage(
           chatId,
           startIsChild ? getChildStartText(lang) : getStartMenuText(chatId, lang, true, isAdmin),
           getStartKeyboard(chatId, lang, startIsChild)
         );
         await sendMessage(chatId, "👇 <b>Start</b> tugmasi doim pastda — / kerak emas.", boshlashReplyKeyboard());
+        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      }
+
+      // Telefon raqami — Telegram tugmasi orqali. SMS kod kerak emas:
+      // raqamni Telegram o'zi tasdiqlagan bo'ladi va foydalanuvchi uni
+      // qo'lda yozmaydi, ya'ni xato raqam ham, begona raqam ham tushmaydi.
+      if (text.startsWith("/telefon")) {
+        await sendMessage(
+          chatId,
+          "📞 <b>Telefon raqamingizni tasdiqlash</b>\n\nPastdagi tugmani bosing — raqam Telegram orqali, avtomatik yuboriladi. Qo'lda yozish va SMS kod kerak emas.\n\n<i>Raqam faqat oilangizni tiklashda va shoshilinch holatlarda ishlatiladi.</i>",
+          undefined
+        );
+        await fetch(`${TELEGRAM_API}/sendMessage`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chat_id: chatId,
+            text: "👇",
+            reply_markup: {
+              keyboard: [[{ text: "📞 Raqamimni yuborish", request_contact: true }]],
+              resize_keyboard: true,
+              one_time_keyboard: true,
+            },
+          }),
+        });
         return new Response(JSON.stringify({ ok: true }), { status: 200 });
       }
 
@@ -2792,6 +3182,50 @@ async function handleRequest(req: Request): Promise<Response> {
       }
 
       // Rasm yoki skrinshot yuborilgan bo'lsa
+      // Telegram tugmasi orqali kelgan raqam. Faqat O'Z raqamini qabul
+      // qilamiz: contact.user_id yuboruvchiga teng bo'lishi shart, aks holda
+      // birov boshqa odamning kontaktini yuborib, uni o'z oilasiga yozdirib
+      // qo'yishi mumkin bo'lardi.
+      if (msg.contact) {
+        const contact = msg.contact;
+        if (Number(contact.user_id) !== Number(msg.from?.id)) {
+          await sendMessage(chatId, "⚠️ Iltimos, <b>o'z</b> raqamingizni yuboring (tugma orqali).");
+          return new Response(JSON.stringify({ ok: true }), { status: 200 });
+        }
+        if (db) {
+          const famCode = generateFamilyCode(chatId);
+          const { data } = await db
+            .from("parent_registrations")
+            .select("family_code")
+            .eq("family_code", famCode)
+            .limit(1);
+          if (data && data[0]) {
+            await db
+              .from("parent_registrations")
+              .update({
+                parent_phone: contact.phone_number,
+                phone_verified_at: new Date().toISOString(),
+              })
+              .eq("family_code", famCode);
+            await sendMessage(
+              chatId,
+              `✅ <b>Raqamingiz tasdiqlandi:</b> <code>${contact.phone_number}</code>\n\nRahmat! Endi oilangizni tiklash kerak bo'lsa, shu raqam yordam beradi.`,
+              undefined
+            );
+            // Vaqtinchalik klaviaturani olib tashlaymiz.
+            await fetch(`${TELEGRAM_API}/sendMessage`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ chat_id: chatId, text: "🛡", reply_markup: { remove_keyboard: true } }),
+            });
+            await sendMessage(chatId, "👇 <b>Start</b> tugmasi doim pastda.", boshlashReplyKeyboard());
+          } else {
+            await sendMessage(chatId, "⚠️ Avval ro'yxatdan o'ting, keyin raqamni tasdiqlaysiz.");
+          }
+        }
+        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      }
+
       if (msg.photo) {
         const photoReply = lang === "ru"
           ? "✅ <b>Скриншот принят!</b>\n\nВремя использования приложений и задания проанализированы. Данные синхронизированы с панелью управления."
