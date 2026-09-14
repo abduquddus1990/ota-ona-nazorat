@@ -1809,7 +1809,25 @@ async function handleRequest(req: Request): Promise<Response> {
       }
 
       const question = String(payload.message || "").trim();
-      if (!question) {
+
+      // Rasm (mashq surati) ixtiyoriy: "data:image/jpeg;base64,..." ko'rinishida
+      // yoki toza base64. Rasm bo'lsa savol bo'sh bo'lishi ham mumkin.
+      let imagePart: { inline_data: { mime_type: string; data: string } } | null = null;
+      const rawImage = typeof payload.image === "string" ? payload.image : "";
+      if (rawImage) {
+        const m = rawImage.match(/^data:(image\/[a-zA-Z+]+);base64,(.+)$/);
+        const mime = m ? m[1] : "image/jpeg";
+        const b64 = m ? m[2] : rawImage;
+        // ~6 MB base64 chegarasi — undan kattasi so'rovni ham, xarajatni ham shishiradi.
+        if (b64.length > 8_000_000) {
+          return new Response(JSON.stringify({ ok: false, error: "Rasm juda katta." }), {
+            status: 400, headers: { "Content-Type": "application/json" },
+          });
+        }
+        imagePart = { inline_data: { mime_type: mime, data: b64 } };
+      }
+
+      if (!question && !imagePart) {
         return new Response(JSON.stringify({ ok: false, error: "Savol bo'sh." }), {
           status: 400, headers: { "Content-Type": "application/json" },
         });
@@ -1860,7 +1878,18 @@ async function handleRequest(req: Request): Promise<Response> {
           }));
       }
 
-      const systemPrompt =
+      // Ota-ona va farzand uchun ohang ham, vazifa ham boshqacha.
+      const parentPrompt =
+        `Sen "Qalqon" — O'zbekistondagi ota-onaga yordam beradigan maslahatchisan. ` +
+        `Farzandi ${grade}-sinfda o'qiydi.\n\n` +
+        `Qoidalar:\n` +
+        `- Faqat o'zbek tilida, hurmat bilan va amaliy javob ber (4-7 gap).\n` +
+        `- Mavzular: bolaning o'qishi, ekran vaqti, raqamli odatlar, xavfsizlik, motivatsiya.\n` +
+        `- Aniq qadamlar taklif qil, umumiy gaplardan qoch.\n` +
+        `- Jazolash emas, kelishuv va chegara qo'yish yo'lini tavsiya qil.\n` +
+        `- Tibbiy yoki psixologik jiddiy holatlarda mutaxassisga murojaatni maslahat ber.`;
+
+      const childPrompt =
         `Sen "Qalqon" — O'zbekistondagi ${grade}-sinf o'quvchisining do'stona o'quv yordamchisisan. ` +
         (childName ? `Suhbatdoshingning ismi ${childName}. ` : "") +
         `Hozirgi fan: ${subject}.\n\n` +
@@ -1874,6 +1903,8 @@ async function handleRequest(req: Request): Promise<Response> {
         `so'ralsa — javob berma, muloyimlik bilan ota-ona yoki o'qituvchi bilan gaplashishni taklif qil.\n` +
         `- Agar bola xavf ostida ekanini bildirsa, darhol ota-onasiga yoki ishonchli kattaga aytishni maslahat ber.`;
 
+      const systemPrompt = payload.audience === "parent" ? parentPrompt : childPrompt;
+
       const model = Deno.env.get("GEMINI_MODEL") || "gemini-3.6-flash";
       try {
         const gRes = await fetch(
@@ -1883,7 +1914,15 @@ async function handleRequest(req: Request): Promise<Response> {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               systemInstruction: { parts: [{ text: systemPrompt }] },
-              contents: [...history, { role: "user", parts: [{ text: question }] }],
+              contents: [
+                ...history,
+                {
+                  role: "user",
+                  parts: imagePart
+                    ? [{ text: question || "Bu mashqni tushuntirib yubor." }, imagePart]
+                    : [{ text: question }],
+                },
+              ],
               generationConfig: { temperature: 0.7, maxOutputTokens: 700 },
             }),
           }
@@ -1914,7 +1953,7 @@ async function handleRequest(req: Request): Promise<Response> {
 
         if (db && who) {
           await db.from("ai_chat_messages").insert([
-            { telegram_id: who, role: "user", message: question },
+            { telegram_id: who, role: "user", message: question || "[rasm yuborildi]" },
             { telegram_id: who, role: "model", message: answer },
           ]);
         }

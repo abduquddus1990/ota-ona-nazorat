@@ -1804,25 +1804,26 @@ async function callRealVisionBackendForChild(query, imageBase64) {
         ? '\ud83e\udd14 Анализирую фото задания, подождите (может занять до минуты)...'
         : '\ud83e\udd14 Mashq rasmini tahlil qilyapman, kuting (bir daqiqagacha vaqt olishi mumkin)...');
     try {
-        const blob = await (await fetch(imageBase64)).blob();
-        const formData = new FormData();
-        formData.append('image', blob, 'exercise.jpg');
-        formData.append('child_id', currentChildKey || 'unknown');
-        formData.append('grade', String(realChildProfile?.grade || child?.grade || 5));
-        formData.append('subject', getTutorSubject());
-        if (query) formData.append('query', query);
-        const childRealName = realChildProfile?.fullName || (typeof tg !== 'undefined' && tg?.initDataUnsafe?.user?.first_name) || '';
-        if (childRealName) formData.append('child_name', childRealName);
-        const resp = await fetch('https://qalqon-backend.onrender.com/api/v1/tutor/vision', {
+        const childRealName = realChildProfile?.childName || realChildProfile?.fullName
+            || (typeof tg !== 'undefined' && tg?.initDataUnsafe?.user?.first_name) || '';
+        const resp = await fetch(QALQON_BOT_FN, {
             method: 'POST',
-            headers: { ...telegramInitDataHeader() },
-            body: formData
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                type: 'ai_tutor_chat',
+                message: query || '',
+                image: imageBase64,
+                grade: realChildProfile?.grade || child?.grade || 5,
+                subject: getTutorSubject(),
+                childName: childRealName
+            })
         });
         const data = await resp.json();
         if (data.ok && data.answer) {
             appendChildAiMessage(safeAiHtml(data.answer));
         } else {
-            appendChildAiMessage(isRu ? 'Ошибка анализа. Попробуйте ещё раз.' : 'Tahlilda xatolik yuz berdi. Qayta urinib ko\'ring.');
+            appendChildAiMessage(safeAiHtml(data.error ||
+                (isRu ? 'Ошибка анализа. Попробуйте ещё раз.' : 'Tahlilda xatolik yuz berdi. Qayta urinib ko\'ring.')));
         }
     } catch (e) {
         console.error('Child vision backend error:', e);
@@ -2435,21 +2436,22 @@ async function callRealTextBackend(message) {
     const isRu = (currentLang === 'ru');
     appendAIMessage(isRu ? '⏳ Думаю…' : '⏳ O\'ylayapman…');
     try {
-        const formData = new FormData();
-        formData.append('message', message || '');
-        formData.append('child_id', currentChildKey || 'unknown');
-        formData.append('grade', String(child?.grade || 5));
-        formData.append('subject', getTutorSubject());
-        const resp = await fetch('https://qalqon-backend.onrender.com/api/v1/tutor/chat', {
+        const resp = await fetch(QALQON_BOT_FN, {
             method: 'POST',
-            headers: { ...telegramInitDataHeader() },
-            body: formData
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                type: 'ai_tutor_chat',
+                audience: 'parent',
+                message: message || '',
+                grade: child?.grade || 5,
+                subject: getTutorSubject()
+            })
         });
         const data = await resp.json();
         if (data.ok && data.answer) {
             appendAIMessage(safeAiHtml(data.answer));
         } else {
-            appendAIMessage(isRu ? 'Ошибка анализа.' : 'Tahlilda xatolik.');
+            appendAIMessage(safeAiHtml(data.error || (isRu ? 'Ошибка анализа.' : 'Tahlilda xatolik.')));
         }
     } catch (e) {
         console.error('Text backend error:', e);
@@ -2465,17 +2467,17 @@ async function callRealVisionBackend(query, imageBase64) {
         : '\ud83e\udd14 Mashqni tahlil qilyapman, biroz kuting (birinchi so\'rovda bir daqiqagacha vaqt olishi mumkin)...';
     appendAIMessage(thinkingMsg);
     try {
-        const blob = await (await fetch(imageBase64)).blob();
-        const formData = new FormData();
-        formData.append('image', blob, 'exercise.jpg');
-        formData.append('child_id', currentChildKey || 'unknown');
-        formData.append('grade', String(child?.grade || 5));
-        formData.append('subject', getTutorSubject());
-        if (query) formData.append('query', query);
-        const resp = await fetch('https://qalqon-backend.onrender.com/api/v1/tutor/vision', {
+        const resp = await fetch(QALQON_BOT_FN, {
             method: 'POST',
-            headers: { ...telegramInitDataHeader() },
-            body: formData
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                type: 'ai_tutor_chat',
+                audience: 'parent',
+                message: query || '',
+                image: imageBase64,
+                grade: child?.grade || 5,
+                subject: getTutorSubject()
+            })
         });
         const data = await resp.json();
         if (data.ok && data.answer) {
