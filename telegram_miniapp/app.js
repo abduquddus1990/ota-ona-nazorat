@@ -1099,6 +1099,65 @@ async function handleAddNewChildSubmit() {
     }
 }
 
+// Android ilova o'zini oila kodi bilan emas, shu bir martalik pairCode'ni
+// device_tokens'dagi uzoq muddatli tokenga almashtirib tanitadi (07_device_tokens.sql).
+// Oila kodi formula bilan chiqadi va sir emas — shu sabab radar/telemetriya
+// endpointlari (report_location) faqat shu tokenni qabul qiladi.
+async function handleCreateDeviceCode() {
+    const nameInput = document.getElementById('androidChildNameInput');
+    const resultBox = document.getElementById('androidPairResultBox');
+    const submitBtn = document.getElementById('androidPairSubmitBtn');
+    const isRuAdd = (currentLang === 'ru');
+
+    const name = nameInput ? nameInput.value.trim() : "";
+
+    if (submitBtn) { submitBtn.disabled = true; submitBtn.innerText = '⏳ Yuborilmoqda...'; }
+
+    try {
+        const resp = await fetch(QALQON_BOT_FN, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                type: 'create_device_pair_code',
+                childName: name || null
+            })
+        });
+        const data = await resp.json();
+
+        if (!data.ok) {
+            console.error('create_device_pair_code rad etildi:', data);
+            alert((isRuAdd ? 'Ошибка: ' : 'Xatolik: ') +
+                  (data.error || (isRuAdd ? 'Попробуйте ещё раз.' : "Qayta urinib ko'ring.")));
+            return;
+        }
+
+        if (resultBox) {
+            const deepLink = 'shield://pair?code=' + encodeURIComponent(data.pairCode);
+            const shareText = encodeURIComponent(
+                (name || 'Farzand') + " uchun Qalqon AI qurilma kodi: " + data.pairCode
+            );
+            resultBox.classList.remove('hidden');
+            resultBox.innerHTML =
+                '<div class="text-xs font-bold text-indigo-300">✅ Kod tayyor!</div>' +
+                '<div class="text-[10px] text-slate-300">Bu kodni farzandingizning telefonidagi Android ilovaga kiriting, yoki havolani o\'sha telefonda oching:</div>' +
+                '<div class="p-2 rounded-lg bg-slate-950/60 text-center">' +
+                    '<div class="text-lg font-black text-indigo-400 tracking-widest font-mono">' + data.pairCode + '</div>' +
+                    '<div class="text-[9px] text-slate-500">' + Math.round((data.expiresInSec || 900) / 60) + ' daqiqa amal qiladi, bir marta ishlatiladi</div>' +
+                '</div>' +
+                '<a href="https://t.me/share/url?url=' + encodeURIComponent(deepLink) + '&text=' + shareText + '" target="_blank" ' +
+                   'class="block w-full text-center py-2 rounded-xl bg-sky-500/20 border border-sky-500/50 text-sky-200 font-bold text-[11px]">' +
+                    '📤 Telegram orqali yuborish' +
+                '</a>';
+        }
+        if (nameInput) nameInput.value = '';
+    } catch (e) {
+        console.error('Create device code error:', e);
+        alert(isRuAdd ? 'Сервер недоступен.' : "Server javob bermayapti. Keyinroq urinib ko'ring.");
+    } finally {
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.innerText = "📱 Android Kodi Olish"; }
+    }
+}
+
 function handleDeleteActiveChild() {
     const child = childrenDatabase[currentChildKey];
     if (!child) return;

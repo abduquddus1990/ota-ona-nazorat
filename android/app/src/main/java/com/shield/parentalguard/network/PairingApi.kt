@@ -7,106 +7,76 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 
 /**
- * Child pairing bind — same Supabase edge function the Mini App uses
- * (telegram_miniapp/app.js → ota-ona-bot child_paired_event / child_consent).
- * No tokens hardcoded; public edge URL only.
+ * Child device pairing — same Supabase edge function the Mini App uses
+ * (supabase/functions/ota-ona-bot: device_pair).
+ *
+ * The family code (6 digits, formula-derived from the parent's Telegram id)
+ * is never a secret and is no longer accepted as a credential here — see
+ * database/07_device_tokens.sql. The parent generates a short-lived one-time
+ * pairCode from the Mini App (create_device_pair_code); this device redeems
+ * it once for a long-lived deviceToken that authenticates every later call.
  */
 object PairingApi {
 
-    // Production Mini App endpoint (Render tutor API has no /pair route)
     const val OTA_ONA_BOT_URL =
         "https://wfrclcwjeeqeqchmdhzw.supabase.co/functions/v1/ota-ona-bot"
 
-    const val TELEGRAM_BOT_USERNAME = "qalqon_aibot"
-
-    /**
-     * Qurilma modeli uchun YAGONA manba. Ham serverga yuboriladigan
-     * payload'da (deviceModel), ham lokal child_id hisoblashda shu
-     * ishlatiladi — ikki joyda ikki xil zaxira qiymat ("android" va
-     * "device") ishlatilsa, Build.MODEL bo'sh bo'lgan qurilmada
-     * serverdagi yozuv bilan qurilmadagi child_id mos kelmay qoladi.
-     */
     val deviceModel: String
         get() = Build.MODEL?.takeIf { it.isNotBlank() } ?: "android"
 
-    // Backend uchun bir xil child_id — Deno funksiyasidagi resolveChildId()
-    // bilan bitta xil natija berishi SHART (supabase/functions/ota-ona-bot/index.ts),
-    // aks holda pairing paytida yozilgan qator bilan keyingi telemetriya/lokatsiya
-    // so'rovlaridagi child_id mos kelmay, "juftlashmagan" deb rad etiladi.
-    fun deviceChildId(familyCode: String, deviceModel: String = this.deviceModel): String {
-        val digits = familyCode.filter { it.isDigit() }
-        return "android_${digits}_${deviceModel}".replace(Regex("\\s+"), "_")
-    }
-
-    fun telegramPairDeepLink(familyCode: String): String {
-        val digits = familyCode.filter { it.isDigit() }
-        return "https://t.me/$TELEGRAM_BOT_USERNAME?start=pair_$digits"
-    }
+    data class DevicePairResult(
+        val deviceToken: String,
+        val childId: String,
+        val familyCode: String
+    )
 
     /**
-     * Notify backend that a child device paired with [familyCode].
-     * Returns true on HTTP 2xx for at least the primary event.
+     * Redeem a one-time [pairCode] (from the parent's Mini App) for a
+     * long-lived device token. This is the one unauthenticated call in the
+     * whole API — the device has no credential yet — so the code is short,
+     * single-use and rate-limited server-side.
      */
-    fun bindChildDevice(familyCode: String, deviceLabel: String): Result<Unit> {
-        val digits = familyCode.filter { it.isDigit() }
-        if (digits.length != 6) {
+    fun pairDevice(pairCode: String): Result<DevicePairResult> {
+        val code = pairCode.trim().uppercase()
+        if (code.length != 8) {
             return Result.failure(IllegalArgumentException("invalid_code"))
         }
 
         val jsonMedia = "application/json; charset=utf-8".toMediaType()
-        val timestamp = java.time.Instant.now().toString()
-
-        val pairedBody = JSONObject()
-            .put("type", "child_paired_event")
-            .put("familyCode", digits)
-            .put("childName", deviceLabel)
-            .put("source", "android_parental_guard")
+        val body = JSONObject()
+            .put("type", "device_pair")
+            .put("pairCode", code)
             .put("deviceModel", deviceModel)
-            .put("timestamp", timestamp)
             .toString()
             .toRequestBody(jsonMedia)
 
-        val pairedReq = Request.Builder()
+        val req = Request.Builder()
             .url(OTA_ONA_BOT_URL)
-            .post(pairedBody)
+            .post(body)
             .header("Content-Type", "application/json")
             .build()
 
-        EncryptedNetworkClient.client.newCall(pairedReq).execute().use { resp ->
-            if (!resp.isSuccessful) {
+        EncryptedNetworkClient.client.newCall(req).execute().use { resp ->
+            val text = resp.body?.string().orEmpty()
+            val json = try {
+                JSONObject(text)
+            } catch (e: Exception) {
+                return Result.failure(IllegalStateException("pair_bad_response"))
+            }
+
+            if (!resp.isSuccessful || !json.optBoolean("ok", false)) {
                 return Result.failure(
-                    IllegalStateException("pair_http_${resp.code}")
+                    IllegalStateException(json.optString("error", "pair_http_${resp.code}"))
                 )
             }
+
+            return Result.success(
+                DevicePairResult(
+                    deviceToken = json.getString("deviceToken"),
+                    childId = json.getString("childId"),
+                    familyCode = json.getString("familyCode")
+                )
+            )
         }
-
-        // Best-effort consent mirror (Mini App also fires this; ignore soft failure)
-        try {
-            val consentBody = JSONObject()
-                .put("type", "child_consent")
-                .put("familyCode", digits)
-                .put("childName", deviceLabel)
-                .put("source", "android_parental_guard")
-                // deviceModel SHART: usiz serverdagi resolveChildId() bu
-                // so'rovni Android sifatida taniy olmay, "pending_" zaxira
-                // kalitiga tushib, ikkinchi (keraksiz) qator yaratardi.
-                .put("deviceModel", deviceModel)
-                .put("telegramId", JSONObject.NULL)
-                .put("username", JSONObject.NULL)
-                .toString()
-                .toRequestBody(jsonMedia)
-
-            val consentReq = Request.Builder()
-                .url(OTA_ONA_BOT_URL)
-                .post(consentBody)
-                .header("Content-Type", "application/json")
-                .build()
-
-            EncryptedNetworkClient.client.newCall(consentReq).execute().use { /* ignore body */ }
-        } catch (_: Exception) {
-            // Primary bind already succeeded
-        }
-
-        return Result.success(Unit)
     }
 }
