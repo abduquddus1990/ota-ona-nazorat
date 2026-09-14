@@ -932,14 +932,28 @@ async function requestChildLocation() {
         if (data.location) {
             const addr = document.getElementById('radarAddress');
             if (addr) {
-                addr.textContent = data.location.lat.toFixed(5) + ', ' + data.location.lng.toFixed(5);
+                const coords = data.location.lat.toFixed(5) + ', ' + data.location.lng.toFixed(5);
+                // Jonli ulashish yoqilgan bo'lsa — buni aniq ko'rsatamiz,
+                // chunki "jonli" bilan "oxirgi ma'lum joy" bir narsa emas.
+                if (data.liveUntil) {
+                    const leftMin = Math.max(0, Math.round((new Date(data.liveUntil) - Date.now()) / 60000));
+                    const leftTxt = leftMin >= 60
+                        ? Math.floor(leftMin / 60) + ' soat ' + (leftMin % 60) + ' daqiqa'
+                        : leftMin + ' daqiqa';
+                    addr.textContent = '🟢 Jonli · ' + coords + ' (' + leftTxt + ' qoldi)';
+                } else {
+                    addr.textContent = coords;
+                }
             }
             if (typeof mapInstance !== 'undefined' && mapInstance && childMarker) {
                 childMarker.setLatLng([data.location.lat, data.location.lng]);
                 mapInstance.setView([data.location.lat, data.location.lng], 15);
             }
         } else {
-            alert("Farzand qurilmasidan hali joylashuv kelmagan. Android ilova o'rnatilganini tekshiring.");
+            alert("Farzanddan hali joylashuv kelmagan.\n\n" +
+                  "Eng tez yo'l: farzandingiz botni ochib /joylashuv deb yozsin — " +
+                  "Telegram'ning jonli joylashuvi 8 soatgacha ishlaydi va ilova o'rnatish shart emas.\n\n" +
+                  "To'xtovsiz kuzatuv uchun esa Android ilovasi kerak.");
         }
     } catch (e) {
         console.error('requestChildLocation error:', e);

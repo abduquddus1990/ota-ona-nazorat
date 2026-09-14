@@ -2456,6 +2456,19 @@ async function handleRequest(req: Request): Promise<Response> {
         .order("recorded_at", { ascending: false })
         .limit(1);
 
+      // Jonli joylashuv yoqilganmi — panel buni "jonli" deb ko'rsatishi uchun.
+      const { data: liveRow } = await db
+        .from("child_pairings")
+        .select("live_until")
+        .eq("family_code", familyCode)
+        .eq("child_id", childId)
+        .limit(1);
+      const liveUntil =
+        liveRow && liveRow[0] && liveRow[0].live_until &&
+        new Date(liveRow[0].live_until).getTime() > Date.now()
+          ? liveRow[0].live_until
+          : null;
+
       return new Response(
         JSON.stringify({
           ok: true,
@@ -2464,6 +2477,7 @@ async function handleRequest(req: Request): Promise<Response> {
           remaining: q.remaining > 0 ? q.remaining - 1 : q.remaining,
           resetInHours: q.resetInHours,
           location: pings && pings[0] ? pings[0] : null,
+          liveUntil,
         }),
         { status: 200, headers: { "Content-Type": "application/json" } }
       );
@@ -3060,6 +3074,117 @@ async function handleRequest(req: Request): Promise<Response> {
 
     const update = payload;
 
+    // 0. JONLI JOYLASHUV (Telegram "Live Location").
+    //
+    // Telegram foydalanuvchi harakatlanganda joylashuvni FONDA o'zi yangilab
+    // turadi (8 soatgacha) va har yangilanishni bizga edited_message sifatida
+    // yuboradi. Bu — hech qanday ilova o'rnatmasdan ishlaydigan jonli radar:
+    // yozuvlar Android ilova yozadigan AYNAN SHU location_pings jadvaliga
+    // tushadi, shuning uchun panel ham, geo-bildirishnomalar ham o'zgarishsiz
+    // ishlayveradi.
+    const locMsg = update.message?.location ? update.message : update.edited_message;
+    if (locMsg?.location) {
+      const loc = locMsg.location;
+      const fromId = locMsg.from?.id;
+      const chatId = locMsg.chat?.id ?? fromId;
+
+      if (db && fromId) {
+        const childId = "tg_" + fromId;
+        const { data: pairing } = await db
+          .from("child_pairings")
+          .select("family_code, child_name, live_until")
+          .eq("child_id", childId)
+          .eq("is_active", true)
+          .limit(1);
+
+        const row = pairing && pairing[0];
+        if (!row) {
+          // Ota-ona yoki ulanmagan odam yuborgan bo'lsa — jim o'tkazamiz,
+          // lekin faqat birinchi (tahrirlanmagan) xabarga javob beramiz.
+          if (update.message?.location) {
+            await sendMessage(
+              chatId,
+              "📍 Joylashuv qabul qilindi, lekin bu hisob hech qanday oilaga farzand sifatida ulanmagan.\n\nOta-onangizdan taklif havolasini so'rang."
+            );
+          }
+          return new Response(JSON.stringify({ ok: true }), { status: 200 });
+        }
+
+        await db.from("location_pings").insert({
+          family_code: row.family_code,
+          child_id: childId,
+          lat: loc.latitude,
+          lng: loc.longitude,
+          accuracy_m: Math.round(Number(loc.horizontal_accuracy) || 0) || null,
+        });
+
+        // Jonli ulashish boshlandi / tugadi.
+        const livePeriod = Number(loc.live_period) || 0;
+        if (livePeriod > 0) {
+          const until = new Date(Date.now() + livePeriod * 1000).toISOString();
+          if (!row.live_until || new Date(row.live_until).getTime() < Date.now()) {
+            await db
+              .from("child_pairings")
+              .update({ live_until: until, live_started_at: new Date().toISOString() })
+              .eq("child_id", childId)
+              .eq("family_code", row.family_code);
+
+            const hours = Math.round(livePeriod / 3600);
+            await sendMessage(
+              chatId,
+              `✅ <b>Jonli joylashuv yoqildi.</b>\n\nEndi ota-onang seni xaritada jonli ko'radi — taxminan <b>${hours} soat</b> davomida. Telefoningni ochib turishing shart emas.\n\nTo'xtatmoqchi bo'lsang: xabardagi joylashuvni bosib, <i>«Ulashishni to'xtatish»</i> ni tanla.`
+            );
+            await notifyFamilyParents(
+              row.family_code,
+              `🟢 <b>${row.child_name || "Farzandingiz"} jonli joylashuvni yoqdi.</b>\n\nTaxminan ${hours} soat davomida radarda jonli ko'rinadi.`
+            );
+          } else {
+            await db
+              .from("child_pairings")
+              .update({ live_until: until })
+              .eq("child_id", childId)
+              .eq("family_code", row.family_code);
+          }
+        } else if (update.edited_message && row.live_until) {
+          // live_period yo'q + tahrirlangan xabar = ulashish to'xtadi.
+          await db
+            .from("child_pairings")
+            .update({ live_until: null })
+            .eq("child_id", childId)
+            .eq("family_code", row.family_code);
+          await notifyFamilyParents(
+            row.family_code,
+            `🔴 <b>${row.child_name || "Farzandingiz"} jonli joylashuvni to'xtatdi.</b>\n\nRadar oxirgi ma'lum joyni ko'rsatishda davom etadi.`
+          );
+        }
+
+        // Geo-bildirishnomalar shu yerda ham ishlaydi.
+        const fired = await evaluateGeofences(
+          row.family_code,
+          childId,
+          loc.latitude,
+          loc.longitude
+        );
+        for (const f of fired) {
+          await notifyFamilyParents(
+            row.family_code,
+            "\u{1F4CD} <b>" + f.message + "</b>\n\n" +
+              '<a href="https://maps.google.com/?q=' + loc.latitude + "," + loc.longitude + '">Xaritada ko\'rish</a>' +
+              "\n🕒 " + new Date().toLocaleString("uz-UZ")
+          );
+        }
+
+        // Bir martalik joylashuv (live emas) uchun qisqa tasdiq.
+        if (update.message?.location && livePeriod === 0) {
+          await sendMessage(
+            chatId,
+            "📍 <b>Joylashuving ota-onangga yuborildi.</b>\n\nDoimiy ko'rinib turishi uchun <b>jonli joylashuv</b>ni yoqishing mumkin — /joylashuv"
+          );
+        }
+      }
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    }
+
     // 1. Callback query tugmalari bosilganda
     if (update.callback_query) {
       const cb = update.callback_query;
@@ -3333,6 +3458,39 @@ async function handleRequest(req: Request): Promise<Response> {
           getStartKeyboard(chatId, lang, startIsChild)
         );
         await sendMessage(chatId, "👇 <b>Start</b> tugmasi doim pastda — / kerak emas.", boshlashReplyKeyboard());
+        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      }
+
+      // Jonli joylashuvni yoqish bo'yicha yo'riqnoma.
+      //
+      // Muhim: bot jonli joylashuvni TUGMA orqali so'ray olmaydi — Telegram
+      // buni faqat foydalanuvchining o'zi qo'lda yoqishiga ruxsat beradi.
+      // Shuning uchun bu yerda aniq qadamlar yoziladi.
+      if (text.startsWith("/joylashuv")) {
+        const isChildHere = await isPairedChild(chatId);
+        if (isChildHere) {
+          await sendMessage(
+            chatId,
+            `📍 <b>Jonli joylashuvni qanday yoqish kerak</b>\n\n` +
+              `1. Shu suhbatda pastdagi <b>📎 (qisqich)</b> belgisini bos.\n` +
+              `2. <b>Joylashuv (Location)</b> ni tanla.\n` +
+              `3. <b>«Jonli joylashuvni ulashish»</b> (Share My Live Location) ni bos.\n` +
+              `4. Muddatni tanla — eng uzuni <b>8 soat</b>.\n\n` +
+              `Shundan keyin telefoningni cho'ntagingga solib qo'yaversang bo'ladi: ` +
+              `Telegram joylashuvni o'zi yangilab turadi, ota-onang esa seni xaritada jonli ko'radi.\n\n` +
+              `To'xtatish uchun o'sha xabarni ochib, <i>«Ulashishni to'xtatish»</i> ni bosasan.`
+          );
+        } else {
+          await sendMessage(
+            chatId,
+            `📍 <b>Jonli joylashuv</b>\n\n` +
+              `Farzandingiz o'z Telegramida shu botga <b>jonli joylashuv</b> ulashsa, ` +
+              `siz uni panelda xaritada jonli ko'rasiz — hech qanday ilova o'rnatmasdan, 8 soatgacha.\n\n` +
+              `Farzandingizga ayting: botni ochsin va <code>/joylashuv</code> deb yozsin — ` +
+              `bot unga qadamlarni ko'rsatadi.\n\n` +
+              `<i>Doimiy, to'xtovsiz kuzatuv uchun esa Android ilovasi kerak.</i>`
+          );
+        }
         return new Response(JSON.stringify({ ok: true }), { status: 200 });
       }
 
