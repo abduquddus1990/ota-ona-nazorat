@@ -1667,6 +1667,44 @@ serve(async (req) => {
       });
     }
 
+    // 0.0o+ Qurilma ekran vaqti/ilova telemetriyasini yuboradi (Android).
+    //
+    // Bu ham report_location kabi faqat deviceToken bilan ishlaydi. Ilgari
+    // Android buni Render'dagi backend/routes/telemetry.py'ga X-Family-Code
+    // + X-Child-Id header bilan yuborardi — o'sha handler o'zi "oila kodi
+    // nisbatan zaif maxfiy kalit" deb belgilagan edi (require_family_access),
+    // chunki ikkalasi ham formula bilan hisoblanadi, sir emas.
+    if (payload.type === "report_telemetry") {
+      if (actor!.kind !== "device") return unauthorized("Faqat juftlashgan qurilma");
+      if (!db) {
+        return new Response(JSON.stringify({ ok: false, error: "Baza ulanmagan" }), {
+          status: 500, headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      const encryptedPayload = String(payload.encryptedPayload || "");
+      const iv = String(payload.iv || "");
+      if (!encryptedPayload || !iv) {
+        return new Response(JSON.stringify({ ok: false, error: "encryptedPayload/iv majburiy" }), {
+          status: 400, headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      await db.from("device_telemetry").insert({
+        family_code: actor!.familyCode,
+        child_id: actor!.childId,
+        app_package_name: String(payload.appPackageName || "unknown"),
+        category: String(payload.category || "General"),
+        screen_time_seconds: Number(payload.screenTimeSeconds) || 0,
+        encrypted_payload: encryptedPayload,
+        iv,
+      });
+
+      return new Response(JSON.stringify({ ok: true }), {
+        status: 200, headers: { "Content-Type": "application/json" },
+      });
+    }
+
     // 0.0p Foydalanuvchi ota-onami yoki farzandmi.
     //
     // app.js dagi fetchAndApplyRole() bu so'rovni ancha vaqtdan beri

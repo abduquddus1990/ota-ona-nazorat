@@ -71,8 +71,8 @@
                 android:textStyle="bold"
                 android:gravity="center"
                 android:hint="@string/family_code_example_hint"
-                android:inputType="number"
-                android:maxLength="6"
+                android:inputType="textCapCharacters"
+                android:maxLength="8"
                 android:textColorHint="#475569"
                 android:layout_marginTop="14dp" />
 
@@ -94,15 +94,6 @@
                 android:textStyle="bold"
                 android:background="#10b981"
                 android:layout_marginTop="16dp" />
-
-            <Button
-                android:id="@+id/btnTelegramPair"
-                android:layout_width="match_parent"
-                android:layout_height="44dp"
-                android:text="@string/btn_telegram_pair_label"
-                android:textColor="#ffffff"
-                android:background="#334155"
-                android:layout_marginTop="10dp" />
         </LinearLayout>
 
         <LinearLayout

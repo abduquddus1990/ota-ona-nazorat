@@ -44,7 +44,7 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <!-- Custom scheme: shield://pair?code=XXXXXX -->
+            <!-- Custom scheme: shield://pair?code=XXXXXXXX (8-char device pairCode) -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
