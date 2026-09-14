@@ -360,9 +360,9 @@ const I18N = {
         childAppsTitle: "📱 Ilovalar Balansi & Ko'rish Qobiliyati",
         childAppsDesc: "Telefon ko'zni charchatmasligi va darslarga xalaqit bermasligi uchun har kungi foydalanish vaqti me'yori saqlanadi. Ilovalardan o'z vaqtida to'g'ri foydalanib, vaqtni unumli rejalashtirishni o'rganasan.",
         childPairingHeader: "Oila Profiliga Ulanish & Rozilik",
-        childPairingSub: "Ota-onang bergan 6 xonali Oila Kodini kirit",
+        childPairingSub: "Ota-onang bergan 8 belgili kodni kirit",
         childConsentLabel: "Men yuqoridagi barcha 4 ta qoida bilan tanishdim va ota-onam bilan tizimga ulanishga roziman.",
-        childInputCodeLabel: "6 Xonali Oila Kodi (6 raqam):",
+        childInputCodeLabel: "8 Belgili Kod:",
         btnChildConnect: "Oila Profiliga Ulanish",
         childPairedSuccess: "🎉 Tabriklaymiz! Siz Oila Profiliga Muvaffaqiyatli Ulandingiz!",
         childPairedSub: "Ota-onangizning Telegram botiga xabar yuborildi.",
@@ -398,10 +398,6 @@ const I18N = {
         nameLabel: "Ism va Familiyasi",
         usernameLabel: "Telegram Usernamesi",
         phoneLabel: "Telefon Raqami",
-        emaktabSyncHeader: "e-Maktab (Kundalik) Sinxronizatsiyasi",
-        emaktabSyncDesc: "Baholar va davomatni avtomatik olish uchun kiritiladi (Tasdiq kodi shart emas).",
-        emaktabLoginLabel: "e-Maktab Login",
-        emaktabPassLabel: "e-Maktab Parol",
         classLabel: "Sinfi (1-11 Sinf DTS)",
         saveProfileBtn: "💾 Saqlash va Darsliklarni Yangilash",
         freePlanBadge: "Bepul Tarif (Free)",
@@ -526,9 +522,9 @@ const I18N = {
         childAppsTitle: "📱 Баланс Приложений и Здоровье Глаз",
         childAppsDesc: "Норма экранного времени помогает беречь зрение и не отвлекаться от уроков, распределяя время с пользой.",
         childPairingHeader: "Подключение к Семье с Согласием",
-        childPairingSub: "Введите 6-значный семейный код от родителей",
+        childPairingSub: "Введите 8-значный код от родителей",
         childConsentLabel: "Я ознакомился со всеми 4 правилами и согласен на подключение к родительскому профилю.",
-        childInputCodeLabel: "6-значный Код Семьи (6 цифр):",
+        childInputCodeLabel: "8-значный код:",
         btnChildConnect: "Подключиться к Семье",
         childPairedSuccess: "🎉 Поздравляем! Вы успешно подключены к семейному профилю!",
         childPairedSub: "Уведомление отправлено родителям в Telegram-бот.",
@@ -546,10 +542,6 @@ const I18N = {
         nameLabel: "Имя и Фамилия",
         usernameLabel: "Telegram Username",
         phoneLabel: "Номер Телефона",
-        emaktabSyncHeader: "Синхронизация с e-Maktab (Kundalik)",
-        emaktabSyncDesc: "Для автоматического получения оценок и посещаемости (Код подтверждения не требуется).",
-        emaktabLoginLabel: "e-Maktab Логин",
-        emaktabPassLabel: "e-Maktab Пароль",
         classLabel: "Класс (1-11 Классы DTS)",
         saveProfileBtn: "💾 Сохранить и Обновить Учебники",
         freePlanBadge: "Бесплатный Тариф",
@@ -580,8 +572,6 @@ const DEFAULT_INITIAL_CHILDREN = {
         name_ru: "Алиёр Валиджонов",
         username: "@aliyor_v",
         phone: "+998 90 123 45 67",
-        emaktabLogin: "aliyor_kundalik",
-        emaktabPassword: "••••••••",
         grade: 5,
         battery: 86,
         screenTime: "2s 45d",
@@ -721,8 +711,18 @@ async function syncFamilyFromServer() {
 
         updateDisplayFamilyCode();
 
-        if (data.registrationStatus === 'pending') {
-            openSubpage('modal-approval-notice');
+        // Ro'yxatdan o'tish oynasi endi SERVER holatiga qarab ochiladi, mahalliy
+        // "bir marta ko'rsatildi" belgisiga emas — aks holda avval sinab ko'rgan
+        // qurilmada (yoki admin username'da) hech qachon ko'rinmay qolardi,
+        // haqiqiy ota-ona esa hech qachon ro'yxatdan o'tmasdan panelga kirib
+        // ketardi. "none" — hali so'rov yuborilmagan: shu yerda kiritish oynasi
+        // majburiy ochiladi (yopish mumkin — Test Rejimi shu tugma orqali).
+        if (currentAppRole === 'parent') {
+            if (data.registrationStatus === 'none') {
+                openSubpage('modal-parent-onboarding');
+            } else if (data.registrationStatus === 'pending') {
+                openSubpage('modal-approval-notice');
+            }
         }
         return true;
     } catch (e) {
@@ -2055,12 +2055,6 @@ function openChildProfileModal() {
     if (document.getElementById('profilePhone')) {
         document.getElementById('profilePhone').value = child.phone || "+998 90 123 45 67";
     }
-    if (document.getElementById('profileEmaktabLogin')) {
-        document.getElementById('profileEmaktabLogin').value = child.emaktabLogin || "login_kundalik";
-    }
-    if (document.getElementById('profileEmaktabPassword')) {
-        document.getElementById('profileEmaktabPassword').value = child.emaktabPassword || "••••••••";
-    }
     openSubpage('modal-child-profile');
 }
 
@@ -2069,15 +2063,11 @@ function saveChildProfile() {
     const username = document.getElementById('profileUsername').value.trim() || "@farzand";
     const grade = parseInt(document.getElementById('profileClassSelect').value) || 5;
     const phone = document.getElementById('profilePhone')?.value.trim() || "+998 90 123 45 67";
-    const emaktabLogin = document.getElementById('profileEmaktabLogin')?.value.trim() || "login_kundalik";
-    const emaktabPassword = document.getElementById('profileEmaktabPassword')?.value.trim() || "••••••••";
 
     childrenDatabase[currentChildKey].name = fullName;
     childrenDatabase[currentChildKey].username = username;
     childrenDatabase[currentChildKey].grade = grade;
     childrenDatabase[currentChildKey].phone = phone;
-    childrenDatabase[currentChildKey].emaktabLogin = emaktabLogin;
-    childrenDatabase[currentChildKey].emaktabPassword = emaktabPassword;
 
     localStorage.setItem('children_database', JSON.stringify(childrenDatabase));
 
@@ -2091,8 +2081,8 @@ function saveChildProfile() {
     closeSubpage();
 
     const alertMsg = (currentLang === 'ru')
-        ? `✅ Данные ребёнка и синхронизация с e-Maktab сохранены!\nУчебники ${grade}-го класса и шкала 100 баллов установлены.`
-        : `✅ Farzand ma'lumotlari va e-Maktab sinxronizatsiyasi saqlandi!\n${grade}-sinf Davlat darsliklari va 100 ballik baholar o'rnatildi.`;
+        ? `✅ Данные ребёнка сохранены!\nУчебники ${grade}-го класса и шкала 100 баллов установлены.`
+        : `✅ Farzand ma'lumotlari saqlandi!\n${grade}-sinf Davlat darsliklari va 100 ballik baholar o'rnatildi.`;
     alert(alertMsg);
 }
 
@@ -2598,14 +2588,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderActiveChild();
     renderSchoolCurriculum();
     initRadarMap();
-    checkParentOnboarding();
     checkChildConsentStatus();
     prefillInviteCodeFromUrl();
     // Farzandlar ro'yxatini serverdan yangilaymiz. Fon rejimida:
     // javob kelgach funksiya o'zi qayta render qiladi.
     // Avval oila kodini serverdan olamiz (849210 kabi eski, telefonda
     // qolgan kodlar shu yerda almashadi), keyin farzandlar ro'yxatini.
+    // Ro'yxatdan o'tish oynasi ham shu javobga qarab ochiladi
+    // (syncFamilyFromServer ichida) — server javob bermasa (oflayn),
+    // eski mahalliy belgiga qaytamiz, aks holda hech narsa ko'rsatilmay
+    // qolardi.
     syncFamilyFromServer()
+        .then((ok) => { if (!ok) checkParentOnboarding(); })
         .then(() => syncChildrenFromServer())
         .then(() => { refreshPlanStatus(); loadGeofences(); });
 });
