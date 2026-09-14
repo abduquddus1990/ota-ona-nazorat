@@ -2766,9 +2766,12 @@ function updateMapCoordinates() {
 // haqiqiy ma'lumotlar bazasidan tekshiradi (eski hardcoded ism ro'yxati o'rniga).
 let realChildProfile = null;
 async function fetchAndApplyRole() {
+    // Hech qanday identifikator bo'lmasa (Telegramsiz va seanssiz) so'rov
+    // yubormaymiz — u baribir 401 qaytaradi va kirish oynasi ochiladi.
+    if (!hasTelegramIdentity() && !webSessionToken()) return;
     const uname = (typeof tg !== 'undefined' && tg?.initDataUnsafe?.user?.username) || null;
     const tid = (typeof tg !== 'undefined' && tg?.initDataUnsafe?.user?.id) || null;
-    if (!uname && !tid) return;
+    if (!uname && !tid && !webSessionToken()) return;
     try {
         const resp = await fetch(QALQON_BOT_FN, {
             method: 'POST',
