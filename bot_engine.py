@@ -43,7 +43,7 @@ if not BOT_TOKEN:
     # Also accept BOT_TOKEN for webhook/env parity
     BOT_TOKEN = get_env_var("BOT_TOKEN", "")
 
-MINI_APP_URL = get_env_var("MINI_APP_URL", "https://abduquddus1990.github.io/ota-ona-nazorat/?v=5.4")
+MINI_APP_URL = get_env_var("MINI_APP_URL", "https://abduquddus1990.github.io/ota-ona-nazorat/?v=5.8")
 TELEGRAM_API = f"https://api.telegram.org/bot{BOT_TOKEN}" if BOT_TOKEN else ""
 
 ADMIN_USERNAMES = {"ai_loyihachi"}

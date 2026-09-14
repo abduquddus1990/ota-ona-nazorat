@@ -38,7 +38,7 @@ def get_env_var(name, default=""):
 # Require env — never ship a hardcoded Telegram token
 STARS_BOT_TOKEN = get_env_var("STARS_BOT_TOKEN", "") or get_env_var("BOT_TOKEN", "")
 TELEGRAM_API = f"https://api.telegram.org/bot{STARS_BOT_TOKEN}" if STARS_BOT_TOKEN else ""
-MAIN_APP_URL = get_env_var("MINI_APP_URL", "https://abduquddus1990.github.io/ota-ona-nazorat/?v=5.7")
+MAIN_APP_URL = get_env_var("MINI_APP_URL", "https://abduquddus1990.github.io/ota-ona-nazorat/?v=5.8")
 
 USERS_FILE = "users_db.json"
 

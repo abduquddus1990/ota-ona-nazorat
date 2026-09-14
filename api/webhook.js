@@ -30,7 +30,7 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'BOT_TOKEN missing from environment' });
   }
 
-  const MINI_APP_URL = process.env.MINI_APP_URL || 'https://abduquddus1990.github.io/ota-ona-nazorat/?v=5.4';
+  const MINI_APP_URL = process.env.MINI_APP_URL || 'https://abduquddus1990.github.io/ota-ona-nazorat/?v=5.8';
   const TELEGRAM_API = `https://api.telegram.org/bot${BOT_TOKEN}`;
 
   const normalizeCode = (code) => String(code || '').replace(/\D/g, '');

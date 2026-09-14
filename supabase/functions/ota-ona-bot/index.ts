@@ -11,7 +11,7 @@ const BOT_TOKEN = Deno.env.get("BOT_TOKEN") || "";
 if (!BOT_TOKEN) {
   console.error("BOT_TOKEN missing");
 }
-const MINI_APP_URL = Deno.env.get("MINI_APP_URL") || "https://abduquddus1990.github.io/ota-ona-nazorat/?v=5.4";
+const MINI_APP_URL = Deno.env.get("MINI_APP_URL") || "https://abduquddus1990.github.io/ota-ona-nazorat/?v=5.8";
 const TELEGRAM_API = `https://api.telegram.org/bot${BOT_TOKEN}`;
 
 // Pairing state persistence (child_pairings table — see
