@@ -727,6 +727,44 @@ async function evaluateGeofences(
     });
 
     fired.push({ zone: z.name, type, message });
+
+    // VAQT BANKI: belgilangan vaqtdan oldin yetib kelgani uchun mukofot.
+    // Bu mexanikaning eng ishonchli qismi — bola uni alday olmaydi, chunki
+    // hisob mijozdan emas, haqiqiy joylashuvdan kelib chiqadi.
+    if (type === "enter" && z.arrive_by && /^([01]\d|2[0-3]):[0-5]\d$/.test(z.arrive_by)) {
+      const now = new Date();
+      const [hh, mm] = String(z.arrive_by).split(":").map(Number);
+      const onTime = now.getHours() < hh || (now.getHours() === hh && now.getMinutes() <= mm);
+
+      // Kuniga bir marta: bir necha marta kirib-chiqish takroriy mukofot bermaydi.
+      const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+      const { data: already } = await db
+        .from("time_bank_entries")
+        .select("id")
+        .eq("family_code", familyCode)
+        .eq("child_id", childId)
+        .eq("reason", "school_ontime")
+        .gte("created_at", dayStart)
+        .limit(1);
+
+      if (onTime && !(already && already[0])) {
+        const rules = await getTimeBankRules(familyCode, childId);
+        const awarded = await timeBankAward(
+          familyCode,
+          childId,
+          Number(rules.minutes_per_school_ontime),
+          "school_ontime",
+          z.name + " — o'z vaqtida"
+        );
+        if (awarded > 0) {
+          fired.push({
+            zone: z.name,
+            type: "time_bank",
+            message: `${z.name}ga o'z vaqtida yetib keldi — vaqt bankiga +${awarded} daqiqa`,
+          });
+        }
+      }
+    }
   }
 
   return fired;
@@ -1160,6 +1198,80 @@ function getChildStartText(lang: string = "uz"): string {
     return `🌟 <b>Привет, юный герой!</b>\n\nТы уже подключён к семейному профилю. Нажми кнопку ниже — откроется <b>твоя</b> панель: ИИ-друг, учёба, награды и быстрые сообщения родителям.`;
   }
   return `🌟 <b>Salom, yosh qahramon!</b>\n\nSen oilaviy profilga allaqachon ulangansan. Pastdagi tugmani bos — <b>o'zingning</b> paneling ochiladi: AI do'st, darslar, yutuqlar va ota-onangga tezkor xabar.`;
+}
+
+// ============================================================================
+// VAQT BANKI — ekran vaqtini ishlab topish
+// ============================================================================
+const TIME_BANK_DEFAULTS = {
+  enabled: true,
+  minutes_per_focus: 10,
+  minutes_per_school_ontime: 20,
+  minutes_per_homework: 10,
+  daily_cap_minutes: 90,
+};
+
+async function getTimeBankRules(familyCode: string, childId: string) {
+  if (!db) return { ...TIME_BANK_DEFAULTS };
+  const { data } = await db
+    .from("time_bank_rules")
+    .select("enabled, minutes_per_focus, minutes_per_school_ontime, minutes_per_homework, daily_cap_minutes")
+    .eq("family_code", familyCode)
+    .eq("child_id", childId)
+    .limit(1);
+  return (data && data[0]) || { ...TIME_BANK_DEFAULTS };
+}
+
+/** Balans — yozuvlar yig'indisi. Alohida "balans" ustuni yo'q, shuning uchun
+ *  balans bilan tarix hech qachon bir-biriga zid bo'lib qolmaydi. */
+async function timeBankBalance(familyCode: string, childId: string) {
+  if (!db) return { balance: 0, earnedToday: 0 };
+  const { data } = await db
+    .from("time_bank_entries")
+    .select("minutes, created_at")
+    .eq("family_code", familyCode)
+    .eq("child_id", childId)
+    .limit(2000);
+
+  const todayKey = new Date().toISOString().slice(0, 10);
+  let balance = 0;
+  let earnedToday = 0;
+  for (const e of data || []) {
+    const m = Number(e.minutes) || 0;
+    balance += m;
+    if (m > 0 && String(e.created_at).slice(0, 10) === todayKey) earnedToday += m;
+  }
+  return { balance, earnedToday };
+}
+
+/**
+ * Vaqt yozadi, lekin kunlik shiftdan oshirmaydi.
+ * Qaytaradi: haqiqatda yozilgan daqiqa (0 bo'lishi ham mumkin).
+ */
+async function timeBankAward(
+  familyCode: string,
+  childId: string,
+  minutes: number,
+  reason: string,
+  note?: string
+): Promise<number> {
+  if (!db || minutes <= 0) return 0;
+  const rules = await getTimeBankRules(familyCode, childId);
+  if (!rules.enabled) return 0;
+
+  const { earnedToday } = await timeBankBalance(familyCode, childId);
+  const room = Math.max(0, Number(rules.daily_cap_minutes) - earnedToday);
+  const award = Math.min(minutes, room);
+  if (award <= 0) return 0;
+
+  await db.from("time_bank_entries").insert({
+    family_code: familyCode,
+    child_id: childId,
+    minutes: award,
+    reason,
+    note: note || null,
+  });
+  return award;
 }
 
 const REFERRAL_BONUS_DAYS = 14;
@@ -1793,6 +1905,244 @@ async function handleRequest(req: Request): Promise<Response> {
     // Ilgari Mini App kodni localStorage'dan o'qirdi va u yerda eski qiymat
     // (masalan 849210) qolib ketardi — shu sabab har foydalanuvchida o'z
     // kodi bo'lishi kerak bo'lsa ham, eskisi ko'rinaverardi.
+    // 0.0w VAQT BANKI.
+    //
+    // Balansni ham farzand (o'ziniki), ham ota-ona (farzandiniki) so'ray oladi.
+    if (payload.type === "time_bank_status") {
+      if (!db) {
+        return new Response(JSON.stringify({ ok: false, error: "Baza ulanmagan" }), {
+          status: 500, headers: { "Content-Type": "application/json" },
+        });
+      }
+      const familyCode = await resolveActorFamily(actor!);
+      const childId =
+        actor!.kind === "device"
+          ? actor!.childId
+          : (await isPairedChild(actor!.telegramId))
+            ? "tg_" + actor!.telegramId
+            : String(payload.childId || "").trim();
+
+      if (!childId) {
+        return new Response(JSON.stringify({ ok: false, error: "childId majburiy" }), {
+          status: 400, headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      const rules = await getTimeBankRules(familyCode, childId);
+      const { balance, earnedToday } = await timeBankBalance(familyCode, childId);
+
+      const { data: history } = await db
+        .from("time_bank_entries")
+        .select("minutes, reason, note, created_at")
+        .eq("family_code", familyCode)
+        .eq("child_id", childId)
+        .order("created_at", { ascending: false })
+        .limit(10);
+
+      // Ochiq fokus seansi bor bo'lsa — mijoz taymerni davom ettira oladi.
+      const { data: open } = await db
+        .from("focus_sessions")
+        .select("id, planned_minutes, started_at")
+        .eq("family_code", familyCode)
+        .eq("child_id", childId)
+        .is("completed_at", null)
+        .order("started_at", { ascending: false })
+        .limit(1);
+
+      return new Response(
+        JSON.stringify({
+          ok: true,
+          balance,
+          earnedToday,
+          dailyCap: rules.daily_cap_minutes,
+          rules,
+          history: history || [],
+          openSession: (open && open[0]) || null,
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    // Fokus seansini boshlash. Boshlanish vaqtini SERVER yozadi.
+    if (payload.type === "focus_start") {
+      if (!db) {
+        return new Response(JSON.stringify({ ok: false, error: "Baza ulanmagan" }), {
+          status: 500, headers: { "Content-Type": "application/json" },
+        });
+      }
+      const familyCode = await resolveActorFamily(actor!);
+      const childId =
+        actor!.kind === "device" ? actor!.childId : "tg_" + actor!.telegramId;
+
+      const planned = Number(payload.plannedMinutes);
+      const plannedMinutes = planned >= 5 && planned <= 60 ? Math.round(planned) : 25;
+
+      // Ochiq seans bo'lsa yangisini ochmaymiz — aks holda bola bir vaqtda
+      // o'nlab seans ochib, keyin hammasini "tugatdim" deb yozdirardi.
+      const { data: existing } = await db
+        .from("focus_sessions")
+        .select("id, planned_minutes, started_at")
+        .eq("family_code", familyCode)
+        .eq("child_id", childId)
+        .is("completed_at", null)
+        .order("started_at", { ascending: false })
+        .limit(1);
+
+      if (existing && existing[0]) {
+        return new Response(
+          JSON.stringify({ ok: true, session: existing[0], resumed: true }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      const { data: created, error } = await db
+        .from("focus_sessions")
+        .insert({ family_code: familyCode, child_id: childId, planned_minutes: plannedMinutes })
+        .select("id, planned_minutes, started_at");
+
+      if (error) {
+        console.error("focus_start xatosi:", error.message);
+        return new Response(JSON.stringify({ ok: false, error: error.message }), {
+          status: 500, headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(
+        JSON.stringify({ ok: true, session: created && created[0], resumed: false }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    // Fokus seansini tugatish va vaqt yozish.
+    if (payload.type === "focus_complete") {
+      if (!db) {
+        return new Response(JSON.stringify({ ok: false, error: "Baza ulanmagan" }), {
+          status: 500, headers: { "Content-Type": "application/json" },
+        });
+      }
+      const familyCode = await resolveActorFamily(actor!);
+      const childId =
+        actor!.kind === "device" ? actor!.childId : "tg_" + actor!.telegramId;
+
+      const { data: rows } = await db
+        .from("focus_sessions")
+        .select("id, planned_minutes, started_at, completed_at")
+        .eq("id", String(payload.sessionId || ""))
+        .eq("family_code", familyCode)
+        .eq("child_id", childId)
+        .limit(1);
+
+      const session = rows && rows[0];
+      if (!session) {
+        return new Response(JSON.stringify({ ok: false, error: "Seans topilmadi." }), {
+          status: 404, headers: { "Content-Type": "application/json" },
+        });
+      }
+      if (session.completed_at) {
+        return new Response(
+          JSON.stringify({ ok: false, error: "Bu seans allaqachon yakunlangan." }),
+          { status: 409, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      // Haqiqatan o'tirilganini SERVER tekshiradi: mijoz "tugatdim" deb
+      // yuborishi yetarli emas. Kichik chetlanishga yo'l qo'yamiz (taymer
+      // sekundlari va tarmoq kechikishi uchun).
+      const elapsedMin = (Date.now() - new Date(session.started_at).getTime()) / 60000;
+      const required = Number(session.planned_minutes) * 0.9;
+      if (elapsedMin < required) {
+        return new Response(
+          JSON.stringify({
+            ok: false,
+            tooEarly: true,
+            error: "Seans hali tugamadi.",
+            remainingMinutes: Math.max(1, Math.ceil(required - elapsedMin)),
+          }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      const rules = await getTimeBankRules(familyCode, childId);
+      const awarded = await timeBankAward(
+        familyCode,
+        childId,
+        Number(rules.minutes_per_focus),
+        "focus",
+        `${session.planned_minutes} daqiqalik fokus`
+      );
+
+      await db
+        .from("focus_sessions")
+        .update({ completed_at: new Date().toISOString(), awarded_minutes: awarded })
+        .eq("id", session.id);
+
+      const { balance, earnedToday } = await timeBankBalance(familyCode, childId);
+
+      if (awarded > 0) {
+        await notifyFamilyParents(
+          familyCode,
+          `🎯 <b>Farzandingiz ${session.planned_minutes} daqiqa diqqat bilan ishladi.</b>\n\n` +
+            `Vaqt bankiga <b>+${awarded} daqiqa</b> yozildi. Bugungi jami: ${earnedToday} daqiqa.`
+        );
+      }
+
+      return new Response(
+        JSON.stringify({
+          ok: true,
+          awarded,
+          balance,
+          earnedToday,
+          capReached: awarded === 0,
+          dailyCap: rules.daily_cap_minutes,
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    // Ota-ona kursni belgilaydi.
+    if (payload.type === "time_bank_rules_save") {
+      if (actor!.kind !== "telegram") return unauthorized("Faqat ota-ona");
+      if (await isPairedChild(actor!.telegramId)) return unauthorized("Faqat ota-ona");
+      if (!db) {
+        return new Response(JSON.stringify({ ok: false, error: "Baza ulanmagan" }), {
+          status: 500, headers: { "Content-Type": "application/json" },
+        });
+      }
+      const childId = String(payload.childId || "").trim();
+      if (!childId) {
+        return new Response(JSON.stringify({ ok: false, error: "childId majburiy" }), {
+          status: 400, headers: { "Content-Type": "application/json" },
+        });
+      }
+      const clamp = (v: unknown, def: number, max: number) => {
+        const n = Number(v);
+        return Number.isFinite(n) && n >= 0 && n <= max ? Math.round(n) : def;
+      };
+
+      const { error } = await db.from("time_bank_rules").upsert(
+        {
+          family_code: actor!.familyCode,
+          child_id: childId,
+          enabled: payload.enabled !== false,
+          minutes_per_focus: clamp(payload.minutesPerFocus, 10, 60),
+          minutes_per_school_ontime: clamp(payload.minutesPerSchoolOntime, 20, 60),
+          minutes_per_homework: clamp(payload.minutesPerHomework, 10, 60),
+          daily_cap_minutes: clamp(payload.dailyCapMinutes, 90, 480),
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "family_code,child_id" }
+      );
+      if (error) {
+        console.error("time_bank_rules xatosi:", error.message);
+        return new Response(JSON.stringify({ ok: false, error: error.message }), {
+          status: 500, headers: { "Content-Type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify({ ok: true }), {
+        status: 200, headers: { "Content-Type": "application/json" },
+      });
+    }
+
     // 0.0v AI DO'ST (farzand paneli uchun o'quv yordamchisi).
     //
     // Ilgari bu Render'dagi alohida xizmatga borardi va u initData'ni BOSHQA

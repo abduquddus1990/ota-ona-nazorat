@@ -1381,6 +1381,9 @@ function checkChildConsentStatus() {
 
         // Farzand panelini majburiy tanlash
         switchChildTab('child-tab-home');
+
+        // Vaqt banki — balans serverdan keladi.
+        if (consented) renderTimeBank();
     }
 }
 
@@ -1919,6 +1922,11 @@ function updatePomodoroDisplay() {
     }
 }
 
+// Fokus seansi SERVERDA ochiladi va u yerda vaqt hisoblanadi. Brauzerdagi
+// taymer — faqat ko'rsatkich: uni to'xtatib qo'yish yoki soatni o'zgartirish
+// bilan vaqt yutib bo'lmaydi.
+let activeFocusSessionId = null;
+
 function togglePomodoroTimer() {
     const btn = document.getElementById('pomodoroBtn');
     const label = document.getElementById('pomodoroStatusLabel');
@@ -1934,6 +1942,17 @@ function togglePomodoroTimer() {
         if (btn) btn.innerText = isRu ? "⏸️ Пауза" : "⏸️ To'xtatish";
         if (label) label.innerText = isRu ? "📚 Идёт урок! Фокусируйся на заданиях." : "📚 Dars vaqti! Diqqatni misollarga qarat.";
 
+        // Seansni serverda ochamiz (faqat bola uchun).
+        if (!activeFocusSessionId && currentAppRole === 'child') {
+            fetch(QALQON_BOT_FN, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ type: 'focus_start', plannedMinutes: Math.round(pomodoroSeconds / 60) || 25 })
+            }).then(r => r.json()).then(d => {
+                if (d.ok && d.session) activeFocusSessionId = d.session.id;
+            }).catch(e => console.error('focus_start error:', e));
+        }
+
         pomodoroInterval = setInterval(() => {
             if (pomodoroSeconds > 0) {
                 pomodoroSeconds--;
@@ -1941,10 +1960,84 @@ function togglePomodoroTimer() {
             } else {
                 clearInterval(pomodoroInterval);
                 isPomodoroRunning = false;
-                alert(isRu ? "🎉 25 минут завершены! 5 минут отдыха для глаз 👀" : "🎉 25 daqiqa tugadi! Ko'zlarga 5 daqiqa dam beramiz 👀");
-                resetPomodoroTimer();
+                finishFocusSession();
             }
         }, 1000);
+    }
+}
+
+/** Taymer tugadi — serverdan vaqt so'raymiz. Mukofotni server hal qiladi. */
+async function finishFocusSession() {
+    const isRu = (currentLang === 'ru');
+    if (!activeFocusSessionId) {
+        alert(isRu ? "🎉 25 минут завершены! 5 минут отдыха для глаз 👀" : "🎉 25 daqiqa tugadi! Ko'zlarga 5 daqiqa dam beramiz 👀");
+        resetPomodoroTimer();
+        return;
+    }
+    const sessionId = activeFocusSessionId;
+    activeFocusSessionId = null;
+
+    try {
+        const resp = await fetch(QALQON_BOT_FN, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'focus_complete', sessionId })
+        });
+        const data = await resp.json();
+
+        if (data.ok && data.awarded > 0) {
+            alert(`🎉 Ajoyib! Diqqat bilan ishlading.\n\n⏱ Vaqt bankingga +${data.awarded} daqiqa yozildi.\n💰 Jami: ${data.balance} daqiqa`);
+        } else if (data.ok && data.capReached) {
+            alert(`🎉 Zo'r ish! Lekin bugungi chegaraga yetding (${data.dailyCap} daqiqa).\n\nErtaga yana ishlab topsang bo'ladi.`);
+        } else if (data.tooEarly) {
+            alert(`⏳ Seans hali tugamadi — yana ${data.remainingMinutes} daqiqa.`);
+        } else {
+            alert(isRu ? "🎉 25 минут завершены!" : "🎉 25 daqiqa tugadi! Ko'zlarga 5 daqiqa dam beramiz 👀");
+        }
+        renderTimeBank();
+    } catch (e) {
+        console.error('focus_complete error:', e);
+        alert(isRu ? "🎉 25 минут завершены!" : "🎉 25 daqiqa tugadi!");
+    }
+    resetPomodoroTimer();
+}
+
+/** Vaqt banki kartasini serverdagi haqiqiy balans bilan yangilaydi. */
+async function renderTimeBank() {
+    const card = document.getElementById('timeBankCard');
+    if (!card || currentAppRole !== 'child') return;
+    try {
+        const resp = await fetch(QALQON_BOT_FN, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'time_bank_status' })
+        });
+        const d = await resp.json();
+        if (!d.ok) return;
+
+        card.classList.remove('hidden');
+        const set = (id, text) => { const el = document.getElementById(id); if (el) el.innerText = text; };
+        set('timeBankBalance', d.balance + ' daqiqa');
+        set('timeBankToday', `Bugun ishlab topilgani: ${d.earnedToday} / ${d.dailyCap} daqiqa`);
+
+        const list = document.getElementById('timeBankHistory');
+        if (list) {
+            const labels = {
+                focus: '🎯 Fokus',
+                school_ontime: '🏫 O\'z vaqtida',
+                homework: '📚 Uy vazifasi',
+                parent_bonus: '🎁 Ota-ona sovg\'asi',
+                spend: '📱 Sarflandi'
+            };
+            list.innerHTML = (d.history || []).slice(0, 4).map(h =>
+                `<div class="flex items-center justify-between text-[10px]">
+                    <span class="text-slate-400">${labels[h.reason] || h.reason}</span>
+                    <span class="font-bold ${h.minutes > 0 ? 'text-emerald-400' : 'text-rose-400'}">${h.minutes > 0 ? '+' : ''}${h.minutes} daq</span>
+                </div>`
+            ).join('') || '<div class="text-[10px] text-slate-500">Hali yozuv yo\'q — fokus seansini boshla!</div>';
+        }
+    } catch (e) {
+        console.error('time_bank_status error:', e);
     }
 }
 
