@@ -863,6 +863,32 @@ async function notifyFamilyParents(familyCode: string, htmlText: string): Promis
   }
 }
 
+/**
+ * So'rov yuborayotgan odam qaysi OILAGA tegishli.
+ *
+ * Telegram foydalanuvchisi uchun actor.familyCode uning O'Z Telegram ID'sidan
+ * hisoblanadi — ota-ona uchun bu to'g'ri, lekin FARZAND uchun mutlaqo noto'g'ri:
+ * farzandning "o'z oilasi" degan kodi hech qayerda mavjud emas. Shu sabab
+ * farzandning "Maktabdaman / Uydaman / Olib keting" xabarlari hech kimga
+ * bormasdi, SOS esa faqat zaxira yo'l orqali adminga tushardi.
+ *
+ * Haqiqiy oila child_pairings jadvalida yozilgan.
+ */
+async function resolveActorFamily(actor: Actor): Promise<string> {
+  if (actor.kind === "device") return actor.familyCode;
+  if (!db) return actor.familyCode;
+
+  const { data } = await db
+    .from("child_pairings")
+    .select("family_code")
+    .eq("child_id", "tg_" + actor.telegramId)
+    .eq("is_active", true)
+    .limit(1);
+
+  if (data && data[0] && data[0].family_code) return data[0].family_code;
+  return actor.familyCode;
+}
+
 /** Farzandning so'nggi ma'lum joyi — SOS xabariga xarita havolasini qo'shish uchun. */
 async function lastKnownLocation(
   familyCode: string,
@@ -1767,6 +1793,144 @@ async function handleRequest(req: Request): Promise<Response> {
     // Ilgari Mini App kodni localStorage'dan o'qirdi va u yerda eski qiymat
     // (masalan 849210) qolib ketardi — shu sabab har foydalanuvchida o'z
     // kodi bo'lishi kerak bo'lsa ham, eskisi ko'rinaverardi.
+    // 0.0v AI DO'ST (farzand paneli uchun o'quv yordamchisi).
+    //
+    // Ilgari bu Render'dagi alohida xizmatga borardi va u initData'ni BOSHQA
+    // bot tokeni bilan tekshirar edi — ya'ni har bir farzandning so'rovi
+    // "initData yaroqsiz" deb rad etilardi va AI do'st hech kimga ishlamasdi.
+    // Endi u shu yerda: bitta backend, bitta ishlaydigan autentifikatsiya.
+    if (payload.type === "ai_tutor_chat") {
+      const apiKey = Deno.env.get("GEMINI_API_KEY") || "";
+      if (!apiKey) {
+        return new Response(
+          JSON.stringify({ ok: false, error: "AI kaliti sozlanmagan (GEMINI_API_KEY)." }),
+          { status: 503, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      const question = String(payload.message || "").trim();
+      if (!question) {
+        return new Response(JSON.stringify({ ok: false, error: "Savol bo'sh." }), {
+          status: 400, headers: { "Content-Type": "application/json" },
+        });
+      }
+      if (question.length > 2000) {
+        return new Response(JSON.stringify({ ok: false, error: "Savol juda uzun." }), {
+          status: 400, headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      const who = actor!.kind === "telegram" ? actor!.telegramId : 0;
+
+      // Soatiga cheklov — xarajatni ham, suiiste'molni ham ushlab turadi.
+      if (db && who) {
+        const { data: recent } = await db
+          .from("ai_chat_messages")
+          .select("id")
+          .eq("telegram_id", who)
+          .eq("role", "user")
+          .gte("created_at", new Date(Date.now() - 3600000).toISOString())
+          .limit(41);
+        if (recent && recent.length >= 40) {
+          return new Response(
+            JSON.stringify({ ok: false, error: "Bir soatda juda ko'p savol. Biroz dam oling 🙂" }),
+            { status: 429, headers: { "Content-Type": "application/json" } }
+          );
+        }
+      }
+
+      const grade = Number(payload.grade) > 0 ? Number(payload.grade) : 5;
+      const subject = String(payload.subject || "Umumiy").slice(0, 40);
+      const childName = String(payload.childName || "").slice(0, 40);
+
+      // Oldingi suhbat — ko'p bosqichli savol-javob uchun.
+      let history: Array<{ role: string; parts: Array<{ text: string }> }> = [];
+      if (db && who) {
+        const { data: prev } = await db
+          .from("ai_chat_messages")
+          .select("role, message")
+          .eq("telegram_id", who)
+          .order("created_at", { ascending: false })
+          .limit(8);
+        history = (prev || [])
+          .reverse()
+          .map((m: any) => ({
+            role: m.role === "user" ? "user" : "model",
+            parts: [{ text: String(m.message || "") }],
+          }));
+      }
+
+      const systemPrompt =
+        `Sen "Qalqon" — O'zbekistondagi ${grade}-sinf o'quvchisining do'stona o'quv yordamchisisan. ` +
+        (childName ? `Suhbatdoshingning ismi ${childName}. ` : "") +
+        `Hozirgi fan: ${subject}.\n\n` +
+        `Qoidalar:\n` +
+        `- Faqat o'zbek tilida, sodda va iliq javob ber.\n` +
+        `- Javobni qisqa tut (4-6 gap). Kerak bo'lsa qadamma-qadam tushuntir.\n` +
+        `- TAYYOR JAVOBNI BERIB QO'YMA: avval yo'l ko'rsat, bola o'zi yechishga harakat qilsin. ` +
+        `Agar u yechimni so'rasa yoki ikki marta urinib ko'rgan bo'lsa — to'liq tushuntir.\n` +
+        `- Doim rag'batlantir, hech qachon kamsitma.\n` +
+        `- Yoshga nomunosib mavzular (zo'ravonlik, kattalar mazmuni, giyohvandlik, qimor, o'z joniga qasd) ` +
+        `so'ralsa — javob berma, muloyimlik bilan ota-ona yoki o'qituvchi bilan gaplashishni taklif qil.\n` +
+        `- Agar bola xavf ostida ekanini bildirsa, darhol ota-onasiga yoki ishonchli kattaga aytishni maslahat ber.`;
+
+      const model = Deno.env.get("GEMINI_MODEL") || "gemini-3.6-flash";
+      try {
+        const gRes = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              systemInstruction: { parts: [{ text: systemPrompt }] },
+              contents: [...history, { role: "user", parts: [{ text: question }] }],
+              generationConfig: { temperature: 0.7, maxOutputTokens: 700 },
+            }),
+          }
+        );
+        const gJson = await gRes.json();
+        const answer =
+          gJson?.candidates?.[0]?.content?.parts?.map((p: any) => p.text).join("") || "";
+
+        if (!answer) {
+          // Sababni yashirmaymiz: "qayta urinib ko'ring" degan umumiy xabar
+          // tufayli yaroqsiz kalit yoki noto'g'ri model nomi haftalab
+          // sezilmay qolishi mumkin. Kalitning o'zi hech qachon qaytarilmaydi.
+          const upstream =
+            gJson?.error?.message ||
+            gJson?.promptFeedback?.blockReason ||
+            "noma'lum sabab";
+          console.error("Gemini javobi bo'sh:", JSON.stringify(gJson).slice(0, 500));
+          return new Response(
+            JSON.stringify({
+              ok: false,
+              error: "AI hozir javob bera olmadi.",
+              detail: String(upstream).slice(0, 200),
+              model,
+            }),
+            { status: 502, headers: { "Content-Type": "application/json" } }
+          );
+        }
+
+        if (db && who) {
+          await db.from("ai_chat_messages").insert([
+            { telegram_id: who, role: "user", message: question },
+            { telegram_id: who, role: "model", message: answer },
+          ]);
+        }
+
+        return new Response(JSON.stringify({ ok: true, answer }), {
+          status: 200, headers: { "Content-Type": "application/json" },
+        });
+      } catch (e) {
+        console.error("ai_tutor_chat xatosi:", e);
+        return new Response(
+          JSON.stringify({ ok: false, error: "AI xizmatiga ulanib bo'lmadi." }),
+          { status: 502, headers: { "Content-Type": "application/json" } }
+        );
+      }
+    }
+
     // 0.0t TELEGRAMDAN TASHQARIDA KIRISH: username + parol -> seans tokeni.
     //
     // Bu YAGONA endpoint initData'siz ishlaydi (device_pair kabi), chunki
@@ -2809,8 +2973,9 @@ async function handleRequest(req: Request): Promise<Response> {
     if (payload.type === "child_status_alert") {
       const childName = payload.childName || "Farzand";
       const statusText = payload.statusText || "Xabar keldi";
-      // Oila kodi so'rovchining o'zidan, mijoz yuborganidan emas.
-      const familyCode = actor!.familyCode;
+      // Oila kodi mijozdan emas — lekin farzand uchun uni formuladan emas,
+      // child_pairings dagi HAQIQIY juftlikdan olamiz (qarang: resolveActorFamily).
+      const familyCode = await resolveActorFamily(actor!);
       const isSos = payload.sos === true || /sos/i.test(String(statusText));
 
       const childId = actor!.kind === "telegram" ? "tg_" + actor!.telegramId : actor!.childId;

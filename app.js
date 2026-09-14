@@ -1533,8 +1533,26 @@ function setParentRelation(relation) {
 }
 
 function switchAppRole(role) {
+    // Server tasdiqlagan farzand ota-ona paneliga o'ta olmaydi. Ilgari rol
+    // almashtirgich hammaga ochiq edi — farzand bitta tugma bosib ota-ona
+    // panelini (radar, hisobotlar, sozlamalar) ochib olardi.
+    if (role === 'parent' && realChildProfile && realChildProfile.role === 'child') {
+        const msg = (currentLang === 'ru')
+            ? "Эта панель только для родителей."
+            : "Bu panel faqat ota-onalar uchun.";
+        if (tg && tg.showAlert) tg.showAlert(msg); else alert(msg);
+        role = 'child';
+    }
+
     currentAppRole = role;
     localStorage.setItem('app_role', role);
+
+    // Farzand uchun almashtirgichni umuman ko'rsatmaymiz.
+    const roleSwitcher = document.getElementById('roleSwitcherContainer');
+    if (roleSwitcher) {
+        const lockedToChild = !!(realChildProfile && realChildProfile.role === 'child');
+        roleSwitcher.classList.toggle('hidden', lockedToChild);
+    }
 
     const isParent = (role === 'parent');
     const quickMenuFab = document.getElementById('quickMenuFab');
@@ -1745,28 +1763,33 @@ function handleChildImageSelected(event) {
 }
 
 
+// AI do'st endi o'z serverimizda (ota-ona-bot: ai_tutor_chat). Ilgari u
+// Render'dagi alohida xizmatga borardi, u esa initData'ni boshqa bot tokeni
+// bilan tekshirgani uchun HAR BIR so'rovni "initData yaroqsiz" deb rad etardi.
 async function callRealTextBackendForChild(message) {
     const child = childrenDatabase[currentChildKey];
     const isRu = (currentLang === 'ru');
     appendChildAiMessage(isRu ? '⏳ Думаю…' : '⏳ O\'ylayapman…');
     try {
-        const formData = new FormData();
-        formData.append('message', message);
-        formData.append('child_id', currentChildKey || 'unknown');
-        formData.append('grade', String(realChildProfile?.grade || child?.grade || 5));
-        formData.append('subject', getTutorSubject());
-        const childRealName = realChildProfile?.fullName || (typeof tg !== 'undefined' && tg?.initDataUnsafe?.user?.first_name) || '';
-        if (childRealName) formData.append('child_name', childRealName);
-        const resp = await fetch('https://qalqon-backend.onrender.com/api/v1/tutor/chat', {
+        const childRealName = realChildProfile?.childName || realChildProfile?.fullName
+            || (typeof tg !== 'undefined' && tg?.initDataUnsafe?.user?.first_name) || '';
+        const resp = await fetch(QALQON_BOT_FN, {
             method: 'POST',
-            headers: { ...telegramInitDataHeader() },
-            body: formData
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                type: 'ai_tutor_chat',
+                message: message,
+                grade: realChildProfile?.grade || child?.grade || 5,
+                subject: getTutorSubject(),
+                childName: childRealName
+            })
         });
         const data = await resp.json();
         if (data.ok && data.answer) {
             appendChildAiMessage(safeAiHtml(data.answer));
         } else {
-            appendChildAiMessage(isRu ? 'Ошибка. Попробуйте ещё раз.' : 'Xatolik. Qayta urinib ko\'ring.');
+            appendChildAiMessage(safeAiHtml(data.error ||
+                (isRu ? 'Ошибка. Попробуйте ещё раз.' : 'Xatolik. Qayta urinib ko\'ring.')));
         }
     } catch (e) {
         console.error('Child text backend error:', e);
