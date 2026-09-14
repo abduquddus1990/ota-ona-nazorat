@@ -26,32 +26,29 @@ import org.json.JSONObject
  * Fon Telemetriya Sinxronizatori (WorkManager, har 15 daqiqada).
  * Haqiqiy batareya, foreground ilova/ekran vaqti (UsageStatsManager) va
  * so'nggi ma'lum joylashuvni (LocationManager, mobil-internet/GPS) o'qiydi,
- * xom ma'lumotni Keystore orqali shifrlaydi va backend/routes/telemetry.py
- * ga (Render'dagi FastAPI) X-Family-Code/X-Child-Id orqali yuboradi —
- * bu Qalqon AI'ning haqiqiy device-pairing auth mexanizmi (Supabase Auth
- * emas, backend/security/telegram_auth.py:require_family_access).
+ * xom ma'lumotni Keystore orqali shifrlaydi va supabase/functions/ota-ona-bot
+ * ga (report_telemetry / report_location) deviceToken bilan yuboradi.
  *
- * Joylashuv QO'SHIMCHA ravishda ota-ona panelidagi radar'ga ham yuboriladi
- * (reportLocationToRadar) — radar location_pings jadvalidan o'qiydi, u esa
- * faqat deviceToken bilan autentifikatsiya qilingan report_location orqali
- * to'ladi (supabase/functions/ota-ona-bot/index.ts). Bu ikkinchi, alohida
- * so'rov: Render backend'dagi eski telemetriya bilan aralashtirilmaydi.
+ * Ilgari bu Render'dagi backend/routes/telemetry.py'ga X-Family-Code +
+ * X-Child-Id header orqali yuborilardi. O'sha auth (require_family_access)
+ * o'zining kod izohida "oila kodi nisbatan zaif maxfiy kalit" deb yozgan —
+ * ikkalasi ham formula bilan hisoblanadi, sir emas. Shu bilan bir qatorda
+ * o'sha yozuv radar o'qiydigan location_pings jadvaliga umuman tushmasdi.
+ * Endi ikkalasi ham deviceToken bilan — device_pair paytida berilgan,
+ * server tomonda hash'i saqlanadigan haqiqiy hisob ma'lumoti — yuboriladi.
  */
 class TelemetrySyncWorker(
     appContext: Context,
     workerParams: WorkerParameters
 ) : CoroutineWorker(appContext, workerParams) {
 
-    companion object {
-        private const val INGEST_URL = "https://qalqon-backend.onrender.com/api/v1/telemetry/ingest"
-    }
-
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         val prefs = applicationContext.getSharedPreferences("shield_guard_prefs", Context.MODE_PRIVATE)
         val familyCode = prefs.getString("family_code", null)
         val childId = prefs.getString("child_id", null)
-        if (familyCode.isNullOrEmpty() || childId.isNullOrEmpty()) {
-            // Hali juftlashmagan — yuboradigan hech narsa yo'q.
+        val token = DeviceCredentials.readDeviceToken(applicationContext)
+        if (familyCode.isNullOrEmpty() || childId.isNullOrEmpty() || token == null) {
+            // Hali juftlashmagan (yoki token yo'q) — yuboradigan hech narsa yo'q.
             return@withContext Result.success()
         }
 
@@ -61,7 +58,7 @@ class TelemetrySyncWorker(
             val location = readLastKnownLocation()
 
             if (location != null) {
-                reportLocationToRadar(location)
+                reportLocationToRadar(location, token)
             }
 
             val rawTelemetry = JSONObject().apply {
@@ -76,27 +73,22 @@ class TelemetrySyncWorker(
             val (encryptedPayload, iv) = SecurityKeyStoreManager.encryptData(rawTelemetry)
 
             val postPayload = JSONObject().apply {
-                put("family_code", familyCode)
-                put("child_id", childId)
-                put("app_package_name", usage?.packageName ?: "unknown")
+                put("type", "report_telemetry")
+                put("deviceToken", token)
+                put("appPackageName", usage?.packageName ?: "unknown")
                 put("category", "General")
-                put("screen_time_seconds", usage?.foregroundSeconds ?: 0)
-                put("encrypted_payload", encryptedPayload)
+                put("screenTimeSeconds", usage?.foregroundSeconds ?: 0)
+                put("encryptedPayload", encryptedPayload)
                 put("iv", iv)
-                if (location != null) {
-                    put("latitude", location.latitude)
-                    put("longitude", location.longitude)
-                }
             }
 
             val requestBody = postPayload.toString()
                 .toRequestBody("application/json; charset=utf-8".toMediaType())
 
             val request = Request.Builder()
-                .url(INGEST_URL)
-                .addHeader("X-Family-Code", familyCode)
-                .addHeader("X-Child-Id", childId)
+                .url(PairingApi.OTA_ONA_BOT_URL)
                 .post(requestBody)
+                .header("Content-Type", "application/json")
                 .build()
 
             val response = EncryptedNetworkClient.client.newCall(request).execute()
@@ -110,13 +102,9 @@ class TelemetrySyncWorker(
 
     /**
      * report_location so'rovi actor.kind === "device" talab qiladi (index.ts),
-     * ya'ni deviceToken shart. Token hali yo'q bo'lsa (eski, pairing
-     * yangilanmasdan turib ulangan qurilma) — jimgina o'tkazib yuboramiz,
-     * bu Render'ga yuborilayotgan asosiy telemetriyani to'xtatmaydi.
+     * ya'ni deviceToken shart — doWork() buni allaqachon tekshirgan.
      */
-    private fun reportLocationToRadar(location: Location) {
-        val token = DeviceCredentials.readDeviceToken(applicationContext) ?: return
-
+    private fun reportLocationToRadar(location: Location, token: String) {
         try {
             val body = JSONObject().apply {
                 put("type", "report_location")
