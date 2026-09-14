@@ -688,6 +688,23 @@ function buildChildRecord(serverChild, existing) {
  * "Admin Tasdig'i Kutilmoqda" oynasini ko'rsatadi (u index.html da bor edi,
  * lekin hech qachon ochilmasdi).
  */
+/** Serverda saqlangan oila yozuvini ro'yxatdan o'tish formasiga qaytaradi. */
+function applySavedFamilyProfile(profile) {
+    const set = (id, value) => {
+        const el = document.getElementById(id);
+        if (el && value !== null && value !== undefined && value !== '') el.value = value;
+    };
+    set('onboardFamilyName', profile.family_name);
+    set('onboardParentName', profile.parent_name);
+    set('onboardParentPhone', profile.parent_phone);
+    set('onboardParentUsername', profile.parent_username);
+    set('onboardMotherName', profile.mother_name);
+    set('onboardMotherUsername', profile.mother_username);
+    set('onboardChildName', profile.child_name);
+    set('onboardChildUsername', profile.child_username);
+    if (profile.child_grade) set('onboardChildGrade', String(profile.child_grade));
+}
+
 async function syncFamilyFromServer() {
     try {
         const resp = await fetch(QALQON_BOT_FN, {
@@ -717,6 +734,11 @@ async function syncFamilyFromServer() {
         // haqiqiy ota-ona esa hech qachon ro'yxatdan o'tmasdan panelga kirib
         // ketardi. "none" — hali so'rov yuborilmagan: shu yerda kiritish oynasi
         // majburiy ochiladi (yopish mumkin — Test Rejimi shu tugma orqali).
+        // Saqlangan oila ma'lumotlarini formaga qaytaramiz. Ilgari yozuv
+        // qayta o'qilmasdi: ro'yxatdan o'tgan odam qaytib kirsa forma bo'sh
+        // ochilib, u qaytadan to'ldirar va adminga yana so'rov ketardi.
+        if (data.profile) applySavedFamilyProfile(data.profile);
+
         if (currentAppRole === 'parent') {
             if (data.registrationStatus === 'none') {
                 openSubpage('modal-parent-onboarding');
@@ -2576,20 +2598,20 @@ function triggerVoiceAlert() {
     }
 }
 
+// Ilgari bu tugma `?start=pair_<oila kodi>` havolasini nusxalardi. O'sha
+// havola HECH QACHON ulanish yaratmagan: bot faqat "bog'landingiz" deb
+// yozardi, bazada esa juftlik paydo bo'lmasdi — natijada farzand keyin
+// ilovani ochganda ota-ona panelini ko'rardi. Ustiga-ustak u oila kodini
+// tarqatardi, u esa ota-onaning Telegram ID'sidan hisoblanadi.
+//
+// Yagona haqiqiy yo'l — har bir farzandga alohida, bir martalik taklif kodi.
 function copyPairingLink() {
-    if (!familyCode || String(familyCode).length !== 6) {
-        updateDisplayFamilyCode();
-        const msgEmpty = (currentLang === 'ru') ? 'Семейный код ещё не готов' : 'Oila kodi hali tayyor emas';
-        if (tg && tg.showAlert) tg.showAlert(msgEmpty); else alert(msgEmpty);
-        return;
-    }
-    const link = `https://t.me/qalqon_aibot?start=pair_${familyCode}`;
-    navigator.clipboard.writeText(link).then(() => {
-        const msg = (currentLang === 'ru') 
-            ? "✅ Ссылка для подключения скопирована!"
-            : "✅ Farzandni ulash havolasi nusxalandi!";
-        alert(msg);
-    });
+    openSubpage('modal-add-child');
+    const isRu = (currentLang === 'ru');
+    const msg = isRu
+        ? "Каждый ребёнок подключается по своему одноразовому коду. Введите имя ребёнка — система выдаст код и ссылку."
+        : "Har bir farzand o'zining bir martalik kodi bilan ulanadi. Farzand ismini kiriting — tizim kod va havola beradi.";
+    if (tg && tg.showAlert) tg.showAlert(msg); else alert(msg);
 }
 
 // 9. LEAFLET MAP (BEPUL RADAR)
@@ -2701,6 +2723,30 @@ function toggleQuickMenu() {
 }
 
 function handleCompleteParentOnboarding() {
+    const isRu = (currentLang === 'ru');
+
+    // Username MAJBURIY: butun tizim shu bo'yicha ishlaydi — farzand taklifi
+    // ham, oila a'zosini tanish ham. Bo'sh qoldirilsa, yozuv keyin hech kimga
+    // bog'lanmay qolardi.
+    const requiredUsernames = [
+        ['onboardParentUsername', isRu ? "Telegram username отца" : "Otaning Telegram username'i"],
+        ['onboardChildUsername', isRu ? "Telegram username ребёнка" : "Farzandning Telegram username'i"],
+    ];
+    for (const [id, label] of requiredUsernames) {
+        const value = (document.getElementById(id)?.value || '').trim().replace('@', '');
+        if (!value) {
+            alert((isRu ? "⚠️ Обязательное поле: " : "⚠️ Majburiy maydon: ") + label);
+            document.getElementById(id)?.focus();
+            return;
+        }
+    }
+    const childNameValue = (document.getElementById('onboardChildName')?.value || '').trim();
+    if (!childNameValue) {
+        alert(isRu ? "⚠️ Введите имя ребёнка!" : "⚠️ Farzandning ismini kiriting!");
+        document.getElementById('onboardChildName')?.focus();
+        return;
+    }
+
     const familyName = document.getElementById('onboardFamilyName')?.value.trim() || "Bizning Oila";
     const parentName = document.getElementById('onboardParentName')?.value.trim() || "Ota";
     const parentPhone = document.getElementById('onboardParentPhone')?.value.trim() || "";
@@ -2772,35 +2818,39 @@ function handleCompleteParentOnboarding() {
 
     closeSubpage();
 
-    // Show pending approval modal
-    const pendingOverlay = document.getElementById('pendingApprovalOverlay');
-    if (pendingOverlay) pendingOverlay.classList.remove('hidden');
-
-    
-    // Adminga (358795989 - @ai_loyihachi) to'g'ridan-to'g'ri Telegram xabar yuborish
-    try {
-        // Supabase Edge Function orqali (xavfsiz, CORS to'g'ri sozlangan) adminga yuboriladi
-        const SUPABASE_FUNCTION_URL = "https://wfrclcwjeeqeqchmdhzw.supabase.co/functions/v1/ota-ona-bot";
-        fetch(SUPABASE_FUNCTION_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                type: 'parent_registration_request',
-                familyName: familyName,
-                parentName: parentName,
-                parentUsername: parentUsername,
-                parentPhone: parentPhone,
-                motherName: motherName,
-                motherUsername: motherUsername,
-                childName: childName,
-                childGrade: childGrade,
-                childUsername: childUsername,
-                familyCode: familyCode
-            })
-        }).catch(err => console.log("Notify error:", err));
-    } catch(e) {
-        console.error("Admin dispatch failed:", e);
-    }
-
-    alert("✅ Oila ma'lumotlari saqlandi va Bosh administrator (@ai_loyihachi) tasdig'iga yuborildi!");
+    // Javobni KUTAMIZ: allaqachon tasdiqlangan oila uchun server yangi so'rov
+    // yubormaydi, shuning uchun "kutilmoqda" oynasini va "adminga yuborildi"
+    // xabarini ko'rsatish noto'g'ri bo'lardi.
+    fetch(QALQON_BOT_FN, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            type: 'parent_registration_request',
+            familyName: familyName,
+            parentName: parentName,
+            parentUsername: parentUsername,
+            parentPhone: parentPhone,
+            motherName: motherName,
+            motherUsername: motherUsername,
+            childName: childName,
+            childGrade: childGrade,
+            childUsername: childUsername
+        })
+    }).then(r => r.json()).then(data => {
+        if (data && data.alreadyApproved) {
+            localStorage.setItem('auth_status', 'approved');
+            alert(isRu
+                ? "✅ Данные семьи обновлены. Ваш аккаунт уже подтверждён — повторный запрос администратору не отправлялся."
+                : "✅ Oila ma'lumotlari yangilandi. Profilingiz allaqachon tasdiqlangan — adminga qayta so'rov yuborilmadi.");
+            return;
+        }
+        const pendingOverlay = document.getElementById('pendingApprovalOverlay');
+        if (pendingOverlay) pendingOverlay.classList.remove('hidden');
+        alert(isRu
+            ? "✅ Данные семьи сохранены и отправлены администратору на подтверждение!"
+            : "✅ Oila ma'lumotlari saqlandi va administrator tasdig'iga yuborildi!");
+    }).catch(err => {
+        console.error('parent_registration_request error:', err);
+        alert(isRu ? "⚠️ Сервер не отвечает. Попробуйте позже." : "⚠️ Server javob bermadi. Keyinroq urinib ko'ring.");
+    });
 }

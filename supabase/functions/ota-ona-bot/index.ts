@@ -13,6 +13,10 @@ if (!BOT_TOKEN) {
 }
 const MINI_APP_URL = Deno.env.get("MINI_APP_URL") || "https://abduquddus1990.github.io/ota-ona-nazorat/?v=5.8";
 const TELEGRAM_API = `https://api.telegram.org/bot${BOT_TOKEN}`;
+// setWebhook paytida berilgan maxfiy token. Bo'sh bo'lsa tekshiruv o'chiq
+// qoladi — shunda kod Telegram tomonida token o'rnatilgunga qadar ham
+// xavfsiz tarzda joylashtirilishi mumkin.
+const WEBHOOK_SECRET = Deno.env.get("TELEGRAM_WEBHOOK_SECRET") || "";
 
 // Pairing state persistence (child_pairings table — see
 // database/03_qalqon_realtime_features.sql). Telegram-native identity:
@@ -770,13 +774,30 @@ async function setFamilyApproval(
   status: "approved" | "rejected"
 ): Promise<boolean> {
   if (!db || !familyCode) return false;
-  const { error } = await db
+  const { data, error } = await db
     .from("parent_registrations")
     .update({ status, reviewed_at: new Date().toISOString(), updated_at: new Date().toISOString() })
-    .eq("family_code", familyCode);
+    .eq("family_code", familyCode)
+    .select("parent_telegram_id, parent_name");
   if (error) {
     console.error("setFamilyApproval xatosi:", error.message);
     return false;
+  }
+
+  // Ota-onaning o'ziga xabar. Ilgari tasdiqlash faqat bazada qolardi va
+  // foydalanuvchi natijani hech qachon bilmasdi — u panelni qayta ochib
+  // ko'rmaguncha kutishda qolaverardi.
+  const row = data && data[0];
+  if (row && row.parent_telegram_id) {
+    const msg =
+      status === "approved"
+        ? "✅ <b>Sizga ruxsat berildi!</b>\n\nQalqon AI oilaviy profilingiz administrator tomonidan tasdiqlandi. Endi barcha imkoniyatlar to'liq ochiq: farzand qo'shish, radar va hisobotlar.\n\nPanelni ochish uchun <b>Start</b> tugmasini bosing."
+        : "❌ <b>So'rovingiz rad etildi.</b>\n\nMa'lumotlarni tekshirib, qaytadan yuborishingiz mumkin. Savollar bo'lsa administratorga murojaat qiling.";
+    try {
+      await sendMessage(row.parent_telegram_id, msg);
+    } catch (e) {
+      console.error("Tasdiq xabarini yuborib bo'lmadi:", e);
+    }
   }
   return true;
 }
@@ -830,8 +851,26 @@ Assalomu alaykum! Farzandingizning xavfsizligi, darsliklari va raqamli odatlari 
 Quyidagi bo'limlardan birini tanlang:`;
 }
 
-function getStartKeyboard(userId: string | number, lang: string = "uz"): any {
+// Tugmalar ROLGA qarab beriladi. Ilgari bot hammaga bir xil "Ota-ona paneli"
+// tugmasini yuborardi — shu sabab allaqachon ulangan farzand ham /start bosib,
+// ota-ona panelini ochib olardi.
+function getStartKeyboard(userId: string | number, lang: string = "uz", isChild: boolean = false): any {
   const code = generateFamilyCode(userId);
+
+  if (isChild) {
+    return {
+      inline_keyboard: [
+        [
+          {
+            text: lang === "ru" ? "🌟 Открыть мою панель" : "🌟 O'z panelimni ochish",
+            web_app: { url: `${MINI_APP_URL}&role=child&lang=${lang}` },
+          },
+        ],
+        [{ text: "🌐 Til / Язык (UZ/RU)", callback_data: "action_lang" }],
+      ],
+    };
+  }
+
   if (lang === "ru") {
     return {
       inline_keyboard: [
@@ -850,6 +889,25 @@ function getStartKeyboard(userId: string | number, lang: string = "uz"): any {
   };
 }
 
+function getChildStartText(lang: string = "uz"): string {
+  if (lang === "ru") {
+    return `🌟 <b>Привет, юный герой!</b>\n\nТы уже подключён к семейному профилю. Нажми кнопку ниже — откроется <b>твоя</b> панель: ИИ-друг, учёба, награды и быстрые сообщения родителям.`;
+  }
+  return `🌟 <b>Salom, yosh qahramon!</b>\n\nSen oilaviy profilga allaqachon ulangansan. Pastdagi tugmani bos — <b>o'zingning</b> paneling ochiladi: AI do'st, darslar, yutuqlar va ota-onangga tezkor xabar.`;
+}
+
+/** Bu Telegram hisobi biror oilaga FARZAND sifatida ulanganmi. */
+async function isPairedChild(telegramId: number | string): Promise<boolean> {
+  if (!db) return false;
+  const { data } = await db
+    .from("child_pairings")
+    .select("child_id")
+    .eq("child_id", "tg_" + telegramId)
+    .eq("is_active", true)
+    .limit(1);
+  return !!(data && data[0]);
+}
+
 function boshlashReplyKeyboard(): any {
   // Persistent ReplyKeyboard: one Boshlash button (= /start)
   return {
@@ -859,10 +917,18 @@ function boshlashReplyKeyboard(): any {
     one_time_keyboard: false,
   };
 }
+// Farzandni ulash yo'riqnomasi.
+//
+// Ilgari bu yerda `?start=pair_<oila kodi>` havolasi berilardi. U hech qachon
+// juftlik yaratmagan: bot faqat "muvaffaqiyatli bog'landingiz" deb yozardi,
+// bazada esa hech narsa paydo bo'lmasdi — shu sabab farzand keyin ilovani
+// ochganda server uni farzand deb tanimay, ota-ona panelini ko'rsatardi.
+// Ustiga-ustak o'sha havola oila kodini oshkor qilardi, u esa ota-onaning
+// Telegram ID'sidan hisoblanadi va sir emas.
+//
+// Endi yagona haqiqiy yo'l: Mini App'dagi "Farzand qo'shish" har bir farzandga
+// alohida, bir martalik taklif kodi beradi (child_invites).
 function getPairingText(userId: string | number, lang: string = "uz", isApproved: boolean = false): string {
-  const code = generateFamilyCode(userId);
-  const pairLink = `https://t.me/qalqon_aibot?start=pair_${code}`;
-  
   if (!isApproved) {
     if (lang === "ru") {
       return `⏳ <b>ОЖИДАНИЕ ОДОБРЕНИЯ АДМИНИСТРАТОРАМИ:</b>\n\nВаш аккаунт находится на рассмотрении. После подтверждения вы сможете подключить реальное устройство ребёнка.\nВ настоящее время вам доступен <b>Тестовый / Демо-режим</b> панели.`;
@@ -871,9 +937,9 @@ function getPairingText(userId: string | number, lang: string = "uz", isApproved
   }
 
   if (lang === "ru") {
-    return `🔗 <b>АВТОМАТИЧЕСКОЕ ПОДКЛЮЧЕНИЕ РЕБЁНКА:</b>\n\n1. Перешлите эту ссылку ребёнку в Telegram:\n👉 ${pairLink}\n\n2. Или в Android-приложении введите код:\n🔑 <b><code>${code}</code></b>\n\nРебёнок подключится автоматически!`;
+    return `🔗 <b>КАК ПОДКЛЮЧИТЬ РЕБЁНКА:</b>\n\n1. Откройте панель (кнопка ниже) → <b>«Добавить ребёнка»</b>.\n2. Введите имя ребёнка — система выдаст <b>персональный одноразовый код</b> и ссылку.\n3. Отправьте эту ссылку ребёнку: он откроет её, согласится с 4 правилами и введёт код.\n\n📱 <b>Android-приложение</b> подключается отдельно: в той же панели нажмите <b>«Получить код Android»</b> — код действует 15 минут.\n\n⚠️ Никогда никому не пересылайте свой семейный код — он не предназначен для подключения.`;
   }
-  return `🔗 <b>FARZANDNI AVTOMATIK ULASH YO'RIQNOMASI:</b>\n\n1. Quyidagi havolani farzandingizga Telegram orqali yuboring:\n👉 ${pairLink}\n\n2. Yoki Android mobil ilovasida ushbu kodni kiriting:\n🔑 <b><code>${code}</code></b>\n\nFarzand profilingizga muvaffaqiyatli bog'lanadi!`;
+  return `🔗 <b>FARZANDNI ULASH YO'RIQNOMASI:</b>\n\n1. Panelni oching (pastdagi tugma) → <b>«Yangi farzand qo'shish»</b>.\n2. Farzandning ismini kiriting — tizim unga <b>alohida, bir martalik kod</b> va havola beradi.\n3. O'sha havolani farzandingizga yuboring: u ochadi, 4 qoidaga rozilik beradi va kodni kiritadi.\n\n📱 <b>Android ilova</b> alohida ulanadi: shu panelda <b>«Android kodi olish»</b> tugmasini bosing — kod 15 daqiqa amal qiladi.\n\n⚠️ Oila kodingizni hech kimga yubormang — u ulanish uchun mo'ljallanmagan.`;
 }
 
 function getReelsAnalysisText(lang: string = "uz"): string {
@@ -900,6 +966,22 @@ async function handleRequest(req: Request): Promise<Response> {
 
   try {
     const payload = await req.json();
+
+    // Telegram webhook update'i (payload.type YO'Q). Bu yo'l bot nomidan xabar
+    // yuborish va admin amallarini bajarish imkonini beradi, shuning uchun
+    // so'rov haqiqatan Telegram'dan kelganini tekshiramiz: setWebhook paytida
+    // berilgan maxfiy token har bir so'rovda shu sarlavhada qaytib keladi.
+    // Ilgari hech qanday tekshiruv yo'q edi — istalgan odam funksiya URL'iga
+    // soxta "tugma bosildi" so'rovini yuborib, oilalarni o'zi tasdiqlay olardi.
+    if (typeof payload?.type !== "string" && WEBHOOK_SECRET) {
+      if (req.headers.get("x-telegram-bot-api-secret-token") !== WEBHOOK_SECRET) {
+        console.error("Webhook: maxfiy token mos kelmadi — so'rov rad etildi");
+        return new Response(JSON.stringify({ ok: false, error: "forbidden" }), {
+          status: 403,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+    }
 
     // Mini App / Android so'rovlari (payload.type bor) autentifikatsiyadan
     // O'TISHI SHART. Ilgari bu yer butunlay ochiq edi: oddiy curl bilan
@@ -951,7 +1033,10 @@ async function handleRequest(req: Request): Promise<Response> {
         parent_name: payload.parentName || null,
         parent_username: parentUsername || null,
         parent_phone: payload.parentPhone || null,
-        parent_telegram_id: Number(payload.parentTelegramId) || null,
+        // Mijozdan emas, imzolangan identitetdan: aks holda bu maydon doim
+        // bo'sh qolardi (Mini App uni hech qachon yubormagan) va tasdiqlangach
+        // ota-onaga xabar yuborib bo'lmasdi.
+        parent_telegram_id: actor!.kind === "telegram" ? actor!.telegramId : null,
         mother_name: payload.motherName || null,
         mother_username: normalizeUsername(payload.motherUsername) || null,
         child_name: payload.childName || null,
@@ -960,6 +1045,21 @@ async function handleRequest(req: Request): Promise<Response> {
         updated_at: new Date().toISOString(),
       };
 
+      // Bu oila allaqachon ko'rib chiqilganmi? Tasdiqlangan oila ma'lumotini
+      // tahrirlash — bu YANGI so'rov emas, shuning uchun adminni qaytadan
+      // bezovta qilmaymiz va holatni "pending"ga qaytarmaymiz. Ilgari har
+      // saqlash adminga yangi so'rov yuborardi.
+      let existingStatus = "none";
+      if (db) {
+        const { data: prev } = await db
+          .from("parent_registrations")
+          .select("status")
+          .eq("family_code", familyCode)
+          .limit(1);
+        if (prev && prev[0]) existingStatus = prev[0].status;
+      }
+      const alreadyApproved = existingStatus === "approved";
+
       let saved = false;
       if (db) {
         const { error } = await db
@@ -967,6 +1067,13 @@ async function handleRequest(req: Request): Promise<Response> {
           .upsert(row, { onConflict: "family_code" });
         if (error) console.error("parent_registrations upsert failed:", error.message);
         else saved = true;
+      }
+
+      if (alreadyApproved) {
+        return new Response(
+          JSON.stringify({ ok: saved, saved, alreadyApproved: true, adminNotified: false, notifyErrors: [] }),
+          { status: saved ? 200 : 500, headers: { "Content-Type": "application/json" } }
+        );
       }
 
       const line = (label: string, value: unknown) =>
@@ -1321,13 +1428,23 @@ async function handleRequest(req: Request): Promise<Response> {
     if (payload.type === "my_family") {
       if (actor!.kind !== "telegram") return unauthorized("Faqat ota-ona");
       let status = "none";
+      // Saqlangan oila ma'lumotlari ham qaytariladi: ilgari faqat holat
+      // qaytarilardi va panel yozuvni hech qachon qayta o'qimasdi — shu sabab
+      // ro'yxatdan o'tgan odam qaytib kirsa forma BO'SH ochilar, u qaytadan
+      // to'ldirib yuborar va adminga yana yangi so'rov ketardi.
+      let profile: Record<string, unknown> | null = null;
       if (db) {
         const { data } = await db
           .from("parent_registrations")
-          .select("status")
+          .select(
+            "status, family_name, parent_name, parent_username, parent_phone, mother_name, mother_username, child_name, child_grade, child_username"
+          )
           .eq("family_code", actor!.familyCode)
           .limit(1);
-        if (data && data[0]) status = data[0].status;
+        if (data && data[0]) {
+          status = data[0].status;
+          profile = data[0];
+        }
       }
       return new Response(
         JSON.stringify({
@@ -1336,6 +1453,7 @@ async function handleRequest(req: Request): Promise<Response> {
           telegramId: actor!.telegramId,
           username: actor!.username,
           registrationStatus: status,
+          profile,
         }),
         { status: 200, headers: { "Content-Type": "application/json" } }
       );
@@ -2000,7 +2118,19 @@ async function handleRequest(req: Request): Promise<Response> {
 
       await answerCallbackQuery(cb.id);
 
-      // Admin Tasdiqlash Callbacklari
+      // Admin Tasdiqlash Callbacklari.
+      //
+      // isAdmin TEKSHIRUVI SHART: ilgari u hisoblanardi-yu, bu yerda
+      // ishlatilmasdi — ya'ni tugma bosgan (yoki so'rovni qo'lda yasagan)
+      // istalgan odam istalgan oilani o'zi tasdiqlab yoki rad etib qo'ya
+      // olardi. Oila kodi esa Telegram ID'dan hisoblanadi, ya'ni topish oson.
+      if (data.startsWith("admin_approve_") || data.startsWith("admin_reject_")) {
+        if (!isAdmin) {
+          await sendMessage(chatId, "⛔️ Bu amal faqat administratorlar uchun.");
+          return new Response(JSON.stringify({ ok: true }), { status: 200 });
+        }
+      }
+
       if (data.startsWith("admin_approve_")) {
         const targetCode = data.replace("admin_approve_", "");
         const ok = await setFamilyApproval(targetCode, "approved");
@@ -2193,15 +2323,26 @@ async function handleRequest(req: Request): Promise<Response> {
           return new Response(JSON.stringify({ ok: true }), { status: 200 });
         }
 
+        // Eski `pair_<oila kodi>` havolasi. U hech qachon juftlik yaratmagan,
+        // lekin bot "muvaffaqiyatli bog'landingiz" deb yozardi — farzand esa
+        // aslida ulanmagan bo'lib, keyin ilovada ota-ona panelini ko'rardi.
+        // Endi yolg'on javob o'rniga haqiqiy yo'l aytiladi.
         if (text.includes("pair_") || text.includes("child_")) {
-          const reply = lang === "ru" 
-            ? "✅ <b>Вы успешно привязаны к родительскому аккаунту!</b> Все школьные предметы и функции активированы."
-            : "✅ <b>Siz ota-onangizning profiliga muvaffaqiyatli bog'landingiz!</b> Barcha darsliklar va imkoniyatlar faollashtirildi.";
+          const reply = lang === "ru"
+            ? "⚠️ <b>Эта ссылка устарела.</b>\n\nПопросите родителя открыть панель → «Добавить ребёнка» и прислать вам <b>персональную ссылку с одноразовым кодом</b>. Только она подключает вас по-настоящему."
+            : "⚠️ <b>Bu havola eskirgan.</b>\n\nOta-onangizdan panelni ochib, «Yangi farzand qo'shish» orqali sizga <b>alohida, bir martalik kodli havola</b> yuborishini so'rang. Faqat o'sha havola sizni haqiqatan ulaydi.";
           await sendMessage(chatId, reply);
           return new Response(JSON.stringify({ ok: true }), { status: 200 });
         }
 
-        await sendMessage(chatId, getStartMenuText(chatId, lang, true, isAdmin), getStartKeyboard(chatId, lang));
+        // Kim ekani BAZADAN aniqlanadi: ulangan farzandga ota-ona paneli
+        // tugmasi ko'rsatilmaydi.
+        const startIsChild = await isPairedChild(chatId);
+        await sendMessage(
+          chatId,
+          startIsChild ? getChildStartText(lang) : getStartMenuText(chatId, lang, true, isAdmin),
+          getStartKeyboard(chatId, lang, startIsChild)
+        );
         await sendMessage(chatId, "👇 <b>Start</b> tugmasi doim pastda — / kerak emas.", boshlashReplyKeyboard());
         return new Response(JSON.stringify({ ok: true }), { status: 200 });
       }
