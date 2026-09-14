@@ -724,6 +724,55 @@ async function answerCallbackQuery(callbackQueryId: string, text?: string) {
  * xatolarni jimgina yutib yuborardi, shuning uchun yetkazilmagan xabarni
  * hech kim sezmasdi. Endi chaqiruvchi natijani bazaga yozib qo'yadi.
  */
+/**
+ * Xabarni OILANING O'ZIGA yuboradi.
+ *
+ * Bu yetishmagani katta nuqson edi: farzandning SOS va tezkor xabarlari ham,
+ * geo-bildirishnomalar ham notifyAdmins() orqali ILOVA ADMINIGA ketardi —
+ * ya'ni ota-ona o'z farzandidan kelgan xabarni umuman olmasdi, admin esa
+ * barcha oilalarning shaxsiy xabarlarini ko'rardi.
+ */
+async function notifyFamilyParents(familyCode: string, htmlText: string): Promise<boolean> {
+  if (!db || !familyCode) return false;
+  const { data } = await db
+    .from("parent_registrations")
+    .select("parent_telegram_id")
+    .eq("family_code", familyCode)
+    .limit(1);
+
+  const chatId = data && data[0] && data[0].parent_telegram_id;
+  if (!chatId) {
+    console.error("notifyFamilyParents: oila uchun parent_telegram_id yo'q:", familyCode);
+    return false;
+  }
+  try {
+    await sendMessage(chatId, htmlText);
+    return true;
+  } catch (e) {
+    console.error("notifyFamilyParents yuborilmadi:", e);
+    return false;
+  }
+}
+
+/** Farzandning so'nggi ma'lum joyi — SOS xabariga xarita havolasini qo'shish uchun. */
+async function lastKnownLocation(
+  familyCode: string,
+  childId?: string
+): Promise<{ lat: number; lng: number; recordedAt: string } | null> {
+  if (!db || !familyCode) return null;
+  let q = db
+    .from("location_pings")
+    .select("lat, lng, recorded_at")
+    .eq("family_code", familyCode)
+    .order("recorded_at", { ascending: false })
+    .limit(1);
+  if (childId) q = q.eq("child_id", childId);
+  const { data } = await q;
+  const row = data && data[0];
+  if (!row) return null;
+  return { lat: row.lat, lng: row.lng, recordedAt: row.recorded_at };
+}
+
 async function notifyAdmins(
   htmlText: string,
   replyMarkup?: any
@@ -798,6 +847,12 @@ async function setFamilyApproval(
     } catch (e) {
       console.error("Tasdiq xabarini yuborib bo'lmadi:", e);
     }
+  }
+
+  // Taklif mukofoti aynan shu paytda to'lanadi — oila haqiqiyligi admin
+  // tomonidan tasdiqlangandan keyin.
+  if (status === "approved") {
+    await payReferralReward(familyCode);
   }
   return true;
 }
@@ -896,6 +951,74 @@ function getChildStartText(lang: string = "uz"): string {
   return `🌟 <b>Salom, yosh qahramon!</b>\n\nSen oilaviy profilga allaqachon ulangansan. Pastdagi tugmani bos — <b>o'zingning</b> paneling ochiladi: AI do'st, darslar, yutuqlar va ota-onangga tezkor xabar.`;
 }
 
+const REFERRAL_BONUS_DAYS = 14;
+
+/** Oilaga N kun Pro qo'shadi (mavjud muddat tugamagan bo'lsa — ustiga qo'shiladi). */
+async function grantProDays(familyCode: string, days: number): Promise<string | null> {
+  if (!db || !familyCode) return null;
+  const { data } = await db
+    .from("parent_registrations")
+    .select("plan_expires_at")
+    .eq("family_code", familyCode)
+    .limit(1);
+  const row = data && data[0];
+  if (!row) return null;
+
+  const now = Date.now();
+  const current = row.plan_expires_at ? new Date(row.plan_expires_at).getTime() : 0;
+  const base = current > now ? current : now;
+  const until = new Date(base + days * 86400000).toISOString();
+
+  const { error } = await db
+    .from("parent_registrations")
+    .update({ plan: "pro", plan_expires_at: until })
+    .eq("family_code", familyCode);
+  if (error) {
+    console.error("grantProDays xatosi:", error.message);
+    return null;
+  }
+  return until;
+}
+
+/**
+ * Taklif mukofoti. Ataylab TASDIQLASH paytida beriladi, ro'yxatdan o'tishda
+ * emas: aks holda soxta ro'yxatlar bilan cheksiz Pro yig'ish mumkin bo'lardi.
+ * referral_rewarded_at bir taklif uchun ikki marta to'lashning oldini oladi.
+ */
+async function payReferralReward(familyCode: string): Promise<void> {
+  if (!db) return;
+  const { data } = await db
+    .from("parent_registrations")
+    .select("referred_by_family_code, referral_rewarded_at, family_name")
+    .eq("family_code", familyCode)
+    .limit(1);
+
+  const row = data && data[0];
+  if (!row || !row.referred_by_family_code || row.referral_rewarded_at) return;
+
+  const inviter = row.referred_by_family_code;
+  if (inviter === familyCode) return; // o'zini o'zi chaqira olmaydi
+
+  const inviterUntil = await grantProDays(inviter, REFERRAL_BONUS_DAYS);
+  if (!inviterUntil) return;
+  await grantProDays(familyCode, REFERRAL_BONUS_DAYS);
+
+  await db
+    .from("parent_registrations")
+    .update({ referral_rewarded_at: new Date().toISOString() })
+    .eq("family_code", familyCode);
+
+  const until = new Date(inviterUntil).toLocaleDateString("uz-UZ");
+  await notifyFamilyParents(
+    inviter,
+    `🎁 <b>Taklifingiz uchun rahmat!</b>\n\nSiz chaqirgan oila ro'yxatdan o'tdi va tasdiqlandi.\n\n⭐️ <b>+${REFERRAL_BONUS_DAYS} kun Pro</b> sizga qo'shildi (${until} gacha).`
+  );
+  await notifyFamilyParents(
+    familyCode,
+    `🎁 <b>Sovg'a!</b>\n\nSiz taklif havolasi orqali qo'shilganingiz uchun <b>+${REFERRAL_BONUS_DAYS} kun Pro</b> berildi.`
+  );
+}
+
 /** Bu Telegram hisobi biror oilaga FARZAND sifatida ulanganmi. */
 async function isPairedChild(telegramId: number | string): Promise<boolean> {
   if (!db) return false;
@@ -988,8 +1111,11 @@ async function handleRequest(req: Request): Promise<Response> {
     // istalgan oilaga bola qo'shish va ro'yxatini o'qish mumkin edi.
     // Telegram webhook update'larida "type" bo'lmaydi — ular Telegram
     // serveridan keladi va quyida alohida ishlanadi.
+    // device_pair — qurilmada hali hech qanday hisob ma'lumoti yo'q.
+    // cron_daily_digest — ichki chaqiruv, o'zi maxfiy sarlavha bilan himoyalangan.
+    const NO_ACTOR_TYPES = ["device_pair", "cron_daily_digest"];
     let actor: Actor | null = null;
-    if (typeof payload?.type === "string" && payload.type !== "device_pair") {
+    if (typeof payload?.type === "string" && !NO_ACTOR_TYPES.includes(payload.type)) {
       actor = await authenticate(payload);
       if (!actor) {
         return unauthorized(
@@ -1044,6 +1170,20 @@ async function handleRequest(req: Request): Promise<Response> {
         child_username: normalizeUsername(payload.childUsername) || null,
         updated_at: new Date().toISOString(),
       };
+
+      // Taklif kodi: faqat MAVJUD va o'zi bo'lmagan oila qabul qilinadi.
+      // Mukofot bu yerda berilmaydi — admin tasdig'idan keyin beriladi.
+      const refRaw = String(payload.ref || "").replace(/\D/g, "");
+      if (db && refRaw.length === 6 && refRaw !== familyCode) {
+        const { data: refFamily } = await db
+          .from("parent_registrations")
+          .select("family_code")
+          .eq("family_code", refRaw)
+          .limit(1);
+        if (refFamily && refFamily[0]) {
+          (row as Record<string, unknown>).referred_by_family_code = refRaw;
+        }
+      }
 
       // Bu oila allaqachon ko'rib chiqilganmi? Tasdiqlangan oila ma'lumotini
       // tahrirlash — bu YANGI so'rov emas, shuning uchun adminni qaytadan
@@ -1425,6 +1565,208 @@ async function handleRequest(req: Request): Promise<Response> {
     // Ilgari Mini App kodni localStorage'dan o'qirdi va u yerda eski qiymat
     // (masalan 849210) qolib ketardi — shu sabab har foydalanuvchida o'z
     // kodi bo'lishi kerak bo'lsa ham, eskisi ko'rinaverardi.
+    // 0.0r KUNLIK KECHKI XULOSA — ichki (cron) chaqiruv.
+    //
+    // Ota-ona ilovani ochmasa ham har kuni qiymat ko'rishi uchun: ekran vaqti,
+    // eng ko'p ishlatilgan 3 ta ilova va kun davomidagi kelish-ketishlar.
+    // Ma'lumot allaqachon yig'ilib turibdi — shu paytgacha faqat hech kim
+    // uni o'qib bermasdi.
+    //
+    // Himoya: Telegram webhook'i bilan bir xil maxfiy sarlavha talab qilinadi,
+    // ya'ni bu endpointni tashqaridan chaqirib bo'lmaydi.
+    if (payload.type === "cron_daily_digest") {
+      if (!WEBHOOK_SECRET || req.headers.get("x-telegram-bot-api-secret-token") !== WEBHOOK_SECRET) {
+        return new Response(JSON.stringify({ ok: false, error: "forbidden" }), {
+          status: 403,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      if (!db) {
+        return new Response(JSON.stringify({ ok: false, error: "Baza ulanmagan" }), {
+          status: 500,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      const sinceIso = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+      const todayKey = new Date().toISOString().slice(0, 10);
+
+      const { data: families } = await db
+        .from("parent_registrations")
+        .select("family_code, parent_telegram_id, digest_sent_at, child_name")
+        .eq("status", "approved")
+        .eq("digest_enabled", true)
+        .limit(500);
+
+      let sent = 0;
+      let skipped = 0;
+
+      for (const fam of families || []) {
+        if (!fam.parent_telegram_id) { skipped++; continue; }
+        // Bir kunda bir marta.
+        if (fam.digest_sent_at && String(fam.digest_sent_at).slice(0, 10) === todayKey) {
+          skipped++;
+          continue;
+        }
+
+        const { data: tel } = await db
+          .from("device_telemetry")
+          .select("app_package_name, screen_time_seconds")
+          .eq("family_code", fam.family_code)
+          .gte("created_at", sinceIso)
+          .limit(1000);
+
+        const totals: Record<string, number> = {};
+        let totalSec = 0;
+        for (const r of tel || []) {
+          const app = r.app_package_name || "unknown";
+          const sec = Number(r.screen_time_seconds) || 0;
+          totals[app] = (totals[app] || 0) + sec;
+          totalSec += sec;
+        }
+        const top = Object.entries(totals).sort((a, b) => b[1] - a[1]).slice(0, 3);
+
+        const { data: alerts } = await db
+          .from("geofence_alerts")
+          .select("message, alert_type, created_at")
+          .eq("family_code", fam.family_code)
+          .gte("created_at", sinceIso)
+          .order("created_at", { ascending: true })
+          .limit(20);
+
+        const loc = await lastKnownLocation(fam.family_code);
+
+        // Ma'lumot umuman bo'lmasa — bo'sh xabar yubormaymiz.
+        if (totalSec === 0 && (!alerts || alerts.length === 0) && !loc) {
+          skipped++;
+          continue;
+        }
+
+        const fmt = (sec: number) => {
+          const h = Math.floor(sec / 3600);
+          const m = Math.round((sec % 3600) / 60);
+          return h > 0 ? `${h} soat ${m} daqiqa` : `${m} daqiqa`;
+        };
+
+        let text = `🌙 <b>Kunlik xulosa — ${fam.child_name || "farzandingiz"}</b>\n`;
+        text += `\n📱 <b>Ekran vaqti:</b> ${totalSec > 0 ? fmt(totalSec) : "ma'lumot yo'q"}`;
+
+        if (top.length > 0) {
+          text += `\n\n🔝 <b>Eng ko'p ishlatilgan:</b>`;
+          top.forEach(([app, sec], i) => {
+            text += `\n${i + 1}. ${app} — ${fmt(sec)}`;
+          });
+        }
+
+        if (alerts && alerts.length > 0) {
+          text += `\n\n📍 <b>Kun davomida:</b>`;
+          for (const a of alerts.slice(0, 6)) {
+            const t = new Date(a.created_at).toLocaleTimeString("uz-UZ", {
+              hour: "2-digit",
+              minute: "2-digit",
+            });
+            text += `\n• ${t} — ${a.message}`;
+          }
+        }
+
+        if (loc) {
+          text += `\n\n🗺 <a href="https://maps.google.com/?q=${loc.lat},${loc.lng}">So'nggi joylashuvi</a>`;
+        }
+
+        text += `\n\n<i>Bu xulosani o'chirish uchun: /xulosa</i>`;
+
+        const ok = await notifyFamilyParents(fam.family_code, text);
+        if (ok) {
+          await db
+            .from("parent_registrations")
+            .update({ digest_sent_at: new Date().toISOString() })
+            .eq("family_code", fam.family_code);
+          sent++;
+        } else {
+          skipped++;
+        }
+      }
+
+      return new Response(JSON.stringify({ ok: true, sent, skipped }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    // 0.0s KOMENDANT SOAT (maktab/uyqu rejimi).
+    //
+    // Qoida serverda saqlanadi, qurilma uni o'qib o'zi qo'llaydi — shunda
+    // farzand ilovadagi sozlamani o'zgartirib qoidadan qochib qutula olmaydi.
+    if (payload.type === "save_curfew_policy") {
+      if (actor!.kind !== "telegram") return unauthorized("Faqat ota-ona");
+      if (!db) {
+        return new Response(JSON.stringify({ ok: false, error: "Baza ulanmagan" }), {
+          status: 500, headers: { "Content-Type": "application/json" },
+        });
+      }
+      const plan = await getPlan(actor!.familyCode);
+      if (plan !== "pro") {
+        return new Response(
+          JSON.stringify({ ok: false, upgradeRequired: true, plan, error: "Komendant soat Pro tarifda mavjud." }),
+          { status: 402, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      const childId = String(payload.childId || "").trim();
+      if (!childId) {
+        return new Response(JSON.stringify({ ok: false, error: "childId majburiy" }), {
+          status: 400, headers: { "Content-Type": "application/json" },
+        });
+      }
+      const timeRe = /^([01]\d|2[0-3]):[0-5]\d$/;
+      const startTime = timeRe.test(String(payload.startTime)) ? String(payload.startTime) : "22:00";
+      const endTime = timeRe.test(String(payload.endTime)) ? String(payload.endTime) : "06:30";
+
+      const { error } = await db.from("curfew_policies").upsert(
+        {
+          family_code: actor!.familyCode,
+          child_id: childId,
+          enabled: payload.enabled !== false,
+          blocked_apps: Array.isArray(payload.blockedApps) ? payload.blockedApps : [],
+          allowed_apps: Array.isArray(payload.allowedApps) ? payload.allowedApps : [],
+          start_time: startTime,
+          end_time: endTime,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "family_code,child_id" }
+      );
+      if (error) {
+        console.error("curfew upsert xatosi:", error.message);
+        return new Response(JSON.stringify({ ok: false, error: error.message }), {
+          status: 500, headers: { "Content-Type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify({ ok: true }), {
+        status: 200, headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    // Qoidani ham ota-ona (ko'rish uchun), ham qurilma (qo'llash uchun) so'raydi.
+    if (payload.type === "get_curfew_policy") {
+      if (!db) {
+        return new Response(JSON.stringify({ ok: true, policy: null }), {
+          status: 200, headers: { "Content-Type": "application/json" },
+        });
+      }
+      const childId =
+        actor!.kind === "device" ? actor!.childId : String(payload.childId || "").trim();
+      const { data } = await db
+        .from("curfew_policies")
+        .select("enabled, blocked_apps, allowed_apps, start_time, end_time")
+        .eq("family_code", actor!.familyCode)
+        .eq("child_id", childId)
+        .limit(1);
+
+      return new Response(JSON.stringify({ ok: true, policy: (data && data[0]) || null }), {
+        status: 200, headers: { "Content-Type": "application/json" },
+      });
+    }
+
     if (payload.type === "my_family") {
       if (actor!.kind !== "telegram") return unauthorized("Faqat ota-ona");
       let status = "none";
@@ -1437,13 +1779,24 @@ async function handleRequest(req: Request): Promise<Response> {
         const { data } = await db
           .from("parent_registrations")
           .select(
-            "status, family_name, parent_name, parent_username, parent_phone, mother_name, mother_username, child_name, child_grade, child_username"
+            "status, family_name, parent_name, parent_username, parent_phone, mother_name, mother_username, child_name, child_grade, child_username, parent_telegram_id"
           )
           .eq("family_code", actor!.familyCode)
           .limit(1);
         if (data && data[0]) {
           status = data[0].status;
           profile = data[0];
+        }
+
+        // parent_telegram_id'ni to'ldirib qo'yamiz: bu maydon ilgari hech
+        // qachon yozilmagan, ya'ni eski oilalarga bildirishnoma (SOS, geo,
+        // kunlik xulosa) yubora olmasdik. Panel har ochilganda shu yerda
+        // jimgina tiklanadi.
+        if (data && data[0] && !data[0].parent_telegram_id) {
+          await db
+            .from("parent_registrations")
+            .update({ parent_telegram_id: actor!.telegramId })
+            .eq("family_code", actor!.familyCode);
         }
       }
       return new Response(
@@ -1773,10 +2126,15 @@ async function handleRequest(req: Request): Promise<Response> {
         accuracy_m: Number(payload.accuracyM) || null,
       });
 
+      // Geo-bildirishnoma OTA-ONAGA boradi. Ilgari u notifyAdmins() edi —
+      // "maktabga yetdi" xabarini ota-ona emas, ilova admini olardi.
       const fired = await evaluateGeofences(actor!.familyCode, actor!.childId, lat, lng);
       for (const f of fired) {
-        await notifyAdmins(
-          "\u{1F4CD} <b>" + f.message + "</b>\n\n\u{1F511} <code>" + actor!.familyCode + "</code>"
+        await notifyFamilyParents(
+          actor!.familyCode,
+          "\u{1F4CD} <b>" + f.message + "</b>\n\n" +
+            '<a href="https://maps.google.com/?q=' + lat + "," + lng + '">Xaritada ko\'rish</a>' +
+            "\n🕒 " + new Date().toLocaleString("uz-UZ")
         );
       }
 
@@ -2089,16 +2447,41 @@ async function handleRequest(req: Request): Promise<Response> {
     }
 
     // 0.2 Farzand tezkor xabar yuborganda (Maktab, Uy, Olib keting, SOS)
+    // Farzandning tezkor xabari va SOS. Ilgari bu xabar notifyAdmins() orqali
+    // ILOVA ADMINIGA ketardi — ota-ona uni umuman olmasdi. Endi to'g'ri
+    // manzilga: farzandning o'z ota-onasiga, so'nggi ma'lum joyi bilan.
     if (payload.type === "child_status_alert") {
       const childName = payload.childName || "Farzand";
       const statusText = payload.statusText || "Xabar keldi";
       // Oila kodi so'rovchining o'zidan, mijoz yuborganidan emas.
       const familyCode = actor!.familyCode;
+      const isSos = payload.sos === true || /sos/i.test(String(statusText));
 
-      const alertMsg = `📍 <b>FARZANDINGIZDAN TEZKOR XABAR!</b>\n\n👦 <b>Farzand:</b> ${childName}\n💬 <b>Xabar:</b> <b>${statusText}</b>\n🔑 <b>Oila Kodi:</b> <code>${familyCode}</code>\n📅 <b>Vaqt:</b> ${new Date().toLocaleString("uz-UZ")}`;
+      const childId = actor!.kind === "telegram" ? "tg_" + actor!.telegramId : actor!.childId;
+      const loc = await lastKnownLocation(familyCode, childId);
+      const locLine = loc
+        ? `\n📍 <b>So'nggi joyi:</b> <a href="https://maps.google.com/?q=${loc.lat},${loc.lng}">xaritada ochish</a>` +
+          `\n🕒 <i>${new Date(loc.recordedAt).toLocaleString("uz-UZ")} holatiga ko'ra</i>`
+        : `\n📍 <i>Joylashuv hali kelmagan (Android ilova o'rnatilganini tekshiring).</i>`;
 
-      await notifyAdmins(alertMsg);
-      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      const alertMsg = isSos
+        ? `🆘 <b>SHOSHILINCH! FARZANDINGIZ YORDAM SO'RAMOQDA</b>\n\n👦 <b>Farzand:</b> ${childName}\n💬 <b>Xabar:</b> <b>${statusText}</b>${locLine}\n\n📅 ${new Date().toLocaleString("uz-UZ")}`
+        : `📍 <b>Farzandingizdan xabar</b>\n\n👦 <b>${childName}:</b> <b>${statusText}</b>${locLine}\n\n📅 ${new Date().toLocaleString("uz-UZ")}`;
+
+      const delivered = await notifyFamilyParents(familyCode, alertMsg);
+
+      // SOS yetib bormasa (ota-ona hali botga yozmagan bo'lsa) — zaxira sifatida
+      // adminga xabar beramiz, bu shoshilinch holat.
+      if (!delivered && isSos) {
+        await notifyAdmins(
+          `⚠️ <b>SOS yetkazilmadi</b> — oila: <code>${familyCode}</code>\n\n${alertMsg}`
+        );
+      }
+
+      return new Response(JSON.stringify({ ok: true, delivered }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
     }
 
     const update = payload;
@@ -2335,6 +2718,29 @@ async function handleRequest(req: Request): Promise<Response> {
           return new Response(JSON.stringify({ ok: true }), { status: 200 });
         }
 
+        // Taklif havolasi: ?start=ref_<oila kodi>. Kod Mini App'ga uzatiladi
+        // va ro'yxatdan o'tishda kim chaqirgani yozib qo'yiladi. Mukofot esa
+        // keyinroq, admin tasdiqlaganda beriladi.
+        const refMatch = text.match(/ref_(\d{6})/);
+        if (refMatch) {
+          const refCode = refMatch[1];
+          await sendMessage(
+            chatId,
+            `👋 <b>Xush kelibsiz!</b>\n\nSizni Qalqon AI'ga bir oila taklif qildi. Ro'yxatdan o'tib, administrator tasdig'ini olganingizdan so'ng <b>sizga ham, taklif qilgan oilaga ham +${REFERRAL_BONUS_DAYS} kun Pro</b> beriladi.\n\nPastdagi tugmani bosing va oila ma'lumotlarini to'ldiring.`,
+            {
+              inline_keyboard: [
+                [
+                  {
+                    text: "📝 Ro'yxatdan o'tish",
+                    web_app: { url: `${MINI_APP_URL}&lang=${lang}&ref=${refCode}` },
+                  },
+                ],
+              ],
+            }
+          );
+          return new Response(JSON.stringify({ ok: true }), { status: 200 });
+        }
+
         // Kim ekani BAZADAN aniqlanadi: ulangan farzandga ota-ona paneli
         // tugmasi ko'rsatilmaydi.
         const startIsChild = await isPairedChild(chatId);
@@ -2344,6 +2750,34 @@ async function handleRequest(req: Request): Promise<Response> {
           getStartKeyboard(chatId, lang, startIsChild)
         );
         await sendMessage(chatId, "👇 <b>Start</b> tugmasi doim pastda — / kerak emas.", boshlashReplyKeyboard());
+        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      }
+
+      // Kunlik xulosani yoqish/o'chirish.
+      if (text.startsWith("/xulosa")) {
+        if (db) {
+          const famCode = generateFamilyCode(chatId);
+          const { data } = await db
+            .from("parent_registrations")
+            .select("digest_enabled")
+            .eq("family_code", famCode)
+            .limit(1);
+          if (!data || !data[0]) {
+            await sendMessage(chatId, "⚠️ Avval ro'yxatdan o'ting — kunlik xulosa ro'yxatdan o'tgan oilalarga yuboriladi.");
+          } else {
+            const next = !data[0].digest_enabled;
+            await db
+              .from("parent_registrations")
+              .update({ digest_enabled: next })
+              .eq("family_code", famCode);
+            await sendMessage(
+              chatId,
+              next
+                ? "🌙 <b>Kunlik xulosa yoqildi.</b>\n\nHar kuni kechqurun farzandingizning ekran vaqti, eng ko'p ishlatilgan ilovalari va kelish-ketishlari haqida qisqa hisobot yuboraman."
+                : "🔕 <b>Kunlik xulosa o'chirildi.</b>\n\nQayta yoqish uchun yana /xulosa buyrug'ini yuboring."
+            );
+          }
+        }
         return new Response(JSON.stringify({ ok: true }), { status: 200 });
       }
 

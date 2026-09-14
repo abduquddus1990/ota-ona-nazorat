@@ -2605,6 +2605,31 @@ function triggerVoiceAlert() {
 // tarqatardi, u esa ota-onaning Telegram ID'sidan hisoblanadi.
 //
 // Yagona haqiqiy yo'l — har bir farzandga alohida, bir martalik taklif kodi.
+/**
+ * Taklif havolasi. Chaqirilgan oila ADMIN TASDIG'IDAN o'tgach, ikkala oilaga
+ * ham +14 kun Pro qo'shiladi (mukofot serverda, tasdiqlash paytida beriladi —
+ * shu sabab soxta ro'yxatlar bilan yig'ib bo'lmaydi).
+ */
+function shareReferralLink() {
+    const isRu = (currentLang === 'ru');
+    if (!familyCode || String(familyCode).length !== 6) {
+        const msg = isRu ? 'Код ещё не готов, откройте панель заново.' : 'Kod hali tayyor emas, panelni qayta oching.';
+        if (tg && tg.showAlert) tg.showAlert(msg); else alert(msg);
+        return;
+    }
+    const link = 'https://t.me/qalqon_aibot?start=ref_' + familyCode;
+    const text = isRu
+        ? 'Я защищаю своего ребёнка через Qalqon AI. Присоединяйся — нам обоим дадут +14 дней Pro:'
+        : "Farzandimni Qalqon AI orqali himoya qilyapman. Qo'shiling — ikkalamizga +14 kun Pro beriladi:";
+    const shareUrl = 'https://t.me/share/url?url=' + encodeURIComponent(link) + '&text=' + encodeURIComponent(text);
+
+    if (tg && tg.openTelegramLink) {
+        tg.openTelegramLink(shareUrl);
+        return;
+    }
+    window.open(shareUrl, '_blank');
+}
+
 function copyPairingLink() {
     openSubpage('modal-add-child');
     const isRu = (currentLang === 'ru');
