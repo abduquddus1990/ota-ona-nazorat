@@ -11,7 +11,9 @@ import android.os.Process
 import androidx.core.content.ContextCompat
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import com.shield.parentalguard.network.DeviceCredentials
 import com.shield.parentalguard.network.EncryptedNetworkClient
+import com.shield.parentalguard.network.PairingApi
 import com.shield.parentalguard.security.SecurityKeyStoreManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -28,6 +30,12 @@ import org.json.JSONObject
  * ga (Render'dagi FastAPI) X-Family-Code/X-Child-Id orqali yuboradi —
  * bu Qalqon AI'ning haqiqiy device-pairing auth mexanizmi (Supabase Auth
  * emas, backend/security/telegram_auth.py:require_family_access).
+ *
+ * Joylashuv QO'SHIMCHA ravishda ota-ona panelidagi radar'ga ham yuboriladi
+ * (reportLocationToRadar) — radar location_pings jadvalidan o'qiydi, u esa
+ * faqat deviceToken bilan autentifikatsiya qilingan report_location orqali
+ * to'ladi (supabase/functions/ota-ona-bot/index.ts). Bu ikkinchi, alohida
+ * so'rov: Render backend'dagi eski telemetriya bilan aralashtirilmaydi.
  */
 class TelemetrySyncWorker(
     appContext: Context,
@@ -51,6 +59,10 @@ class TelemetrySyncWorker(
             val battery = readBatteryLevel()
             val usage = readForegroundUsage()
             val location = readLastKnownLocation()
+
+            if (location != null) {
+                reportLocationToRadar(location)
+            }
 
             val rawTelemetry = JSONObject().apply {
                 put("timestamp", System.currentTimeMillis())
@@ -93,6 +105,36 @@ class TelemetrySyncWorker(
             }
         } catch (e: Exception) {
             Result.retry()
+        }
+    }
+
+    /**
+     * report_location so'rovi actor.kind === "device" talab qiladi (index.ts),
+     * ya'ni deviceToken shart. Token hali yo'q bo'lsa (eski, pairing
+     * yangilanmasdan turib ulangan qurilma) — jimgina o'tkazib yuboramiz,
+     * bu Render'ga yuborilayotgan asosiy telemetriyani to'xtatmaydi.
+     */
+    private fun reportLocationToRadar(location: Location) {
+        val token = DeviceCredentials.readDeviceToken(applicationContext) ?: return
+
+        try {
+            val body = JSONObject().apply {
+                put("type", "report_location")
+                put("deviceToken", token)
+                put("lat", location.latitude)
+                put("lng", location.longitude)
+                if (location.hasAccuracy()) put("accuracyM", location.accuracy)
+            }.toString().toRequestBody("application/json; charset=utf-8".toMediaType())
+
+            val request = Request.Builder()
+                .url(PairingApi.OTA_ONA_BOT_URL)
+                .post(body)
+                .header("Content-Type", "application/json")
+                .build()
+
+            EncryptedNetworkClient.client.newCall(request).execute().use { /* best-effort */ }
+        } catch (_: Exception) {
+            // Radar so'rovi muvaffaqiyatsiz bo'lsa ham asosiy telemetriya davom etadi.
         }
     }
 
