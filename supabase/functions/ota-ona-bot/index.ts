@@ -890,7 +890,7 @@ function getFeedbackText(lang: string = "uz"): string {
   return `💡 <b>TAKLIF VA FIKR-MULOHAZALAR:</b>\n\nDasturni yanada yaxshilash bo'yicha takliflaringizni to'g'ridan-to'g'ri ishlab chiquvchilarga yuboring:\n\n📬 <b>Rasmiy qabul pochtasi:</b> <code>alhamdulillah@tmail.ton</code>\n\n👉 <a href="https://mail.google.com/mail/?view=cm&fs=1&to=alhamdulillah@tmail.ton&su=Shield+Parental+Guard+Taklif+va+Mulohaza">Gmail orqali xat yozish</a>`;
 }
 
-serve(async (req) => {
+async function handleRequest(req: Request): Promise<Response> {
   await ensureBotCommands();
   if (req.method === "GET") {
     return new Response(JSON.stringify({ status: "OK", service: "Qalqon AI Bot" }), {
@@ -2260,4 +2260,35 @@ serve(async (req) => {
     console.error("Webhook xatosi:", error);
     return new Response(JSON.stringify({ error: error.message }), { status: 500 });
   }
+}
+
+// Mini App brauzerda github.io'dan ochiladi, funksiya esa supabase.co'da —
+// ya'ni har bir so'rov cross-origin. Bu sarlavhalarsiz brauzer so'rovni
+// BLOKLAYDI: javob mijozgacha umuman yetib bormaydi. Panel shu sababli
+// serverdan hech narsa ololmay, faqat localStorage'dagi eski ma'lumot bilan
+// ishlayotgandek ko'rinardi — ro'yxatdan o'tish oynasi ochilmagani ham,
+// farzand kod kiritganda "server xatoligi" chiqqani ham aynan shundan edi.
+//
+// curl bilan sinaganda bu muammo KO'RINMAYDI, chunki CORS'ni faqat brauzer
+// tekshiradi. Shuning uchun server tomoni har safar "ishlayapti" bo'lib
+// ko'rinardi.
+const CORS_HEADERS: Record<string, string> = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Max-Age": "86400",
+};
+
+serve(async (req) => {
+  // Preflight. Ilgari OPTIONS ham umumiy oqimga tushib, bo'sh tanani
+  // req.json() bilan o'qimoqchi bo'lardi va 500 qaytarardi — ya'ni
+  // preflight'ning o'zi yiqilib, keyingi POST hech qachon yuborilmasdi.
+  if (req.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+
+  const res = await handleRequest(req);
+  const headers = new Headers(res.headers);
+  for (const [key, value] of Object.entries(CORS_HEADERS)) headers.set(key, value);
+  return new Response(res.body, { status: res.status, statusText: res.statusText, headers });
 });
