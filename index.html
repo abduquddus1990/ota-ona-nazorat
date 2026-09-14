@@ -90,13 +90,13 @@
                     </div>
                 </div>
 
-                <!-- Family Code Input (Oral code from parents) -->
+                <!-- Invite Code Input (per-child one-time code from parent's Mini App) -->
                 <div class="space-y-1.5 text-left pt-2 border-t border-slate-800">
                     <label class="text-[11px] font-bold text-slate-300 block">
-                        🔑 6 Xonali Oila Kodi <span class="text-[10px] text-indigo-300 font-normal">(Ota-onangizdan og'zaki oling):</span>
+                        🔑 8 Belgili Kod <span class="text-[10px] text-indigo-300 font-normal">(Ota-onangiz Mini App'dan bergan):</span>
                     </label>
-                    <input type="text" id="childConsentFamilyCode" placeholder="______" maxlength="6" class="w-full bg-slate-950 border-2 border-indigo-500/60 rounded-2xl px-4 py-3 text-center text-lg font-black text-white font-mono tracking-widest focus:outline-none focus:border-cyan-400 placeholder-slate-600 transition">
-                    <p id="childConsentError" class="text-[10px] text-rose-400 font-bold text-center hidden">⚠️ Iltimos, 6 xonali oila kodini to'liq kiriting!</p>
+                    <input type="text" id="childConsentFamilyCode" placeholder="________" maxlength="8" class="w-full bg-slate-950 border-2 border-indigo-500/60 rounded-2xl px-4 py-3 text-center text-lg font-black text-white font-mono tracking-widest focus:outline-none focus:border-cyan-400 placeholder-slate-600 transition uppercase">
+                    <p id="childConsentError" class="text-[10px] text-rose-400 font-bold text-center hidden">⚠️ Iltimos, 8 belgili kodni to'liq kiriting!</p>
                 </div>
             </div>
         </div>
@@ -355,7 +355,7 @@
                 <span class="text-xl">🤝</span>
                 <div>
                     <h3 class="text-xs font-bold text-white" data-i18n="childPairingHeader">Oila Profiliga Ulanish & Rozilik</h3>
-                    <div class="text-[10px] text-slate-400" data-i18n="childPairingSub">Ota-onang bergan 6 xonali Oila Kodini kirit</div>
+                    <div class="text-[10px] text-slate-400" data-i18n="childPairingSub">Ota-onang bergan 8 belgili kodni kirit</div>
                 </div>
             </div>
 
@@ -367,10 +367,10 @@
                 </span>
             </label>
 
-            <!-- 6 Xonali Kod Kiritish -->
+            <!-- 8 Belgili Kod Kiritish -->
             <div class="space-y-1.5">
-                <label class="text-[11px] font-bold text-sky-400 block" data-i18n="childInputCodeLabel">6 Xonali Oila Kodi (6 raqam):</label>
-                <input type="text" id="childFamilyCodeInput" placeholder="______" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2.5 text-sm font-mono text-center font-bold text-emerald-400 tracking-widest focus:outline-none focus:border-emerald-500 uppercase">
+                <label class="text-[11px] font-bold text-sky-400 block" data-i18n="childInputCodeLabel">8 Belgili Kod:</label>
+                <input type="text" id="childFamilyCodeInput" placeholder="________" maxlength="8" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2.5 text-sm font-mono text-center font-bold text-emerald-400 tracking-widest focus:outline-none focus:border-emerald-500 uppercase">
             </div>
 
             <div id="childPairErrorMsg" class="hidden p-2 rounded-lg bg-rose-500/10 border border-rose-500/30 text-[10px] text-rose-400 font-medium"></div>
@@ -1392,27 +1392,6 @@
                         <option value="10">10-sinf / 10-класс</option>
                         <option value="11">11-sinf / 11-класс</option>
                     </select>
-                </div>
-
-                <!-- e-Maktab (Kundalik) Login & Paroli -->
-                <div class="p-3 rounded-xl bg-slate-900/80 border border-sky-500/30 space-y-2">
-                    <div class="flex items-center gap-1.5 text-xs font-bold text-sky-400">
-                        <span>📚</span>
-                        <span data-i18n="emaktabSyncHeader">e-Maktab (Kundalik) Sinxronizatsiyasi</span>
-                    </div>
-                    <div class="text-[9px] text-slate-400 leading-tight" data-i18n="emaktabSyncDesc">
-                        Baholar va davomatni avtomatik olish uchun kiritiladi (Tasdiq kodi shart emas).
-                    </div>
-                    <div class="grid grid-cols-2 gap-2 pt-1">
-                        <div>
-                            <label class="text-[10px] text-slate-300 block mb-1" data-i18n="emaktabLoginLabel">e-Maktab Login</label>
-                            <input type="text" id="profileEmaktabLogin" placeholder="login_kundalik" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-sky-500">
-                        </div>
-                        <div>
-                            <label class="text-[10px] text-slate-300 block mb-1" data-i18n="emaktabPassLabel">e-Maktab Parol</label>
-                            <input type="password" id="profileEmaktabPassword" placeholder="••••••••" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-sky-500">
-                        </div>
-                    </div>
                 </div>
 
                 <button onclick="saveChildProfile()" class="w-full py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs rounded-xl transition shadow-lg shadow-emerald-500/20" data-i18n="saveProfileBtn">
