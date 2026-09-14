@@ -1887,7 +1887,11 @@ async function handleRequest(req: Request): Promise<Response> {
         `- Mavzular: bolaning o'qishi, ekran vaqti, raqamli odatlar, xavfsizlik, motivatsiya.\n` +
         `- Aniq qadamlar taklif qil, umumiy gaplardan qoch.\n` +
         `- Jazolash emas, kelishuv va chegara qo'yish yo'lini tavsiya qil.\n` +
-        `- Tibbiy yoki psixologik jiddiy holatlarda mutaxassisga murojaatni maslahat ber.`;
+        `- Tibbiy yoki psixologik jiddiy holatlarda mutaxassisga murojaatni maslahat ber.\n` +
+        `- BOSHQA nazorat ilovalarini tavsiya qilma (Family Link va shunga o'xshashlar). ` +
+        `Texnik vosita kerak bo'lsa — Qalqon AI ning o'z imkoniyatlarini ayt: ` +
+        `ekran vaqti hisoboti, kunlik kechki xulosa, komendant soat (ilovalarni jadval bo'yicha cheklash), ` +
+        `radar va geo-bildirishnomalar, farzand uchun AI o'quv yordamchisi.`;
 
       const childPrompt =
         `Sen "Qalqon" — O'zbekistondagi ${grade}-sinf o'quvchisining do'stona o'quv yordamchisisan. ` +
@@ -1923,7 +1927,11 @@ async function handleRequest(req: Request): Promise<Response> {
                     : [{ text: question }],
                 },
               ],
-              generationConfig: { temperature: 0.7, maxOutputTokens: 700 },
+              // maxOutputTokens "o'ylash" tokenlarini ham o'z ichiga oladi:
+              // 700 da model javobni yozib ulgurmay, gap o'rtasida kesilib
+              // qolardi. (thinkingConfig bu modelda qabul qilinmadi —
+              // "invalid argument" beradi, shuning uchun faqat chegara oshirildi.)
+              generationConfig: { temperature: 0.7, maxOutputTokens: 2048 },
             }),
           }
         );
@@ -1958,9 +1966,15 @@ async function handleRequest(req: Request): Promise<Response> {
           ]);
         }
 
-        return new Response(JSON.stringify({ ok: true, answer }), {
-          status: 200, headers: { "Content-Type": "application/json" },
-        });
+        return new Response(
+          JSON.stringify({
+            ok: true,
+            answer,
+            // Javob kesilib qolganini keyin ham ko'ra olishimiz uchun.
+            finishReason: gJson?.candidates?.[0]?.finishReason || null,
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        );
       } catch (e) {
         console.error("ai_tutor_chat xatosi:", e);
         return new Response(
