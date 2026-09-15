@@ -389,6 +389,30 @@
                 </div>
             </div>
 
+            <!-- 🐺 BO'RI HAMROH: bolaning odatlariga qarab o'sadi -->
+            <div id="companionCard" class="hidden p-3.5 rounded-2xl bg-gradient-to-br from-indigo-500/15 to-violet-500/10 border border-indigo-500/40 space-y-2.5">
+                <div class="flex items-center gap-3">
+                    <div class="w-14 h-14 rounded-2xl bg-slate-950/70 border border-indigo-500/40 flex items-center justify-center text-3xl" id="companionEmoji">🥚</div>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-xs font-bold text-white" id="companionName">Qalqon</span>
+                            <span class="text-[9px] px-1.5 py-0.5 rounded-lg bg-indigo-500/25 text-indigo-200 font-bold" id="companionLevel">1-daraja</span>
+                        </div>
+                        <div class="text-[10px] text-slate-400" id="companionTitle">Tuxumdagi bo'ri</div>
+                        <div class="mt-1.5 h-1.5 rounded-full bg-slate-800 overflow-hidden">
+                            <div class="h-full bg-gradient-to-r from-indigo-400 to-violet-400 transition-all" id="companionBar" style="width:0%"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex items-center justify-between pt-2 border-t border-indigo-500/20">
+                    <div class="text-[10px] text-slate-400">🔥 Ketma-ketlik: <b class="text-orange-300" id="companionStreak">0 kun</b></div>
+                    <div class="text-[10px] text-slate-400">⭐ <b class="text-indigo-300" id="companionXp">0 XP</b></div>
+                </div>
+                <div class="text-[9px] text-slate-500 leading-tight" id="companionHint">
+                    Har kuni dars qilsang, bo'ring o'sadi. Bir kun tashlab qo'ysang — uxlab qoladi.
+                </div>
+            </div>
+
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2">
                     <span class="text-xl">⏱️</span>
@@ -1465,6 +1489,80 @@
         </div>
     </div>
 
+    <!-- 💰 MODAL: VAQT BANKI KURSI (ota-ona belgilaydi) -->
+    <div id="modal-time-bank" class="subpage-modal space-y-4">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+            <button onclick="closeSubpage()" class="text-xs font-bold text-emerald-400">← Orqaga</button>
+            <h2 class="text-xs font-bold text-white">Vaqt Banki Kursi</h2>
+            <span class="w-8"></span>
+        </div>
+
+        <div class="glass-card p-4 space-y-3.5">
+            <div class="text-center space-y-1">
+                <span class="text-3xl">💰</span>
+                <h3 class="text-sm font-bold text-white">Farzandingiz ekran vaqtini ishlab topsin</h3>
+                <p class="text-[11px] text-slate-300 leading-relaxed">
+                    Ekran vaqtini tortib olish o'rniga — uni mukofot qiling.
+                    Farzandingiz diqqat bilan dars qilsa, maktabga o'z vaqtida yetsa,
+                    qo'shimcha vaqt yutadi. Kursni siz belgilaysiz.
+                </p>
+            </div>
+
+            <label class="flex items-center justify-between p-2.5 rounded-xl bg-slate-900/90 border border-slate-700 cursor-pointer">
+                <span class="text-[11px] font-bold text-slate-200">Vaqt banki yoqilgan</span>
+                <input type="checkbox" id="tbEnabled" checked class="w-4 h-4 rounded text-emerald-500 focus:ring-0 cursor-pointer">
+            </label>
+
+            <div class="space-y-2.5 text-xs">
+                <div>
+                    <label class="text-[11px] font-bold text-slate-300 block mb-1">
+                        🎯 Bitta fokus seansi uchun
+                        <span class="text-[9px] text-slate-500 font-normal">(25 daqiqalik dars)</span>
+                    </label>
+                    <div class="flex items-center gap-2">
+                        <input type="number" id="tbFocus" min="0" max="60" value="10" class="w-20 bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white text-center focus:outline-none focus:border-amber-500">
+                        <span class="text-[11px] text-slate-400">daqiqa ekran vaqti</span>
+                    </div>
+                    <p class="text-[9px] text-slate-500 mt-1">Qisqaroq seans uchun mutanosib kamroq beriladi.</p>
+                </div>
+
+                <div>
+                    <label class="text-[11px] font-bold text-slate-300 block mb-1">🏫 Maktabga o'z vaqtida yetgani uchun</label>
+                    <div class="flex items-center gap-2">
+                        <input type="number" id="tbSchool" min="0" max="60" value="20" class="w-20 bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white text-center focus:outline-none focus:border-amber-500">
+                        <span class="text-[11px] text-slate-400">daqiqa (kuniga 1 marta)</span>
+                    </div>
+                    <p class="text-[9px] text-slate-500 mt-1">Radar zonasidagi "kelish vaqti" bo'yicha avtomatik tekshiriladi.</p>
+                </div>
+
+                <div>
+                    <label class="text-[11px] font-bold text-slate-300 block mb-1">📚 Bajarilgan uy vazifasi uchun</label>
+                    <div class="flex items-center gap-2">
+                        <input type="number" id="tbHomework" min="0" max="60" value="10" class="w-20 bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white text-center focus:outline-none focus:border-amber-500">
+                        <span class="text-[11px] text-slate-400">daqiqa</span>
+                    </div>
+                </div>
+
+                <div class="pt-2 border-t border-slate-800">
+                    <label class="text-[11px] font-bold text-amber-300 block mb-1">⛔️ Kunlik chegara</label>
+                    <div class="flex items-center gap-2">
+                        <input type="number" id="tbCap" min="0" max="480" value="90" class="w-20 bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white text-center focus:outline-none focus:border-amber-500">
+                        <span class="text-[11px] text-slate-400">daqiqadan ko'p ishlab topa olmaydi</span>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tbCurrentBalance" class="hidden p-2.5 rounded-xl bg-slate-900/80 border border-amber-500/30 text-center">
+                <div class="text-[10px] text-slate-400">Farzandingizning hozirgi balansi</div>
+                <div class="text-sm font-black text-amber-400" id="tbBalanceValue">0 daqiqa</div>
+            </div>
+
+            <button onclick="saveTimeBankRules()" id="tbSaveBtn" class="w-full py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold text-xs rounded-xl shadow-lg shadow-amber-500/20 transition">
+                💾 Kursni Saqlash
+            </button>
+        </div>
+    </div>
+
     <!-- 🎨 MODAL: FONLAR GALEREYASI -->
     <!-- 🎨 MODAL: FONLAR GALEREYASI -->
     <div id="modal-themes" class="subpage-modal space-y-4">
@@ -1923,6 +2021,9 @@
                 </button>
                 <button onclick="copyPairingLink(); toggleQuickMenu();" class="w-full text-left px-3 py-2 rounded-xl text-[11px] font-bold text-cyan-300 hover:bg-slate-800 flex items-center gap-2">
                     <span>🔗</span> <span>Farzand Havolasi</span>
+                </button>
+                <button onclick="openTimeBankRules(); toggleQuickMenu();" class="w-full text-left px-3 py-2 rounded-xl text-[11px] font-bold text-amber-300 hover:bg-slate-800 flex items-center gap-2">
+                    <span>💰</span> <span>Vaqt Banki Kursi</span>
                 </button>
                 <button onclick="shareReferralLink(); toggleQuickMenu();" class="w-full text-left px-3 py-2 rounded-xl text-[11px] font-bold text-emerald-300 hover:bg-slate-800 flex items-center gap-2">
                     <span>🎁</span> <span>Do'stni Taklif Qilish</span>

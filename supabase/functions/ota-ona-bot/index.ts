@@ -1271,7 +1271,140 @@ async function timeBankAward(
     reason,
     note: note || null,
   });
+
+  // Bo'ri ham shu hodisalardan o'sadi — ikkita alohida mexanika emas,
+  // bitta harakatning ikki ko'rinishi.
+  const xpFor: Record<string, number> = {
+    focus: 20,
+    school_ontime: 30,
+    homework: 15,
+    parent_bonus: 5,
+  };
+  if (xpFor[reason]) {
+    await companionAddXp(familyCode, childId, xpFor[reason]);
+  }
+
   return award;
+}
+
+// ============================================================================
+// BO'RI HAMROH — bolaning ilovaga qaytishi uchun hissiy sabab
+// ============================================================================
+const COMPANION_STAGES = [
+  { level: 1, xp: 0, emoji: "🥚", title: "Tuxumdagi bo'ri" },
+  { level: 2, xp: 50, emoji: "🐺", title: "Bo'ri bolasi" },
+  { level: 3, xp: 150, emoji: "🐺", title: "O'smir bo'ri" },
+  { level: 4, xp: 350, emoji: "🐺", title: "Kuchli bo'ri" },
+  { level: 5, xp: 700, emoji: "🛡️", title: "Qalqon qo'riqchisi" },
+];
+
+function companionStage(xp: number) {
+  let current = COMPANION_STAGES[0];
+  for (const s of COMPANION_STAGES) if (xp >= s.xp) current = s;
+  const next = COMPANION_STAGES.find((s) => s.xp > xp) || null;
+  return {
+    level: current.level,
+    emoji: current.emoji,
+    title: current.title,
+    xpForNext: next ? next.xp : null,
+    // Joriy bosqich ichidagi progress (0-100).
+    progress: next
+      ? Math.round(((xp - current.xp) / (next.xp - current.xp)) * 100)
+      : 100,
+  };
+}
+
+/**
+ * XP qo'shadi va ketma-ketlikni yangilaydi.
+ * Ketma-ketlik KUN bo'yicha: bugun birinchi marta XP olsa +1, bir kun
+ * o'tkazib yuborilsa qaytadan 1 dan boshlanadi.
+ */
+async function companionAddXp(familyCode: string, childId: string, xp: number) {
+  if (!db || xp <= 0) return null;
+
+  const { data } = await db
+    .from("child_companion")
+    .select("name, xp, streak_days, best_streak, last_active_date")
+    .eq("family_code", familyCode)
+    .eq("child_id", childId)
+    .limit(1);
+
+  const today = new Date().toISOString().slice(0, 10);
+  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  const row = data && data[0];
+
+  if (!row) {
+    await db.from("child_companion").insert({
+      family_code: familyCode,
+      child_id: childId,
+      xp,
+      streak_days: 1,
+      best_streak: 1,
+      last_active_date: today,
+    });
+    return { xp, streak: 1, leveledUp: companionStage(xp).level > 1 };
+  }
+
+  const last = row.last_active_date ? String(row.last_active_date).slice(0, 10) : null;
+  let streak = Number(row.streak_days) || 0;
+  if (last === today) {
+    // Bugun allaqachon hisoblangan — ketma-ketlik o'zgarmaydi.
+  } else if (last === yesterday) {
+    streak += 1;
+  } else {
+    streak = 1;
+  }
+
+  const newXp = (Number(row.xp) || 0) + xp;
+  const levelBefore = companionStage(Number(row.xp) || 0).level;
+  const levelAfter = companionStage(newXp).level;
+
+  await db
+    .from("child_companion")
+    .update({
+      xp: newXp,
+      streak_days: streak,
+      best_streak: Math.max(Number(row.best_streak) || 0, streak),
+      last_active_date: today,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("family_code", familyCode)
+    .eq("child_id", childId);
+
+  return { xp: newXp, streak, leveledUp: levelAfter > levelBefore };
+}
+
+async function companionState(familyCode: string, childId: string) {
+  if (!db) return null;
+  const { data } = await db
+    .from("child_companion")
+    .select("name, xp, streak_days, best_streak, last_active_date")
+    .eq("family_code", familyCode)
+    .eq("child_id", childId)
+    .limit(1);
+
+  const row = (data && data[0]) || {
+    name: "Qalqon",
+    xp: 0,
+    streak_days: 0,
+    best_streak: 0,
+    last_active_date: null,
+  };
+
+  // Bir kundan ko'p e'tiborsiz qolsa — bo'ri uxlab qoladi.
+  const today = new Date().toISOString().slice(0, 10);
+  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  const last = row.last_active_date ? String(row.last_active_date).slice(0, 10) : null;
+  const asleep = !last || (last !== today && last !== yesterday);
+
+  return {
+    name: row.name,
+    xp: Number(row.xp) || 0,
+    streak: asleep ? 0 : Number(row.streak_days) || 0,
+    bestStreak: Number(row.best_streak) || 0,
+    asleep,
+    ...companionStage(Number(row.xp) || 0),
+  };
 }
 
 const REFERRAL_BONUS_DAYS = 14;
@@ -1958,6 +2091,7 @@ async function handleRequest(req: Request): Promise<Response> {
           rules,
           history: history || [],
           openSession: (open && open[0]) || null,
+          companion: await companionState(familyCode, childId),
         }),
         { status: 200, headers: { "Content-Type": "application/json" } }
       );
@@ -2063,10 +2197,17 @@ async function handleRequest(req: Request): Promise<Response> {
       }
 
       const rules = await getTimeBankRules(familyCode, childId);
+
+      // Mukofot seans UZUNLIGIGA mutanosib. Kurs "25 daqiqalik seans uchun"
+      // deb tushuniladi. Aks holda 5 daqiqalik seanslarni ketma-ket bosib,
+      // soatiga bir necha barobar ko'p yig'ib olish mumkin bo'lardi.
+      const scaled = Math.round(
+        (Number(rules.minutes_per_focus) * Number(session.planned_minutes)) / 25
+      );
       const awarded = await timeBankAward(
         familyCode,
         childId,
-        Number(rules.minutes_per_focus),
+        Math.max(1, scaled),
         "focus",
         `${session.planned_minutes} daqiqalik fokus`
       );
@@ -2094,6 +2235,7 @@ async function handleRequest(req: Request): Promise<Response> {
           earnedToday,
           capReached: awarded === 0,
           dailyCap: rules.daily_cap_minutes,
+          companion: await companionState(familyCode, childId),
         }),
         { status: 200, headers: { "Content-Type": "application/json" } }
       );

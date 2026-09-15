@@ -2002,6 +2002,76 @@ async function finishFocusSession() {
     resetPomodoroTimer();
 }
 
+// ============================================================================
+// VAQT BANKI — ota-ona tomoni (kursni belgilash)
+// ============================================================================
+async function openTimeBankRules() {
+    openSubpage('modal-time-bank');
+    try {
+        const resp = await fetch(QALQON_BOT_FN, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'time_bank_status', childId: currentChildKey })
+        });
+        const d = await resp.json();
+        if (!d.ok) return;
+
+        const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+        const r = d.rules || {};
+        set('tbFocus', r.minutes_per_focus ?? 10);
+        set('tbSchool', r.minutes_per_school_ontime ?? 20);
+        set('tbHomework', r.minutes_per_homework ?? 10);
+        set('tbCap', r.daily_cap_minutes ?? 90);
+        const en = document.getElementById('tbEnabled');
+        if (en) en.checked = r.enabled !== false;
+
+        const box = document.getElementById('tbCurrentBalance');
+        const val = document.getElementById('tbBalanceValue');
+        if (box && val) {
+            val.innerText = d.balance + ' daqiqa';
+            box.classList.remove('hidden');
+        }
+    } catch (e) {
+        console.error('time_bank_status error:', e);
+    }
+}
+
+async function saveTimeBankRules() {
+    const btn = document.getElementById('tbSaveBtn');
+    const num = (id, def) => {
+        const v = parseInt(document.getElementById(id)?.value, 10);
+        return Number.isFinite(v) && v >= 0 ? v : def;
+    };
+    if (btn) { btn.disabled = true; btn.innerText = '⏳ Saqlanmoqda...'; }
+    try {
+        const resp = await fetch(QALQON_BOT_FN, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                type: 'time_bank_rules_save',
+                childId: currentChildKey,
+                enabled: document.getElementById('tbEnabled')?.checked !== false,
+                minutesPerFocus: num('tbFocus', 10),
+                minutesPerSchoolOntime: num('tbSchool', 20),
+                minutesPerHomework: num('tbHomework', 10),
+                dailyCapMinutes: num('tbCap', 90)
+            })
+        });
+        const d = await resp.json();
+        if (d.ok) {
+            alert("✅ Kurs saqlandi. Farzandingiz shu kurs bo'yicha vaqt ishlab topadi.");
+            closeSubpage();
+        } else {
+            alert('Xatolik: ' + (d.error || "qayta urinib ko'ring"));
+        }
+    } catch (e) {
+        console.error('time_bank_rules_save error:', e);
+        alert("Server javob bermayapti. Keyinroq urinib ko'ring.");
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerText = '💾 Kursni Saqlash'; }
+    }
+}
+
 /** Vaqt banki kartasini serverdagi haqiqiy balans bilan yangilaydi. */
 async function renderTimeBank() {
     const card = document.getElementById('timeBankCard');
@@ -2036,8 +2106,42 @@ async function renderTimeBank() {
                 </div>`
             ).join('') || '<div class="text-[10px] text-slate-500">Hali yozuv yo\'q — fokus seansini boshla!</div>';
         }
+
+        renderCompanion(d.companion);
     } catch (e) {
         console.error('time_bank_status error:', e);
+    }
+}
+
+/** Bo'ri hamroh. Barcha qiymatlar serverdan — bola o'ziga daraja yoza olmaydi. */
+function renderCompanion(c) {
+    const card = document.getElementById('companionCard');
+    if (!card || !c) return;
+    card.classList.remove('hidden');
+
+    const set = (id, text) => { const el = document.getElementById(id); if (el) el.innerText = text; };
+    set('companionName', c.name || 'Qalqon');
+    set('companionLevel', c.level + '-daraja');
+    set('companionXp', c.xp + ' XP');
+    set('companionStreak', c.streak + ' kun');
+
+    const emoji = document.getElementById('companionEmoji');
+    // Uxlayotgan bo'ri boshqacha ko'rinadi — bu bolani qaytarishga undaydi.
+    if (emoji) emoji.innerText = c.asleep ? '😴' : (c.emoji || '🐺');
+    set('companionTitle', c.asleep ? "Uxlab qoldi — uyg'otish uchun dars qil" : (c.title || ''));
+
+    const bar = document.getElementById('companionBar');
+    if (bar) bar.style.width = Math.max(0, Math.min(100, c.progress || 0)) + '%';
+
+    const hint = document.getElementById('companionHint');
+    if (hint) {
+        if (c.asleep) {
+            hint.innerText = "Bo'ring seni kutyapti. Bitta fokus seansi — va u yana uyg'onadi.";
+        } else if (c.xpForNext) {
+            hint.innerText = `Keyingi darajagacha ${c.xpForNext - c.xp} XP qoldi. Eng uzun ketma-ketliging: ${c.bestStreak} kun.`;
+        } else {
+            hint.innerText = `Eng yuqori darajaga yetding! Eng uzun ketma-ketliging: ${c.bestStreak} kun.`;
+        }
     }
 }
 
