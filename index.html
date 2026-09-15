@@ -438,40 +438,45 @@
         </section>
 
         <!-- 🔑 BO'LIMOSTI 3: ROZILIK VA OILAVIY KODNI KIRITISH (faqat birinchi marta) -->
-        <section id="childPairingSection" class="glass-card p-4 space-y-3.5 border-emerald-500/40 bg-gradient-to-b from-slate-900/80 to-slate-950/80">
-            <div class="flex items-center gap-2 pb-2 border-b border-slate-800">
-                <span class="text-xl">🤝</span>
+        <!-- 🛡 OTA-ONA G'AMXO'RLIGI HAQIDA — yumshoq eslatma.
+             Ilgari bu yerda rozilik va kod kiritish bo'limi turardi: u
+             to'liq ekranli rozilik oynasining takrori edi va ulangan
+             farzandga keraksiz bo'lib ko'rinardi. O'rniga bolaga nima
+             ko'rinishini xotirjam tushuntiradigan matn. -->
+        <section class="glass-card p-4 space-y-3 border-sky-500/30 bg-gradient-to-b from-sky-500/10 to-slate-950/60">
+            <div class="flex items-center gap-2.5">
+                <span class="text-2xl">🛡</span>
                 <div>
-                    <h3 class="text-xs font-bold text-white" data-i18n="childPairingHeader">Oila Profiliga Ulanish & Rozilik</h3>
-                    <div class="text-[10px] text-slate-400" data-i18n="childPairingSub">Ota-onang bergan 8 belgili kodni kirit</div>
+                    <h3 class="text-xs font-bold text-white">Sen yolg'iz emassan</h3>
+                    <div class="text-[10px] text-slate-400">Ota-onang seni xavfsizlik uchun kuzatib turadi</div>
                 </div>
             </div>
 
-            <!-- Rozilik Chekboxi -->
-            <label class="flex items-start gap-2.5 p-2.5 rounded-xl bg-slate-900/90 border border-slate-700 cursor-pointer hover:border-emerald-500/60 transition">
-                <input type="checkbox" id="childConsentCheckbox" class="mt-0.5 w-4 h-4 rounded text-emerald-500 focus:ring-0 cursor-pointer">
-                <span class="text-[11px] text-slate-200 leading-snug" data-i18n="childConsentLabel">
-                    Men yuqoridagi barcha qoidalar bilan tanishdim va ota-onam bilan tizimga ulanishga roziman.
-                </span>
-            </label>
+            <p class="text-[11px] text-slate-300 leading-relaxed">
+                Bu ilova seni <b>poylash</b> uchun emas — <b>xavfsiz</b> bo'lishing uchun.
+                Ota-onang qayerdaligingni va telefonda qancha vaqt o'tkazganingni ko'radi,
+                shunda sen kechikib qolsang yoki yordaming kerak bo'lsa, tez yetib kelishadi.
+            </p>
 
-            <!-- 8 Belgili Kod Kiritish -->
-            <div class="space-y-1.5">
-                <label class="text-[11px] font-bold text-sky-400 block" data-i18n="childInputCodeLabel">8 Belgili Kod:</label>
-                <input type="text" id="childFamilyCodeInput" placeholder="________" maxlength="8" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2.5 text-sm font-mono text-center font-bold text-emerald-400 tracking-widest focus:outline-none focus:border-emerald-500 uppercase">
+            <div class="grid grid-cols-2 gap-2">
+                <div class="p-2.5 rounded-xl bg-slate-900/70 border border-slate-800">
+                    <div class="text-[10px] font-bold text-emerald-300 mb-1">Ular ko'radi</div>
+                    <div class="text-[10px] text-slate-400 leading-snug">📍 Joylashuving<br>📱 Ilovalarda o'tgan vaqt<br>🔋 Batareya</div>
+                </div>
+                <div class="p-2.5 rounded-xl bg-slate-900/70 border border-slate-800">
+                    <div class="text-[10px] font-bold text-rose-300 mb-1">Ular ko'rmaydi</div>
+                    <div class="text-[10px] text-slate-400 leading-snug">✖️ Yozishmalaring<br>✖️ Parollaring<br>✖️ Ekrandagi matn</div>
+                </div>
             </div>
 
-            <div id="childPairErrorMsg" class="hidden p-2 rounded-lg bg-rose-500/10 border border-rose-500/30 text-[10px] text-rose-400 font-medium"></div>
+            <p class="text-[10px] text-slate-400 leading-relaxed">
+                Agar biror narsa senga noqulay bo'lsa — ota-onang bilan gaplash. Bu ilova
+                yashirinmaydi va sen istalgan payt ulanishni to'xtatishni so'rashing mumkin.
+            </p>
 
-            <button onclick="handleChildPairingSubmit()" class="w-full py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-bold text-xs rounded-xl shadow-lg shadow-emerald-500/20 transition flex items-center justify-center gap-2">
-                <span>🚀</span>
-                <span data-i18n="btnChildConnect">Oila Profiliga Ulanish</span>
+            <button onclick="handleChildLeaveFamily()" class="w-full py-2 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-slate-700 text-slate-400 hover:text-white text-[10px] font-bold transition">
+                Ulanishni to'xtatish
             </button>
-
-            <div id="childPairedSuccessBox" class="hidden p-3 rounded-xl bg-emerald-500/15 border border-emerald-500/40 text-center space-y-1">
-                <div class="text-xs font-bold text-emerald-300" data-i18n="childPairedSuccess">🎉 Tabriklaymiz! Siz Oila Profiliga Muvaffaqiyatli Ulandingiz!</div>
-                <div class="text-[10px] text-slate-400" data-i18n="childPairedSub">Ota-onangizning Telegram botiga xabar yuborildi.</div>
-            </div>
         </section>
     </main>
 
@@ -1489,6 +1494,60 @@
         </div>
     </div>
 
+    <!-- 🗑 MODAL: HISOBNI O'CHIRISH (Google Play majburiy talabi) -->
+    <div id="modal-delete-account" class="subpage-modal space-y-4">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+            <button onclick="closeSubpage()" class="text-xs font-bold text-emerald-400">← Orqaga</button>
+            <h2 class="text-xs font-bold text-white">Hisobni O'chirish</h2>
+            <span class="w-8"></span>
+        </div>
+
+        <div class="glass-card p-4 space-y-3.5">
+            <div class="text-center space-y-1">
+                <span class="text-3xl">🗑</span>
+                <h3 class="text-sm font-bold text-white">Hisobingiz va barcha ma'lumotlar o'chiriladi</h3>
+                <p class="text-[11px] text-slate-300 leading-relaxed">
+                    Bu amalni <b>orqaga qaytarib bo'lmaydi</b>. Ma'lumotlar zaxirada ham saqlanmaydi.
+                </p>
+            </div>
+
+            <div class="p-3 rounded-xl bg-slate-900/80 border border-rose-500/30 space-y-1.5">
+                <div class="text-[11px] font-bold text-rose-300">Nimalar o'chiriladi:</div>
+                <ul class="text-[10px] text-slate-300 space-y-1 leading-snug">
+                    <li>• Oila profili va ro'yxatdan o'tish ma'lumotlari</li>
+                    <li>• Barcha farzand ulanishlari va taklif kodlari</li>
+                    <li>• Joylashuv tarixi va xavfsiz hududlar</li>
+                    <li>• Ekran vaqti hisobotlari va telemetriya</li>
+                    <li>• Vaqt banki, yutuqlar va AI suhbatlari</li>
+                    <li>• Android qurilma tokenlari va brauzer seanslari</li>
+                </ul>
+            </div>
+
+            <div class="p-3 rounded-xl bg-slate-900/80 border border-slate-700">
+                <div class="text-[10px] text-slate-400 leading-relaxed">
+                    Farzandlaringizga ulanish to'xtagani haqida Telegram orqali xabar beriladi.
+                    Ularning qurilmasidagi ilova ham ma'lumot yuborishni to'xtatadi.
+                </div>
+            </div>
+
+            <div>
+                <label class="text-[11px] font-bold text-slate-300 block mb-1">
+                    Tasdiqlash uchun <b class="text-rose-300">O'CHIRISH</b> deb yozing:
+                </label>
+                <input type="text" id="deleteConfirmInput" placeholder="O'CHIRISH" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white text-center font-bold focus:outline-none focus:border-rose-500">
+            </div>
+
+            <button onclick="handleDeleteAccount()" id="deleteAccountBtn" class="w-full py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl transition">
+                🗑 Hisobni butunlay o'chirish
+            </button>
+
+            <p class="text-[9px] text-slate-500 text-center leading-relaxed">
+                Ilovasiz ham o'chirishingiz mumkin:
+                <a href="https://abduquddus1990.github.io/ota-ona-nazorat/account-deletion.html" target="_blank" class="text-cyan-400 hover:underline">hisobni o'chirish sahifasi</a>
+            </p>
+        </div>
+    </div>
+
     <!-- 💰 MODAL: VAQT BANKI KURSI (ota-ona belgilaydi) -->
     <div id="modal-time-bank" class="subpage-modal space-y-4">
         <div class="flex items-center justify-between pb-3 border-b border-slate-800">
@@ -2024,6 +2083,9 @@
                 </button>
                 <button onclick="openTimeBankRules(); toggleQuickMenu();" class="w-full text-left px-3 py-2 rounded-xl text-[11px] font-bold text-amber-300 hover:bg-slate-800 flex items-center gap-2">
                     <span>💰</span> <span>Vaqt Banki Kursi</span>
+                </button>
+                <button onclick="openSubpage('modal-delete-account'); toggleQuickMenu();" class="w-full text-left px-3 py-2 rounded-xl text-[11px] font-bold text-rose-300 hover:bg-slate-800 flex items-center gap-2">
+                    <span>🗑</span> <span>Hisobni O'chirish</span>
                 </button>
                 <button onclick="shareReferralLink(); toggleQuickMenu();" class="w-full text-left px-3 py-2 rounded-xl text-[11px] font-bold text-emerald-300 hover:bg-slate-800 flex items-center gap-2">
                     <span>🎁</span> <span>Do'stni Taklif Qilish</span>

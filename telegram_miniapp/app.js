@@ -1314,8 +1314,6 @@ async function handleChildConsentAccept() {
     await redeemInviteCode(input ? input.value : '', errorBox, btn, (data) => {
         const overlay = document.getElementById('childConsentOverlay');
         if (overlay) overlay.classList.add('hidden');
-        const pairingSection = document.getElementById('childPairingSection');
-        if (pairingSection) pairingSection.classList.add('hidden');
         switchChildTab('child-tab-home');
 
         // Adminga xabar - bu faqat bildirishnoma, ulanishga ta'sir qilmaydi.
@@ -1374,10 +1372,6 @@ function checkChildConsentStatus() {
             }
         }
         
-        const pairingSection = document.getElementById('childPairingSection');
-        if (pairingSection) {
-            pairingSection.classList.toggle('hidden', consented);
-        }
 
         // Farzand panelini majburiy tanlash
         switchChildTab('child-tab-home');
@@ -2181,30 +2175,42 @@ function resetPomodoroTimer() {
     if (label) label.innerText = isRu ? "Готов к урокам? Нажми Старт!" : "Dars qilishga tayyormisan? Boshlash tugmasini bos!";
 }
 
-async function handleChildPairingSubmit() {
-    const consent = document.getElementById('childConsentCheckbox')?.checked;
-    const input = document.getElementById('childFamilyCodeInput');
-    const errorBox = document.getElementById('childPairErrorMsg');
-    const successBox = document.getElementById('childPairedSuccessBox');
-    const btn = document.querySelector('[onclick="handleChildPairingSubmit()"]');
+/**
+ * Farzand ulanishni o'zi to'xtatadi.
+ *
+ * Bu ataylab mavjud: kuzatilayotgan odam kuzatuvni to'xtata olishi kerak
+ * (Google Play'ning stalkerware siyosati ham shuni talab qiladi). Ota-onaga
+ * xabar boradi — jimgina yo'qolib qolish ishonchni buzadi.
+ */
+async function handleChildLeaveFamily() {
+    const ok = confirm(
+        "Ulanishni to'xtatmoqchimisan?\n\n" +
+        "Ota-onang bu haqda xabar oladi va joylashuving unga ko'rinmay qoladi.\n\n" +
+        "Avval ota-onang bilan gaplashib olishing yaxshiroq bo'ladi."
+    );
+    if (!ok) return;
 
-    if (!consent) {
-        showEntryError(
-            errorBox,
-            (currentLang === 'ru')
-                ? "Пожалуйста, подтвердите согласие с правилами."
-                : "Iltimos, qoidalar bilan tanishib, rozilik belgisini qo'ying."
-        );
-        return;
+    try {
+        const resp = await fetch(QALQON_BOT_FN, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'leave_family' })
+        });
+        const data = await resp.json();
+        if (data.ok) {
+            try {
+                localStorage.removeItem('child_consented');
+                localStorage.removeItem('child_family_code');
+            } catch (e) {}
+            alert("Ulanish to'xtatildi. Ota-onangga xabar berildi.");
+            window.location.reload();
+        } else {
+            alert(data.error || "Bajarilmadi. Keyinroq urinib ko'ring.");
+        }
+    } catch (e) {
+        console.error('leave_family error:', e);
+        alert("Server javob bermayapti. Keyinroq urinib ko'ring.");
     }
-
-    await redeemInviteCode(input ? input.value : '', errorBox, btn, () => {
-        if (successBox) successBox.classList.remove('hidden');
-        const section = document.getElementById('childPairingSection');
-        if (section) section.classList.add('hidden');
-        const overlay = document.getElementById('childConsentOverlay');
-        if (overlay) overlay.classList.add('hidden');
-    });
 }
 
 // ============================================================================

@@ -2038,6 +2038,172 @@ async function handleRequest(req: Request): Promise<Response> {
     // Ilgari Mini App kodni localStorage'dan o'qirdi va u yerda eski qiymat
     // (masalan 849210) qolib ketardi — shu sabab har foydalanuvchida o'z
     // kodi bo'lishi kerak bo'lsa ham, eskisi ko'rinaverardi.
+    // 0.0x HISOBNI O'CHIRISH.
+    //
+    // Google Play talabi: hisobi bor ilova foydalanuvchiga hisobini VA
+    // ma'lumotini o'chirish yo'lini berishi shart (ilova ichida va veb
+    // orqali). Bu yerda "yumshoq o'chirish" yo'q — qatorlar haqiqatan
+    // o'chiriladi.
+    //
+    // Ro'yxat ataylab to'liq: ma'lumot 19 ta jadvalda yotadi va bittasini
+    // unutish "o'chirdik" deyishni yolg'onga aylantiradi.
+    if (payload.type === "delete_account") {
+      if (actor!.kind !== "telegram") return unauthorized("Faqat ota-ona");
+      if (await isPairedChild(actor!.telegramId)) {
+        return unauthorized("Farzand hisobi uchun: leave_family");
+      }
+      if (payload.confirm !== true) {
+        return new Response(
+          JSON.stringify({ ok: false, error: "Tasdiqlash kerak (confirm: true)." }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        );
+      }
+      if (!db) {
+        return new Response(JSON.stringify({ ok: false, error: "Baza ulanmagan" }), {
+          status: 500, headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      const familyCode = actor!.familyCode;
+
+      // Farzandlarga xabar berish uchun ularning Telegram ID'larini
+      // O'CHIRISHDAN OLDIN yig'ib olamiz.
+      const { data: kids } = await db
+        .from("child_pairings")
+        .select("child_id")
+        .eq("family_code", familyCode);
+      const childIds = (kids || []).map((k: any) => k.child_id as string);
+      const childTelegramIds = childIds
+        .filter((id) => id.startsWith("tg_"))
+        .map((id) => Number(id.slice(3)))
+        .filter((n) => Number.isFinite(n) && n > 0);
+
+      const byFamily = [
+        "child_companion", "child_invites", "child_pairings", "curfew_policies",
+        "device_pair_codes", "device_telemetry", "device_tokens", "focus_sessions",
+        "geofence_alerts", "geofence_zones", "homework_items", "join_attempts",
+        "location_pings", "location_requests", "time_bank_entries", "time_bank_rules",
+        "web_sessions", "families",
+      ];
+
+      const failed: string[] = [];
+      for (const table of byFamily) {
+        const { error } = await db.from(table).delete().eq("family_code", familyCode);
+        if (error) {
+          console.error(`delete_account: ${table} o'chmadi:`, error.message);
+          failed.push(table);
+        }
+      }
+
+      // Faqat child_id bo'yicha saqlanadigan jadvallar.
+      for (const table of ["geo_zones", "location_events"]) {
+        for (const childId of childIds) {
+          const { error } = await db.from(table).delete().eq("child_id", childId);
+          if (error) console.error(`delete_account: ${table} o'chmadi:`, error.message);
+        }
+      }
+
+      // AI suhbatlari Telegram ID bo'yicha saqlanadi — ota-ona va farzandlarniki.
+      for (const tgId of [actor!.telegramId, ...childTelegramIds]) {
+        await db.from("ai_chat_messages").delete().eq("telegram_id", tgId);
+      }
+
+      // Ro'yxat yozuvi eng oxirida: yuqoridagilar shu kod orqali topiladi.
+      const { error: regErr } = await db
+        .from("parent_registrations")
+        .delete()
+        .eq("family_code", familyCode);
+      if (regErr) failed.push("parent_registrations");
+
+      // Farzandlarga xabar: ulanish to'xtaganini bilishlari shart.
+      for (const tgId of childTelegramIds) {
+        try {
+          await sendMessage(
+            tgId,
+            "ℹ️ <b>Oila profili o'chirildi.</b>\n\nOta-onang Qalqon AI hisobini o'chirdi. Endi joylashuving va ekran vaqting hech kimga ko'rinmaydi."
+          );
+        } catch (e) {
+          console.error("Farzandga xabar yuborilmadi:", e);
+        }
+      }
+
+      try {
+        await sendMessage(
+          actor!.telegramId,
+          "✅ <b>Hisobingiz va barcha ma'lumotlaringiz o'chirildi.</b>\n\nJoylashuv tarixi, ekran vaqti hisobotlari, farzand ulanishlari va sozlamalar — hammasi butunlay o'chirildi.\n\nQaytadan boshlamoqchi bo'lsangiz, shunchaki /start bosing."
+        );
+      } catch (e) { /* xabar bormasa ham o'chirish bajarildi */ }
+
+      return new Response(
+        JSON.stringify({
+          ok: failed.length === 0,
+          deletedFamily: familyCode,
+          childrenNotified: childTelegramIds.length,
+          failedTables: failed,
+        }),
+        { status: failed.length === 0 ? 200 : 500, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    // 0.0y FARZAND O'ZI CHIQADI.
+    //
+    // Stalkerware siyosati ham, bizning o'z tamoyilimiz ham buni talab
+    // qiladi: kuzatilayotgan odam ulanishni to'xtata olishi kerak. Ota-onaga
+    // xabar beriladi — jimgina yo'qolib qolish ishonchni buzadi.
+    if (payload.type === "leave_family") {
+      if (!db) {
+        return new Response(JSON.stringify({ ok: false, error: "Baza ulanmagan" }), {
+          status: 500, headers: { "Content-Type": "application/json" },
+        });
+      }
+      const childId =
+        actor!.kind === "device" ? actor!.childId : "tg_" + actor!.telegramId;
+      const familyCode = await resolveActorFamily(actor!);
+
+      const { data: pairing } = await db
+        .from("child_pairings")
+        .select("child_name")
+        .eq("child_id", childId)
+        .eq("family_code", familyCode)
+        .limit(1);
+
+      if (!pairing || !pairing[0]) {
+        return new Response(
+          JSON.stringify({ ok: false, error: "Siz hech qanday oilaga ulanmagansiz." }),
+          { status: 404, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      for (const table of [
+        "child_pairings", "location_pings", "device_telemetry", "device_tokens",
+        "geofence_alerts", "geofence_zones", "curfew_policies", "homework_items",
+        "time_bank_entries", "time_bank_rules", "focus_sessions", "child_companion",
+        "location_requests",
+      ]) {
+        const { error } = await db
+          .from(table)
+          .delete()
+          .eq("family_code", familyCode)
+          .eq("child_id", childId);
+        if (error) console.error(`leave_family: ${table} o'chmadi:`, error.message);
+      }
+
+      if (actor!.kind === "telegram") {
+        await db.from("ai_chat_messages").delete().eq("telegram_id", actor!.telegramId);
+      }
+
+      await notifyFamilyParents(
+        familyCode,
+        `ℹ️ <b>${pairing[0].child_name || "Farzandingiz"} ulanishni to'xtatdi.</b>\n\n` +
+          `Uning joylashuvi va ekran vaqti endi ko'rinmaydi. Farzandingiz bilan gaplashib ko'ring — ` +
+          `qayta ulanish uchun unga yangi taklif havolasi yuborishingiz mumkin.`
+      );
+
+      return new Response(JSON.stringify({ ok: true }), {
+        status: 200, headers: { "Content-Type": "application/json" },
+      });
+    }
+
     // 0.0w VAQT BANKI.
     //
     // Balansni ham farzand (o'ziniki), ham ota-ona (farzandiniki) so'ray oladi.
