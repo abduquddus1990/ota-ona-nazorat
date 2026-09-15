@@ -400,7 +400,7 @@ const I18N = {
         statParentsLabel: "Ulangan Ota-onalar",
         statChildrenLabel: "Ulangan Farzandlar",
         navDashboard: "Asosiy",
-        navRadar: "Radar (Bepul)",
+        navRadar: "Radar",
         navAi: "AI Murabbiy 💎",
         navSchool: "e-Maktab 💎",
         navSettings: "Sozlamalar",
@@ -544,7 +544,7 @@ const I18N = {
         childNavSchool: "e-Maktab",
         childNavExplore: "Интересы",
         navDashboard: "Главная",
-        navRadar: "Радар (Free)",
+        navRadar: "Радар",
         navAi: "AI Наставник 💎",
         navSchool: "e-Maktab 💎",
         navSettings: "Настройки",
@@ -952,8 +952,9 @@ async function requestChildLocation() {
         } else {
             alert("Farzanddan hali joylashuv kelmagan.\n\n" +
                   "Eng tez yo'l: farzandingiz botni ochib /joylashuv deb yozsin — " +
-                  "Telegram'ning jonli joylashuvi 8 soatgacha ishlaydi va ilova o'rnatish shart emas.\n\n" +
-                  "To'xtovsiz kuzatuv uchun esa Android ilovasi kerak.");
+                  "u yerda jonli joylashuvni yoqish ko'rsatmasi bor. Hech qanday ilova " +
+                  "o'rnatish shart emas, iPhone'da ham ishlaydi.\n\n" +
+                  "Bepul tarifda jonli kuzatuv 2 soat, Pro tarifda 8 soat davom etadi.");
         }
     } catch (e) {
         console.error('requestChildLocation error:', e);
@@ -1380,6 +1381,7 @@ function checkChildConsentStatus() {
         if (consented) {
             renderTimeBank();
             renderLeague();
+            renderReferral();
             const noteCard = document.getElementById('dailyNoteCard');
             if (noteCard) noteCard.classList.remove('hidden');
             acceptDuelFromUrl().then(renderDuel);
@@ -1390,6 +1392,10 @@ function checkChildConsentStatus() {
 
 function checkParentOnboarding() {
     const isParent = (currentAppRole === 'parent');
+    if (isParent) {
+        renderReferral();
+        renderRadarStatus();
+    }
     const onboarded = localStorage.getItem('parent_onboarded') === 'true';
     if (isParent && !onboarded) {
         setTimeout(() => {
@@ -3301,8 +3307,150 @@ function switchTab(tabId) {
             initRadarMap();
             if (mapInstance) mapInstance.invalidateSize();
         }, 150);
+        renderRadarStatus();
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+/** Taklif holati. Havola oila kodidan yasaladi, shuning uchun o'zgarmaydi. */
+let referralState = null;
+
+async function renderReferral() {
+    const isChild = currentAppRole === 'child';
+    const card = document.getElementById(isChild ? 'childReferralCard' : 'parentReferralCard');
+    const stats = document.getElementById(isChild ? 'childReferralStats' : 'parentReferralStats');
+    const sub = document.getElementById(isChild ? 'childReferralSub' : 'parentReferralSub');
+    if (!card) return;
+
+    try {
+        const resp = await fetch(QALQON_BOT_FN, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'referral_status' })
+        });
+        const d = await resp.json();
+        if (!d.ok) return;
+        referralState = d;
+        card.classList.remove('hidden');
+
+        if (sub) {
+            sub.textContent = isChild
+                ? `Do'sting qo'shilsa — oilangga ${d.bonusDays} kun bepul Pro`
+                : `Chaqirgan oilangiz qo'shilsa — ikkalangizga ham ${d.bonusDays} kun Pro`;
+        }
+        if (stats) {
+            // "Kutilmoqda" ni ham ko'rsatamiz: odam havolani yuborgan-u,
+            // do'sti hali tasdiqdan o'tmagan bo'lsa, mukofot yo'qolgandek
+            // tuyulmasligi kerak.
+            const parts = [];
+            parts.push(`✅ Qo'shilgan: <b>${d.joined}</b>`);
+            if (d.pending > 0) parts.push(`⏳ Tasdiq kutmoqda: <b>${d.pending}</b>`);
+            if (d.daysEarned > 0) parts.push(`⭐️ Yig'ilgan: <b>${d.daysEarned} kun Pro</b>`);
+            stats.innerHTML = parts.join(' &nbsp;·&nbsp; ');
+        }
+    } catch (e) {
+        console.error('referral_status error:', e);
+    }
+}
+
+/** Taklif havolasini ulashish. Telegram'da bir bosishda ketadi. */
+function shareReferralLink() {
+    const d = referralState;
+    if (!d || !d.link) return;
+    const url = 'https://t.me/share/url?url=' + encodeURIComponent(d.link) +
+                '&text=' + encodeURIComponent(d.shareText || '');
+    if (tg && tg.openTelegramLink) tg.openTelegramLink(url);
+    else window.open(url, '_blank');
+}
+
+/**
+ * Radar bo'limining ma'lumot qismi: har farzandning jonli holati, oxirgi
+ * ma'lum nuqtasi va oxirgi 24 soatdagi "kirdi/chiqdi" hodisalari.
+ *
+ * Bularning hammasi Telegram xabari sifatida ham boradi, lekin xabar oqib
+ * ketadi — ota-ona bir soatdan keyin "maktabga yetgan edimi?" deb qarasa,
+ * uni chat tarixidan qidirishi kerak bo'lardi. Shuning uchun ayni o'sha
+ * hodisalar panelda ham turadi.
+ */
+async function renderRadarStatus() {
+    if (currentAppRole !== 'parent') return;
+    const list = document.getElementById('radarChildList');
+    const feed = document.getElementById('radarEventFeed');
+    const badge = document.getElementById('radarLiveBadge');
+    const hint = document.getElementById('radarLiveHint');
+    if (!list) return;
+
+    try {
+        const resp = await fetch(QALQON_BOT_FN, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'radar_status' })
+        });
+        const d = await resp.json();
+        if (!d.ok) return;
+
+        const kids = d.children || [];
+        const anyLive = kids.some(k => k.live);
+
+        if (badge) {
+            badge.textContent = anyLive ? '🟢 Jonli' : '⚪️ Jonli emas';
+            badge.className = anyLive
+                ? 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                : 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-700/60 text-slate-300';
+        }
+
+        const when = (iso) => {
+            const diff = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+            if (diff < 1) return 'hozir';
+            if (diff < 60) return diff + ' daqiqa oldin';
+            if (diff < 1440) return Math.floor(diff / 60) + ' soat oldin';
+            return Math.floor(diff / 1440) + ' kun oldin';
+        };
+
+        list.innerHTML = kids.length ? kids.map(k => {
+            const p = k.lastPing;
+            const coords = p ? p.lat.toFixed(5) + ', ' + p.lng.toFixed(5) : null;
+            const live = k.live
+                ? `<span class="text-emerald-300 font-bold">🟢 Jonli · ${k.liveMinutesLeft} daqiqa qoldi</span>`
+                : `<span class="text-slate-400">⚪️ Jonli ulashish o'chiq</span>`;
+            return `
+            <div class="p-2.5 rounded-xl bg-slate-900/60 border border-slate-800 space-y-1">
+                <div class="flex items-center justify-between">
+                    <span class="text-[11px] font-bold text-white">${escapeHtml(k.childName)}</span>
+                    <span class="text-[10px]">${live}</span>
+                </div>
+                <div class="text-[10px] text-slate-400">
+                    ${p ? '📍 ' + coords + ' · ' + when(p.recorded_at) : 'Hali joylashuv kelmagan'}
+                </div>
+                ${p ? `<a href="https://maps.google.com/?q=${p.lat},${p.lng}" target="_blank" class="text-[10px] text-cyan-400 font-bold">Xaritada ochish →</a>` : ''}
+            </div>`;
+        }).join('') : '<div class="text-[10px] text-slate-500">Ulangan farzand yo\'q.</div>';
+
+        const events = [];
+        for (const k of kids) {
+            for (const e of (k.events || [])) events.push({ ...e, who: k.childName });
+        }
+        events.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+        if (feed) {
+            feed.innerHTML = events.length ? events.slice(0, 12).map(e => {
+                const icon = e.alert_type === 'enter' ? '🟢' : '🔵';
+                const t = new Date(e.created_at).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' });
+                return `<div class="flex items-center justify-between text-[10px]">
+                    <span class="text-slate-300">${icon} ${escapeHtml(e.who)} — ${escapeHtml(e.message)}</span>
+                    <span class="text-slate-500 font-mono">${t}</span>
+                </div>`;
+            }).join('') : '<div class="text-[10px] text-slate-500">Oxirgi 24 soatda hodisa yo\'q. Xavfsiz hudud (uy, maktab) qo\'shsangiz, kirdi-chiqdi shu yerda ko\'rinadi.</div>';
+        }
+
+        if (hint) {
+            hint.innerHTML = d.plan === 'pro'
+                ? `⭐️ <b>Pro tarif:</b> farzandingiz jonli joylashuvni yoqsa, <b>${d.proLiveHours} soat</b> davomida kuzatiladi.`
+                : `Bepul tarifda jonli kuzatuv <b>${d.liveHours} soat</b> ishlaydi. Pro tarifda <b>${d.proLiveHours} soat</b> — ya'ni butun maktab kunini bir marta yoqish qoplaydi.`;
+        }
+    } catch (e) {
+        console.error('radar_status error:', e);
+    }
 }
 
 function openSubpage(subpageId) {
@@ -3615,7 +3763,10 @@ function handleCompleteParentOnboarding() {
             childGrade: childGrade,
             childUsername: childUsername,
             password: password || undefined,
-            ref: new URLSearchParams(window.location.search).get('ref') || undefined
+            ref: new URLSearchParams(window.location.search).get('ref') || undefined,
+            // Taklifni bola yuborgan bo'lsa, kim yuborganini ham olib o'tamiz —
+            // mukofot oilaga tushadi, lekin tabrik o'sha bolaga boradi.
+            refChild: new URLSearchParams(window.location.search).get('refc') || undefined
         })
     }).then(r => r.json()).then(data => {
         if (data && data.alreadyApproved) {

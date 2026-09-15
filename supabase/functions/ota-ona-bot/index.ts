@@ -513,6 +513,14 @@ const FREE_LOCATION_REQUESTS = 2;
 const FREE_WINDOW_HOURS = 48;
 const FREE_CHILD_LIMIT = 1;
 
+// Jonli joylashuv qancha davom etishi. Telegram'ning o'zida bola uchun
+// faqat 15 daqiqa / 1 soat / 8 soat tugmalari bor — "2 soat" degani yo'q.
+// Shuning uchun chegara SERVERDA qo'yiladi: bola 8 soatni tanlasa ham,
+// bepul oilada biz 2 soatdan keyin yangi nuqtalarni yozishni to'xtatamiz.
+// Mijozda cheklab bo'lmasdi — cheklov bolaning Telegram'ida emas, bizda.
+const FREE_LIVE_HOURS = 2;
+const PRO_LIVE_HOURS = 8;
+
 /** Oilaning amaldagi tarifi. Muddati o'tgan Pro avtomatik bepulga tushadi. */
 async function getPlan(familyCode: string): Promise<"free" | "pro"> {
   if (!db) return "free";
@@ -650,7 +658,11 @@ async function evaluateLocationQuota(
 
 const FREE_HISTORY_POINTS = 1;
 const PRO_HISTORY_DAYS = 30;
-const FREE_ZONE_LIMIT = 0; // xavfsiz hududlar butunlay Pro
+// Bepul tarifda ikkita hudud — aynan uy va maktab. Bu ataylab: "uyga keldi"
+// va "maktabga yetdi" xabarlari mahsulotning eng kuchli tomoni, ularni
+// to'lov devori ortiga yashirsak, ota-ona mahsulot nima berishini umuman
+// ko'rmasdan ketib qolardi.
+const FREE_ZONE_LIMIT = 2;
 
 /** Yer yuzasidagi ikki nuqta orasidagi masofa (metr). */
 function distanceMeters(
@@ -1425,7 +1437,11 @@ async function companionState(familyCode: string, childId: string) {
   };
 }
 
+// Ota-ona taklifi bolanikidan qimmatroq: ota-ona butun yangi oilani, ya'ni
+// pul to'laydigan mijozni olib keladi; bola esa do'stini, ya'ni avval yana
+// bitta ota-onani ishontirishi kerak bo'lgan zanjirni boshlaydi.
 const REFERRAL_BONUS_DAYS = 14;
+const REFERRAL_BONUS_DAYS_CHILD = 7;
 
 /** Oilaga N kun Pro qo'shadi (mavjud muddat tugamagan bo'lsa — ustiga qo'shiladi). */
 async function grantProDays(familyCode: string, days: number): Promise<string | null> {
@@ -1463,7 +1479,9 @@ async function payReferralReward(familyCode: string): Promise<void> {
   if (!db) return;
   const { data } = await db
     .from("parent_registrations")
-    .select("referred_by_family_code, referral_rewarded_at, family_name")
+    .select(
+      "referred_by_family_code, referred_by_child_id, referred_via, referral_rewarded_at, family_name"
+    )
     .eq("family_code", familyCode)
     .limit(1);
 
@@ -1473,9 +1491,12 @@ async function payReferralReward(familyCode: string): Promise<void> {
   const inviter = row.referred_by_family_code;
   if (inviter === familyCode) return; // o'zini o'zi chaqira olmaydi
 
-  const inviterUntil = await grantProDays(inviter, REFERRAL_BONUS_DAYS);
+  const byChild = row.referred_via === "child" && !!row.referred_by_child_id;
+  const days = byChild ? REFERRAL_BONUS_DAYS_CHILD : REFERRAL_BONUS_DAYS;
+
+  const inviterUntil = await grantProDays(inviter, days);
   if (!inviterUntil) return;
-  await grantProDays(familyCode, REFERRAL_BONUS_DAYS);
+  await grantProDays(familyCode, days);
 
   await db
     .from("parent_registrations")
@@ -1483,13 +1504,32 @@ async function payReferralReward(familyCode: string): Promise<void> {
     .eq("family_code", familyCode);
 
   const until = new Date(inviterUntil).toLocaleDateString("uz-UZ");
-  await notifyFamilyParents(
-    inviter,
-    `🎁 <b>Taklifingiz uchun rahmat!</b>\n\nSiz chaqirgan oila ro'yxatdan o'tdi va tasdiqlandi.\n\n⭐️ <b>+${REFERRAL_BONUS_DAYS} kun Pro</b> sizga qo'shildi (${until} gacha).`
-  );
+
+  if (byChild) {
+    // Bolaning o'ziga ham aytamiz: mukofot oilaga tushsa ham, uni qilgan
+    // ish bola qilgan. Tabrik faqat ota-onaga borsa, bola keyingi safar
+    // hech kimni chaqirmasdi.
+    const childTgId = String(row.referred_by_child_id).replace(/^tg_/, "");
+    if (/^\d+$/.test(childTgId)) {
+      await sendMessage(
+        childTgId,
+        `🎉 <b>Do'sting qo'shildi!</b>\n\nSen chaqirgan do'stingning oilasi Qalqon AI'ga qo'shildi.\n\n⭐️ Oilangga <b>+${days} kun Pro</b> berildi — bu senga rahmat.`
+      );
+    }
+    await notifyFamilyParents(
+      inviter,
+      `🎁 <b>Farzandingiz do'stini taklif qildi!</b>\n\nChaqirilgan oila ro'yxatdan o'tdi va tasdiqlandi.\n\n⭐️ <b>+${days} kun Pro</b> sizga qo'shildi (${until} gacha).`
+    );
+  } else {
+    await notifyFamilyParents(
+      inviter,
+      `🎁 <b>Taklifingiz uchun rahmat!</b>\n\nSiz chaqirgan oila ro'yxatdan o'tdi va tasdiqlandi.\n\n⭐️ <b>+${days} kun Pro</b> sizga qo'shildi (${until} gacha).`
+    );
+  }
+
   await notifyFamilyParents(
     familyCode,
-    `🎁 <b>Sovg'a!</b>\n\nSiz taklif havolasi orqali qo'shilganingiz uchun <b>+${REFERRAL_BONUS_DAYS} kun Pro</b> berildi.`
+    `🎁 <b>Sovg'a!</b>\n\nSiz taklif havolasi orqali qo'shilganingiz uchun <b>+${days} kun Pro</b> berildi.`
   );
 }
 
@@ -1673,6 +1713,27 @@ async function handleRequest(req: Request): Promise<Response> {
           .limit(1);
         if (refFamily && refFamily[0]) {
           (row as Record<string, unknown>).referred_by_family_code = refRaw;
+
+          // Taklifni BOLA yuborganmi. Mukofot baribir oilaga tushadi (tarif
+          // oilaniki), lekin kim chaqirganini bilmasak, bolani tabriklay
+          // olmasdik — taklif mexanikasining butun jozibasi esa shunda.
+          const refChild = String(payload.refChild || "").replace(/\D/g, "");
+          if (refChild) {
+            const { data: refKid } = await db
+              .from("child_pairings")
+              .select("child_id")
+              .eq("family_code", refRaw)
+              .eq("child_id", "tg_" + refChild)
+              .eq("is_active", true)
+              .limit(1);
+            if (refKid && refKid[0]) {
+              (row as Record<string, unknown>).referred_by_child_id = "tg_" + refChild;
+              (row as Record<string, unknown>).referred_via = "child";
+            }
+          }
+          if (!(row as Record<string, unknown>).referred_via) {
+            (row as Record<string, unknown>).referred_via = "parent";
+          }
         }
       }
 
@@ -2184,6 +2245,75 @@ async function handleRequest(req: Request): Promise<Response> {
     // qaytarilmaydi. Voyaga yetmaganlarning ro'yxatini bir-biriga ko'rsatish
     // maxfiylik jihatidan ham, Play'ning bolalar siyosati jihatidan ham
     // yo'l qo'yib bo'lmaydigan narsa. Faqat o'z o'rning va umumiy son.
+    // 0.1a+ TAKLIF HAVOLASI — ota-ona uchun ham, bola uchun ham.
+    //
+    // Havola oila kodidan yasaladi, ya'ni alohida "taklif kodlari" jadvali
+    // kerak emas: kod yo'qolmaydi, eskirmaydi va uni tiklash ham shart emas.
+    if (payload.type === "referral_status") {
+      if (!db) {
+        return new Response(JSON.stringify({ ok: false, error: "Baza ulanmagan" }), {
+          status: 500, headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      const familyCode = await resolveActorFamily(actor!);
+      if (!familyCode) {
+        return new Response(
+          JSON.stringify({ ok: false, error: "Oila topilmadi" }),
+          { status: 404, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      // Bola o'z havolasini oladi, ota-ona o'zinikini. Farq faqat mukofot
+      // miqdorida va tabrik kimga borishida.
+      const isChild =
+        actor!.kind === "device" ||
+        (actor!.kind === "telegram" && (await isPairedChild(actor!.telegramId)));
+
+      const childTgId =
+        actor!.kind === "telegram" ? String(actor!.telegramId) : null;
+
+      const link = isChild && childTgId
+        ? `https://t.me/qalqon_aibot?start=refc_${familyCode}_${childTgId}`
+        : `https://t.me/qalqon_aibot?start=ref_${familyCode}`;
+
+      const { data: invited } = await db
+        .from("parent_registrations")
+        .select("family_name, referral_rewarded_at, referred_via")
+        .eq("referred_by_family_code", familyCode)
+        .limit(100);
+
+      const rows = invited || [];
+      const joined = rows.filter((r: any) => r.referral_rewarded_at).length;
+      const pending = rows.length - joined;
+      const days = isChild ? REFERRAL_BONUS_DAYS_CHILD : REFERRAL_BONUS_DAYS;
+
+      const plan = await getPlan(familyCode);
+      const { data: reg } = await db
+        .from("parent_registrations")
+        .select("plan_expires_at")
+        .eq("family_code", familyCode)
+        .limit(1);
+
+      return new Response(
+        JSON.stringify({
+          ok: true,
+          isChild,
+          link,
+          bonusDays: days,
+          joined,
+          pending,
+          daysEarned: joined * days,
+          plan,
+          planExpiresAt: (reg && reg[0] && reg[0].plan_expires_at) || null,
+          shareText: isChild
+            ? "Men Qalqon AI'da diqqat bilan ishlab, bo'rimni o'stiryapman 🐺 Sen ham qo'shil — ota-onang ro'yxatdan o'tsa, ikkalamizga ham 7 kun bepul Pro!"
+            : "Qalqon AI — farzandim qayerdaligini bilib turaman, u esa ekran vaqtini o'zi ishlab topadi. Qo'shiling, ikkalamizga ham 14 kun bepul Pro beriladi.",
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
     if (payload.type === "league_status") {
       if (!db) {
         return new Response(JSON.stringify({ ok: false, error: "Baza ulanmagan" }), {
@@ -3564,18 +3694,6 @@ async function handleRequest(req: Request): Promise<Response> {
       }
 
       const plan = await getPlan(actor!.familyCode);
-      if (plan !== "pro" && FREE_ZONE_LIMIT === 0) {
-        return new Response(
-          JSON.stringify({
-            ok: false,
-            upgradeRequired: true,
-            plan,
-            error: "Xavfsiz hududlar (uy, maktab) Pro tarifda mavjud.",
-          }),
-          { status: 402, headers: { "Content-Type": "application/json" } }
-        );
-      }
-
       const childId = String(payload.childId || "").trim();
       const name = String(payload.name || "").trim();
       const lat = Number(payload.lat);
@@ -3585,6 +3703,34 @@ async function handleRequest(req: Request): Promise<Response> {
           JSON.stringify({ ok: false, error: "childId, name, lat, lng majburiy" }),
           { status: 400, headers: { "Content-Type": "application/json" } }
         );
+      }
+
+      // "Maktabga kirdi / uyga keldi" xabari mahsulotning eng kerakli qismi,
+      // shuning uchun u bepul tarifda ham ishlaydi — faqat SONI cheklangan:
+      // uy va maktab. Mavjud hududni qayta saqlash limitga kirmaydi, aks
+      // holda ota-ona uy manzilini tuzatolmay qolardi.
+      if (plan !== "pro") {
+        const { data: existing } = await db
+          .from("geofence_zones")
+          .select("name")
+          .eq("family_code", actor!.familyCode)
+          .eq("child_id", childId)
+          .limit(20);
+
+        const names = (existing || []).map((z: any) => z.name);
+        if (!names.includes(name) && names.length >= FREE_ZONE_LIMIT) {
+          return new Response(
+            JSON.stringify({
+              ok: false,
+              upgradeRequired: true,
+              plan,
+              error:
+                `Bepul tarifda ${FREE_ZONE_LIMIT} ta hudud saqlash mumkin (uy va maktab). ` +
+                `Pro tarifda cheklov yo'q.`,
+            }),
+            { status: 402, headers: { "Content-Type": "application/json" } }
+          );
+        }
       }
 
       const radius = Number(payload.radiusM);
@@ -3641,6 +3787,81 @@ async function handleRequest(req: Request): Promise<Response> {
 
       return new Response(
         JSON.stringify({ ok: true, plan, zones: zones || [], alerts: alerts || [] }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    // 0.0l+ RADAR HOLATI — ota-ona panelidagi Radar bo'limining yagona manbasi.
+    //
+    // Bitta so'rovda hammasi: har bir farzandning jonli holati, oxirgi ma'lum
+    // nuqtasi va bugungi "kirdi/chiqdi" hodisalari. Alohida uchta so'rov bilan
+    // qilinsa, panel uch xil paytdagi holatni aralash ko'rsatib qo'yardi.
+    if (payload.type === "radar_status") {
+      if (actor!.kind !== "telegram") return unauthorized("Faqat ota-ona");
+      if (!db) {
+        return new Response(JSON.stringify({ ok: true, children: [] }), {
+          status: 200, headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      const familyCode = actor!.familyCode;
+      const plan = await getPlan(familyCode);
+
+      const { data: kids } = await db
+        .from("child_pairings")
+        .select("child_id, child_name, live_until, live_started_at")
+        .eq("family_code", familyCode)
+        .eq("is_active", true)
+        .not("child_id", "like", "invite\\_%")
+        .limit(10);
+
+      // Bugun — mahalliy emas, UTC kun boshidan. Ota-ona uchun "bugungi
+      // harakatlar" ro'yxati shundan to'ldiriladi.
+      const dayStart = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+      const children: any[] = [];
+
+      for (const k of kids || []) {
+        const { data: ping } = await db
+          .from("location_pings")
+          .select("lat, lng, accuracy_m, recorded_at")
+          .eq("family_code", familyCode)
+          .eq("child_id", k.child_id)
+          .order("recorded_at", { ascending: false })
+          .limit(1);
+
+        const { data: events } = await db
+          .from("geofence_alerts")
+          .select("zone_name, alert_type, message, created_at")
+          .eq("family_code", familyCode)
+          .eq("child_id", k.child_id)
+          .gte("created_at", dayStart)
+          .order("created_at", { ascending: false })
+          .limit(12);
+
+        const liveActive =
+          !!k.live_until && new Date(k.live_until).getTime() > Date.now();
+
+        children.push({
+          childId: k.child_id,
+          childName: k.child_name || "Farzand",
+          live: liveActive,
+          liveUntil: liveActive ? k.live_until : null,
+          liveMinutesLeft: liveActive
+            ? Math.max(0, Math.round((new Date(k.live_until).getTime() - Date.now()) / 60000))
+            : 0,
+          lastPing: (ping && ping[0]) || null,
+          events: events || [],
+        });
+      }
+
+      return new Response(
+        JSON.stringify({
+          ok: true,
+          plan,
+          liveHours: plan === "pro" ? PRO_LIVE_HOURS : FREE_LIVE_HOURS,
+          proLiveHours: PRO_LIVE_HOURS,
+          children,
+        }),
         { status: 200, headers: { "Content-Type": "application/json" } }
       );
     }
@@ -4142,7 +4363,7 @@ async function handleRequest(req: Request): Promise<Response> {
         const childId = "tg_" + fromId;
         const { data: pairing } = await db
           .from("child_pairings")
-          .select("family_code, child_name, live_until")
+          .select("family_code, child_name, live_until, live_msg_id")
           .eq("child_id", childId)
           .eq("is_active", true)
           .limit(1);
@@ -4160,6 +4381,56 @@ async function handleRequest(req: Request): Promise<Response> {
           return new Response(JSON.stringify({ ok: true }), { status: 200 });
         }
 
+        const livePeriod = Number(loc.live_period) || 0;
+
+        // Telegram yangi ulashishni ODDIY xabar sifatida, keyingi
+        // yangilanishlarni esa TAHRIRLANGAN xabar sifatida yuboradi. Ayni shu
+        // farqqa tayanamiz: aks holda muddati tugagan seansning har bir
+        // yangilanishi "yangi seans" deb qabul qilinib, ota-onaga bir xil
+        // xabar o'nlab marta borardi.
+        const isNewShare = !!update.message?.location && livePeriod > 0;
+        const plan = await getPlan(row.family_code);
+        const capHours = plan === "pro" ? PRO_LIVE_HOURS : FREE_LIVE_HOURS;
+        const fmtDur = (sec: number) =>
+          sec >= 3600 ? `${Math.round(sec / 3600)} soat` : `${Math.round(sec / 60)} daqiqa`;
+
+        // Seansning O'ZI qaysi Telegram xabari ekanini eslab qolamiz. Busiz
+        // chegara umuman ishlamasdi: muddat tugagach live_until tozalanadi,
+        // keyin O'SHA seansning navbatdagi yangilanishi "yangi ulashish"dek
+        // ko'rinib, yana 2 soat berilaverardi. Xabar raqami esa seans tugab,
+        // bola qaytadan yoqmaguncha o'zgarmaydi.
+        const sameSession =
+          row.live_msg_id != null && Number(row.live_msg_id) === Number(locMsg.message_id);
+
+        if (!isNewShare && livePeriod > 0 && sameSession) {
+          const expired =
+            !row.live_until || new Date(row.live_until).getTime() <= Date.now();
+
+          if (expired) {
+            // Ogohlantirish faqat BIR marta: live_until tozalangach bu shart
+            // boshqa bajarilmaydi, lekin jim o'tkazish davom etadi.
+            if (row.live_until) {
+              await db
+                .from("child_pairings")
+                .update({ live_until: null })
+                .eq("child_id", childId)
+                .eq("family_code", row.family_code);
+
+              await notifyFamilyParents(
+                row.family_code,
+                plan === "pro"
+                  ? `⏳ <b>${row.child_name || "Farzandingiz"}ning jonli joylashuv muddati tugadi.</b>\n\nRadar oxirgi ma'lum joyni ko'rsatishda davom etadi.`
+                  : `⏳ <b>Bepul tarifdagi ${FREE_LIVE_HOURS} soatlik jonli kuzatuv tugadi.</b>\n\nPro tarifda bu muddat <b>${PRO_LIVE_HOURS} soat</b> — ya'ni butun maktab kunini bir marta yoqishning o'zi qoplaydi.`
+              );
+              await sendMessage(
+                chatId,
+                `⏳ <b>Jonli joylashuv muddati tugadi.</b>\n\nYana yoqmoqchi bo'lsang — /joylashuv`
+              );
+            }
+            return new Response(JSON.stringify({ ok: true }), { status: 200 });
+          }
+        }
+
         await db.from("location_pings").insert({
           family_code: row.family_code,
           child_id: childId,
@@ -4169,37 +4440,46 @@ async function handleRequest(req: Request): Promise<Response> {
         });
 
         // Jonli ulashish boshlandi / tugadi.
-        const livePeriod = Number(loc.live_period) || 0;
-        if (livePeriod > 0) {
-          const until = new Date(Date.now() + livePeriod * 1000).toISOString();
-          if (!row.live_until || new Date(row.live_until).getTime() < Date.now()) {
-            await db
-              .from("child_pairings")
-              .update({ live_until: until, live_started_at: new Date().toISOString() })
-              .eq("child_id", childId)
-              .eq("family_code", row.family_code);
+        if (isNewShare || (livePeriod > 0 && !sameSession)) {
+          const grantedSec = Math.min(livePeriod, capHours * 3600);
+          const until = new Date(Date.now() + grantedSec * 1000).toISOString();
+          await db
+            .from("child_pairings")
+            .update({
+              live_until: until,
+              live_started_at: new Date().toISOString(),
+              live_msg_id: locMsg.message_id,
+            })
+            .eq("child_id", childId)
+            .eq("family_code", row.family_code);
 
-            const hours = Math.round(livePeriod / 3600);
-            await sendMessage(
-              chatId,
-              `✅ <b>Jonli joylashuv yoqildi.</b>\n\nEndi ota-onang seni xaritada jonli ko'radi — taxminan <b>${hours} soat</b> davomida. Telefoningni ochib turishing shart emas.\n\nTo'xtatmoqchi bo'lsang: xabardagi joylashuvni bosib, <i>«Ulashishni to'xtatish»</i> ni tanla.`
-            );
-            await notifyFamilyParents(
-              row.family_code,
-              `🟢 <b>${row.child_name || "Farzandingiz"} jonli joylashuvni yoqdi.</b>\n\nTaxminan ${hours} soat davomida radarda jonli ko'rinadi.`
-            );
-          } else {
-            await db
-              .from("child_pairings")
-              .update({ live_until: until })
-              .eq("child_id", childId)
-              .eq("family_code", row.family_code);
-          }
+          // Bola tanlagan muddat bizning chegaradan uzun bo'lsa, buni undan
+          // yashirmaymiz — aks holda u "8 soat yoqdim" deb o'ylab yuradi-yu,
+          // ota-ona 2 soatdan keyin uni ko'rmay qoladi.
+          const capNote =
+            livePeriod > grantedSec
+              ? `\n\n<i>Sen ${fmtDur(livePeriod)} ni tanlading, lekin oilangdagi bepul tarifda ${FREE_LIVE_HOURS} soat ishlaydi.</i>`
+              : "";
+
+          await sendMessage(
+            chatId,
+            `✅ <b>Jonli joylashuv yoqildi.</b>\n\nEndi ota-onang seni xaritada jonli ko'radi — <b>${fmtDur(grantedSec)}</b> davomida. Telefoningni ochib turishing shart emas.${capNote}\n\nTo'xtatmoqchi bo'lsang: xabardagi joylashuvni bosib, <i>«Ulashishni to'xtatish»</i> ni tanla.`
+          );
+          await notifyFamilyParents(
+            row.family_code,
+            `🟢 <b>${row.child_name || "Farzandingiz"} jonli joylashuvni yoqdi.</b>\n\n${fmtDur(grantedSec)} davomida radarda jonli ko'rinadi.` +
+              (plan !== "pro" && livePeriod > grantedSec
+                ? `\n\n<i>Pro tarifda bu ${PRO_LIVE_HOURS} soat bo'lardi.</i>`
+                : "")
+          );
+        } else if (livePeriod > 0) {
+          // Davom etayotgan seans. live_until ga TEGMAYMIZ — aks holda har
+          // yangilanish muddatni uzaytirib, chegara hech qachon ishlamasdi.
         } else if (update.edited_message && row.live_until) {
           // live_period yo'q + tahrirlangan xabar = ulashish to'xtadi.
           await db
             .from("child_pairings")
-            .update({ live_until: null })
+            .update({ live_until: null, live_msg_id: null })
             .eq("child_id", childId)
             .eq("family_code", row.family_code);
           await notifyFamilyParents(
@@ -4493,6 +4773,32 @@ async function handleRequest(req: Request): Promise<Response> {
         // Taklif havolasi: ?start=ref_<oila kodi>. Kod Mini App'ga uzatiladi
         // va ro'yxatdan o'tishda kim chaqirgani yozib qo'yiladi. Mukofot esa
         // keyinroq, admin tasdiqlaganda beriladi.
+        // Bola taklifi alohida shaklda keladi: refc_<oila kodi>_<tg id>.
+        // "refc_" ni avval tekshiramiz, chunki keyingi "ref_" qolipi bilan
+        // chalkashib ketmasligi kerak.
+        const refChildMatch = text.match(/refc_(\d{6})_(\d{4,15})/);
+        if (refChildMatch) {
+          const refCode = refChildMatch[1];
+          const refChild = refChildMatch[2];
+          await sendMessage(
+            chatId,
+            `👋 <b>Xush kelibsiz!</b>\n\nFarzandingizning do'sti sizni Qalqon AI'ga taklif qildi.\n\nRo'yxatdan o'tib, administrator tasdig'ini olganingizdan so'ng <b>sizga ham, taklif qilgan oilaga ham +${REFERRAL_BONUS_DAYS_CHILD} kun Pro</b> beriladi.\n\nPastdagi tugmani bosing va oila ma'lumotlarini to'ldiring.`,
+            {
+              inline_keyboard: [
+                [
+                  {
+                    text: "📝 Ro'yxatdan o'tish",
+                    web_app: {
+                      url: `${MINI_APP_URL}&lang=${lang}&ref=${refCode}&refc=${refChild}`,
+                    },
+                  },
+                ],
+              ],
+            }
+          );
+          return new Response(JSON.stringify({ ok: true }), { status: 200 });
+        }
+
         const refMatch = text.match(/ref_(\d{6})/);
         if (refMatch) {
           const refCode = refMatch[1];
@@ -4542,14 +4848,26 @@ async function handleRequest(req: Request): Promise<Response> {
       if (text.startsWith("/joylashuv")) {
         const isChildHere = await isPairedChild(chatId);
         if (isChildHere) {
+          // Bolaga oilasining amaldagi chegarasini aytamiz — "8 soat" deb
+          // yozib qo'yib, keyin 2 soatda uzib qo'yish aldash bo'lardi.
+          const kidFam = await resolveActorFamily({
+            kind: "telegram",
+            telegramId: chatId,
+            familyCode: "",
+          } as any);
+          const kidPlan = kidFam ? await getPlan(kidFam) : "free";
+          const kidHours = kidPlan === "pro" ? PRO_LIVE_HOURS : FREE_LIVE_HOURS;
+
           await sendMessage(
             chatId,
             `📍 <b>Jonli joylashuvni qanday yoqish kerak</b>\n\n` +
               `1. Shu suhbatda pastdagi <b>📎 (qisqich)</b> belgisini bos.\n` +
               `2. <b>Joylashuv (Location)</b> ni tanla.\n` +
               `3. <b>«Jonli joylashuvni ulashish»</b> (Share My Live Location) ni bos.\n` +
-              `4. Muddatni tanla — eng uzuni <b>8 soat</b>.\n\n` +
-              `Shundan keyin telefoningni cho'ntagingga solib qo'yaversang bo'ladi: ` +
+              `4. Muddatni tanla.\n\n` +
+              `Oilangdagi tarifda jonli kuzatuv <b>${kidHours} soat</b> ishlaydi` +
+              (kidPlan === "pro" ? `.` : ` (Pro tarifda ${PRO_LIVE_HOURS} soat).`) +
+              `\n\nShundan keyin telefoningni cho'ntagingga solib qo'yaversang bo'ladi: ` +
               `Telegram joylashuvni o'zi yangilab turadi, ota-onang esa seni xaritada jonli ko'radi.\n\n` +
               `To'xtatish uchun o'sha xabarni ochib, <i>«Ulashishni to'xtatish»</i> ni bosasan.`
           );
@@ -4558,10 +4876,11 @@ async function handleRequest(req: Request): Promise<Response> {
             chatId,
             `📍 <b>Jonli joylashuv</b>\n\n` +
               `Farzandingiz o'z Telegramida shu botga <b>jonli joylashuv</b> ulashsa, ` +
-              `siz uni panelda xaritada jonli ko'rasiz — hech qanday ilova o'rnatmasdan, 8 soatgacha.\n\n` +
+              `siz uni panelda xaritada jonli ko'rasiz — hech qanday ilova o'rnatmasdan, ` +
+              `iPhone'da ham.\n\n` +
+              `Bepul tarifda <b>${FREE_LIVE_HOURS} soat</b>, Pro tarifda <b>${PRO_LIVE_HOURS} soat</b> davom etadi.\n\n` +
               `Farzandingizga ayting: botni ochsin va <code>/joylashuv</code> deb yozsin — ` +
-              `bot unga qadamlarni ko'rsatadi.\n\n` +
-              `<i>Doimiy, to'xtovsiz kuzatuv uchun esa Android ilovasi kerak.</i>`
+              `bot unga qadamlarni ko'rsatadi.`
           );
         }
         return new Response(JSON.stringify({ ok: true }), { status: 200 });

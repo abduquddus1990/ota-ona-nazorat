@@ -454,6 +454,21 @@
                 </button>
             </div>
 
+            <!-- 🎁 DO'STNI TAKLIF QILISH: bola chaqirsa, oilaga 7 kun Pro -->
+            <div id="childReferralCard" class="hidden p-3.5 rounded-2xl bg-gradient-to-br from-emerald-500/15 to-teal-500/8 border border-emerald-500/35 space-y-2.5">
+                <div class="flex items-center gap-2">
+                    <span class="text-xl">🎁</span>
+                    <div>
+                        <div class="text-xs font-bold text-emerald-200">Do'stingni chaqir</div>
+                        <div class="text-[10px] text-slate-400" id="childReferralSub">Do'sting qo'shilsa — oilangga 7 kun bepul Pro</div>
+                    </div>
+                </div>
+                <div id="childReferralStats" class="text-[11px] text-slate-300"></div>
+                <button onclick="shareReferralLink()" class="w-full py-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-100 text-[11px] font-bold transition">
+                    🤝 Havolani do'stingga yuborish
+                </button>
+            </div>
+
             <!-- 🐺 BO'RI HAMROH: bolaning odatlariga qarab o'sadi -->
             <div id="companionCard" class="hidden p-3.5 rounded-2xl bg-gradient-to-br from-indigo-500/15 to-violet-500/10 border border-indigo-500/40 space-y-2.5">
                 <div class="flex items-center gap-3">
@@ -988,6 +1003,21 @@
                 <!-- JS orqali to'ldiriladi -->
             </div>
         </section>
+
+        <!-- 🎁 Taklif: boshqa ota-onani chaqirish -->
+        <section class="glass-card p-4 space-y-2.5" id="parentReferralCard">
+            <div class="flex items-center gap-2">
+                <span class="text-xl">🎁</span>
+                <div>
+                    <h3 class="text-xs font-bold text-white">Do'stingizni taklif qiling</h3>
+                    <div class="text-[10px] text-slate-400" id="parentReferralSub">Chaqirgan oilangiz qo'shilsa — ikkalangizga ham bepul Pro</div>
+                </div>
+            </div>
+            <div id="parentReferralStats" class="text-[11px] text-slate-300"></div>
+            <button onclick="shareReferralLink()" class="w-full py-2.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 text-emerald-200 text-[11px] font-bold transition">
+                🤝 Taklif havolasini yuborish
+            </button>
+        </section>
     </main>
 
     <!-- ==================================================================== -->
@@ -1035,6 +1065,29 @@
             <div class="space-y-2" id="geofenceZoneList">
                 <!-- JS orqali to'ldiriladi -->
             </div>
+        </section>
+
+        <!-- Jonli holat + bugungi harakatlar. Manba: radar_status. -->
+        <section class="glass-card p-4 space-y-3" id="radarStatusCard">
+            <div class="flex items-center justify-between">
+                <h3 class="text-xs font-bold text-white flex items-center gap-1.5">
+                    <span>🛰️</span><span>Joylashuv holati</span>
+                </h3>
+                <span id="radarLiveBadge" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-700/60 text-slate-300">—</span>
+            </div>
+
+            <div id="radarChildList" class="space-y-2.5">
+                <div class="text-[10px] text-slate-500">Yuklanmoqda...</div>
+            </div>
+
+            <div class="pt-2 border-t border-slate-800/80 space-y-1.5">
+                <div class="text-[11px] font-bold text-slate-300">📜 Bugungi harakatlar</div>
+                <div id="radarEventFeed" class="space-y-1.5">
+                    <div class="text-[10px] text-slate-500">Hozircha hodisa yo'q.</div>
+                </div>
+            </div>
+
+            <div id="radarLiveHint" class="text-[10px] text-slate-400 leading-relaxed p-2.5 rounded-xl bg-slate-900/60 border border-slate-800"></div>
         </section>
     </main>
 
@@ -2499,7 +2552,7 @@
 
         <button onclick="switchTab('tab-radar')" id="nav-tab-radar" class="nav-btn">
             <span class="material-symbols-outlined">distance</span>
-            <span data-i18n="navRadar">Radar (Bepul)</span>
+            <span data-i18n="navRadar">Radar</span>
         </button>
 
         <button onclick="switchTab('tab-ai')" id="nav-tab-ai" class="nav-btn">
