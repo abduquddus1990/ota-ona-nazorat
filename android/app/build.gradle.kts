@@ -113,7 +113,4 @@ dependencies {
 
     // Location Services (Google Play Services / Android Location)
     implementation("com.google.android.gms:play-services-location:21.3.0")
-
-    // WebRTC (P2P E2EE Calls)
-    implementation("io.getstream:stream-webrtc-android:1.1.1")
 }
