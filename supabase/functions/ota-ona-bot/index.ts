@@ -1298,6 +1298,23 @@ const COMPANION_STAGES = [
   { level: 5, xp: 700, emoji: "🛡️", title: "Qalqon qo'riqchisi" },
 ];
 
+/**
+ * Bo'riga boshlang'ich ism. Hammaga bir xil "Qalqon" berilganda fokus
+ * jangida ikkala raqib ham bir xil nom bilan ko'rinardi. Ism child_id dan
+ * barqaror tanlanadi — ya'ni har safar bir xil, lekin bolaning haqiqiy
+ * ismini oshkor qilmaydi.
+ */
+const COMPANION_NAMES = [
+  "Oqbo'ri", "Bo'ron", "Yulduz", "Shamol", "Olov", "Qorbo'ri",
+  "Yo'lbars", "Burgut", "Momaqaldiroq", "Kumush", "Tezkor", "Botir",
+];
+
+function defaultCompanionName(childId: string): string {
+  let h = 0;
+  for (let i = 0; i < childId.length; i++) h = (h * 31 + childId.charCodeAt(i)) >>> 0;
+  return COMPANION_NAMES[h % COMPANION_NAMES.length];
+}
+
 function companionStage(xp: number) {
   let current = COMPANION_STAGES[0];
   for (const s of COMPANION_STAGES) if (xp >= s.xp) current = s;
@@ -1337,6 +1354,7 @@ async function companionAddXp(familyCode: string, childId: string, xp: number) {
     await db.from("child_companion").insert({
       family_code: familyCode,
       child_id: childId,
+      name: defaultCompanionName(childId),
       xp,
       streak_days: 1,
       best_streak: 1,
@@ -1384,7 +1402,7 @@ async function companionState(familyCode: string, childId: string) {
     .limit(1);
 
   const row = (data && data[0]) || {
-    name: "Qalqon",
+    name: defaultCompanionName(childId),
     xp: 0,
     streak_days: 0,
     best_streak: 0,
@@ -2187,7 +2205,7 @@ async function handleRequest(req: Request): Promise<Response> {
           .from("child_companion")
           .select("name")
           .eq("family_code", fam).eq("child_id", cid).limit(1);
-        return (data && data[0]?.name) || "Qalqon";
+        return (data && data[0]?.name) || defaultCompanionName(cid);
       };
 
       /** Ikki ishtirokchining davr ichidagi fokus daqiqalari. */
