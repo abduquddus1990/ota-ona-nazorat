@@ -350,7 +350,10 @@ const I18N = {
         btnSubmitLogin: "🚀 Kirish",
         approvalNoticeTitle: "Admin Tasdig'i Kutilmoqda",
         approvalNoticeHeader: "So'rovingiz Administrator Ko'rib Chiqishida",
-        approvalNoticeDesc: "Siz hozirda Test / Demo rejimidan foydalanmoqdasiz. Barcha bo'limlar (Radar, AI, e-Maktab) siz uchun ko'rishga ochiq.<br><br>Haqiqiy farzand ma'lumotlarini saqlash va qurilmani ulash administrator ruxsat berganidan so'ng faollashadi.",
+        // Tarjimalar innerText bilan qo'yiladi, ya'ni <br> matn bo'lib
+        // ko'rinadi. Shuning uchun bu yerda haqiqiy qator ko'chirish — u
+        // innerText'da to'g'ri bo'linadi va HTML kiritish yo'li ham ochilmaydi.
+        approvalNoticeDesc: "Siz hozirda Test / Demo rejimidan foydalanmoqdasiz. Barcha bo'limlar (Radar, AI, e-Maktab) siz uchun ko'rishga ochiq.\n\nHaqiqiy farzand ma'lumotlarini saqlash va qurilmani ulash administrator ruxsat berganidan so'ng faollashadi.",
         roleParent: "Ota-ona Paneli",
         roleChild: "Farzand Paneli",
         childWelcomeTitle: "Salom, Yosh Qahramon! 🌟",
