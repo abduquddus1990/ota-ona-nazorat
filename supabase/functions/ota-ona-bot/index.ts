@@ -2121,6 +2121,63 @@ async function handleRequest(req: Request): Promise<Response> {
       });
     }
 
+    // 0.1c NATIJA KARTOCHKASI — Telegram Story uchun rasm.
+    //
+    // shareToStory tayyor rasm URL'ini talab qiladi (data: URI ham, canvas
+    // ham qabul qilinmaydi), shuning uchun rasm mijozda chiziladi, bu yerda
+    // saqlanadi va ommaviy havolasi qaytariladi.
+    //
+    // Rasmni SERVER chizmaydi: Deno'da rasm rasterizatori yo'q va uni olib
+    // kirish funksiyani ancha og'irlashtirardi. Mijozdagi canvas ayni shu
+    // ish uchun yetarli.
+    if (payload.type === "story_card_upload") {
+      if (!db) {
+        return new Response(JSON.stringify({ ok: false, error: "Baza ulanmagan" }), {
+          status: 500, headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      const raw = String(payload.image || "");
+      const m = raw.match(/^data:image\/(png|jpeg);base64,(.+)$/);
+      if (!m) {
+        return new Response(JSON.stringify({ ok: false, error: "Rasm formati noto'g'ri." }), {
+          status: 400, headers: { "Content-Type": "application/json" },
+        });
+      }
+      const ext = m[1] === "jpeg" ? "jpg" : "png";
+      const b64 = m[2];
+      // ~1.5 MB dan katta bo'lsa rad etamiz (bucket chegarasi 2 MB).
+      if (b64.length > 2_000_000) {
+        return new Response(JSON.stringify({ ok: false, error: "Rasm juda katta." }), {
+          status: 413, headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+      const who =
+        actor!.kind === "telegram" ? String(actor!.telegramId) : actor!.childId;
+      // Fayl nomi taxmin qilinmaydigan bo'lsin: havola ommaviy, ya'ni
+      // nomni bilgan har kim ocha oladi.
+      const name = `${await sha256Hex(who + ":" + Date.now())}`.slice(0, 32);
+      const path = `${name}.${ext}`;
+
+      const { error } = await db.storage.from("story-cards").upload(path, bytes, {
+        contentType: m[1] === "jpeg" ? "image/jpeg" : "image/png",
+        upsert: false,
+      });
+      if (error) {
+        console.error("story_card_upload xatosi:", error.message);
+        return new Response(JSON.stringify({ ok: false, error: error.message }), {
+          status: 500, headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      const url = `${SUPABASE_URL}/storage/v1/object/public/story-cards/${path}`;
+      return new Response(JSON.stringify({ ok: true, url }), {
+        status: 200, headers: { "Content-Type": "application/json" },
+      });
+    }
+
     // 0.1a QALQON LIGASI — haftalik reyting.
     //
     // MUHIM: boshqa bolalarning ismi yoki username'i HECH QACHON

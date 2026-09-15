@@ -2249,11 +2249,101 @@ async function renderLeague() {
 }
 
 /**
- * Natijani ulashish. shareToStory rasm URL'ini talab qiladi (bizda hali
- * tayyor rasm yo'q), shuning uchun ishonchli yo'l — Telegram'ning ulashish
- * oynasi: u har qanday mijozda ishlaydi va havola bilan birga keladi.
+ * Natija kartochkasini chizadi (Telegram Story formati — 1080x1920).
+ *
+ * Rasm mijozda chiziladi: shareToStory tayyor HTTPS havolani talab qiladi,
+ * data: URI ham, canvas ham qabul qilinmaydi. Shuning uchun chizilgan rasm
+ * serverga yuborilib, ommaviy havolasi olinadi.
  */
-function shareLeagueResult() {
+function drawStoryCard(league, companion) {
+    const W = 1080, H = 1920;
+    const c = document.createElement('canvas');
+    c.width = W; c.height = H;
+    const x = c.getContext('2d');
+
+    // Fon — ilovaning o'z rangi
+    const bg = x.createLinearGradient(0, 0, W, H);
+    bg.addColorStop(0, '#0f172a');
+    bg.addColorStop(0.55, '#1e1b4b');
+    bg.addColorStop(1, '#0f172a');
+    x.fillStyle = bg;
+    x.fillRect(0, 0, W, H);
+
+    // Yumshoq yorug'lik
+    const glow = x.createRadialGradient(W / 2, 620, 40, W / 2, 620, 620);
+    glow.addColorStop(0, 'rgba(139,92,246,0.35)');
+    glow.addColorStop(1, 'rgba(139,92,246,0)');
+    x.fillStyle = glow;
+    x.fillRect(0, 0, W, 1300);
+
+    x.textAlign = 'center';
+
+    // Sarlavha
+    x.fillStyle = '#67e8f9';
+    x.font = 'bold 44px system-ui, sans-serif';
+    x.fillText('QALQON AI', W / 2, 220);
+
+    // Bo'ri
+    x.font = '210px system-ui, sans-serif';
+    x.fillText(companion && !companion.asleep ? (companion.emoji || '🐺') : '🐺', W / 2, 520);
+
+    x.fillStyle = '#ffffff';
+    x.font = 'bold 66px system-ui, sans-serif';
+    x.fillText(companion?.name || 'Qalqon', W / 2, 630);
+
+    x.fillStyle = '#a5b4fc';
+    x.font = '40px system-ui, sans-serif';
+    x.fillText(`${companion?.level || 1}-daraja · ${companion?.title || ''}`, W / 2, 700);
+
+    // Asosiy natija — o'rin
+    const cardY = 800, cardH = 420;
+    x.fillStyle = 'rgba(15,23,42,0.75)';
+    if (x.roundRect) { x.beginPath(); x.roundRect(90, cardY, W - 180, cardH, 48); x.fill(); }
+    else x.fillRect(90, cardY, W - 180, cardH);
+
+    x.fillStyle = '#c4b5fd';
+    x.font = 'bold 38px system-ui, sans-serif';
+    x.fillText('BU HAFTA', W / 2, cardY + 90);
+
+    x.fillStyle = '#a78bfa';
+    x.font = 'bold 190px system-ui, sans-serif';
+    x.fillText(String(league.rank || '—'), W / 2, cardY + 265);
+
+    x.fillStyle = '#e2e8f0';
+    x.font = 'bold 46px system-ui, sans-serif';
+    x.fillText(`${league.total} bola orasida`, W / 2, cardY + 350);
+
+    // Pastki ko'rsatkichlar
+    const statY = 1340;
+    const stat = (cx, value, label, color) => {
+        x.fillStyle = color;
+        x.font = 'bold 82px system-ui, sans-serif';
+        x.fillText(value, cx, statY);
+        x.fillStyle = '#94a3b8';
+        x.font = '34px system-ui, sans-serif';
+        x.fillText(label, cx, statY + 58);
+    };
+    stat(W / 4, String(league.myMinutes), 'daqiqa fokus', '#34d399');
+    stat((W / 4) * 3, String(companion?.streak || 0), 'kun ketma-ket', '#fb923c');
+
+    // Shior
+    x.fillStyle = '#e2e8f0';
+    x.font = 'bold 52px system-ui, sans-serif';
+    x.fillText('Diqqat bilan ishladim 🎯', W / 2, 1560);
+
+    x.fillStyle = '#64748b';
+    x.font = '38px system-ui, sans-serif';
+    x.fillText('@qalqon_aibot', W / 2, 1760);
+
+    return c.toDataURL('image/jpeg', 0.9);
+}
+
+/**
+ * Natijani ulashish. Avval Story'ga urinamiz (bolalar uchun eng "maqtanarli"
+ * joy); mijoz eski bo'lsa yoki rasm yuklanmasa — oddiy ulashish oynasiga
+ * qaytamiz, shunda tugma hech qachon "ishlamay qolgan"dek bo'lmaydi.
+ */
+async function shareLeagueResult() {
     const d = leagueState;
     if (!d || !d.rank) {
         alert("Avval biroz fokus qil — keyin maqtanadigan natija bo'ladi 🙂");
@@ -2261,10 +2351,34 @@ function shareLeagueResult() {
     }
     const text = `Men bu hafta Qalqon Ligasida ${d.total} bola orasida ${d.rank}-o'rindaman! ` +
                  `${d.myMinutes} daqiqa diqqat bilan ishladim 🎯`;
-    const url = 'https://t.me/qalqon_aibot';
-    const shareUrl = 'https://t.me/share/url?url=' + encodeURIComponent(url) + '&text=' + encodeURIComponent(text);
-    if (tg && tg.openTelegramLink) tg.openTelegramLink(shareUrl);
-    else window.open(shareUrl, '_blank');
+
+    const fallback = () => {
+        const shareUrl = 'https://t.me/share/url?url=' + encodeURIComponent('https://t.me/qalqon_aibot') +
+                         '&text=' + encodeURIComponent(text);
+        if (tg && tg.openTelegramLink) tg.openTelegramLink(shareUrl);
+        else window.open(shareUrl, '_blank');
+    };
+
+    if (!tg || typeof tg.shareToStory !== 'function') { fallback(); return; }
+
+    try {
+        const dataUrl = drawStoryCard(d, companionState);
+        const resp = await fetch(QALQON_BOT_FN, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'story_card_upload', image: dataUrl })
+        });
+        const up = await resp.json();
+        if (!up.ok || !up.url) { fallback(); return; }
+
+        tg.shareToStory(up.url, {
+            text: text,
+            widget_link: { url: 'https://t.me/qalqon_aibot', name: 'Qalqon AI' }
+        });
+    } catch (e) {
+        console.error('shareToStory error:', e);
+        fallback();
+    }
 }
 
 /** Fokus jangi holati. */
@@ -2372,10 +2486,14 @@ async function acceptDuelFromUrl() {
     }
 }
 
+// Bo'ri holati — natija kartochkasini chizishda ham ishlatiladi.
+let companionState = null;
+
 /** Bo'ri hamroh. Barcha qiymatlar serverdan — bola o'ziga daraja yoza olmaydi. */
 function renderCompanion(c) {
     const card = document.getElementById('companionCard');
     if (!card || !c) return;
+    companionState = c;
     card.classList.remove('hidden');
 
     const set = (id, text) => { const el = document.getElementById(id); if (el) el.innerText = text; };
