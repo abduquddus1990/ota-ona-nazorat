@@ -2005,13 +2005,32 @@ async function finishFocusSession() {
 // ============================================================================
 // VAQT BANKI — ota-ona tomoni (kursni belgilash)
 // ============================================================================
+/**
+ * Panel ochilganda farzandlar ro'yxati serverdan kelguncha bir necha soniya
+ * o'tadi va shu vaqt ichida currentChildKey hali demo qiymatda ("CH-101")
+ * turadi. Ota-ona aynan shu paytda kursni saqlasa, u mavjud bo'lmagan
+ * farzandga yozilib, hech qachon qo'llanmasdi.
+ */
+async function resolveRealChildKey() {
+    const isReal = k => typeof k === 'string' && (k.startsWith('tg_') || k.startsWith('android_'));
+    if (isReal(currentChildKey)) return currentChildKey;
+    await syncChildrenFromServer();
+    return isReal(currentChildKey) ? currentChildKey : null;
+}
+
 async function openTimeBankRules() {
     openSubpage('modal-time-bank');
+    const childKey = await resolveRealChildKey();
+    if (!childKey) {
+        alert("Avval farzand qo'shing — vaqt banki kursi har bir farzandga alohida belgilanadi.");
+        closeSubpage();
+        return;
+    }
     try {
         const resp = await fetch(QALQON_BOT_FN, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ type: 'time_bank_status', childId: currentChildKey })
+            body: JSON.stringify({ type: 'time_bank_status', childId: childKey })
         });
         const d = await resp.json();
         if (!d.ok) return;
@@ -2042,6 +2061,11 @@ async function saveTimeBankRules() {
         const v = parseInt(document.getElementById(id)?.value, 10);
         return Number.isFinite(v) && v >= 0 ? v : def;
     };
+    const childKey = await resolveRealChildKey();
+    if (!childKey) {
+        alert("Avval farzand qo'shing — kurs har bir farzandga alohida saqlanadi.");
+        return;
+    }
     if (btn) { btn.disabled = true; btn.innerText = '⏳ Saqlanmoqda...'; }
     try {
         const resp = await fetch(QALQON_BOT_FN, {
@@ -2049,7 +2073,7 @@ async function saveTimeBankRules() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 type: 'time_bank_rules_save',
-                childId: currentChildKey,
+                childId: childKey,
                 enabled: document.getElementById('tbEnabled')?.checked !== false,
                 minutesPerFocus: num('tbFocus', 10),
                 minutesPerSchoolOntime: num('tbSchool', 20),
