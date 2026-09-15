@@ -2038,6 +2038,309 @@ async function handleRequest(req: Request): Promise<Response> {
     // Ilgari Mini App kodni localStorage'dan o'qirdi va u yerda eski qiymat
     // (masalan 849210) qolib ketardi — shu sabab har foydalanuvchida o'z
     // kodi bo'lishi kerak bo'lsa ham, eskisi ko'rinaverardi.
+    // 0.0z "BUGUN MEN..." — farzanddan ota-onaga ijobiy xabar.
+    //
+    // Bu SOS emas va hisobot ham emas: maqsadi — bola o'zi gapirishi.
+    // Nazorat ilovasida bolaning ovozi bo'lmasa, u ilovani dushman deb
+    // biladi; bitta tugma buni ancha o'zgartiradi.
+    if (payload.type === "child_daily_note") {
+      if (!db) {
+        return new Response(JSON.stringify({ ok: false, error: "Baza ulanmagan" }), {
+          status: 500, headers: { "Content-Type": "application/json" },
+        });
+      }
+      const familyCode = await resolveActorFamily(actor!);
+      const childId =
+        actor!.kind === "device" ? actor!.childId : "tg_" + actor!.telegramId;
+
+      const moods: Record<string, { emoji: string; label: string }> = {
+        great: { emoji: "🤩", label: "Kayfiyatim zo'r" },
+        good: { emoji: "🙂", label: "Yaxshiman" },
+        tired: { emoji: "😮‍💨", label: "Charchadim" },
+        sad: { emoji: "😔", label: "Biroz xafaman" },
+      };
+      const mood = moods[String(payload.mood)] ? String(payload.mood) : "good";
+      const note = String(payload.note || "").trim().slice(0, 200);
+
+      // Kuniga bir nechta — lekin cheksiz emas.
+      const { data: today } = await db
+        .from("child_notes")
+        .select("id")
+        .eq("family_code", familyCode)
+        .eq("child_id", childId)
+        .gte("created_at", new Date(Date.now() - 86400000).toISOString())
+        .limit(6);
+      if (today && today.length >= 5) {
+        return new Response(
+          JSON.stringify({ ok: false, error: "Bugun yetarlicha xabar yubording 🙂 Ertaga yana yozasan." }),
+          { status: 429, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      await db.from("child_notes").insert({
+        family_code: familyCode, child_id: childId, mood, note: note || null,
+      });
+
+      const { data: pairing } = await db
+        .from("child_pairings")
+        .select("child_name")
+        .eq("child_id", childId)
+        .eq("family_code", familyCode)
+        .limit(1);
+      const childName = (pairing && pairing[0]?.child_name) || "Farzandingiz";
+      const m = moods[mood];
+
+      await notifyFamilyParents(
+        familyCode,
+        `${m.emoji} <b>${childName}dan xabar</b>\n\n` +
+          `<b>${m.label}</b>` +
+          (note ? `\n\n"${note}"` : "") +
+          `\n\n<i>Bu xabarni farzandingiz o'zi yubordi.</i>`
+      );
+
+      return new Response(JSON.stringify({ ok: true }), {
+        status: 200, headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    // 0.1a QALQON LIGASI — haftalik reyting.
+    //
+    // MUHIM: boshqa bolalarning ismi yoki username'i HECH QACHON
+    // qaytarilmaydi. Voyaga yetmaganlarning ro'yxatini bir-biriga ko'rsatish
+    // maxfiylik jihatidan ham, Play'ning bolalar siyosati jihatidan ham
+    // yo'l qo'yib bo'lmaydigan narsa. Faqat o'z o'rning va umumiy son.
+    if (payload.type === "league_status") {
+      if (!db) {
+        return new Response(JSON.stringify({ ok: false, error: "Baza ulanmagan" }), {
+          status: 500, headers: { "Content-Type": "application/json" },
+        });
+      }
+      const familyCode = await resolveActorFamily(actor!);
+      const childId =
+        actor!.kind === "device"
+          ? actor!.childId
+          : (await isPairedChild(actor!.telegramId))
+            ? "tg_" + actor!.telegramId
+            : String(payload.childId || "").trim();
+
+      // Hafta boshi (dushanba).
+      const now = new Date();
+      const day = (now.getUTCDay() + 6) % 7; // dushanba = 0
+      const weekStart = new Date(Date.UTC(
+        now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - day
+      )).toISOString();
+
+      const { data: rows } = await db
+        .from("time_bank_entries")
+        .select("child_id, minutes")
+        .gt("minutes", 0)
+        .gte("created_at", weekStart)
+        .limit(5000);
+
+      const totals: Record<string, number> = {};
+      for (const r of rows || []) {
+        totals[r.child_id] = (totals[r.child_id] || 0) + (Number(r.minutes) || 0);
+      }
+      const sorted = Object.entries(totals).sort((a, b) => b[1] - a[1]);
+      const myMinutes = totals[childId] || 0;
+      const rank = sorted.findIndex(([id]) => id === childId) + 1;
+      const total = sorted.length;
+
+      // Keyingi o'ringacha qancha qolgani — bolani harakatga undaydigan son.
+      let toNext = 0;
+      if (rank > 1) toNext = Math.max(1, sorted[rank - 2][1] - myMinutes + 1);
+
+      return new Response(
+        JSON.stringify({
+          ok: true,
+          rank: rank > 0 ? rank : null,
+          total,
+          myMinutes,
+          toNext,
+          topMinutes: sorted.length ? sorted[0][1] : 0,
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    // 0.1b FOKUS JANGI.
+    //
+    // ASINXRON: bola taklif kodini do'stiga yuboradi, do'sti istalgan payt
+    // qabul qiladi va 24 soat ichida kim ko'proq fokus daqiqasi to'plasa —
+    // o'sha yutadi. Real vaqtli variant chiroyliroq ko'rinadi, lekin ikki
+    // bolaning bir vaqtda onlayn bo'lishini talab qiladi va amalda deyarli
+    // hech qachon ishga tushmaydi.
+    if (payload.type === "duel_create" || payload.type === "duel_accept" || payload.type === "duel_status") {
+      if (!db) {
+        return new Response(JSON.stringify({ ok: false, error: "Baza ulanmagan" }), {
+          status: 500, headers: { "Content-Type": "application/json" },
+        });
+      }
+      const familyCode = await resolveActorFamily(actor!);
+      const childId =
+        actor!.kind === "device" ? actor!.childId : "tg_" + actor!.telegramId;
+
+      // Bo'rining ismi — bolaning haqiqiy ismi o'rniga ko'rsatiladi.
+      // Begona bolaga haqiqiy ism ko'rsatmaslik uchun.
+      const nick = async (fam: string, cid: string) => {
+        const { data } = await db!
+          .from("child_companion")
+          .select("name")
+          .eq("family_code", fam).eq("child_id", cid).limit(1);
+        return (data && data[0]?.name) || "Qalqon";
+      };
+
+      /** Ikki ishtirokchining davr ichidagi fokus daqiqalari. */
+      const scores = async (duel: any) => {
+        const sum = async (fam: string, cid: string) => {
+          if (!fam || !cid) return 0;
+          const { data } = await db!
+            .from("time_bank_entries")
+            .select("minutes")
+            .eq("family_code", fam).eq("child_id", cid).eq("reason", "focus")
+            .gte("created_at", duel.starts_at)
+            .lte("created_at", duel.ends_at)
+            .limit(500);
+          return (data || []).reduce((a: number, r: any) => a + (Number(r.minutes) || 0), 0);
+        };
+        return {
+          challenger: await sum(duel.challenger_family, duel.challenger_child),
+          opponent: await sum(duel.opponent_family, duel.opponent_child),
+        };
+      };
+
+      if (payload.type === "duel_create") {
+        // Ochiq yoki ketayotgan jang bo'lsa, yangisini ochmaymiz.
+        const { data: existing } = await db
+          .from("focus_duels")
+          .select("*")
+          .or(`challenger_child.eq.${childId},opponent_child.eq.${childId}`)
+          .in("status", ["open", "active"])
+          .limit(1);
+        if (existing && existing[0]) {
+          return new Response(
+            JSON.stringify({ ok: true, duel: existing[0], existed: true }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          );
+        }
+
+        const alphabet = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+        const bytes = crypto.getRandomValues(new Uint8Array(6));
+        const code = Array.from(bytes).map((b) => alphabet[b % alphabet.length]).join("");
+
+        const { data: created, error } = await db
+          .from("focus_duels")
+          .insert({
+            code,
+            challenger_family: familyCode,
+            challenger_child: childId,
+            challenger_name: await nick(familyCode, childId),
+          })
+          .select("*");
+        if (error) {
+          return new Response(JSON.stringify({ ok: false, error: error.message }), {
+            status: 500, headers: { "Content-Type": "application/json" },
+          });
+        }
+        return new Response(
+          JSON.stringify({
+            ok: true,
+            duel: created && created[0],
+            link: `https://t.me/qalqon_aiBot?start=duel_${code}`,
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      if (payload.type === "duel_accept") {
+        const code = String(payload.code || "").trim().toUpperCase();
+        const { data } = await db
+          .from("focus_duels").select("*").eq("code", code).limit(1);
+        const duel = data && data[0];
+
+        if (!duel) {
+          return new Response(JSON.stringify({ ok: false, error: "Bunday jang topilmadi." }), {
+            status: 404, headers: { "Content-Type": "application/json" },
+          });
+        }
+        if (duel.status !== "open") {
+          return new Response(JSON.stringify({ ok: false, error: "Bu jang allaqachon boshlangan." }), {
+            status: 409, headers: { "Content-Type": "application/json" },
+          });
+        }
+        if (duel.challenger_child === childId) {
+          return new Response(JSON.stringify({ ok: false, error: "O'zing bilan jang qila olmaysan 🙂" }), {
+            status: 400, headers: { "Content-Type": "application/json" },
+          });
+        }
+
+        const startsAt = new Date().toISOString();
+        const endsAt = new Date(Date.now() + 24 * 3600 * 1000).toISOString();
+        const { data: updated } = await db
+          .from("focus_duels")
+          .update({
+            opponent_family: familyCode,
+            opponent_child: childId,
+            opponent_name: await nick(familyCode, childId),
+            status: "active",
+            starts_at: startsAt,
+            ends_at: endsAt,
+          })
+          .eq("id", duel.id)
+          .select("*");
+
+        return new Response(JSON.stringify({ ok: true, duel: updated && updated[0] }), {
+          status: 200, headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      // duel_status
+      const { data } = await db
+        .from("focus_duels")
+        .select("*")
+        .or(`challenger_child.eq.${childId},opponent_child.eq.${childId}`)
+        .in("status", ["open", "active", "finished"])
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      const duel = data && data[0];
+      if (!duel) {
+        return new Response(JSON.stringify({ ok: true, duel: null }), {
+          status: 200, headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      let me = 0, rival = 0, finished = duel.status === "finished";
+      if (duel.status === "active") {
+        const s = await scores(duel);
+        const iAmChallenger = duel.challenger_child === childId;
+        me = iAmChallenger ? s.challenger : s.opponent;
+        rival = iAmChallenger ? s.opponent : s.challenger;
+
+        if (new Date(duel.ends_at).getTime() < Date.now()) {
+          await db.from("focus_duels").update({ status: "finished" }).eq("id", duel.id);
+          finished = true;
+        }
+      }
+
+      const iAmChallenger = duel.challenger_child === childId;
+      return new Response(
+        JSON.stringify({
+          ok: true,
+          duel: {
+            code: duel.code,
+            status: finished ? "finished" : duel.status,
+            rivalName: iAmChallenger ? duel.opponent_name : duel.challenger_name,
+            endsAt: duel.ends_at,
+            myMinutes: me,
+            rivalMinutes: rival,
+            link: `https://t.me/qalqon_aiBot?start=duel_${duel.code}`,
+          },
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
     // 0.0x HISOBNI O'CHIRISH.
     //
     // Google Play talabi: hisobi bor ilova foydalanuvchiga hisobini VA
@@ -4072,6 +4375,29 @@ async function handleRequest(req: Request): Promise<Response> {
             ? "⚠️ <b>Эта ссылка устарела.</b>\n\nПопросите родителя открыть панель → «Добавить ребёнка» и прислать вам <b>персональную ссылку с одноразовым кодом</b>. Только она подключает вас по-настоящему."
             : "⚠️ <b>Bu havola eskirgan.</b>\n\nOta-onangizdan panelni ochib, «Yangi farzand qo'shish» orqali sizga <b>alohida, bir martalik kodli havola</b> yuborishini so'rang. Faqat o'sha havola sizni haqiqatan ulaydi.";
           await sendMessage(chatId, reply);
+          return new Response(JSON.stringify({ ok: true }), { status: 200 });
+        }
+
+        // Fokus jangi havolasi: ?start=duel_<kod>. Mini App'da ochiladi,
+        // qabul qilish o'sha yerda bajariladi (bola kim ekanini imzolangan
+        // identitet hal qiladi).
+        const duelMatch = text.match(/duel_([A-Z0-9]{4,10})/i);
+        if (duelMatch) {
+          const duelCode = duelMatch[1].toUpperCase();
+          await sendMessage(
+            chatId,
+            `⚔️ <b>Senga fokus jangiga chaqiruv keldi!</b>\n\n` +
+              `Do'sting seni sinab ko'rmoqchi: 24 soat ichida kim ko'proq diqqat bilan ishlaydi?\n\n` +
+              `Pastdagi tugmani bosib qabul qil.`,
+            {
+              inline_keyboard: [[
+                {
+                  text: "⚔️ Jangni qabul qilish",
+                  web_app: { url: `${MINI_APP_URL}&role=child&duel=${duelCode}` },
+                },
+              ]],
+            }
+          );
           return new Response(JSON.stringify({ ok: true }), { status: 200 });
         }
 

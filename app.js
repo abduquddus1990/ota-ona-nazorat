@@ -1376,8 +1376,14 @@ function checkChildConsentStatus() {
         // Farzand panelini majburiy tanlash
         switchChildTab('child-tab-home');
 
-        // Vaqt banki — balans serverdan keladi.
-        if (consented) renderTimeBank();
+        // Vaqt banki, liga, jang va kunlik xabar — hammasi serverdan.
+        if (consented) {
+            renderTimeBank();
+            renderLeague();
+            const noteCard = document.getElementById('dailyNoteCard');
+            if (noteCard) noteCard.classList.remove('hidden');
+            acceptDuelFromUrl().then(renderDuel);
+        }
     }
 }
 
@@ -2176,6 +2182,193 @@ async function renderTimeBank() {
         renderCompanion(d.companion);
     } catch (e) {
         console.error('time_bank_status error:', e);
+    }
+}
+
+// ============================================================================
+// BOLA PANELI: kunlik xabar, liga, fokus jangi
+// ============================================================================
+
+/** "Bugun men..." — bola ota-onasiga o'zi xabar yuboradi. */
+async function sendDailyNote(mood) {
+    const note = prompt("Qisqa gap qo'shasanmi? (ixtiyoriy, bo'sh qoldirsang ham bo'ladi)") || '';
+    try {
+        const resp = await fetch(QALQON_BOT_FN, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'child_daily_note', mood, note })
+        });
+        const d = await resp.json();
+        alert(d.ok
+            ? "✅ Xabaring ota-onangga yuborildi!"
+            : (d.error || "Yuborilmadi. Keyinroq urinib ko'r."));
+    } catch (e) {
+        console.error('child_daily_note error:', e);
+        alert("Server javob bermayapti.");
+    }
+}
+
+/**
+ * Qalqon Ligasi. Server faqat O'RINni qaytaradi — boshqa bolalarning ismi
+ * yoki username'i emas. Voyaga yetmaganlarning ro'yxatini bir-biriga
+ * ko'rsatish maxfiylik jihatidan yo'l qo'yib bo'lmaydigan narsa.
+ */
+let leagueState = null;
+async function renderLeague() {
+    const card = document.getElementById('leagueCard');
+    if (!card || currentAppRole !== 'child') return;
+    try {
+        const resp = await fetch(QALQON_BOT_FN, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'league_status' })
+        });
+        const d = await resp.json();
+        if (!d.ok) return;
+        leagueState = d;
+        card.classList.remove('hidden');
+
+        const set = (id, t) => { const el = document.getElementById(id); if (el) el.innerText = t; };
+        set('leagueRank', d.rank ? d.rank + '-o\'rin' : '—');
+        set('leagueTotal', d.total ? d.total + ' bola orasida' : 'hali ishtirokchi yo\'q');
+        set('leagueSub', 'Bu hafta: ' + d.myMinutes + ' daqiqa');
+
+        const bar = document.getElementById('leagueBar');
+        if (bar) {
+            const pct = d.topMinutes > 0 ? Math.round((d.myMinutes / d.topMinutes) * 100) : 0;
+            bar.style.width = Math.max(3, Math.min(100, pct)) + '%';
+        }
+        set('leagueHint', !d.rank
+            ? "Fokus seansini boshla — va reytingga qo'shil!"
+            : d.rank === 1
+                ? "🥇 Sen birinchisan! Ushlab tur."
+                : `Keyingi o'ringa chiqish uchun yana ${d.toNext} daqiqa kerak.`);
+    } catch (e) {
+        console.error('league_status error:', e);
+    }
+}
+
+/**
+ * Natijani ulashish. shareToStory rasm URL'ini talab qiladi (bizda hali
+ * tayyor rasm yo'q), shuning uchun ishonchli yo'l — Telegram'ning ulashish
+ * oynasi: u har qanday mijozda ishlaydi va havola bilan birga keladi.
+ */
+function shareLeagueResult() {
+    const d = leagueState;
+    if (!d || !d.rank) {
+        alert("Avval biroz fokus qil — keyin maqtanadigan natija bo'ladi 🙂");
+        return;
+    }
+    const text = `Men bu hafta Qalqon Ligasida ${d.total} bola orasida ${d.rank}-o'rindaman! ` +
+                 `${d.myMinutes} daqiqa diqqat bilan ishladim 🎯`;
+    const url = 'https://t.me/qalqon_aibot';
+    const shareUrl = 'https://t.me/share/url?url=' + encodeURIComponent(url) + '&text=' + encodeURIComponent(text);
+    if (tg && tg.openTelegramLink) tg.openTelegramLink(shareUrl);
+    else window.open(shareUrl, '_blank');
+}
+
+/** Fokus jangi holati. */
+let duelState = null;
+async function renderDuel() {
+    const card = document.getElementById('duelCard');
+    if (!card || currentAppRole !== 'child') return;
+    try {
+        const resp = await fetch(QALQON_BOT_FN, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'duel_status' })
+        });
+        const d = await resp.json();
+        if (!d.ok) return;
+        card.classList.remove('hidden');
+        duelState = d.duel;
+
+        const body = document.getElementById('duelBody');
+        const btn = document.getElementById('duelBtn');
+        if (!body || !btn) return;
+
+        if (!d.duel) {
+            body.innerHTML = "Do'stingni chaqir: 24 soat ichida kim ko'proq fokus daqiqasi to'plasa — o'sha yutadi.";
+            btn.innerText = "⚔️ Do'stni chaqirish";
+            return;
+        }
+        if (d.duel.status === 'open') {
+            body.innerHTML = `Chaqiruv yuborilgan, do'sting qabul qilishini kutyapmiz.<br>
+                <span class="text-[10px] text-slate-500">Kod: <b>${d.duel.code}</b></span>`;
+            btn.innerText = "📤 Chaqiruvni qayta yuborish";
+            return;
+        }
+        if (d.duel.status === 'active') {
+            const leftMin = Math.max(0, Math.round((new Date(d.duel.endsAt) - Date.now()) / 60000));
+            const left = leftMin >= 60 ? Math.floor(leftMin / 60) + ' soat' : leftMin + ' daqiqa';
+            const winning = d.duel.myMinutes >= d.duel.rivalMinutes;
+            body.innerHTML = `
+                <div class="flex items-center justify-between py-1">
+                    <span>Sen</span><b class="${winning ? 'text-emerald-400' : 'text-slate-300'}">${d.duel.myMinutes} daq</b>
+                </div>
+                <div class="flex items-center justify-between py-1 border-t border-slate-800">
+                    <span>${d.duel.rivalName || "Raqib"}</span><b class="${!winning ? 'text-emerald-400' : 'text-slate-300'}">${d.duel.rivalMinutes} daq</b>
+                </div>
+                <div class="text-[10px] text-slate-500 pt-1">${left} qoldi · ${winning ? 'Oldindasan! 🔥' : 'Yetib olish mumkin 💪'}</div>`;
+            btn.innerText = "🎯 Fokus seansini boshlash";
+            return;
+        }
+        const won = d.duel.myMinutes > d.duel.rivalMinutes;
+        body.innerHTML = won
+            ? `🏆 <b>Yutding!</b> ${d.duel.myMinutes} : ${d.duel.rivalMinutes}`
+            : `Bu safar bo'lmadi: ${d.duel.myMinutes} : ${d.duel.rivalMinutes}. Yangi jang boshla!`;
+        btn.innerText = "⚔️ Yangi jang";
+    } catch (e) {
+        console.error('duel_status error:', e);
+    }
+}
+
+async function handleDuelButton() {
+    // Jang ketayotgan bo'lsa — tugma taymerni boshlaydi.
+    if (duelState && duelState.status === 'active') {
+        switchChildTab('child-tab-home');
+        if (!isPomodoroRunning) togglePomodoroTimer();
+        return;
+    }
+    try {
+        const resp = await fetch(QALQON_BOT_FN, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'duel_create' })
+        });
+        const d = await resp.json();
+        if (!d.ok) { alert(d.error || "Bajarilmadi."); return; }
+
+        const link = d.link || (d.duel && `https://t.me/qalqon_aiBot?start=duel_${d.duel.code}`);
+        const text = "Fokus jangiga chaqiraman! 24 soat — kim ko'proq diqqat bilan ishlaydi? 🎯";
+        const shareUrl = 'https://t.me/share/url?url=' + encodeURIComponent(link) + '&text=' + encodeURIComponent(text);
+        if (tg && tg.openTelegramLink) tg.openTelegramLink(shareUrl);
+        else window.open(shareUrl, '_blank');
+        renderDuel();
+    } catch (e) {
+        console.error('duel_create error:', e);
+        alert("Server javob bermayapti.");
+    }
+}
+
+/** Havolada ?duel=KOD bo'lsa — jangni qabul qilamiz. */
+async function acceptDuelFromUrl() {
+    const code = new URLSearchParams(window.location.search).get('duel');
+    if (!code || currentAppRole !== 'child') return;
+    try {
+        const resp = await fetch(QALQON_BOT_FN, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'duel_accept', code })
+        });
+        const d = await resp.json();
+        if (d.ok) {
+            alert("⚔️ Jang boshlandi! 24 soat ichida kim ko'proq fokus daqiqasi to'plasa — o'sha yutadi.");
+        } else if (d.error) {
+            alert(d.error);
+        }
+    } catch (e) {
+        console.error('duel_accept error:', e);
     }
 }
 
