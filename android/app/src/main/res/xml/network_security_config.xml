@@ -7,9 +7,8 @@
         </trust-anchors>
     </base-config>
 
-    <!-- Backend & Supabase domenlari uchun qat'iy konfiguratsiya -->
+    <!-- Supabase va Google domenlari uchun qat'iy konfiguratsiya -->
     <domain-config cleartextTrafficPermitted="false">
-        <domain includeSubdomains="true">onrender.com</domain>
         <domain includeSubdomains="true">supabase.co</domain>
         <domain includeSubdomains="true">googleapis.com</domain>
     </domain-config>

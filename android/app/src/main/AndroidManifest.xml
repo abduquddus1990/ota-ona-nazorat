@@ -7,19 +7,30 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
-    <!-- 2. Android 13/14+ Bildirishnoma va Foreground xizmatlari -->
+    <!-- 2. Bildirishnoma va Foreground xizmati.
+         TUR "location", "dataSync" emas: Android 15+ da dataSync turidagi
+         xizmat sutkada atigi 6 soat ishlay oladi, so'ng tizim onTimeout()
+         chaqiradi va to'xtatilmasa ilovani HALOKATLI xato bilan yiqitadi
+         (RemoteServiceException). Bizning xizmatimiz aslida joylashuv
+         kuzatuvi uchun ishlaydi — "location" turi ham haqiqatga mos, ham
+         vaqt chegarasiga tushmaydi. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
 
     <!-- 3. Qurilmadan foydalanish tahlili (UsageStats) -->
     <uses-permission
         android:name="android.permission.PACKAGE_USAGE_STATS"
         tools:ignore="ProtectedPermissions" />
 
-    <!-- 4. Xavfsiz GPS joylashuv ruxsatlari -->
+    <!-- 4. Joylashuv ruxsatlari.
+         ACCESS_BACKGROUND_LOCATION shart: usiz Android 10+ da ilova fonda
+         joylashuvni umuman o'qiy olmaydi, ya'ni radar telefon qulflangan
+         holda ishlamaydi — mahsulotning asosiy va'dasi bajarilmaydi.
+         Bu ruxsat Play Console'da alohida deklaratsiya talab qiladi. -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
 
     <!-- 5. Tizim qayta yonganda tiklanish -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
@@ -58,7 +69,7 @@
             android:name=".services.PersistentGuardService"
             android:enabled="true"
             android:exported="false"
-            android:foregroundServiceType="dataSync" />
+            android:foregroundServiceType="location" />
 
         <!-- Shaffof Accessibility Xizmati (Ochiq foydalanuvchi roziligi bilan) -->
         <service

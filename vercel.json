@@ -1,10 +1,7 @@
 {
+  "//": "Faqat statik Mini App. Telegram webhook'i Supabase Edge Function'da (ota-ona-bot) — bu yerdagi api/webhook.js ikkinchi, hech qachon chaqirilmagan implementatsiya edi va o'chirildi.",
   "version": 2,
   "builds": [
-    {
-      "src": "api/webhook.js",
-      "use": "@vercel/node"
-    },
     {
       "src": "index.html",
       "use": "@vercel/static"
@@ -19,10 +16,6 @@
     }
   ],
   "routes": [
-    {
-      "src": "/api/webhook",
-      "dest": "/api/webhook.js"
-    },
     {
       "src": "/(.*)",
       "dest": "/$1"

@@ -1,6 +1,7 @@
 ﻿package com.shield.parentalguard
 
 import android.app.Activity
+import android.app.AlertDialog
 import android.app.AppOpsManager
 import android.content.Context
 import android.content.Intent
@@ -218,15 +219,93 @@ class PairingActivity : Activity() {
         }
     }
 
+    /**
+     * Joylashuv ruxsati — OSHKOR QILISH ekrani bilan birga.
+     *
+     * Bu ekran ikkita talabga birdan javob beradi:
+     *  1) Google Play "prominent disclosure": fon rejimidagi joylashuv va
+     *     Accessibility API ishlatilishidan OLDIN nima yig'ilishi va nima
+     *     uchun ekani ochiq aytilishi va rozilik olinishi shart.
+     *  2) Stalkerware siyosati: kuzatilayotgan odam — ya'ni farzand — buni
+     *     bilishi shart. Yashirin kuzatuv bizning tamoyilimizga ham zid.
+     */
     private fun requestLocationPermission() {
-        ActivityCompat.requestPermissions(
-            this,
-            arrayOf(
-                android.Manifest.permission.ACCESS_FINE_LOCATION,
-                android.Manifest.permission.ACCESS_COARSE_LOCATION
-            ),
-            1001
-        )
+        AlertDialog.Builder(this)
+            .setTitle("Bu telefon ota-onangga ko'rinadi")
+            .setMessage(
+                "Qalqon AI quyidagilarni yig'adi va FAQAT ota-onangga ko'rsatadi:\n\n" +
+                    "📍 Joylashuving — telefon cho'ntagingda, ekran o'chiq bo'lganda ham\n" +
+                    "📱 Qaysi ilovalarda qancha vaqt o'tkazganing\n" +
+                    "🔋 Batareya darajasi\n\n" +
+                    "Yig'ilMAYdi:\n" +
+                    "✖️ Yozishmalaring va xabarlaring\n" +
+                    "✖️ Parollaring\n" +
+                    "✖️ Ekrandagi matn va rasmlar\n\n" +
+                    "Bu ilova yashirinmaydi: bildirishnoma doim ko'rinib turadi. " +
+                    "Fikringni o'zgartirsang, ota-onang bilan gaplashib o'chirishing mumkin.\n\n" +
+                    "Davom etsak, keyingi oynada joylashuvga ruxsat so'raladi."
+            )
+            .setPositiveButton("Tushundim, roziman") { _, _ ->
+                ActivityCompat.requestPermissions(
+                    this,
+                    arrayOf(
+                        android.Manifest.permission.ACCESS_FINE_LOCATION,
+                        android.Manifest.permission.ACCESS_COARSE_LOCATION
+                    ),
+                    1001
+                )
+            }
+            .setNegativeButton("Hozircha yo'q", null)
+            .setCancelable(false)
+            .show()
+    }
+
+    /**
+     * Fon rejimidagi joylashuv — ALOHIDA so'raladi.
+     *
+     * Android 11+ da uni oldingi ruxsat bilan birga so'rab bo'lmaydi: tizim
+     * bunday so'rovni jimgina rad etadi. Shuning uchun avval oddiy joylashuv
+     * beriladi, so'ng "Doim ruxsat berish" alohida so'raladi — usiz radar
+     * telefon qulflangan holda umuman ishlamaydi.
+     */
+    private fun requestBackgroundLocation() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return
+        val granted = ContextCompat.checkSelfPermission(
+            this, android.Manifest.permission.ACCESS_BACKGROUND_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+        if (granted) return
+
+        AlertDialog.Builder(this)
+            .setTitle("Yana bitta qadam")
+            .setMessage(
+                "Ota-onang seni telefon cho'ntagingda turganda ham ko'rishi uchun " +
+                    "joylashuvga «Doim ruxsat berish» kerak.\n\n" +
+                    "Keyingi oynada «Doim ruxsat berish» ni tanla."
+            )
+            .setPositiveButton("Davom etish") { _, _ ->
+                ActivityCompat.requestPermissions(
+                    this,
+                    arrayOf(android.Manifest.permission.ACCESS_BACKGROUND_LOCATION),
+                    1002
+                )
+            }
+            .setNegativeButton("Keyinroq", null)
+            .show()
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        // Oddiy joylashuv berilgandan keyingina fon ruxsatini so'rash mumkin.
+        if (requestCode == 1001 && grantResults.isNotEmpty() &&
+            grantResults[0] == PackageManager.PERMISSION_GRANTED
+        ) {
+            requestBackgroundLocation()
+        }
+        showPermissionsOrActiveState()
     }
 
     private fun checkUsageStatsPermission(): Boolean {

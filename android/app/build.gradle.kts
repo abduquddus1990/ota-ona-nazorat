@@ -21,12 +21,14 @@ if (hasReleaseKeystore) {
 
 android {
     namespace = "com.shield.parentalguard"
-    compileSdk = 34
+    // Google Play 2026-yil 31-avgustdan yangi ilovalardan API 36 (Android 16)
+    // ni talab qiladi. Bundan pasti bilan AAB faylni yuklab ham bo'lmaydi.
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.shield.parentalguard"
         minSdk = 26
-        targetSdk = 34
+        targetSdk = 36
         versionCode = 1
         versionName = "1.0.0"
 
