@@ -1392,10 +1392,6 @@ function checkChildConsentStatus() {
 
 function checkParentOnboarding() {
     const isParent = (currentAppRole === 'parent');
-    if (isParent) {
-        renderReferral();
-        renderRadarStatus();
-    }
     const onboarded = localStorage.getItem('parent_onboarded') === 'true';
     if (isParent && !onboarded) {
         setTimeout(() => {
@@ -3356,9 +3352,22 @@ async function renderReferral() {
 /** Taklif havolasini ulashish. Telegram'da bir bosishda ketadi. */
 function shareReferralLink() {
     const d = referralState;
-    if (!d || !d.link) return;
+    if (!d || !d.link) {
+        const msg = currentLang === 'ru'
+            ? 'Ссылка ещё не готова, откройте панель заново.'
+            : 'Havola hali tayyor emas, panelni qayta oching.';
+        if (tg && tg.showAlert) tg.showAlert(msg); else alert(msg);
+        return;
+    }
+    const ru = {
+        child: 'Я тренирую внимание в Qalqon AI и растит своего волка 🐺 Присоединяйся — если родители зарегистрируются, нам обоим дадут ' + d.bonusDays + ' дней Pro!',
+        parent: 'Qalqon AI — я знаю, где мой ребёнок, а он сам зарабатывает экранное время. Присоединяйтесь: нам обоим дадут ' + d.bonusDays + ' дней Pro.'
+    };
+    const text = currentLang === 'ru'
+        ? (d.isChild ? ru.child : ru.parent)
+        : (d.shareText || '');
     const url = 'https://t.me/share/url?url=' + encodeURIComponent(d.link) +
-                '&text=' + encodeURIComponent(d.shareText || '');
+                '&text=' + encodeURIComponent(text);
     if (tg && tg.openTelegramLink) tg.openTelegramLink(url);
     else window.open(url, '_blank');
 }
@@ -3486,30 +3495,11 @@ function triggerVoiceAlert() {
 // tarqatardi, u esa ota-onaning Telegram ID'sidan hisoblanadi.
 //
 // Yagona haqiqiy yo'l — har bir farzandga alohida, bir martalik taklif kodi.
-/**
- * Taklif havolasi. Chaqirilgan oila ADMIN TASDIG'IDAN o'tgach, ikkala oilaga
- * ham +14 kun Pro qo'shiladi (mukofot serverda, tasdiqlash paytida beriladi —
- * shu sabab soxta ro'yxatlar bilan yig'ib bo'lmaydi).
- */
-function shareReferralLink() {
-    const isRu = (currentLang === 'ru');
-    if (!familyCode || String(familyCode).length !== 6) {
-        const msg = isRu ? 'Код ещё не готов, откройте панель заново.' : 'Kod hali tayyor emas, panelni qayta oching.';
-        if (tg && tg.showAlert) tg.showAlert(msg); else alert(msg);
-        return;
-    }
-    const link = 'https://t.me/qalqon_aibot?start=ref_' + familyCode;
-    const text = isRu
-        ? 'Я защищаю своего ребёнка через Qalqon AI. Присоединяйся — нам обоим дадут +14 дней Pro:'
-        : "Farzandimni Qalqon AI orqali himoya qilyapman. Qo'shiling — ikkalamizga +14 kun Pro beriladi:";
-    const shareUrl = 'https://t.me/share/url?url=' + encodeURIComponent(link) + '&text=' + encodeURIComponent(text);
-
-    if (tg && tg.openTelegramLink) {
-        tg.openTelegramLink(shareUrl);
-        return;
-    }
-    window.open(shareUrl, '_blank');
-}
+// Bu yerda ilgari ikkinchi shareReferralLink turardi. U havolani MIJOZDAGI
+// oila kodidan yasardi va faqat ota-ona uchun ishlardi — bola bossa, o'z
+// taklif havolasi o'rniga ota-onasinikini yuborardi, ya'ni 7 kunlik mukofot
+// hech qachon bolaga bog'lanmasdi. Yagona nusxa yuqorida: u havolani
+// serverdan oladi, shuning uchun kim bosgani ham to'g'ri aniqlanadi.
 
 function copyPairingLink() {
     openSubpage('modal-add-child');
@@ -3620,7 +3610,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     syncFamilyFromServer()
         .then((ok) => { if (!ok) checkParentOnboarding(); })
         .then(() => syncChildrenFromServer())
-        .then(() => { refreshPlanStatus(); loadGeofences(); });
+        .then(() => {
+            refreshPlanStatus();
+            loadGeofences();
+            // Taklif kartasi va radar holati — ikkalasi ham oila kodi
+            // serverdan kelgandan KEYIN. checkParentOnboarding ichida
+            // chaqirilgan edi, u esa faqat server javob bermaganda ishlaydi,
+            // ya'ni normal holatda bu ikkisi hech qachon ko'rinmasdi.
+            if (currentAppRole === 'parent') {
+                renderReferral();
+                renderRadarStatus();
+            }
+        });
 });
 
 function openUsernameGuideModal() {
