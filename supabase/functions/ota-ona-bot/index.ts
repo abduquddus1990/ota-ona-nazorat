@@ -2205,16 +2205,23 @@ async function handleRequest(req: Request): Promise<Response> {
         now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - day
       )).toISOString();
 
+      // Reyting HAQIQIY fokus daqiqalari bo'yicha, vaqt banki mukofoti
+      // bo'yicha emas. Mukofot kunlik shiftga tushadi — agar reyting shundan
+      // hisoblansa, shiftga yetgan bola yana bir soat ishlasa ham o'rni
+      // qimirlamasdi, ya'ni musobaqa kun o'rtasida o'lib qolardi. Fokus
+      // seansining uzunligini esa server o'zi o'lchaydi (focus_complete),
+      // shuning uchun bu son ham aldashdan himoyalangan.
       const { data: rows } = await db
-        .from("time_bank_entries")
-        .select("child_id, minutes")
-        .gt("minutes", 0)
-        .gte("created_at", weekStart)
+        .from("focus_sessions")
+        .select("child_id, planned_minutes, completed_at")
+        .not("completed_at", "is", null)
+        .gte("completed_at", weekStart)
         .limit(5000);
 
       const totals: Record<string, number> = {};
       for (const r of rows || []) {
-        totals[r.child_id] = (totals[r.child_id] || 0) + (Number(r.minutes) || 0);
+        totals[r.child_id] =
+          (totals[r.child_id] || 0) + (Number(r.planned_minutes) || 0);
       }
       const sorted = Object.entries(totals).sort((a, b) => b[1] - a[1]);
       const myMinutes = totals[childId] || 0;
@@ -2269,14 +2276,21 @@ async function handleRequest(req: Request): Promise<Response> {
       const scores = async (duel: any) => {
         const sum = async (fam: string, cid: string) => {
           if (!fam || !cid) return 0;
+          // Ligadagi kabi: hisob haqiqiy fokus daqiqalaridan. Vaqt banki
+          // mukofoti kunlik shiftga tushadi, shuning uchun undan hisoblansa
+          // shiftga yetgan bola qancha ishlamasin hisobini oshirolmasdi —
+          // 24 soatlik jang yarmida tugab qolardi.
           const { data } = await db!
-            .from("time_bank_entries")
-            .select("minutes")
-            .eq("family_code", fam).eq("child_id", cid).eq("reason", "focus")
-            .gte("created_at", duel.starts_at)
-            .lte("created_at", duel.ends_at)
+            .from("focus_sessions")
+            .select("planned_minutes")
+            .eq("family_code", fam).eq("child_id", cid)
+            .not("completed_at", "is", null)
+            .gte("completed_at", duel.starts_at)
+            .lte("completed_at", duel.ends_at)
             .limit(500);
-          return (data || []).reduce((a: number, r: any) => a + (Number(r.minutes) || 0), 0);
+          return (data || []).reduce(
+            (a: number, r: any) => a + (Number(r.planned_minutes) || 0), 0
+          );
         };
         return {
           challenger: await sum(duel.challenger_family, duel.challenger_child),

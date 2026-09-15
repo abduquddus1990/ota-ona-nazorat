@@ -2238,11 +2238,16 @@ async function renderLeague() {
             const pct = d.topMinutes > 0 ? Math.round((d.myMinutes / d.topMinutes) * 100) : 0;
             bar.style.width = Math.max(3, Math.min(100, pct)) + '%';
         }
+        // Ligada deyarli hech kim bo'lmasa "sen birinchisan" degan maqtov
+        // bo'sh yangraydi. O'sha payt bolani do'stini chaqirishga undaymiz —
+        // liga faqat shunda haqiqiy musobaqaga aylanadi.
         set('leagueHint', !d.rank
             ? "Fokus seansini boshla — va reytingga qo'shil!"
-            : d.rank === 1
-                ? "🥇 Sen birinchisan! Ushlab tur."
-                : `Keyingi o'ringa chiqish uchun yana ${d.toNext} daqiqa kerak.`);
+            : d.total < 3
+                ? "Ligada hali kam odam. Do'stingni chaqir — birga qiziqroq! 🤝"
+                : d.rank === 1
+                    ? "🥇 Sen birinchisan! Ushlab tur."
+                    : `Keyingi o'ringa chiqish uchun yana ${d.toNext} daqiqa kerak.`);
     } catch (e) {
         console.error('league_status error:', e);
     }
@@ -2295,7 +2300,13 @@ function drawStoryCard(league, companion) {
     x.font = '40px system-ui, sans-serif';
     x.fillText(`${companion?.level || 1}-daraja · ${companion?.title || ''}`, W / 2, 700);
 
-    // Asosiy natija — o'rin
+    // Asosiy natija.
+    //
+    // Agar ligada bola deyarli yolg'iz bo'lsa, "1 bola orasida 1-o'rin" deb
+    // yozish maqtanish emas, kulgili bo'lardi — do'sti buni ko'rsa ilovaga
+    // qiziqmaydi. Shuning uchun kam odam bo'lganda o'rin emas, bolaning
+    // haqiqiy mehnati — fokus daqiqalari asosiy son bo'ladi.
+    const hasLeague = league.total >= 3 && league.rank;
     const cardY = 800, cardH = 420;
     x.fillStyle = 'rgba(15,23,42,0.75)';
     if (x.roundRect) { x.beginPath(); x.roundRect(90, cardY, W - 180, cardH, 48); x.fill(); }
@@ -2307,11 +2318,14 @@ function drawStoryCard(league, companion) {
 
     x.fillStyle = '#a78bfa';
     x.font = 'bold 190px system-ui, sans-serif';
-    x.fillText(String(league.rank || '—'), W / 2, cardY + 265);
+    x.fillText(String(hasLeague ? league.rank : (league.myMinutes || 0)), W / 2, cardY + 265);
 
     x.fillStyle = '#e2e8f0';
     x.font = 'bold 46px system-ui, sans-serif';
-    x.fillText(`${league.total} bola orasida`, W / 2, cardY + 350);
+    x.fillText(
+        hasLeague ? `${league.total} bola orasida` : 'daqiqa diqqat bilan',
+        W / 2, cardY + 350
+    );
 
     // Pastki ko'rsatkichlar
     const statY = 1340;
@@ -2323,7 +2337,9 @@ function drawStoryCard(league, companion) {
         x.font = '34px system-ui, sans-serif';
         x.fillText(label, cx, statY + 58);
     };
-    stat(W / 4, String(league.myMinutes), 'daqiqa fokus', '#34d399');
+    // Asosiy sonda nima ko'rsatilgan bo'lsa, pastda u takrorlanmaydi.
+    if (hasLeague) stat(W / 4, String(league.myMinutes), 'daqiqa fokus', '#34d399');
+    else stat(W / 4, String(companion?.level || 1), 'bo\'ri darajasi', '#34d399');
     stat((W / 4) * 3, String(companion?.streak || 0), 'kun ketma-ket', '#fb923c');
 
     // Shior
@@ -2345,12 +2361,16 @@ function drawStoryCard(league, companion) {
  */
 async function shareLeagueResult() {
     const d = leagueState;
-    if (!d || !d.rank) {
+    if (!d || !d.myMinutes) {
         alert("Avval biroz fokus qil — keyin maqtanadigan natija bo'ladi 🙂");
         return;
     }
-    const text = `Men bu hafta Qalqon Ligasida ${d.total} bola orasida ${d.rank}-o'rindaman! ` +
-                 `${d.myMinutes} daqiqa diqqat bilan ishladim 🎯`;
+    // Matn ham kartochka bilan bir xil mantiqda: kam odam bo'lsa o'rin haqida
+    // gapirmaymiz, chunki "1 bola orasida 1-o'rin" hech narsani anglatmaydi.
+    const text = (d.total >= 3 && d.rank)
+        ? `Men bu hafta Qalqon Ligasida ${d.total} bola orasida ${d.rank}-o'rindaman! ` +
+          `${d.myMinutes} daqiqa diqqat bilan ishladim 🎯`
+        : `Bu hafta ${d.myMinutes} daqiqa diqqat bilan ishladim 🎯 Sen ham sinab ko'r!`;
 
     const fallback = () => {
         const shareUrl = 'https://t.me/share/url?url=' + encodeURIComponent('https://t.me/qalqon_aibot') +
