@@ -896,7 +896,14 @@ async function answerCallbackQuery(callbackQueryId: string, text?: string) {
  * ya'ni ota-ona o'z farzandidan kelgan xabarni umuman olmasdi, admin esa
  * barcha oilalarning shaxsiy xabarlarini ko'rardi.
  */
-async function notifyFamilyParents(familyCode: string, htmlText: string): Promise<boolean> {
+async function notifyFamilyParents(
+  familyCode: string,
+  htmlText: string,
+  // Ba'zi xabarlar javob talab qiladi (masalan "Pro so'rovini tasdiqlaysizmi?").
+  // Ularni alohida yo'l bilan yuborish o'rniga, shu yerga tugma qo'shiladi —
+  // shunda "ota-onaga xabar berish" mantig'i bitta joyda qoladi.
+  replyMarkup?: any
+): Promise<boolean> {
   if (!db || !familyCode) return false;
   const { data } = await db
     .from("parent_registrations")
@@ -910,7 +917,7 @@ async function notifyFamilyParents(familyCode: string, htmlText: string): Promis
     return false;
   }
   try {
-    await sendMessage(chatId, htmlText);
+    await sendMessage(chatId, htmlText, replyMarkup);
     return true;
   } catch (e) {
     console.error("notifyFamilyParents yuborilmadi:", e);
@@ -1536,6 +1543,69 @@ async function payReferralReward(familyCode: string): Promise<void> {
     familyCode,
     `🎁 <b>Sovg'a!</b>\n\nSiz taklif havolasi orqali qo'shilganingiz uchun <b>+${days} kun Pro</b> berildi.`
   );
+}
+
+// ============================================================================
+// VAQT BANKI BALLARINI PRO'GA ALMASHTIRISH
+//
+// Bu yerda pul aralashadi, shuning uchun qoidalar boshqa joylardan qattiqroq:
+//
+// 1) FAQAT SERVER TASDIQLAGAN daqiqalar hisobga olinadi — fokus seanslari
+//    (uzunligini server o'zi o'lchaydi) va hududga o'z vaqtida yetish
+//    (haqiqiy joylashuvdan). Ota-ona qo'lidan bergan bonus HISOBGA OLINMAYDI:
+//    aks holda ota-ona farzandiga 10 000 daqiqa yozib, o'ziga cheksiz bepul
+//    Pro olib bergan bo'lardi. Bu eng katta teshik edi va ataylab yopilgan.
+//
+// 2) Bir daqiqa ikki marta sarflanmaydi: almashtirilgan daqiqalar manfiy
+//    yozuv sifatida bankka qaytariladi va keyingi hisobdan chiqib ketadi.
+//
+// 3) Oyiga chegara bor. Chegarasiz bo'lsa hech kim hech qachon to'lamasdi.
+//
+// 4) Ota-ona tasdiqlaydi. Bu ham to'siq, ham oiladagi suhbat sababi: bola
+//    "men buni ishlab topdim" deb aytadigan lahza.
+// ============================================================================
+
+const PRO_EXCHANGE_MINUTES_PER_DAY = 100;
+const PRO_EXCHANGE_MAX_DAYS_PER_MONTH = 7;
+
+/** Almashtirishga yaroqli daqiqalar. */
+async function proExchangeBalance(familyCode: string, childId: string) {
+  if (!db) return { earned: 0, spent: 0, available: 0, daysThisMonth: 0 };
+
+  const { data } = await db
+    .from("time_bank_entries")
+    .select("minutes, reason, created_at")
+    .eq("family_code", familyCode)
+    .eq("child_id", childId)
+    .limit(5000);
+
+  const monthAgo = Date.now() - 30 * 86400000;
+  let earned = 0;   // server tasdiqlagan daromad
+  let spent = 0;    // shu yo'l bilan allaqachon sarflangani
+
+  for (const e of data || []) {
+    const m = Number(e.minutes) || 0;
+    if (m > 0 && (e.reason === "focus" || e.reason === "school_ontime")) earned += m;
+    if (e.reason === "pro_exchange") spent += Math.abs(m);
+  }
+
+  // Oylik chegara: shu oyda almashtirilgan kunlar.
+  const { data: reqs } = await db
+    .from("pro_exchange_requests")
+    .select("days, created_at")
+    .eq("family_code", familyCode)
+    .eq("status", "approved")
+    .gte("created_at", new Date(monthAgo).toISOString())
+    .limit(100);
+
+  const daysThisMonth = (reqs || []).reduce((a, r: any) => a + (Number(r.days) || 0), 0);
+
+  return {
+    earned,
+    spent,
+    available: Math.max(0, earned - spent),
+    daysThisMonth,
+  };
 }
 
 // ============================================================================
@@ -2462,6 +2532,154 @@ async function handleRequest(req: Request): Promise<Response> {
     // qaytarilmaydi. Voyaga yetmaganlarning ro'yxatini bir-biriga ko'rsatish
     // maxfiylik jihatidan ham, Play'ning bolalar siyosati jihatidan ham
     // yo'l qo'yib bo'lmaydigan narsa. Faqat o'z o'rning va umumiy son.
+    // 0.1p BALLARNI PRO'GA ALMASHTIRISH — holat va so'rov.
+    if (payload.type === "pro_exchange_status") {
+      if (!db) {
+        return new Response(JSON.stringify({ ok: false, error: "Baza ulanmagan" }), {
+          status: 500, headers: { "Content-Type": "application/json" },
+        });
+      }
+      const familyCode = await resolveActorFamily(actor!);
+      const childId =
+        actor!.kind === "device"
+          ? actor!.childId
+          : (await isPairedChild(actor!.telegramId))
+            ? "tg_" + actor!.telegramId
+            : String(payload.childId || "").trim();
+
+      if (!childId) {
+        return new Response(JSON.stringify({ ok: false, error: "childId majburiy" }), {
+          status: 400, headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      const b = await proExchangeBalance(familyCode, childId);
+      const capLeft = Math.max(0, PRO_EXCHANGE_MAX_DAYS_PER_MONTH - b.daysThisMonth);
+      const affordable = Math.floor(b.available / PRO_EXCHANGE_MINUTES_PER_DAY);
+
+      const { data: pending } = await db
+        .from("pro_exchange_requests")
+        .select("id, days, minutes, created_at")
+        .eq("family_code", familyCode)
+        .eq("child_id", childId)
+        .eq("status", "pending")
+        .limit(1);
+
+      return new Response(
+        JSON.stringify({
+          ok: true,
+          minutesPerDay: PRO_EXCHANGE_MINUTES_PER_DAY,
+          monthlyCap: PRO_EXCHANGE_MAX_DAYS_PER_MONTH,
+          earned: b.earned,
+          available: b.available,
+          usedDaysThisMonth: b.daysThisMonth,
+          capLeft,
+          maxDays: Math.min(affordable, capLeft),
+          plan: await getPlan(familyCode),
+          pending: (pending && pending[0]) || null,
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    if (payload.type === "pro_exchange_request") {
+      if (!db) {
+        return new Response(JSON.stringify({ ok: false, error: "Baza ulanmagan" }), {
+          status: 500, headers: { "Content-Type": "application/json" },
+        });
+      }
+      // Faqat bolaning o'zi so'raydi: bu uning mehnati va uning qarori.
+      if (actor!.kind === "telegram" && !(await isPairedChild(actor!.telegramId))) {
+        return unauthorized("Faqat farzand so'rashi mumkin");
+      }
+
+      const familyCode = await resolveActorFamily(actor!);
+      const childId =
+        actor!.kind === "device" ? actor!.childId : "tg_" + actor!.telegramId;
+
+      const days = Math.max(1, Math.min(30, Number(payload.days) || 0));
+      const b = await proExchangeBalance(familyCode, childId);
+      const capLeft = Math.max(0, PRO_EXCHANGE_MAX_DAYS_PER_MONTH - b.daysThisMonth);
+      const minutes = days * PRO_EXCHANGE_MINUTES_PER_DAY;
+
+      if (days > capLeft) {
+        return new Response(
+          JSON.stringify({
+            ok: false,
+            error: `Bu oyda yana ${capLeft} kun almashtirish mumkin.`,
+          }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        );
+      }
+      if (minutes > b.available) {
+        return new Response(
+          JSON.stringify({
+            ok: false,
+            error: `Yetarli daqiqa yo'q: ${b.available} bor, ${minutes} kerak.`,
+          }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      // Ikkita ochiq so'rov bo'lmasin — aks holda ota-ona ikkalasini
+      // tasdiqlab, bir daqiqa ikki marta sarflanardi.
+      const { data: already } = await db
+        .from("pro_exchange_requests")
+        .select("id")
+        .eq("family_code", familyCode)
+        .eq("child_id", childId)
+        .eq("status", "pending")
+        .limit(1);
+      if (already && already[0]) {
+        return new Response(
+          JSON.stringify({ ok: false, error: "Oldingi so'rovingiz hali ko'rilmagan." }),
+          { status: 409, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      const nom = await participantName(familyCode, childId);
+      const { data: ins } = await db
+        .from("pro_exchange_requests")
+        .insert({
+          family_code: familyCode,
+          child_id: childId,
+          child_name: nom,
+          days,
+          minutes,
+        })
+        .select("id")
+        .limit(1);
+
+      const reqId = ins && ins[0] && ins[0].id;
+      if (!reqId) {
+        return new Response(JSON.stringify({ ok: false, error: "Saqlab bo'lmadi." }), {
+          status: 500, headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      await notifyFamilyParents(
+        familyCode,
+        `⭐️ <b>${nom} Pro so'rayapti.</b>\n\n` +
+          `U <b>${minutes} daqiqa</b> ni o'z mehnati bilan yig'di va uni ` +
+          `<b>${days} kun Pro</b> ga almashtirmoqchi.\n\n` +
+          `<i>Faqat fokus seanslari va maktabga o'z vaqtida yetish hisobga olingan — ` +
+          `siz bergan bonus daqiqalar bunga kirmaydi.</i>`,
+        {
+          inline_keyboard: [
+            [
+              { text: "✅ Tasdiqlash", callback_data: "pex_ok_" + reqId },
+              { text: "❌ Rad etish", callback_data: "pex_no_" + reqId },
+            ],
+          ],
+        }
+      );
+
+      return new Response(
+        JSON.stringify({ ok: true, requestId: reqId, days, minutes }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
     // ========================================================================
     // OILAVIY VIKTORINA
     //
@@ -3085,12 +3303,16 @@ async function handleRequest(req: Request): Promise<Response> {
         .map((id) => Number(id.slice(3)))
         .filter((n) => Number.isFinite(n) && n > 0);
 
+      // Yangi jadval qo'shilganda uni SHU RO'YXATGA ham qo'shish shart.
+      // Aks holda "hisobni o'chirdim" degan va'da yolg'on bo'lib qoladi —
+      // ma'lumot bazada qolib ketadi.
       const byFamily = [
-        "child_companion", "child_invites", "child_pairings", "curfew_policies",
-        "device_pair_codes", "device_telemetry", "device_tokens", "focus_sessions",
-        "geofence_alerts", "geofence_zones", "homework_items", "join_attempts",
-        "location_pings", "location_requests", "time_bank_entries", "time_bank_rules",
-        "web_sessions", "families",
+        "child_companion", "child_invites", "child_notes", "child_pairings",
+        "curfew_policies", "device_pair_codes", "device_telemetry", "device_tokens",
+        "focus_sessions", "geofence_alerts", "geofence_zones", "homework_items",
+        "join_attempts", "location_pings", "location_requests",
+        "pro_exchange_requests", "quiz_answers", "quiz_rounds",
+        "time_bank_entries", "time_bank_rules", "web_sessions", "families",
       ];
 
       const failed: string[] = [];
@@ -3181,11 +3403,14 @@ async function handleRequest(req: Request): Promise<Response> {
         );
       }
 
+      // child_id ustuni bor jadvallar. quiz_rounds bu yerda YO'Q: u butun
+      // oilaga tegishli va boshqa a'zolar javoblari bilan bog'liq — bitta
+      // bola chiqqani uchun uni o'chirsak, qolganlarning natijasi yo'qolardi.
       for (const table of [
-        "child_pairings", "location_pings", "device_telemetry", "device_tokens",
-        "geofence_alerts", "geofence_zones", "curfew_policies", "homework_items",
-        "time_bank_entries", "time_bank_rules", "focus_sessions", "child_companion",
-        "location_requests",
+        "child_pairings", "child_notes", "location_pings", "device_telemetry",
+        "device_tokens", "geofence_alerts", "geofence_zones", "curfew_policies",
+        "homework_items", "time_bank_entries", "time_bank_rules", "focus_sessions",
+        "child_companion", "location_requests", "pro_exchange_requests",
       ]) {
         const { error } = await db
           .from(table)
@@ -3193,6 +3418,17 @@ async function handleRequest(req: Request): Promise<Response> {
           .eq("family_code", familyCode)
           .eq("child_id", childId);
         if (error) console.error(`leave_family: ${table} o'chmadi:`, error.message);
+      }
+
+      // Viktorina javoblarida ustun nomi boshqacha (participant_id), shuning
+      // uchun yuqoridagi tsikl uni ushlamaydi.
+      {
+        const { error } = await db
+          .from("quiz_answers")
+          .delete()
+          .eq("family_code", familyCode)
+          .eq("participant_id", childId);
+        if (error) console.error("leave_family: quiz_answers o'chmadi:", error.message);
       }
 
       if (actor!.kind === "telegram") {
@@ -5406,6 +5642,113 @@ async function handleRequest(req: Request): Promise<Response> {
           await sendMessage(chatId, "⛔️ Bu amal faqat administratorlar uchun.");
           return new Response(JSON.stringify({ ok: true }), { status: 200 });
         }
+      }
+
+      // BALLARNI PRO'GA ALMASHTIRISH — tasdiqlash yoki rad etish.
+      //
+      // Tugmani bosgan odam AYNAN shu oilaning ota-onasi ekani tekshiriladi.
+      // Callback ma'lumotini qo'lda yasash qiyin emas, shuning uchun so'rov
+      // id'sining o'zi ruxsat hisoblanmaydi — oila kodi solishtiriladi.
+      if (data.startsWith("pex_ok_") || data.startsWith("pex_no_")) {
+        const approve = data.startsWith("pex_ok_");
+        const reqId = data.replace(/^pex_(ok|no)_/, "");
+
+        if (!db) {
+          await sendMessage(chatId, "⚠️ Baza ulanmagan.");
+          return new Response(JSON.stringify({ ok: true }), { status: 200 });
+        }
+
+        const { data: rows } = await db
+          .from("pro_exchange_requests")
+          .select("id, family_code, child_id, child_name, days, minutes, status")
+          .eq("id", reqId)
+          .limit(1);
+
+        const reqRow = rows && rows[0];
+        if (!reqRow) {
+          await sendMessage(chatId, "⚠️ So'rov topilmadi.");
+          return new Response(JSON.stringify({ ok: true }), { status: 200 });
+        }
+
+        const { data: fam } = await db
+          .from("parent_registrations")
+          .select("parent_telegram_id")
+          .eq("family_code", reqRow.family_code)
+          .limit(1);
+
+        const ownerId = fam && fam[0] && fam[0].parent_telegram_id;
+        if (!ownerId || String(ownerId) !== String(chatId)) {
+          await sendMessage(chatId, "⛔️ Bu so'rov sizning oilangizga tegishli emas.");
+          return new Response(JSON.stringify({ ok: true }), { status: 200 });
+        }
+
+        if (reqRow.status !== "pending") {
+          await sendMessage(
+            chatId,
+            `ℹ️ Bu so'rov allaqachon ko'rib chiqilgan (${reqRow.status === "approved" ? "tasdiqlangan" : "rad etilgan"}).`
+          );
+          return new Response(JSON.stringify({ ok: true }), { status: 200 });
+        }
+
+        const childTgId = String(reqRow.child_id).startsWith("tg_")
+          ? String(reqRow.child_id).slice(3)
+          : null;
+
+        if (!approve) {
+          await db
+            .from("pro_exchange_requests")
+            .update({ status: "rejected", decided_at: new Date().toISOString(), decided_by: chatId })
+            .eq("id", reqRow.id);
+          await sendMessage(chatId, `❌ So'rov rad etildi. Daqiqalar ${reqRow.child_name || "farzandingiz"}da qoldi.`);
+          if (childTgId) {
+            await sendMessage(
+              childTgId,
+              `Ota-onang Pro so'rovingni hozircha tasdiqlamadi. Daqiqalaring joyida turibdi — keyinroq yana urinib ko'rasan.`
+            );
+          }
+          return new Response(JSON.stringify({ ok: true }), { status: 200 });
+        }
+
+        // Tasdiqlash. Avval holatni o'zgartiramiz: keyingi qadamda xato
+        // bo'lsa ham, bitta so'rov ikki marta to'lanmaydi.
+        const { error: updErr } = await db
+          .from("pro_exchange_requests")
+          .update({ status: "approved", decided_at: new Date().toISOString(), decided_by: chatId })
+          .eq("id", reqRow.id)
+          .eq("status", "pending");
+
+        if (updErr) {
+          await sendMessage(chatId, "⚠️ Saqlashda xato. Qayta urinib ko'ring.");
+          return new Response(JSON.stringify({ ok: true }), { status: 200 });
+        }
+
+        // Daqiqalarni bankdan yechamiz (manfiy yozuv) — shunda ular ikkinchi
+        // marta almashtirilmaydi va bolaning balansi ham to'g'ri qoladi.
+        await db.from("time_bank_entries").insert({
+          family_code: reqRow.family_code,
+          child_id: reqRow.child_id,
+          minutes: -Math.abs(reqRow.minutes),
+          reason: "pro_exchange",
+          note: `${reqRow.days} kun Pro`,
+        });
+
+        const until = await grantProDays(reqRow.family_code, reqRow.days);
+        const untilTxt = until ? new Date(until).toLocaleDateString("uz-UZ") : "";
+
+        await sendMessage(
+          chatId,
+          `✅ <b>Tasdiqlandi.</b>\n\n${reqRow.child_name || "Farzandingiz"} yiqqan ` +
+            `<b>${reqRow.minutes} daqiqa</b> <b>${reqRow.days} kun Pro</b> ga aylandi` +
+            (untilTxt ? ` (${untilTxt} gacha)` : "") + "."
+        );
+        if (childTgId) {
+          await sendMessage(
+            childTgId,
+            `🎉 <b>Ota-onang tasdiqladi!</b>\n\nSen yiqqan <b>${reqRow.minutes} daqiqa</b> ` +
+              `oilangga <b>${reqRow.days} kun Pro</b> olib keldi.\n\nBuni sen ishlab topding.`
+          );
+        }
+        return new Response(JSON.stringify({ ok: true }), { status: 200 });
       }
 
       if (data.startsWith("admin_approve_")) {

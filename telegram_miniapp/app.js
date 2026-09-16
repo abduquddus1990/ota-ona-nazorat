@@ -1393,6 +1393,7 @@ function checkChildConsentStatus() {
             if (locCard) locCard.classList.remove('hidden');
             const gamesCard = document.getElementById('gamesEntryCard');
             if (gamesCard) gamesCard.classList.remove('hidden');
+            renderProExchange();
 
             // Ota-ona "Qayerdasan?" deb so'ragan bo'lsa, bot havolasida
             // ?ask=loc keladi — u holda bolaga tugma qidirtirmaymiz.
@@ -3457,6 +3458,101 @@ function openLiveLocationGuide() {
     const go = () => { if (tg && tg.close) tg.close(); };
     if (tg && tg.showConfirm) tg.showConfirm(msg, (yes) => { if (yes) go(); });
     else if (confirm(msg)) go();
+}
+
+// ============================================================================
+// BALLARNI PRO'GA ALMASHTIRISH
+//
+// Faqat bolaning O'ZI ishlab topgan daqiqalari hisobga olinadi — fokus
+// seanslari va maktabga o'z vaqtida yetish. Ota-ona bergan bonus kirmaydi,
+// aks holda ota-ona o'ziga cheksiz bepul Pro yozib olardi.
+//
+// Chegaralarni ham, hisobni ham SERVER qaraydi. Bu yerdagi kod faqat
+// ko'rsatadi: mijozdagi son o'zgartirilsa ham, server rad etadi.
+// ============================================================================
+
+let proExchangeState = null;
+
+async function renderProExchange() {
+    if (currentAppRole !== 'child') return;
+    const card = document.getElementById('proExchangeCard');
+    const body = document.getElementById('proExchangeBody');
+    const btn = document.getElementById('proExchangeBtn');
+    const sub = document.getElementById('proExchangeSub');
+    if (!card) return;
+
+    try {
+        const resp = await fetch(QALQON_BOT_FN, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'pro_exchange_status' })
+        });
+        const d = await resp.json();
+        if (!d.ok) return;
+        proExchangeState = d;
+        card.classList.remove('hidden');
+
+        if (sub) sub.textContent = `${d.minutesPerDay} daqiqa = 1 kun Pro · oyiga ${d.monthlyCap} kungacha`;
+
+        if (d.pending) {
+            body.innerHTML = `⏳ <b>${d.pending.days} kun</b> uchun so'roving ota-onangda — javobini kutamiz.`;
+            if (btn) { btn.disabled = true; btn.textContent = '⏳ Javob kutilmoqda'; btn.classList.add('opacity-50'); }
+            return;
+        }
+
+        if (btn) { btn.disabled = false; btn.classList.remove('opacity-50'); }
+
+        if (d.maxDays < 1) {
+            const kerak = d.minutesPerDay - (d.available % d.minutesPerDay);
+            body.innerHTML = d.capLeft < 1
+                ? `Bu oyda chegaraga yetding (${d.monthlyCap} kun). Keyingi oyda yana mumkin.`
+                : `Yig'ilgan: <b>${d.available}</b> daqiqa. 1 kun Pro uchun yana <b>${kerak}</b> daqiqa kerak.`;
+            if (btn) { btn.disabled = true; btn.textContent = '⭐️ Hali yetarli emas'; btn.classList.add('opacity-50'); }
+            return;
+        }
+
+        body.innerHTML =
+            `Yig'ilgan: <b>${d.available}</b> daqiqa · ` +
+            `Almashtirish mumkin: <b>${d.maxDays} kun Pro</b>` +
+            (d.usedDaysThisMonth ? `<br><span class="text-[10px] text-slate-400">Bu oyda allaqachon ${d.usedDaysThisMonth} kun olingan.</span>` : '');
+        if (btn) btn.textContent = `⭐️ ${d.maxDays} kun Pro so'rash`;
+    } catch (e) {
+        console.error('pro_exchange_status:', e);
+    }
+}
+
+async function requestProExchange() {
+    const d = proExchangeState;
+    if (!d || d.maxDays < 1) return;
+
+    const savol = `${d.maxDays * d.minutesPerDay} daqiqangni ${d.maxDays} kun Pro ga almashtirishni so'raysanmi?\n\n` +
+                  `Ota-onang tasdiqlasa, daqiqalar bankdan yechiladi va butun oilangga Pro ochiladi.`;
+    const yubor = async () => {
+        const btn = document.getElementById('proExchangeBtn');
+        if (btn) { btn.disabled = true; btn.textContent = 'Yuborilmoqda...'; }
+        try {
+            const resp = await fetch(QALQON_BOT_FN, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ type: 'pro_exchange_request', days: d.maxDays })
+            });
+            const r = await resp.json();
+            const body = document.getElementById('proExchangeBody');
+            if (!r.ok) {
+                if (body) body.innerHTML = `<span class="text-rose-300">${escapeHtml(r.error || 'Yuborib bo\'lmadi')}</span>`;
+                renderProExchange();
+                return;
+            }
+            if (body) body.innerHTML = `✅ So'roving ota-onangga yuborildi.`;
+            renderProExchange();
+        } catch (e) {
+            console.error('pro_exchange_request:', e);
+            renderProExchange();
+        }
+    };
+
+    if (tg && tg.showConfirm) tg.showConfirm(savol, (ha) => { if (ha) yubor(); });
+    else if (confirm(savol)) yubor();
 }
 
 /** Taklif holati. Havola oila kodidan yasaladi, shuning uchun o'zgarmaydi. */
