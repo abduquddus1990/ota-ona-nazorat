@@ -3522,8 +3522,20 @@ async function renderProExchange() {
 }
 
 async function requestProExchange() {
+    // Holat hali kelmagan bo'lsa jim turmaymiz: bola tugmani bosgan, unga
+    // javob berish kerak. Avval holatni olamiz, keyin davom etamiz.
+    if (!proExchangeState) {
+        const btn0 = document.getElementById('proExchangeBtn');
+        if (btn0) btn0.textContent = 'Yuklanmoqda...';
+        await renderProExchange();
+    }
     const d = proExchangeState;
-    if (!d || d.maxDays < 1) return;
+    if (!d) return;
+    if (d.maxDays < 1) {
+        const body = document.getElementById('proExchangeBody');
+        if (body && !body.innerText) body.textContent = "Hozircha almashtirish uchun yetarli daqiqa yo'q.";
+        return;
+    }
 
     const savol = `${d.maxDays * d.minutesPerDay} daqiqangni ${d.maxDays} kun Pro ga almashtirishni so'raysanmi?\n\n` +
                   `Ota-onang tasdiqlasa, daqiqalar bankdan yechiladi va butun oilangga Pro ochiladi.`;
