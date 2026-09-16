@@ -1690,6 +1690,7 @@ function switchChildTab(tabId) {
         activeEl.classList.add('active');
     }
 
+    if (tabId === 'child-tab-ai') renderAiQuota();
     if (tabId === 'child-tab-extras') mountChildExtras();
     if (tabId === 'child-tab-games') mountGamesInto('childGamesHost');
 
@@ -1882,6 +1883,9 @@ async function callRealVisionBackendForChild(query, imageBase64) {
 }
 
 function handleChildAiSend() {
+    // Har savoldan keyin qolgan sonni yangilaymiz — bola chegaraga
+    // kutilmaganda urilmasin.
+    setTimeout(renderAiQuota, 2500);
     const input = document.getElementById('childAiInput');
     const text = input ? input.value.trim() : "";
     const isRu = (currentLang === 'ru');
@@ -4614,4 +4618,41 @@ function mountGamesInto(hostId) {
     const stage = document.getElementById('gameStage');
     if (stage && !stage.innerHTML.trim()) stage.classList.add('hidden');
     renderGamesGrid();
+}
+
+
+// ============================================================================
+// AI KUNLIK CHEGARASI
+//
+// Buni ko'rsatish ataylab: bepul tarifimiz boshqa bepul AI xizmatlaridan
+// ancha ochiq (ChatGPT bepul tarifida kuchli model uchun taxminan 10 ta /
+// 5 soat). Foydalanuvchi buni bilmasa, ustunlik yo'qdek bo'ladi.
+// ============================================================================
+
+async function renderAiQuota() {
+    const box = document.getElementById('aiQuotaBar');
+    const txt = document.getElementById('aiQuotaText');
+    if (!box || !txt) return;
+    try {
+        const resp = await fetch(QALQON_BOT_FN, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'ai_quota' })
+        });
+        const d = await resp.json();
+        if (!d.ok) return;
+
+        const oz = d.remaining <= 3;
+        txt.textContent = d.remaining + ' / ' + d.dailyLimit + ' qoldi';
+        txt.className = 'font-bold ' + (oz ? 'text-amber-300' : 'text-emerald-300');
+
+        const izoh = box.querySelector('span');
+        if (izoh) {
+            izoh.textContent = d.plan === 'pro'
+                ? 'Pro: kuniga ' + d.dailyLimit + ' ta savol'
+                : "Bepul: kuniga " + d.freeDaily + " ta — ko'pchilik AI xizmatlaridan ko'proq";
+        }
+    } catch (e) {
+        console.error('ai_quota:', e);
+    }
 }

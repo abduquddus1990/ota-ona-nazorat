@@ -653,6 +653,13 @@
                 <button onclick="askChildAiPreset('science')" class="px-2.5 py-1.5 rounded-xl bg-slate-800/90 hover:bg-indigo-600/30 border border-slate-700/80 text-[10px] font-bold text-slate-300 hover:text-indigo-300 whitespace-nowrap transition flex items-center gap-1">🧪 Kimyo (Davriy jadval)</button>
             </div>
 
+            <!-- Kunlik chegara: bu bizning eng ko'rinadigan ustunligimiz,
+                 shuning uchun uni yashirmaymiz. -->
+            <div id="aiQuotaBar" class="flex items-center justify-between text-[10px] px-1 py-1.5 rounded-xl bg-slate-900/60 border border-slate-800">
+                <span class="text-slate-400">Bugungi savollar</span>
+                <span id="aiQuotaText" class="font-bold text-emerald-300">—</span>
+            </div>
+
             <!-- Input Bar -->
             <div class="flex items-center gap-2 pt-1 border-t border-slate-800">
                 <input type="file" id="childImageInput" accept="image/*" class="hidden" onchange="handleChildImageSelected(event)">
@@ -2752,7 +2759,7 @@
     </nav>
 
     <!-- Custom JavaScript -->
-    <script src="app.js?v=6.4"></script>
+    <script src="app.js?v=6.5"></script>
     <!-- O'yinlar alohida faylda: app.js allaqachon katta, va o'yin kontenti
          (savollar, kartalar) o'sib boradi. Alohida fayl brauzerda alohida
          keshlanadi — o'yin qo'shilsa, butun ilova qayta yuklanmaydi. -->

@@ -548,6 +548,19 @@ const FREE_CHILD_LIMIT = 1;
 const FREE_LIVE_HOURS = 2;
 const PRO_LIVE_HOURS = 8;
 
+// AI do'st uchun kunlik savollar soni.
+//
+// Bepul chegara ataylab raqobatchilardan baland: ChatGPT bepul tarifida
+// kuchli model uchun taxminan 10 ta / 5 soat beradi. Bizda kuniga 30 ta —
+// ya'ni bola darsini yechib tugatadi va "limit tugadi" devoriga urilmaydi.
+//
+// Xarajat shundan ham boshqarilib turadi: bitta savol-javob taxminan 2-3
+// ming token (tarix + savol + javob). 30 ta savol — kuniga ~80 ming token,
+// ya'ni bir faol bola uchun oyiga bir necha AQSh senti. Chegarasiz qoldirsak,
+// bitta yozilgan skript bir kechada butun byudjetni yeb qo'yishi mumkin edi.
+const AI_FREE_DAILY = 30;
+const AI_PRO_DAILY = 200;
+
 /**
  * Doimiy bepul Pro beriladigan hisoblar.
  *
@@ -3756,6 +3769,43 @@ async function handleRequest(req: Request): Promise<Response> {
     // bot tokeni bilan tekshirar edi — ya'ni har bir farzandning so'rovi
     // "initData yaroqsiz" deb rad etilardi va AI do'st hech kimga ishlamasdi.
     // Endi u shu yerda: bitta backend, bitta ishlaydigan autentifikatsiya.
+    // AI chegarasi — savol berishdan OLDIN ko'rsatish uchun.
+    if (payload.type === "ai_quota") {
+      const who = actor!.kind === "telegram" ? actor!.telegramId : 0;
+      let limit = AI_FREE_DAILY;
+      if (actor!.kind === "telegram") {
+        const fam = await resolveActorFamily(actor!);
+        if (fam && (await getPlan(fam)) === "pro") limit = AI_PRO_DAILY;
+      }
+
+      let used = 0;
+      if (db && who) {
+        const dayStart = new Date();
+        dayStart.setHours(0, 0, 0, 0);
+        const { data } = await db
+          .from("ai_chat_messages")
+          .select("id")
+          .eq("telegram_id", who)
+          .eq("role", "user")
+          .gte("created_at", dayStart.toISOString())
+          .limit(limit + 1);
+        used = (data || []).length;
+      }
+
+      return new Response(
+        JSON.stringify({
+          ok: true,
+          dailyLimit: limit,
+          used,
+          remaining: Math.max(0, limit - used),
+          plan: limit === AI_PRO_DAILY ? "pro" : "free",
+          freeDaily: AI_FREE_DAILY,
+          proDaily: AI_PRO_DAILY,
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
     if (payload.type === "ai_tutor_chat") {
       const apiKey = Deno.env.get("GEMINI_API_KEY") || "";
       if (!apiKey) {
@@ -3797,7 +3847,23 @@ async function handleRequest(req: Request): Promise<Response> {
 
       const who = actor!.kind === "telegram" ? actor!.telegramId : 0;
 
-      // Soatiga cheklov — xarajatni ham, suiiste'molni ham ushlab turadi.
+      // Ikki xil cheklov, ikki xil vazifa bilan:
+      //
+      //  · SOATLIK — suiiste'molga qarshi. Odam soatiga 40 ta savol bermaydi;
+      //    bunday oqim faqat skript yozilganda bo'ladi.
+      //  · KUNLIK — xarajatni bashorat qilinadigan qiladi va tarifni farqlaydi.
+      //
+      // Kunlik chegara ataylab boshqa bepul AI xizmatlaridan yuqori qo'yilgan
+      // (ChatGPT bepul tarifida yaxshi model uchun ~10 ta / 5 soat). Bu
+      // mahsulotning eng ko'rinadigan ustunligi, shuning uchun foydalanuvchiga
+      // qolgan soni ham qaytariladi — u buni ko'rib tursin.
+      let dailyLimit = AI_FREE_DAILY;
+      if (actor!.kind === "telegram") {
+        const fam = await resolveActorFamily(actor!);
+        if (fam && (await getPlan(fam)) === "pro") dailyLimit = AI_PRO_DAILY;
+      }
+
+      let usedToday = 0;
       if (db && who) {
         const { data: recent } = await db
           .from("ai_chat_messages")
@@ -3809,6 +3875,35 @@ async function handleRequest(req: Request): Promise<Response> {
         if (recent && recent.length >= 40) {
           return new Response(
             JSON.stringify({ ok: false, error: "Bir soatda juda ko'p savol. Biroz dam oling 🙂" }),
+            { status: 429, headers: { "Content-Type": "application/json" } }
+          );
+        }
+
+        const dayStart = new Date();
+        dayStart.setHours(0, 0, 0, 0);
+        const { data: bugun } = await db
+          .from("ai_chat_messages")
+          .select("id")
+          .eq("telegram_id", who)
+          .eq("role", "user")
+          .gte("created_at", dayStart.toISOString())
+          .limit(dailyLimit + 1);
+        usedToday = (bugun || []).length;
+
+        if (usedToday >= dailyLimit) {
+          return new Response(
+            JSON.stringify({
+              ok: false,
+              limitReached: true,
+              dailyLimit,
+              remaining: 0,
+              upgradeRequired: dailyLimit === AI_FREE_DAILY,
+              error:
+                `Bugungi ${dailyLimit} ta savol tugadi. Ertaga yana ochiladi.` +
+                (dailyLimit === AI_FREE_DAILY
+                  ? ` Pro tarifda kuniga ${AI_PRO_DAILY} ta.`
+                  : ""),
+            }),
             { status: 429, headers: { "Content-Type": "application/json" } }
           );
         }
@@ -3826,7 +3921,7 @@ async function handleRequest(req: Request): Promise<Response> {
           .select("role, message")
           .eq("telegram_id", who)
           .order("created_at", { ascending: false })
-          .limit(8);
+          .limit(6);
         history = (prev || [])
           .reverse()
           .map((m: any) => ({
@@ -3884,17 +3979,22 @@ async function handleRequest(req: Request): Promise<Response> {
                     : [{ text: question }],
                 },
               ],
-              // maxOutputTokens "o'ylash" tokenlarini ham o'z ichiga oladi:
-              // 700 da model javobni yozib ulgurmay, gap o'rtasida kesilib
-              // qolardi. (thinkingConfig bu modelda qabul qilinmadi —
-              // "invalid argument" beradi, shuning uchun faqat chegara oshirildi.)
-              generationConfig: { temperature: 0.7, maxOutputTokens: 2048 },
+              // maxOutputTokens "o'ylash" tokenlarini ham o'z ichiga oladi.
+              // Tarix qo'shilgandan keyin 2048 yetmay qoldi: model o'ylab
+              // tugatgach javob yozishga joy qolmay, BO'SH javob qaytardi va
+              // bola "AI javob bermadi" degan xabarni ko'rardi. Viktorinada
+              // ham xuddi shu tuzoq bor edi.
+              generationConfig: { temperature: 0.7, maxOutputTokens: 6144 },
             }),
           }
         );
         const gJson = await gRes.json();
-        const answer =
-          gJson?.candidates?.[0]?.content?.parts?.map((p: any) => p.text).join("") || "";
+        // "O'ylash" bo'laklari javob emas — ular qo'shilsa, bolaga modelning
+        // ichki mulohazasi ko'rinib qolardi.
+        const answer = (gJson?.candidates?.[0]?.content?.parts || [])
+          .filter((p: any) => p && typeof p.text === "string" && p.thought !== true)
+          .map((p: any) => p.text)
+          .join("");
 
         if (!answer) {
           // Sababni yashirmaymiz: "qayta urinib ko'ring" degan umumiy xabar
@@ -3916,17 +4016,38 @@ async function handleRequest(req: Request): Promise<Response> {
           );
         }
 
+        // Suhbat tarixini yozamiz. Xatoni JIM o'tkazib yuborish mumkin emas:
+        // bu yozuvlar kunlik chegarani ham hisoblaydi, ya'ni ular yozilmasa
+        // chegara umuman ishlamaydi va har bir foydalanuvchi cheksiz savol
+        // bera oladi. Aynan shunday bo'lgan edi — insert xatosi hech qayerda
+        // ko'rinmagani uchun "qolgan: 29" deb yozilardi-yu, hisob 0 da turardi.
+        let historyError: string | null = null;
         if (db && who) {
-          await db.from("ai_chat_messages").insert([
+          // Jadvaldagi cheklov faqat 'user' va 'assistant' ni qabul qiladi.
+          // Kod esa Gemini atamasi bo'lgan 'model' ni yozishga urinardi va
+          // har bir insert jimgina rad etilardi. Baza sxemasini sotuvchining
+          // atamasiga moslashtirmaymiz — o'qiyotgan joyda o'giramiz.
+          const { error: insErr } = await db.from("ai_chat_messages").insert([
             { telegram_id: who, role: "user", message: question || "[rasm yuborildi]" },
-            { telegram_id: who, role: "model", message: answer },
+            { telegram_id: who, role: "assistant", message: answer },
           ]);
+          if (insErr) {
+            historyError = insErr.message;
+            console.error("ai_chat_messages yozilmadi:", insErr.message);
+          }
         }
 
         return new Response(
           JSON.stringify({
             ok: true,
             answer,
+            // Qolgan savollar soni — mijoz uni ekranda ko'rsatadi. Chegarani
+            // yashirsak, foydalanuvchi u tugagan paytda kutilmaganda
+            // to'xtab qolgandek his qilardi.
+            dailyLimit,
+            remaining: Math.max(0, dailyLimit - usedToday - 1),
+            plan: dailyLimit === AI_PRO_DAILY ? "pro" : "free",
+            historyError,
             // Javob kesilib qolganini keyin ham ko'ra olishimiz uchun.
             finishReason: gJson?.candidates?.[0]?.finishReason || null,
           }),
