@@ -658,6 +658,11 @@ async function evaluateLocationQuota(
 
 const FREE_HISTORY_POINTS = 1;
 const PRO_HISTORY_DAYS = 30;
+
+// Kun marshruti bepul tarifda ham ko'rinadi, lekin qisqa: oxirgi bir necha
+// nuqta. Butunlay yashirilsa, ota-ona Pro nima berishini tasavvur qilolmasdi;
+// to'liq berilsa, Pro'ning ma'nosi qolmasdi.
+const FREE_ROUTE_POINTS = 8;
 // Bepul tarifda ikkita hudud — aynan uy va maktab. Bu ataylab: "uyga keldi"
 // va "maktabga yetdi" xabarlari mahsulotning eng kuchli tomoni, ularni
 // to'lov devori ortiga yashirsak, ota-ona mahsulot nima berishini umuman
@@ -3887,6 +3892,98 @@ async function handleRequest(req: Request): Promise<Response> {
           liveHours: plan === "pro" ? PRO_LIVE_HOURS : FREE_LIVE_HOURS,
           proLiveHours: PRO_LIVE_HOURS,
           children,
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    // 0.0m+ KUN MARSHRUTI — bir kunlik yo'l, xaritaga chizish uchun.
+    //
+    // location_history dan farqi: u eng yangi nuqtalarni beradi, bu esa BIR
+    // KUNNI to'liq va vaqt bo'yicha o'sish tartibida beradi. Chiziq chizish
+    // uchun tartib muhim — teskari tartibda chizilsa yo'l orqaga ketardi.
+    //
+    // Nuqtalar siyraklashtiriladi: bir joyda turganda Telegram o'nlab deyarli
+    // bir xil nuqta yuboradi, ular xaritada bitta dog' bo'lib qoladi-yu,
+    // javobni og'irlashtiradi.
+    if (payload.type === "day_route") {
+      if (actor!.kind !== "telegram") return unauthorized("Faqat ota-ona");
+      if (!db) {
+        return new Response(JSON.stringify({ ok: true, points: [] }), {
+          status: 200, headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      const familyCode = actor!.familyCode;
+      const plan = await getPlan(familyCode);
+      const childId = String(payload.childId || "").trim();
+
+      // Bepul tarifda faqat bugun. Pro'da 30 kungacha orqaga.
+      let dayOffset = Math.max(0, Math.min(PRO_HISTORY_DAYS, Number(payload.dayOffset) || 0));
+      if (plan !== "pro") dayOffset = 0;
+
+      const now = new Date();
+      const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - dayOffset);
+      const dayEnd = new Date(dayStart.getTime() + 86400000);
+
+      const { data: raw } = await db
+        .from("location_pings")
+        .select("lat, lng, accuracy_m, recorded_at")
+        .eq("family_code", familyCode)
+        .eq("child_id", childId)
+        .gte("recorded_at", dayStart.toISOString())
+        .lt("recorded_at", dayEnd.toISOString())
+        .order("recorded_at", { ascending: true })
+        .limit(2000);
+
+      // Bir-biriga 40 metrdan yaqin ketma-ket nuqtalarni tashlab yuboramiz.
+      const thinned: any[] = [];
+      for (const p of raw || []) {
+        const last = thinned[thinned.length - 1];
+        if (!last || distanceMeters(last.lat, last.lng, p.lat, p.lng) > 40) {
+          thinned.push(p);
+        } else {
+          // Oxirgi vaqtni yangilaymiz: bola shu yerda turgani ko'rinsin.
+          last.recorded_at = p.recorded_at;
+        }
+      }
+
+      const points = plan === "pro" ? thinned : thinned.slice(-FREE_ROUTE_POINTS);
+
+      const { data: events } = await db
+        .from("geofence_alerts")
+        .select("zone_name, alert_type, message, created_at")
+        .eq("family_code", familyCode)
+        .eq("child_id", childId)
+        .gte("created_at", dayStart.toISOString())
+        .lt("created_at", dayEnd.toISOString())
+        .order("created_at", { ascending: true })
+        .limit(50);
+
+      // Bosib o'tilgan masofa — kun qanchalik "harakatli" bo'lganini bitta
+      // son bilan ko'rsatadi.
+      let meters = 0;
+      for (let i = 1; i < thinned.length; i++) {
+        meters += distanceMeters(
+          thinned[i - 1].lat, thinned[i - 1].lng, thinned[i].lat, thinned[i].lng
+        );
+      }
+
+      return new Response(
+        JSON.stringify({
+          ok: true,
+          plan,
+          dayOffset,
+          date: dayStart.toISOString().slice(0, 10),
+          points,
+          events: events || [],
+          totalPoints: thinned.length,
+          distanceKm: Math.round(meters / 100) / 10,
+          maxDaysBack: plan === "pro" ? PRO_HISTORY_DAYS : 0,
+          upgradeHint:
+            plan === "pro"
+              ? null
+              : `Bepul tarifda bugungi oxirgi ${FREE_ROUTE_POINTS} nuqta ko'rinadi. Pro tarifda ${PRO_HISTORY_DAYS} kunlik to'liq marshrut.`,
         }),
         { status: 200, headers: { "Content-Type": "application/json" } }
       );

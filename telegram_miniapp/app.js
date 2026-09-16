@@ -3321,6 +3321,7 @@ function switchTab(tabId) {
             if (mapInstance) mapInstance.invalidateSize();
         }, 150);
         renderRadarStatus();
+        setTimeout(renderDayRoute, 400);
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -3608,6 +3609,127 @@ async function renderRadarStatus() {
     } catch (e) {
         console.error('radar_status error:', e);
     }
+}
+
+// ============================================================================
+// KUN MARSHRUTI — bir kunlik yo'l xaritada chiziq bo'lib.
+//
+// Ota-ona uchun eng qimmatli ekran: "hozir qayerda" emas, "bugun qayerda
+// bo'ldi". Ma'lumot allaqachon yig'ilib turgan edi (jonli joylashuv, panel
+// ochilganda saqlangan nuqtalar), faqat ko'rsatiladigan joyi yo'q edi.
+// ============================================================================
+
+let routeLayer = null;
+
+async function renderDayRoute() {
+    if (currentAppRole !== 'parent') return;
+    const sum = document.getElementById('routeSummary');
+    const tl = document.getElementById('routeTimeline');
+    const up = document.getElementById('routeUpgrade');
+    const sel = document.getElementById('routeDaySelect');
+    if (!sum) return;
+
+    const childId = currentChildKey;
+    if (!childId) { sum.textContent = 'Avval farzandni tanlang.'; return; }
+
+    try {
+        const resp = await fetch(QALQON_BOT_FN, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                type: 'day_route',
+                childId: childId,
+                dayOffset: sel ? Number(sel.value) : 0
+            })
+        });
+        const d = await resp.json();
+        if (!d.ok) return;
+
+        // Pro'da kun tanlash ro'yxati to'ldiriladi. Bepulda faqat "Bugun"
+        // qoladi — tanlov ko'rsatib, keyin "bo'lmaydi" deyishdan ko'ra
+        // umuman ko'rsatmagan yaxshi.
+        if (sel && d.maxDaysBack > 0 && sel.options.length === 1) {
+            for (let i = 1; i <= Math.min(30, d.maxDaysBack); i++) {
+                const dt = new Date(Date.now() - i * 86400000);
+                const o = document.createElement('option');
+                o.value = String(i);
+                o.textContent = i === 1 ? 'Kecha' : dt.toLocaleDateString('uz-UZ');
+                sel.appendChild(o);
+            }
+        }
+
+        if (up) {
+            if (d.upgradeHint) { up.textContent = '⭐️ ' + d.upgradeHint; up.classList.remove('hidden'); }
+            else up.classList.add('hidden');
+        }
+
+        const pts = d.points || [];
+        if (!pts.length) {
+            sum.textContent = "Bu kunda joylashuv yozilmagan.";
+            if (tl) tl.innerHTML = '';
+            return;
+        }
+
+        const t = (iso) => new Date(iso).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' });
+        sum.innerHTML = `<b class="text-slate-200">${pts.length}</b> nuqta · ` +
+                        `<b class="text-slate-200">${d.distanceKm}</b> km · ` +
+                        `${t(pts[0].recorded_at)} – ${t(pts[pts.length - 1].recorded_at)}`;
+
+        // Vaqt lentasi: hodisalar bo'lsa ular, bo'lmasa nuqtalar.
+        if (tl) {
+            const rows = (d.events || []).length
+                ? d.events.map(e => `<div class="flex items-center justify-between text-[10px]">
+                        <span class="text-slate-300">${e.alert_type === 'enter' ? '🟢' : '🔵'} ${escapeHtml(e.message)}</span>
+                        <span class="text-slate-500 font-mono">${t(e.created_at)}</span></div>`)
+                : [`<div class="text-[10px] text-slate-500">Xavfsiz hudud (uy, maktab) qo'shsangiz, kelish-ketish vaqtlari shu yerda chiqadi.</div>`];
+            tl.innerHTML = rows.join('');
+        }
+
+        drawRouteOnMap(pts, d.events || []);
+    } catch (e) {
+        console.error('day_route error:', e);
+    }
+}
+
+/** Marshrutni Leaflet xaritasiga chizadi. Xarita hali yaratilmagan bo'lsa,
+ *  uni shu yerda birinchi nuqta bo'yicha ochamiz — initRadarMap mijozdagi
+ *  namunaviy ma'lumotga bog'liq, u esa haqiqiy oilada bo'lmasligi mumkin. */
+function drawRouteOnMap(points, events) {
+    const mapEl = document.getElementById('map');
+    if (!mapEl || typeof L === 'undefined') return;
+
+    if (!mapInstance) {
+        mapInstance = L.map('map', { zoomControl: false, attributionControl: false })
+            .setView([points[0].lat, points[0].lng], 14);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(mapInstance);
+    }
+
+    if (routeLayer) { mapInstance.removeLayer(routeLayer); routeLayer = null; }
+    routeLayer = L.layerGroup().addTo(mapInstance);
+
+    const latlngs = points.map(p => [p.lat, p.lng]);
+    L.polyline(latlngs, { color: '#22d3ee', weight: 4, opacity: 0.85 }).addTo(routeLayer);
+
+    const dot = (color, size) => L.divIcon({
+        className: '',
+        html: `<div style="width:${size}px;height:${size}px;background:${color};border:2px solid #0f172a;border-radius:50%"></div>`,
+        iconSize: [size, size], iconAnchor: [size / 2, size / 2]
+    });
+
+    L.marker(latlngs[0], { icon: dot('#34d399', 14) })
+        .bindPopup('Boshlanish · ' + new Date(points[0].recorded_at).toLocaleTimeString('uz-UZ'))
+        .addTo(routeLayer);
+    L.marker(latlngs[latlngs.length - 1], { icon: dot('#f472b6', 16) })
+        .bindPopup('Oxirgi · ' + new Date(points[points.length - 1].recorded_at).toLocaleTimeString('uz-UZ'))
+        .addTo(routeLayer);
+
+    for (let i = 1; i < latlngs.length - 1; i++) {
+        L.marker(latlngs[i], { icon: dot('#38bdf8', 8) })
+            .bindPopup(new Date(points[i].recorded_at).toLocaleTimeString('uz-UZ'))
+            .addTo(routeLayer);
+    }
+
+    try { mapInstance.fitBounds(L.polyline(latlngs).getBounds(), { padding: [30, 30] }); } catch (e) {}
 }
 
 function openSubpage(subpageId) {
