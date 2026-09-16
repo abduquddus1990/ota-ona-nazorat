@@ -350,7 +350,10 @@ function renderGamesGrid() {
             memory: gamesBest.memory != null ? 'Eng yaxshi: ' + gamesBest.memory + ' yurish' : '',
             wolf: gamesBest.wolf != null ? 'Yechilgan: ' + gamesBest.wolf + ' topshiriq' : '',
             tower: gamesBest.tower != null ? 'Eng baland: ' + gamesBest.tower + ' qavat' : '',
-            snake: gamesBest.snake != null ? 'Eng yaxshi: ' + gamesBest.snake : ''
+            snake: gamesBest.snake != null ? 'Eng yaxshi: ' + gamesBest.snake : '',
+            race: gamesBest.race != null ? 'Eng yaxshi: ' + gamesBest.race : '',
+            g2048: gamesBest.g2048 != null ? 'Eng yaxshi: ' + gamesBest.g2048 : '',
+            penalty: gamesBest.penalty != null ? 'Eng yaxshi: ' + gamesBest.penalty + ' / 5' : ''
         };
         const best = bestMap[g.id] || '';
         return `
@@ -387,6 +390,9 @@ function openGame(id) {
     if (id === 'quiz') startQuiz(stage);
     if (id === 'tower') startTowerGame(stage);
     if (id === 'snake') startSnakeGame(stage);
+    if (id === 'race') startRaceGame(stage);
+    if (id === 'g2048') start2048Game(stage);
+    if (id === 'penalty') startPenaltyGame(stage);
 }
 
 function closeGame() {
