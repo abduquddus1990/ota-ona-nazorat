@@ -1001,6 +1001,10 @@ function startPenaltyGame(stage) {
         const kx = kipper
             ? W / 2 + kipper.dir * GW * 0.36 * kipper.t
             : W / 2;
+        // Emoji chizishdan oldin fillStyle ni tiklash SHART: yuqorida maydon
+        // chiziqlari uchun deyarli shaffof rang qo'yilgan edi, va u emoji
+        // ham ko'rinmay ketishiga sabab bo'lardi.
+        x.fillStyle = '#ffffff';
         x.font = Math.round(GH * 0.72) + 'px system-ui, sans-serif';
         x.textAlign = 'center';
         x.fillText('🧤', kx, GY + GH * 0.86);
@@ -1029,6 +1033,7 @@ function startPenaltyGame(stage) {
             by = H * 0.82 + (ball.ty - H * 0.82) * ball.t;
             bs = 26 - ball.t * 9;
         }
+        x.fillStyle = '#ffffff';
         x.font = Math.max(12, bs) + 'px system-ui, sans-serif';
         x.fillText('⚽', bx, by);
 
