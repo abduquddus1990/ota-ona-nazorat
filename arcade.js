@@ -906,10 +906,15 @@ const TETRIS_SHAPES = [
 function startTetrisGame(stage) {
     stopArcade();
     const host = arcadeShell(stage, '🧱 Tetris', '0');
-    const COLS = 10, ROWS = 18;
+    // Kenglik birinchi o'rinda: tor maydonda shakllarni joylashtirish
+    // noqulay va o'yin arzon ko'rinadi. Qatorlar soni esa ekran bo'yiga
+    // moslashadi — 18 qatorni majburlasak, telefonda katak 23 pikselgacha
+    // kichrayib ketardi.
+    const COLS = 10;
     const Wmax = Math.min(stage.clientWidth || 340, 360);
-    const bosh = Math.max(240, (window.innerHeight || 700) - 400);
-    const CELL = Math.max(14, Math.min(Math.floor(Wmax / COLS), Math.floor(bosh / ROWS)));
+    const bosh = Math.max(260, (window.innerHeight || 700) - 340);
+    const CELL = Math.max(18, Math.floor(Wmax / COLS));
+    const ROWS = Math.max(12, Math.min(18, Math.floor(bosh / CELL)));
     const W = CELL * COLS, H = CELL * ROWS;
     const { canvas, x } = arcadeCanvas(host, W, H);
 
