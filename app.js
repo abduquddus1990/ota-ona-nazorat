@@ -1802,15 +1802,47 @@ function appendChildAiMessage(htmlContent) {
 
 let uploadedChildImageBase64 = null;
 
-function handleChildImageSelected(event) {
+/**
+ * Rasmni yuborishdan oldin kichraytiradi.
+ *
+ * Nega: AI xarajatining eng katta qismi rasmlarda. Zamonaviy telefon 4000
+ * piksel kenglikda surat oladi, mashq daftarining matnini o'qish uchun esa
+ * 1280 piksel yetib ortadi. Kichraytirilmagan rasm bir necha barobar ko'p
+ * token yeydi va sekin yuklanadi — foyda esa nolga teng.
+ */
+function shrinkImage(file, maxSide, sifat) {
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                let { width: w, height: h } = img;
+                const k = Math.min(1, maxSide / Math.max(w, h));
+                w = Math.round(w * k);
+                h = Math.round(h * k);
+                const c = document.createElement('canvas');
+                c.width = w; c.height = h;
+                c.getContext('2d').drawImage(img, 0, 0, w, h);
+                try {
+                    resolve(c.toDataURL('image/jpeg', sifat));
+                } catch (err) {
+                    // Kanvas ishlamasa, asl rasmni yuboramiz — foydalanuvchi
+                    // uchun xatodan ko'ra sekin yuklanish yaxshiroq.
+                    resolve(e.target.result);
+                }
+            };
+            img.onerror = () => resolve(e.target.result);
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
+async function handleChildImageSelected(event) {
     const file = event.target.files[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        uploadedChildImageBase64 = e.target.result;
-        handleChildAiSend();
-    };
-    reader.readAsDataURL(file);
+    uploadedChildImageBase64 = await shrinkImage(file, 1280, 0.82);
+    handleChildAiSend();
 }
 
 
@@ -3333,6 +3365,7 @@ function switchTab(tabId) {
     }
     if (targetBtn) targetBtn.classList.add('active');
 
+    if (tabId === 'tab-ai' && typeof renderParentAdvice === 'function') renderParentAdvice();
     if (tabId === 'tab-extras') renderParentExtras();
     if (tabId === 'tab-games') mountGamesInto('parentGamesHost');
 
