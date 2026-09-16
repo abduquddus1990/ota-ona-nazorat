@@ -454,6 +454,20 @@
                 </button>
             </div>
 
+            <!-- 🎮 O'YINLAR: ball bermaydi, faqat qiziqarli. Oflayn ishlaydi. -->
+            <div id="gamesEntryCard" class="hidden p-3.5 rounded-2xl bg-gradient-to-br from-fuchsia-500/15 to-purple-500/8 border border-fuchsia-500/35 space-y-2.5">
+                <div class="flex items-center gap-2">
+                    <span class="text-xl">🎮</span>
+                    <div>
+                        <div class="text-xs font-bold text-fuchsia-200">O'yinlar</div>
+                        <div class="text-[10px] text-slate-400">Internetsiz ham ishlaydi</div>
+                    </div>
+                </div>
+                <button onclick="openSubpage('modal-games'); renderGamesGrid();" class="w-full py-2 rounded-xl bg-fuchsia-500/20 hover:bg-fuchsia-500/30 border border-fuchsia-500/40 text-fuchsia-100 text-[11px] font-bold transition">
+                    🎮 O'ynash
+                </button>
+            </div>
+
             <!-- 📍 JOYLASHUV: 📎 menyusisiz, ilova ichidan -->
             <div id="childLocationCard" class="hidden p-3.5 rounded-2xl bg-gradient-to-br from-cyan-500/15 to-sky-500/8 border border-cyan-500/35 space-y-2.5">
                 <div class="flex items-center gap-2">
@@ -1709,6 +1723,23 @@
     </div>
 
     <!-- 💰 MODAL: VAQT BANKI KURSI (ota-ona belgilaydi) -->
+    <!-- 🎮 O'YINLAR BO'LIMI -->
+    <div id="modal-games" class="subpage-modal space-y-4">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+            <button onclick="closeGame(); closeSubpage();" class="text-xs font-bold text-fuchsia-400">← Orqaga</button>
+            <h2 class="text-xs font-bold text-white">🎮 O'yinlar</h2>
+            <span class="w-8"></span>
+        </div>
+
+        <div id="gamesIntro" class="text-[10px] text-slate-400 leading-relaxed p-2.5 rounded-xl bg-slate-900/60 border border-slate-800">
+            Bu o'yinlar ball ham, ekran vaqti ham bermaydi — shunchaki o'ynash uchun.
+            Bir marta ochilgandan keyin <b>internetsiz</b> ham ishlaydi.
+        </div>
+
+        <div id="gamesGrid" class="space-y-2.5"></div>
+        <div id="gameStage" class="hidden"></div>
+    </div>
+
     <div id="modal-time-bank" class="subpage-modal space-y-4">
         <div class="flex items-center justify-between pb-3 border-b border-slate-800">
             <button onclick="closeSubpage()" class="text-xs font-bold text-emerald-400">← Orqaga</button>
@@ -2644,6 +2675,10 @@
     </nav>
 
     <!-- Custom JavaScript -->
-    <script src="app.js?v=5.8"></script>
+    <script src="app.js?v=5.9"></script>
+    <!-- O'yinlar alohida faylda: app.js allaqachon katta, va o'yin kontenti
+         (savollar, kartalar) o'sib boradi. Alohida fayl brauzerda alohida
+         keshlanadi — o'yin qo'shilsa, butun ilova qayta yuklanmaydi. -->
+    <script src="games.js?v=1"></script>
 </body>
 </html>

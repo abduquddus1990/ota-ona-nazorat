@@ -1391,6 +1391,8 @@ function checkChildConsentStatus() {
 
             const locCard = document.getElementById('childLocationCard');
             if (locCard) locCard.classList.remove('hidden');
+            const gamesCard = document.getElementById('gamesEntryCard');
+            if (gamesCard) gamesCard.classList.remove('hidden');
 
             // Ota-ona "Qayerdasan?" deb so'ragan bo'lsa, bot havolasida
             // ?ask=loc keladi — u holda bolaga tugma qidirtirmaymiz.
