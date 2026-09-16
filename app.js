@@ -3981,6 +3981,25 @@ async function fetchAndApplyRole() {
 // visualViewport bo'lmagan eski brauzerda hech narsa buzilmaydi — shunchaki
 // oldingi xatti-harakat qoladi.
 // ============================================================================
+/**
+ * Maydonni klaviatura ustiga chiqaradi.
+ *
+ * scrollIntoView() bu yerda ISHLAMAYDI: u elementni butun oynaning
+ * markaziga qo'yadi, klaviatura esa oynaning bir qismini yeb turganini
+ * bilmaydi. Sinovda u maydonni atigi 19 piksel surdi va maydon baribir
+ * klaviatura ostida qoldi. Shuning uchun hisobni o'zimiz qilamiz:
+ * ko'rinadigan qismning pastki chegarasidan qancha oshib ketgan bo'lsa,
+ * aynan shuncha suramiz.
+ */
+function ensureFieldVisible(el) {
+    if (!el) return;
+    const vv = window.visualViewport;
+    const r = el.getBoundingClientRect();
+    const korinadiganPast = vv ? (vv.offsetTop + vv.height) : window.innerHeight;
+    const oshib = r.bottom - korinadiganPast + 16; // 16px — nafas olish joyi
+    if (oshib > 0) window.scrollBy({ top: oshib, behavior: 'smooth' });
+}
+
 function setupKeyboardHandling() {
     const vv = window.visualViewport;
     const navs = () => [
@@ -4008,7 +4027,9 @@ function setupKeyboardHandling() {
 
         const el = document.activeElement;
         if (ochiq && el && /^(INPUT|TEXTAREA)$/.test(el.tagName)) {
-            el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+            // Padding qo'shilgandan keyin brauzer o'lchamlarni qayta
+            // hisoblab ulgursin, aks holda eski joy bo'yicha suriladi.
+            requestAnimationFrame(() => ensureFieldVisible(el));
         }
     };
 
@@ -4028,9 +4049,10 @@ function setupKeyboardHandling() {
     document.addEventListener('focusin', (e) => {
         const el = e.target;
         if (!el || !/^(INPUT|TEXTAREA)$/.test(el.tagName)) return;
-        setTimeout(() => {
-            try { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (_) {}
-        }, 350);
+        // Ikki marta: klaviatura chiqish animatsiyasi telefonlarda turlicha
+        // davom etadi, bitta o'lchov bilan tegib ketish mumkin.
+        setTimeout(() => ensureFieldVisible(el), 350);
+        setTimeout(() => ensureFieldVisible(el), 700);
     });
 }
 
