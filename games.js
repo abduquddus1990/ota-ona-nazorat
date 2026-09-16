@@ -4,15 +4,18 @@
  * Ikkita qoida butun faylni belgilaydi:
  *
  * 1) O'yinlar HECH QANDAY ball, XP yoki Pro bermaydi. Ular faqat bolani
- *    ilovaga qaytarish uchun. Buning yoqimli oqibati bor: o'yin hech narsa
- *    qimmatli narsa bermagani uchun, uni aldashning ham ma'nosi yo'q —
- *    demak natijani serverda tekshirish, vaqtni o'lchash, urinishlarni
- *    cheklash — bularning birortasi kerak emas.
+ *    ilovaga qaytarish uchun. Buning yoqimli oqibati bor: o'yin qimmatli
+ *    narsa bermagani uchun, uni aldashning ham ma'nosi yo'q — demak
+ *    vaqtni o'lchash, urinishlarni cheklash kerak emas.
  *
- * 2) Shu sababli o'yinlar butunlay OFLAYN ishlaydi. Savollar ham, kartalar
- *    ham shu faylning ichida. Sahifa bir marta ochilgandan keyin internet
- *    kerak emas — metroda, mashinada, qishloqda ham o'ynaydi. Server bilan
- *    hech qanday aloqa yo'q, shuning uchun "yuklanmoqda" ham yo'q.
+ * 2) Yolg'iz o'ynaladigan o'yinlar (Bo'ri Sarguzashti, Xotira Kartalari)
+ *    butunlay OFLAYN ishlaydi: savollar ham, kartalar ham shu faylning
+ *    ichida. Sahifa bir marta ochilgandan keyin internet kerak emas —
+ *    metroda, mashinada, qishloqda ham o'ynaydi.
+ *
+ *    Oilaviy Viktorina esa istisno va boshqacha bo'lolmaydi: uning butun
+ *    ma'nosi boshqa odam bilan o'ynashda, ya'ni server kerak. To'g'ri
+ *    javoblar ham serverda qoladi — bu yerdagi kod ularni bilmaydi.
  *
  * Eng yaxshi natija brauzerning o'zida (localStorage) saqlanadi: u boshqa
  * hech kimga ko'rinmaydi va yo'qolsa ham hech narsa buzilmaydi.
@@ -228,6 +231,13 @@ function saveBest(key, value, lowerIsBetter) {
 
 const GAMES = [
     {
+        id: 'quiz',
+        name: 'Oilaviy Viktorina',
+        emoji: '🧩',
+        desc: 'Ota-onang bilan bir xil savollarga javob ber',
+        tag: 'Oila'
+    },
+    {
         id: 'wolf',
         name: "Bo'ri Sarguzashti",
         emoji: '🐺',
@@ -276,6 +286,7 @@ function openGame(id) {
     stage.classList.remove('hidden');
     if (id === 'wolf') startWolfGame(stage);
     if (id === 'memory') startMemoryGame(stage);
+    if (id === 'quiz') startQuiz(stage);
 }
 
 function closeGame() {
@@ -627,4 +638,249 @@ function playMemoryDeck(deckId) {
             }
         };
     });
+}
+
+/* ===========================================================================
+ * 3) OILAVIY VIKTORINA
+ *
+ * Yagona onlayn o'yin — chunki uning butun ma'nosi boshqa odam bilan
+ * o'ynashda. Lekin u ham REAL VAQTLI emas: ota-ona ishda, bola maktabda
+ * javob beradi, keyin natijani solishtiradi. Real vaqtli qilinganda o'yin
+ * deyarli hech qachon boshlanmasdi — ikkovi bir vaqtda bo'sh bo'lishi kerak
+ * bo'lardi.
+ *
+ * To'g'ri javoblar serverda qoladi. Bu yerdagi kod ularni bilmaydi — javob
+ * yuborilgandan keyingina ko'radi.
+ * ======================================================================== */
+
+const QUIZ_CATEGORIES = [
+    { id: 'maktab',     name: 'Maktab',          emoji: '📚', desc: 'Sinfingga mos fanlar' },
+    { id: 'fikrlash',   name: 'Fikrlash',        emoji: '🧠', desc: 'Mantiq, yodlash emas' },
+    { id: 'hayot',      name: 'Hayot savollari', emoji: '💭', desc: "To'g'ri javobi yo'q" },
+    { id: 'ozbekiston', name: "O'zbekiston",     emoji: '🇺🇿', desc: 'Tarix va madaniyat' }
+];
+
+let quizState = null;
+
+function startQuiz(stage) {
+    stage.innerHTML =
+        '<div class="flex items-center justify-between mb-2">' +
+            '<button onclick="closeGame()" class="text-[11px] font-bold text-indigo-300">← O\'yinlar</button>' +
+            '<div class="text-[11px] font-bold text-white">🧩 Oilaviy Viktorina</div>' +
+            '<span class="w-14"></span>' +
+        '</div>' +
+        '<div id="quizBody"><div class="text-[10px] text-slate-500">Yuklanmoqda...</div></div>';
+    renderQuizHome();
+}
+
+function quizCatName(id) {
+    const c = QUIZ_CATEGORIES.find(x => x.id === id);
+    return c ? c.name : id;
+}
+
+async function renderQuizHome() {
+    const body = document.getElementById('quizBody');
+    if (!body) return;
+
+    let open = [];
+    try {
+        const resp = await fetch(QALQON_BOT_FN, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'quiz_open_rounds' })
+        });
+        const d = await resp.json();
+        if (d.ok) open = d.rounds || [];
+    } catch (e) { console.error('quiz_open_rounds:', e); }
+
+    // Meni kutayotganlar: kimdir boshlagan, men hali javob bermaganman.
+    const waiting = open.filter(r => !r.answered);
+    const done = open.filter(r => r.answered && r.results.length > 1);
+
+    let html = '';
+
+    if (waiting.length) {
+        html += '<div class="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/40 space-y-2 mb-3">' +
+            '<div class="text-[11px] font-bold text-amber-200">⏳ Seni kutmoqda</div>' +
+            waiting.map(r =>
+                '<button onclick="loadQuizRound(\'' + r.roundId + '\')" class="w-full text-left p-2.5 rounded-xl bg-slate-900/70 border border-slate-700 hover:border-amber-500/60 transition">' +
+                    '<div class="text-[11px] font-bold text-white">' + quizCatName(r.category) + ' · ' + r.count + ' savol</div>' +
+                    '<div class="text-[9px] text-slate-400">Javob berib, natijalarni solishtir</div>' +
+                '</button>').join('') +
+            '</div>';
+    }
+
+    html += '<div class="text-[11px] text-slate-300 mb-2">Yangi viktorina boshla:</div>' +
+        '<div class="grid grid-cols-2 gap-2">' +
+        QUIZ_CATEGORIES.map(c =>
+            '<button onclick="createQuiz(\'' + c.id + '\')" class="p-3 rounded-2xl bg-slate-900/70 border border-slate-700 hover:border-indigo-500/60 transition text-left">' +
+                '<div class="text-xl">' + c.emoji + '</div>' +
+                '<div class="text-[11px] font-bold text-white mt-1">' + c.name + '</div>' +
+                '<div class="text-[9px] text-slate-400">' + c.desc + '</div>' +
+            '</button>').join('') +
+        '</div>';
+
+    if (done.length) {
+        html += '<div class="mt-3 pt-3 border-t border-slate-800 space-y-1.5">' +
+            '<div class="text-[11px] font-bold text-slate-300">📊 Oxirgi natijalar</div>' +
+            done.slice(0, 5).map(r =>
+                '<div class="flex items-center justify-between text-[10px]">' +
+                    '<span class="text-slate-400">' + quizCatName(r.category) + '</span>' +
+                    '<span class="text-slate-200 font-bold">' +
+                        r.results.map(x => escapeHtml(x.name || '?') + ' ' + x.score + '/' + x.total).join(' · ') +
+                    '</span>' +
+                '</div>').join('') +
+            '</div>';
+    }
+
+    html += '<div class="mt-3 text-[9px] text-slate-500 leading-relaxed">' +
+        'Savollarni AI sinfingga qarab yozadi. «Hayot savollari»da to\'g\'ri javob yo\'q — ' +
+        'u ota-onang bilan fikringizni solishtirish uchun.</div>';
+
+    body.innerHTML = html;
+}
+
+async function createQuiz(category) {
+    const body = document.getElementById('quizBody');
+    if (body) body.innerHTML = '<div class="text-[11px] text-slate-400 text-center py-6">🧩 Savollar tayyorlanmoqda...</div>';
+    try {
+        const resp = await fetch(QALQON_BOT_FN, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'quiz_create', category: category, grade: quizGuessGrade() })
+        });
+        const d = await resp.json();
+        if (!d.ok) {
+            if (body) body.innerHTML = '<div class="text-[11px] text-rose-300 text-center py-6">' + escapeHtml(d.error || 'Boshlab bo\'lmadi') + '</div>';
+            return;
+        }
+        quizState = { roundId: d.roundId, questions: d.questions, scored: d.scored, i: 0, answers: [] };
+        renderQuizQuestion();
+    } catch (e) {
+        console.error('quiz_create:', e);
+        if (body) body.innerHTML = '<div class="text-[11px] text-rose-300 text-center py-6">Server javob bermadi.</div>';
+    }
+}
+
+/** Boshqa oila a'zosi boshlagan raundga qo'shilish. */
+async function loadQuizRound(roundId) {
+    const body = document.getElementById('quizBody');
+    if (body) body.innerHTML = '<div class="text-[11px] text-slate-400 text-center py-6">🧩 Yuklanmoqda...</div>';
+    try {
+        const resp = await fetch(QALQON_BOT_FN, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'quiz_round_questions', roundId: roundId })
+        });
+        const d = await resp.json();
+        if (!d.ok) { renderQuizHome(); return; }
+        quizState = { roundId: roundId, questions: d.questions, scored: d.scored, i: 0, answers: [] };
+        renderQuizQuestion();
+    } catch (e) {
+        console.error('loadQuizRound:', e);
+        renderQuizHome();
+    }
+}
+
+/** Sinfni paneldagi ma'lumotdan olamiz; topilmasa 6-sinf. */
+function quizGuessGrade() {
+    try {
+        if (typeof childrenDatabase !== 'undefined' && typeof currentChildKey !== 'undefined') {
+            const c = childrenDatabase[currentChildKey];
+            if (c && c.grade) return Number(c.grade) || 6;
+        }
+    } catch (e) {}
+    return 6;
+}
+
+function renderQuizQuestion() {
+    const body = document.getElementById('quizBody');
+    const s = quizState;
+    if (!body || !s) return;
+    const q = s.questions[s.i];
+
+    body.innerHTML =
+        '<div class="flex items-center justify-between mb-2">' +
+            '<span class="text-[10px] text-slate-400">Savol ' + (s.i + 1) + ' / ' + s.questions.length + '</span>' +
+            '<span class="text-[10px] text-slate-500">' + (s.scored ? 'To\'g\'ri javobi bor' : 'To\'g\'ri javobi yo\'q') + '</span>' +
+        '</div>' +
+        '<div class="h-1 rounded bg-slate-800 mb-3">' +
+            '<div class="h-1 rounded bg-indigo-400" style="width:' + ((s.i / s.questions.length) * 100) + '%"></div>' +
+        '</div>' +
+        '<div class="text-[13px] text-white font-bold leading-relaxed mb-3">' + escapeHtml(q.q) + '</div>' +
+        '<div class="space-y-2" id="quizOptions">' +
+            q.a.map((o, i) =>
+                '<button data-i="' + i + '" class="w-full text-left p-3 rounded-xl bg-slate-900/80 border border-slate-700 hover:border-indigo-500 text-[11px] text-slate-200 transition">' +
+                    escapeHtml(o) +
+                '</button>').join('') +
+        '</div>';
+
+    body.querySelectorAll('#quizOptions button').forEach(b => {
+        b.onclick = () => {
+            s.answers[s.i] = Number(b.getAttribute('data-i'));
+            if (typeof tg !== 'undefined' && tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+            s.i++;
+            if (s.i >= s.questions.length) submitQuiz();
+            else renderQuizQuestion();
+        };
+    });
+}
+
+async function submitQuiz() {
+    const body = document.getElementById('quizBody');
+    const s = quizState;
+    if (!body || !s) return;
+    body.innerHTML = '<div class="text-[11px] text-slate-400 text-center py-6">Tekshirilmoqda...</div>';
+
+    try {
+        const resp = await fetch(QALQON_BOT_FN, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'quiz_submit', roundId: s.roundId, answers: s.answers })
+        });
+        const d = await resp.json();
+        if (!d.ok) {
+            body.innerHTML = '<div class="text-[11px] text-rose-300 text-center py-6">' + escapeHtml(d.error || 'Xato') + '</div>';
+            return;
+        }
+
+        const others = (d.participants || []).filter(p => !p.me);
+
+        let head = '<div class="text-center space-y-1 mb-3">' +
+            '<div class="text-3xl">' + (d.scored ? (d.score >= d.total - 1 ? '🏆' : '🧩') : '💭') + '</div>' +
+            (d.scored
+                ? '<div class="text-lg font-black text-white">' + d.score + ' / ' + d.total + '</div>'
+                : '<div class="text-sm font-black text-white">Javoblaring saqlandi</div>') +
+            (others.length
+                ? '<div class="text-[11px] text-slate-300">' +
+                    others.map(o => escapeHtml(o.name || '?') + (d.scored ? ': ' + o.score + '/' + o.total : ' ham javob berdi')).join(' · ') +
+                  '</div>'
+                : '<div class="text-[10px] text-slate-400">Oilangdan yana kim javob berishini kutamiz.</div>') +
+            '</div>';
+
+        const rows = d.review.map((r, i) => {
+            const mineTxt = (r.chosen != null && r.a[r.chosen]) ? r.a[r.chosen] : '—';
+            if (r.correct == null) {
+                return '<div class="p-2.5 rounded-xl bg-slate-900/70 border border-slate-800">' +
+                    '<div class="text-[11px] text-slate-200 font-bold">' + (i + 1) + '. ' + escapeHtml(r.q) + '</div>' +
+                    '<div class="text-[10px] text-indigo-300 mt-1">Sening javobing: ' + escapeHtml(mineTxt) + '</div>' +
+                '</div>';
+            }
+            const ok = r.chosen === r.correct;
+            return '<div class="p-2.5 rounded-xl ' + (ok ? 'bg-emerald-950/40 border border-emerald-500/30' : 'bg-rose-950/30 border border-rose-500/30') + '">' +
+                '<div class="text-[11px] text-slate-200 font-bold">' + (ok ? '✅' : '❌') + ' ' + (i + 1) + '. ' + escapeHtml(r.q) + '</div>' +
+                '<div class="text-[10px] text-slate-300 mt-1">Sen: ' + escapeHtml(mineTxt) +
+                    (ok ? '' : ' · To\'g\'ri: <b>' + escapeHtml(r.a[r.correct]) + '</b>') + '</div>' +
+                (r.why ? '<div class="text-[9px] text-slate-400 mt-0.5">' + escapeHtml(r.why) + '</div>' : '') +
+            '</div>';
+        }).join('');
+
+        body.innerHTML = head + '<div class="space-y-2">' + rows + '</div>' +
+            '<button onclick="renderQuizHome()" class="w-full mt-3 py-2 rounded-xl bg-indigo-500/25 border border-indigo-500/50 text-indigo-100 text-[11px] font-bold">' +
+                '← Viktorinaga qaytish' +
+            '</button>';
+    } catch (e) {
+        console.error('quiz_submit:', e);
+        body.innerHTML = '<div class="text-[11px] text-rose-300 text-center py-6">Server javob bermadi.</div>';
+    }
 }

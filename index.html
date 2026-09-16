@@ -1044,6 +1044,38 @@
             </div>
         </section>
 
+        <!-- ✨ QO'SHIMCHA IMKONIYATLAR
+             Ilova o'sib borgani sari yangi bo'limlar paydo bo'ladi. Ularni
+             asosiy oqimga qo'shib yuborsak, panel uzun ro'yxatga aylanardi;
+             shuning uchun alohida, bir qarashda o'qiladigan kataklar. -->
+        <section class="glass-card p-4 space-y-3">
+            <h3 class="text-xs font-bold text-white flex items-center gap-1.5">
+                <span>✨</span><span>Qo'shimcha imkoniyatlar</span>
+            </h3>
+            <div class="grid grid-cols-2 gap-2">
+                <button onclick="openSubpage('modal-games'); renderGamesGrid();" class="p-3 rounded-2xl bg-slate-900/70 border border-slate-700 hover:border-fuchsia-500/60 transition text-left">
+                    <div class="text-xl">🧩</div>
+                    <div class="text-[11px] font-bold text-white mt-1">Oilaviy Viktorina</div>
+                    <div class="text-[9px] text-slate-400">Farzandingiz bilan bellashing</div>
+                </button>
+                <button onclick="openSubpage('modal-time-bank')" class="p-3 rounded-2xl bg-slate-900/70 border border-slate-700 hover:border-amber-500/60 transition text-left">
+                    <div class="text-xl">💰</div>
+                    <div class="text-[11px] font-bold text-white mt-1">Vaqt banki</div>
+                    <div class="text-[9px] text-slate-400">Ekran vaqti kursini belgilang</div>
+                </button>
+                <button onclick="switchTab('tab-radar'); setTimeout(renderDayRoute, 500);" class="p-3 rounded-2xl bg-slate-900/70 border border-slate-700 hover:border-cyan-500/60 transition text-left">
+                    <div class="text-xl">🗺️</div>
+                    <div class="text-[11px] font-bold text-white mt-1">Kun marshruti</div>
+                    <div class="text-[9px] text-slate-400">Bugun qayerlarda bo'ldi</div>
+                </button>
+                <button onclick="openSubpage('modal-plans')" class="p-3 rounded-2xl bg-slate-900/70 border border-slate-700 hover:border-emerald-500/60 transition text-left">
+                    <div class="text-xl">⭐️</div>
+                    <div class="text-[11px] font-bold text-white mt-1">Tarif</div>
+                    <div class="text-[9px] text-slate-400">Bepul va Pro imkoniyatlari</div>
+                </button>
+            </div>
+        </section>
+
         <!-- 🎁 Taklif: boshqa ota-onani chaqirish -->
         <section class="glass-card p-4 space-y-2.5" id="parentReferralCard">
             <div class="flex items-center gap-2">

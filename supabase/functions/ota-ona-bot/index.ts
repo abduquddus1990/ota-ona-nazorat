@@ -1538,6 +1538,147 @@ async function payReferralReward(familyCode: string): Promise<void> {
   );
 }
 
+// ============================================================================
+// VIKTORINA SAVOLLARI
+//
+// Savollarni Gemini bolaning SINFIGA qarab yozadi — shuning uchun kontent
+// hech qachon tugamaydi va 1-sinf bilan 11-sinf bir xil savol olmaydi.
+// Lekin AI ishlamay qolsa ham o'yin to'xtamasligi kerak: har toifa uchun
+// zaxira savollar shu faylda turadi. AI — yaxshilanish, shart emas.
+//
+// "Hayot" toifasi ataylab FAQAT zaxiradan oladi: bu savollarda to'g'ri javob
+// yo'q, ular bola bilan ota-ona o'rtasida suhbat ochish uchun. Bunday
+// savollarni tasodifiy generatsiyaga topshirib bo'lmaydi.
+// ============================================================================
+
+const QUIZ_FALLBACK: Record<string, any[]> = {
+  maktab: [
+    { q: "7 × 8 nechchi?", a: ["54", "56", "58", "64"], c: 1, why: "7 × 8 = 56" },
+    { q: "Suvning kimyoviy formulasi qaysi?", a: ["CO₂", "H₂O", "O₂", "NaCl"], c: 1, why: "Ikki vodorod va bitta kislorod." },
+    { q: "O'zbekiston mustaqilligi qachon e'lon qilingan?", a: ["1989", "1991", "1993", "1995"], c: 1, why: "1991-yil 31-avgust." },
+    { q: "Doira yuzasi formulasi qaysi?", a: ["2πr", "πr²", "πd", "r²"], c: 1, why: "S = πr²; 2πr — aylana uzunligi." },
+    { q: "Gap bo'laklaridan qaysi biri «Kim? Nima?» so'rog'iga javob beradi?", a: ["Kesim", "Ega", "Aniqlovchi", "Hol"], c: 1, why: "Ega — ish-harakat bajaruvchisi." },
+    { q: "Inson tanasidagi eng yirik a'zo qaysi?", a: ["Jigar", "Teri", "O'pka", "Miya"], c: 1, why: "Teri — eng katta a'zo." },
+  ],
+  fikrlash: [
+    { q: "Agar hamma bo'rilar hayvon bo'lsa va Olov — bo'ri bo'lsa, Olov nima?", a: ["Hayvon", "Odam", "O'simlik", "Aniqlab bo'lmaydi"], c: 0, why: "Mantiqiy xulosa: bo'ri → hayvon." },
+    { q: "2, 4, 8, 16, ... keyingi son qaysi?", a: ["20", "24", "32", "18"], c: 2, why: "Har son ikkiga ko'paytiriladi." },
+    { q: "Otangning o'g'lining otasi kim?", a: ["Bobom", "Otam", "Akam", "Amakim"], c: 1, why: "Otangning o'g'li — sen; sening otang — otang." },
+    { q: "Bir g'isht 1 kg va yarim g'isht og'irligida. G'isht necha kg?", a: ["1,5", "2", "2,5", "3"], c: 1, why: "x = 1 + x/2 → x = 2." },
+    { q: "Xonada 3 ta sham yondi, 2 tasi o'chdi. Nechtasi qoladi?", a: ["1", "2", "3", "0"], c: 1, why: "O'chganlari yonib tugamaydi — o'sha 2 tasi qoladi." },
+  ],
+  ozbekiston: [
+    { q: "Amir Temur poytaxti qaysi shahar edi?", a: ["Buxoro", "Samarqand", "Xiva", "Toshkent"], c: 1, why: "Samarqand — Temuriylar poytaxti." },
+    { q: "Ulug'bek nima bilan mashhur?", a: ["Shoir", "Astronom", "Sarkarda", "Me'mor"], c: 1, why: "Rasadxonasi va yulduzlar jadvali bilan." },
+    { q: "Registon maydoni qayerda?", a: ["Buxoro", "Samarqand", "Shahrisabz", "Qo'qon"], c: 1, why: "Samarqand markazida." },
+    { q: "Alisher Navoiy qaysi tilda yozgan?", a: ["Faqat forsiy", "Eski o'zbek (chig'atoy)", "Arab", "Turk"], c: 1, why: "Asosan eski o'zbek tilida." },
+    { q: "O'zbekistonning eng uzun daryosi qaysi?", a: ["Zarafshon", "Amudaryo", "Chirchiq", "Sirdaryo"], c: 1, why: "Amudaryo — eng uzun va sersuv." },
+  ],
+  hayot: [
+    { q: "Do'sting xato qilganini bilsang, unga aytasanmi yoki jim turasanmi?", a: ["Darhol aytaman", "Yolg'iz qolganda aytaman", "Jim turaman", "Boshqa do'stlar bilan maslahatlashaman"], c: -1 },
+    { q: "Sen uchun muvaffaqiyat nima?", a: ["Ko'p pul topish", "O'z ishini sevish", "Boshqalarga foyda keltirish", "Tinch yashash"], c: -1 },
+    { q: "Xafa bo'lganingda nima qilasan?", a: ["Yolg'iz qolaman", "Kimgadir aytaman", "Boshqa narsa bilan chalg'iyman", "Uxlayman"], c: -1 },
+    { q: "Qaysi biri og'irroq: kechirish yoki kechirim so'rash?", a: ["Kechirish", "Kechirim so'rash", "Ikkalasi ham bir xil", "Vaziyatga bog'liq"], c: -1 },
+    { q: "Agar bir kunni istaganingcha o'tkaza olsang, nima qilarding?", a: ["Oilam bilan bo'lardim", "Sayohat qilardim", "Yangi narsa o'rganardim", "Dam olardim"], c: -1 },
+  ],
+};
+
+/** Toifa nomi — AI'ga beriladigan ta'rif. */
+const QUIZ_TOPICS: Record<string, string> = {
+  maktab: "maktab dasturidagi fanlar (matematika, ona tili, tabiiy fanlar, tarix)",
+  fikrlash: "mantiqiy jumboqlar va fikrlash mashqlari (yodlash emas, o'ylash)",
+  ozbekiston: "O'zbekiston tarixi, madaniyati va geografiyasi",
+};
+
+function quizPick(list: any[], n: number) {
+  return list.slice().sort(() => Math.random() - 0.5).slice(0, n);
+}
+
+/** Javob berilgan variantlar to'g'ri shakldami — AI javobiga ishonmaymiz. */
+function validQuizItem(it: any): boolean {
+  return (
+    it && typeof it.q === "string" && it.q.length > 3 &&
+    Array.isArray(it.a) && it.a.length === 4 &&
+    it.a.every((o: any) => typeof o === "string" && o.length > 0) &&
+    Number.isInteger(it.c) && it.c >= 0 && it.c <= 3
+  );
+}
+
+async function buildQuizQuestions(category: string, grade: number): Promise<any[]> {
+  const fallback = QUIZ_FALLBACK[category] || QUIZ_FALLBACK.maktab;
+  if (category === "hayot") return quizPick(fallback, 5);
+
+  const apiKey = Deno.env.get("GEMINI_API_KEY") || "";
+  if (!apiKey) return quizPick(fallback, 5);
+
+  const model = Deno.env.get("GEMINI_MODEL") || "gemini-3.6-flash";
+  const prompt =
+    `Sen O'zbekistondagi ${grade}-sinf o'quvchisi uchun viktorina savollari tuzasan.\n` +
+    `Mavzu: ${QUIZ_TOPICS[category] || QUIZ_TOPICS.maktab}.\n\n` +
+    `AYNAN 5 ta savol yoz. Faqat JSON massiv qaytar, boshqa hech narsa yozma.\n` +
+    `Har element: {"q": "savol", "a": ["variant1","variant2","variant3","variant4"], "c": to'g'ri variant indeksi (0-3), "why": "bir jumlalik izoh"}\n\n` +
+    `Qoidalar:\n` +
+    `- Hammasi o'zbek tilida (lotin yozuvida).\n` +
+    `- ${grade}-sinf darajasiga mos: na juda oson, na juda qiyin.\n` +
+    `- To'rtala variant ham jiddiy ko'rinsin; kulgili variant qo'yma.\n` +
+    `- To'g'ri javob indeksi har safar turlicha bo'lsin.\n` +
+    `- Siyosat, din, zo'ravonlik yoki kattalarga oid mavzularga tegma.`;
+
+  try {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ role: "user", parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature: 1.0,
+            maxOutputTokens: 2048,
+            responseMimeType: "application/json",
+          },
+        }),
+      }
+    );
+    const j = await res.json();
+    const text =
+      j?.candidates?.[0]?.content?.parts?.map((p: any) => p.text).join("") || "";
+    if (!text) {
+      console.error("Viktorina: AI bo'sh javob", JSON.stringify(j).slice(0, 300));
+      return quizPick(fallback, 5);
+    }
+
+    // Model ba'zan JSON'ni ```json ... ``` ichiga o'rab yuboradi.
+    const cleaned = text.replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
+    const parsed = JSON.parse(cleaned);
+    const items = (Array.isArray(parsed) ? parsed : parsed.questions || []).filter(
+      validQuizItem
+    );
+
+    // 5 tasi to'liq chiqmasa, yetmaganini zaxiradan to'ldiramiz — o'yin
+    // baribir boshlanadi.
+    if (items.length >= 5) return items.slice(0, 5);
+    return items.concat(quizPick(fallback, 5 - items.length));
+  } catch (e) {
+    console.error("Viktorina AI xatosi:", e instanceof Error ? e.message : e);
+    return quizPick(fallback, 5);
+  }
+}
+
+/** Viktorinada ko'rsatiladigan ism: bola bo'lsa oiladagi ismi, ota-ona bo'lsa
+ *  "Ota-ona". Haqiqiy Telegram ismini ishlatmaymiz — u begonaga ham ko'rinadi. */
+async function participantName(familyCode: string, who: string): Promise<string> {
+  if (!db) return "Ishtirokchi";
+  const { data } = await db
+    .from("child_pairings")
+    .select("child_name")
+    .eq("family_code", familyCode)
+    .eq("child_id", who)
+    .limit(1);
+  if (data && data[0] && data[0].child_name) return data[0].child_name;
+  return "Ota-ona";
+}
+
 /** Bu Telegram hisobi biror oilaga FARZAND sifatida ulanganmi. */
 async function isPairedChild(telegramId: number | string): Promise<boolean> {
   if (!db) return false;
@@ -2253,6 +2394,272 @@ async function handleRequest(req: Request): Promise<Response> {
     // qaytarilmaydi. Voyaga yetmaganlarning ro'yxatini bir-biriga ko'rsatish
     // maxfiylik jihatidan ham, Play'ning bolalar siyosati jihatidan ham
     // yo'l qo'yib bo'lmaydigan narsa. Faqat o'z o'rning va umumiy son.
+    // ========================================================================
+    // OILAVIY VIKTORINA
+    //
+    // Asinxron: ota-ona va bola (yoki aka-uka) AYNI savollarga javob beradi,
+    // lekin bir vaqtda onlayn bo'lishi shart emas. Fokus Jangi ham shu
+    // tamoyilda ishlaydi — real vaqtli o'yin bo'lsa, u deyarli hech qachon
+    // boshlanmasdi.
+    //
+    // To'g'ri javob mijozga HECH QACHON yuborilmaydi: savollar serverda
+    // saqlanadi, baholash ham serverda. Aks holda ekran kodini ochgan bola
+    // hamma javobni ko'rardi.
+    //
+    // "Hayot savollari" toifasida to'g'ri javob umuman yo'q — u ball uchun
+    // emas, ota-ona bilan bolaning javoblarini solishtirish uchun.
+    // ========================================================================
+    if (payload.type === "quiz_create") {
+      if (!db) {
+        return new Response(JSON.stringify({ ok: false, error: "Baza ulanmagan" }), {
+          status: 500, headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      const familyCode = await resolveActorFamily(actor!);
+      const who =
+        actor!.kind === "device" ? actor!.childId : "tg_" + actor!.telegramId;
+
+      const category = ["maktab", "fikrlash", "hayot", "ozbekiston"].includes(
+        String(payload.category)
+      ) ? String(payload.category) : "maktab";
+
+      const grade = Math.max(1, Math.min(11, Number(payload.grade) || 6));
+
+      const questions = await buildQuizQuestions(category, grade);
+      if (!questions.length) {
+        return new Response(
+          JSON.stringify({ ok: false, error: "Savollarni tayyorlab bo'lmadi." }),
+          { status: 500, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      const { data, error } = await db
+        .from("quiz_rounds")
+        .insert({
+          family_code: familyCode,
+          category,
+          grade,
+          created_by: who,
+          questions,
+        })
+        .select("id")
+        .limit(1);
+
+      if (error || !data || !data[0]) {
+        console.error("quiz_rounds insert:", error && error.message);
+        return new Response(JSON.stringify({ ok: false, error: "Saqlab bo'lmadi." }), {
+          status: 500, headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(
+        JSON.stringify({
+          ok: true,
+          roundId: data[0].id,
+          category,
+          grade,
+          // To'g'ri javob olib tashlanadi.
+          questions: questions.map((q: any) => ({ q: q.q, a: q.a })),
+          scored: category !== "hayot",
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    if (payload.type === "quiz_submit") {
+      if (!db) {
+        return new Response(JSON.stringify({ ok: false, error: "Baza ulanmagan" }), {
+          status: 500, headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      const familyCode = await resolveActorFamily(actor!);
+      const who =
+        actor!.kind === "device" ? actor!.childId : "tg_" + actor!.telegramId;
+
+      const { data: rounds } = await db
+        .from("quiz_rounds")
+        .select("id, family_code, category, questions")
+        .eq("id", String(payload.roundId || ""))
+        .eq("family_code", familyCode)
+        .limit(1);
+
+      const round = rounds && rounds[0];
+      if (!round) {
+        return new Response(JSON.stringify({ ok: false, error: "Viktorina topilmadi." }), {
+          status: 404, headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      const given: number[] = Array.isArray(payload.answers) ? payload.answers : [];
+      const qs = round.questions as any[];
+      const scored = round.category !== "hayot";
+
+      let score = 0;
+      const review = qs.map((q, i) => {
+        const chosen = Number(given[i]);
+        const correct = Number(q.c);
+        if (scored && chosen === correct) score++;
+        return {
+          q: q.q,
+          a: q.a,
+          chosen: Number.isFinite(chosen) ? chosen : null,
+          correct: scored ? correct : null,
+          why: q.why || null,
+        };
+      });
+
+      const nameRow = await participantName(familyCode, who);
+
+      // upsert: bola javobni ikki marta yubormasin, lekin qayta o'ynasa
+      // (yangi round) muammo bo'lmaydi.
+      const { error } = await db.from("quiz_answers").upsert(
+        {
+          round_id: round.id,
+          family_code: familyCode,
+          participant_id: who,
+          participant_name: nameRow,
+          answers: given,
+          score,
+          total: qs.length,
+        },
+        { onConflict: "round_id,participant_id" }
+      );
+      if (error) console.error("quiz_answers upsert:", error.message);
+
+      const { data: all } = await db
+        .from("quiz_answers")
+        .select("participant_id, participant_name, score, total, answers, finished_at")
+        .eq("round_id", round.id)
+        .limit(10);
+
+      // Raqib javob berib bo'lgan bo'lsa — unga xabar beramiz. Bu o'yinning
+      // aylanishini ta'minlaydigan yagona narsa: aks holda kim qachon javob
+      // berganini hech kim bilmasdi.
+      for (const p of all || []) {
+        if (p.participant_id === who) continue;
+        const tgId = String(p.participant_id).startsWith("tg_")
+          ? String(p.participant_id).slice(3)
+          : null;
+        if (!tgId) continue;
+        await sendMessage(
+          tgId,
+          `🧩 <b>${nameRow} viktorinani yakunladi.</b>\n\n` +
+            (scored
+              ? `Natija: <b>${nameRow} ${score}/${qs.length}</b>, siz ${p.score}/${p.total}.`
+              : `Endi javoblaringizni solishtirib ko'ring — bu toifada to'g'ri javob yo'q.`)
+        );
+      }
+
+      return new Response(
+        JSON.stringify({
+          ok: true,
+          scored,
+          score,
+          total: qs.length,
+          review,
+          participants: (all || []).map((p: any) => ({
+            name: p.participant_name,
+            score: p.score,
+            total: p.total,
+            me: p.participant_id === who,
+            answers: p.answers,
+          })),
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    // Mavjud raundning savollarini olish (boshqa oila a'zosi boshlagan).
+    // To'g'ri javob bu yerda ham berilmaydi.
+    if (payload.type === "quiz_round_questions") {
+      if (!db) {
+        return new Response(JSON.stringify({ ok: false, error: "Baza ulanmagan" }), {
+          status: 500, headers: { "Content-Type": "application/json" },
+        });
+      }
+      const familyCode = await resolveActorFamily(actor!);
+      const { data: rows } = await db
+        .from("quiz_rounds")
+        .select("id, category, grade, questions, expires_at")
+        .eq("id", String(payload.roundId || ""))
+        .eq("family_code", familyCode)
+        .limit(1);
+
+      const r = rows && rows[0];
+      if (!r || new Date(r.expires_at).getTime() < Date.now()) {
+        return new Response(
+          JSON.stringify({ ok: false, error: "Viktorina topilmadi yoki muddati o'tgan." }),
+          { status: 404, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({
+          ok: true,
+          roundId: r.id,
+          category: r.category,
+          grade: r.grade,
+          questions: (r.questions as any[]).map((q) => ({ q: q.q, a: q.a })),
+          scored: r.category !== "hayot",
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    if (payload.type === "quiz_open_rounds") {
+      if (!db) {
+        return new Response(JSON.stringify({ ok: true, rounds: [] }), {
+          status: 200, headers: { "Content-Type": "application/json" },
+        });
+      }
+      const familyCode = await resolveActorFamily(actor!);
+      const who =
+        actor!.kind === "device" ? actor!.childId : "tg_" + actor!.telegramId;
+
+      const { data: rounds } = await db
+        .from("quiz_rounds")
+        .select("id, category, grade, questions, created_by, created_at")
+        .eq("family_code", familyCode)
+        .gt("expires_at", new Date().toISOString())
+        .order("created_at", { ascending: false })
+        .limit(10);
+
+      const out: any[] = [];
+      for (const r of rounds || []) {
+        const { data: mine } = await db
+          .from("quiz_answers")
+          .select("id")
+          .eq("round_id", r.id)
+          .eq("participant_id", who)
+          .limit(1);
+
+        const { data: others } = await db
+          .from("quiz_answers")
+          .select("participant_name, score, total")
+          .eq("round_id", r.id)
+          .limit(10);
+
+        out.push({
+          roundId: r.id,
+          category: r.category,
+          grade: r.grade,
+          count: (r.questions as any[]).length,
+          answered: !!(mine && mine[0]),
+          createdByMe: r.created_by === who,
+          createdAt: r.created_at,
+          results: (others || []).map((o: any) => ({
+            name: o.participant_name, score: o.score, total: o.total,
+          })),
+        });
+      }
+
+      return new Response(JSON.stringify({ ok: true, rounds: out }), {
+        status: 200, headers: { "Content-Type": "application/json" },
+      });
+    }
+
     // 0.1a+ TAKLIF HAVOLASI — ota-ona uchun ham, bola uchun ham.
     //
     // Havola oila kodidan yasaladi, ya'ni alohida "taklif kodlari" jadvali
