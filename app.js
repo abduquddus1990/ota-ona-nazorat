@@ -404,7 +404,7 @@ const I18N = {
         statChildrenLabel: "Ulangan Farzandlar",
         navDashboard: "Asosiy",
         navRadar: "Radar",
-        navAi: "AI Murabbiy 💎",
+        navAi: "AI Murabbiy",
         navSchool: "e-Maktab 💎",
         navSettings: "Sozlamalar",
         backBtn: "← Orqaga",
