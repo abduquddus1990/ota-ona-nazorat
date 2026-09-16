@@ -534,7 +534,10 @@ async function clearEntryState(actorKey: string): Promise<void> {
 // ============================================================================
 
 const FREE_LOCATION_REQUESTS = 2;
-const FREE_WINDOW_HOURS = 48;
+// 48 soat juda uzun edi: ota-ona bepul tarifda mahsulot nima berishini
+// deyarli sezmasdan qolardi. Sutkasiga ikki marta — kuniga bir necha marta
+// so'rashga yetmaydi, lekin qiymatini ko'rsatadi.
+const FREE_WINDOW_HOURS = 24;
 const FREE_CHILD_LIMIT = 1;
 
 // Jonli joylashuv qancha davom etishi. Telegram'ning o'zida bola uchun
@@ -545,17 +548,46 @@ const FREE_CHILD_LIMIT = 1;
 const FREE_LIVE_HOURS = 2;
 const PRO_LIVE_HOURS = 8;
 
+/**
+ * Doimiy bepul Pro beriladigan hisoblar.
+ *
+ * Ikki maqsad uchun: mahsulot egasi barcha imkoniyatlarni sinab ko'rishi
+ * uchun, va ishga tushirish paytida tanlangan foydalanuvchilarga Pro'ni
+ * ochib berish uchun. Ro'yxat ikki joydan yig'iladi — muhit o'zgaruvchisi
+ * (tez o'zgartirish uchun) va shu yerdagi ro'yxat (zaxira sifatida).
+ *
+ * Bu yerda muddat yo'q: bu hisoblar uchun Pro hech qachon tugamaydi.
+ */
+const ALWAYS_PRO_USERNAMES = new Set(
+  (Deno.env.get("ALWAYS_PRO_USERNAMES") || "superman_uzb,mirkamolov13")
+    .split(",")
+    .map((u) => u.trim().toLowerCase().replace(/^@/, ""))
+    .filter(Boolean)
+);
+
 /** Oilaning amaldagi tarifi. Muddati o'tgan Pro avtomatik bepulga tushadi. */
 async function getPlan(familyCode: string): Promise<"free" | "pro"> {
   if (!db) return "free";
   const { data } = await db
     .from("parent_registrations")
-    .select("plan, plan_expires_at")
+    .select("plan, plan_expires_at, parent_username, mother_username, child_username")
     .eq("family_code", familyCode)
     .limit(1);
 
   const row = data && data[0];
-  if (!row || row.plan !== "pro") return "free";
+  if (!row) return "free";
+
+  // Ro'yxatdagi hisoblar uchun tarif va muddatga umuman qaralmaydi.
+  // Oiladagi ISTALGAN a'zo ro'yxatda bo'lsa yetarli: ota, ona yoki farzand.
+  const names = [row.parent_username, row.mother_username, row.child_username];
+  for (const n of names) {
+    if (!n) continue;
+    if (ALWAYS_PRO_USERNAMES.has(String(n).trim().toLowerCase().replace(/^@/, ""))) {
+      return "pro";
+    }
+  }
+
+  if (row.plan !== "pro") return "free";
   if (row.plan_expires_at && new Date(row.plan_expires_at).getTime() < Date.now()) {
     return "free";
   }

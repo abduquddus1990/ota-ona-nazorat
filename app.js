@@ -1665,7 +1665,15 @@ function switchAppRole(role) {
 }
 
 function switchChildTab(tabId) {
-    const childTabs = ['child-tab-home', 'child-tab-ai', 'child-tab-rewards', 'child-tab-school', 'child-tab-explore'];
+    // MUHIM: bu ro'yxatda 'child-tab-settings' yo'q edi, ya'ni u hech qachon
+    // yashirilmasdi va boshqa har qanday bo'lim ostida ochiq turaverardi —
+    // "Mening sozlamalarim hamma panel ostida ko'rinmoqda" nuqsonining
+    // ikkinchi sababi shu edi (birinchisi — HTML'da ikki marta yozilgani).
+    // Yangi bo'lim qo'shilsa, uni ham shu yerga qo'shish shart.
+    const childTabs = [
+        'child-tab-home', 'child-tab-ai', 'child-tab-rewards', 'child-tab-school',
+        'child-tab-explore', 'child-tab-settings', 'child-tab-extras', 'child-tab-games'
+    ];
     childTabs.forEach(id => {
         const el = document.getElementById(id);
         if (el) {
@@ -1681,6 +1689,9 @@ function switchChildTab(tabId) {
         activeEl.classList.remove('hidden');
         activeEl.classList.add('active');
     }
+
+    if (tabId === 'child-tab-extras') mountChildExtras();
+    if (tabId === 'child-tab-games') mountGamesInto('childGamesHost');
 
     const activeNav = document.getElementById(`nav-${tabId}`);
     if (activeNav) activeNav.classList.add('active');
@@ -3318,6 +3329,9 @@ function switchTab(tabId) {
     }
     if (targetBtn) targetBtn.classList.add('active');
 
+    if (tabId === 'tab-extras') renderParentExtras();
+    if (tabId === 'tab-games') mountGamesInto('parentGamesHost');
+
     if (tabId === 'tab-radar') {
         setTimeout(() => {
             initRadarMap();
@@ -4533,4 +4547,71 @@ async function toggleDigest() {
         console.error('toggleDigest:', e);
         paintDigestToggle(!next);
     }
+}
+
+// ============================================================================
+// PANEL OSTIDAGI YANGI BO'LIMLAR: "Qo'shimcha" va "O'yinlar"
+//
+// Kartalar KO'CHIRILADI, nusxalanmaydi. Nusxalansa, bitta karta ikki joyda
+// turib, ikkalasi ham bir xil id bilan yangilanishga urinardi va faqat
+// birinchisi ishlardi — bu esa "tugma bosilyapti, hech narsa bo'lmayapti"
+// degan eng chalg'ituvchi nuqson turi.
+//
+// Ota-ona va bola paneli bir vaqtda ochiq bo'lmaydi, shuning uchun o'yinlar
+// bloki ham ikkalasi o'rtasida ko'chib yuraveradi.
+// ============================================================================
+
+function moveNode(id, hostId) {
+    const el = document.getElementById(id);
+    const host = document.getElementById(hostId);
+    if (!el || !host) return false;
+    if (el.parentElement !== host) host.appendChild(el);
+    el.classList.remove('hidden');
+    return true;
+}
+
+/** Ota-ona: "Qo'shimcha" bo'limi kataklari. */
+function renderParentExtras() {
+    const grid = document.getElementById('parentExtrasGrid');
+    if (!grid) return;
+
+    const tiles = [
+        { emoji: '💰', name: 'Vaqt banki', desc: 'Ekran vaqti kursini belgilang', fn: "openSubpage('modal-time-bank')" },
+        { emoji: '🗺️', name: 'Kun marshruti', desc: "Bugun qayerlarda bo'ldi", fn: "switchTab('tab-radar'); setTimeout(renderDayRoute, 500);" },
+        { emoji: '🎁', name: "Do'stingizni taklif qiling", desc: 'Ikkalangizga ham bepul Pro', fn: 'shareReferralLink()' },
+        { emoji: '📍', name: 'Xavfsiz hududlar', desc: 'Uy va maktabni belgilang', fn: 'openZonesModal()' },
+        { emoji: '🔔', name: 'Bildirishnomalar', desc: 'Nima va qachon keladi', fn: 'openNotificationsModal()' },
+        { emoji: '🧩', name: 'Oilaviy Viktorina', desc: 'Farzandingiz bilan bellashing', fn: "switchTab('tab-games'); setTimeout(() => openGame('quiz'), 300);" }
+    ];
+
+    grid.innerHTML = tiles.map(t =>
+        '<button onclick="' + t.fn + '" class="p-3 rounded-2xl bg-slate-900/70 border border-slate-700 hover:border-cyan-500/60 transition text-left">' +
+            '<div class="text-xl">' + t.emoji + '</div>' +
+            '<div class="text-[11px] font-bold text-white mt-1">' + t.name + '</div>' +
+            '<div class="text-[9px] text-slate-400">' + t.desc + '</div>' +
+        '</button>').join('');
+}
+
+/** Bola: "Qo'shimcha" bo'limiga kartalarni ko'chiramiz. */
+function mountChildExtras() {
+    ['leagueCard', 'proExchangeCard', 'childReferralCard', 'pomodoroCard']
+        .forEach(id => moveNode(id, 'childExtrasHost'));
+
+    const host = document.getElementById('childExtrasHost');
+    if (host && !host.children.length) {
+        host.innerHTML = '<div class="text-[10px] text-slate-500">Bo\'limlar yuklanmoqda...</div>';
+    }
+}
+
+/** O'yinlar bloki qaysi panelda ochilgan bo'lsa, o'sha yerga ko'chadi. */
+function mountGamesInto(hostId) {
+    const host = document.getElementById(hostId);
+    if (!host) return;
+    if (!document.getElementById('gamesGrid')) return;
+    moveNode('gamesGrid', hostId);
+    moveNode('gameStage', hostId);
+    // gameStage o'yin ochilmaguncha yashirin turishi kerak.
+    const stage = document.getElementById('gameStage');
+    if (stage && !stage.innerHTML.trim()) stage.classList.add('hidden');
+    renderGamesGrid();
 }

@@ -488,3 +488,17 @@ body[data-theme="sky"] .subject-item-card {
     border-color: var(--accent-primary);
     transform: translateY(-1px);
 }
+
+/* Pastki qat'iy navigatsiya sahifaning oxirini yopib qo'yardi: telefonda
+   "Kun marshruti" kabi eng pastdagi bo'limlar oxirigacha ko'rinmasdi.
+   Nav balandligi ~66px, ustiga iPhone'ning pastki xavfsiz sohasi.
+   Bo'shliqni har bir tab ichida qoldiramiz — body'ga qo'yilsa, klaviatura
+   ochilganda qo'shiladigan padding bilan urishib ketardi. */
+.tab-content.active {
+    padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+}
+
+/* Modal oynalar ham xuddi shunday: ichidagi oxirgi tugma ko'rinsin. */
+.subpage-modal {
+    padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+}

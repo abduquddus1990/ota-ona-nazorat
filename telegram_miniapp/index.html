@@ -17,7 +17,7 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <!-- Custom Stitch Styles -->
-    <link rel="stylesheet" href="styles.css?v=6.0">
+    <link rel="stylesheet" href="styles.css?v=6.3">
 </head>
 <body class="p-3 max-w-md mx-auto relative antialiased text-slate-200">
     <!-- ==================================================================== -->
@@ -548,6 +548,7 @@
                 </div>
             </div>
 
+            <div id="pomodoroCard" class="space-y-3">
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2">
                     <span class="text-xl">⏱️</span>
@@ -569,6 +570,7 @@
                         🔄 Qayta o'rnatish
                     </button>
                 </div>
+            </div>
             </div>
         </section>
 
@@ -864,86 +866,7 @@
     <!-- ==================================================================== -->
     <!-- ==================================================================== -->
     <!-- FARZAND TAB 5: ⚙️ SOZLAMALAR (CHILD SETTINGS HUB) -->
-    <!-- ==================================================================== -->
-    <main id="child-tab-settings" class="tab-content space-y-2.5 hidden">
-        <div class="flex items-center justify-between px-1 mb-1">
-            <h2 class="text-xs font-black text-white uppercase tracking-wider flex items-center gap-1.5">
-                <span class="material-symbols-outlined text-sm text-indigo-400">settings</span>
-                <span>Mening Sozlamalarim</span>
-            </h2>
-            <span class="text-[10px] text-indigo-400 font-mono font-bold">Farzand Profili</span>
-        </div>
-
-        <!-- 1. Qahramon Fonlari -->
-        <div onclick="openSubpage('modal-themes')" class="glass-panel p-3.5 flex items-center justify-between cursor-pointer hover:border-indigo-500/50 transition">
-            <div class="flex items-center gap-3">
-                <div class="w-9 h-9 rounded-xl bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center text-indigo-400 text-lg">
-                    🎨
-                </div>
-                <div>
-                    <div class="text-xs font-bold text-white">Qahramon Fonlari</div>
-                    <div class="text-[10px] text-slate-400">Kichik Bo'ri, Cyber Ice, Neon Fazoviy</div>
-                </div>
-            </div>
-            <span class="text-slate-500 text-sm font-bold">›</span>
-        </div>
-
-        <!-- 2. Ilova Haqida & Maxfiylik Kafolati -->
-        <div onclick="openSubpage('modal-about')" class="glass-panel p-3.5 flex items-center justify-between cursor-pointer hover:border-indigo-500/50 transition">
-            <div class="flex items-center gap-3">
-                <div class="w-9 h-9 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 text-lg">
-                    🛡️
-                </div>
-                <div>
-                    <div class="text-xs font-bold text-white">Ilova Haqida & Maxfiylik Huquqlarim</div>
-                    <div class="text-[10px] text-slate-400">Poyloqchilik emas — bilim va xavfsiz do'stlik</div>
-                </div>
-            </div>
-            <span class="text-slate-500 text-sm font-bold">›</span>
-        </div>
-
-        <!-- 3. Pomodoro Dars Taymeri -->
-        <div onclick="switchChildTab('child-tab-home')" class="glass-panel p-3.5 flex items-center justify-between cursor-pointer hover:border-indigo-500/50 transition">
-            <div class="flex items-center gap-3">
-                <div class="w-9 h-9 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 text-lg">
-                    ⏱️
-                </div>
-                <div>
-                    <div class="text-xs font-bold text-white">Pomodoro Dars Taymeri</div>
-                    <div class="text-[10px] text-slate-400">25 daqiqa dars / 5 daqiqa ko'z mashqi</div>
-                </div>
-            </div>
-            <span class="text-slate-500 text-sm font-bold">›</span>
-        </div>
-
-        <!-- 4. Yutuqlarim va Rag'batlar -->
-        <div onclick="switchChildTab('child-tab-rewards')" class="glass-panel p-3.5 flex items-center justify-between cursor-pointer hover:border-indigo-500/50 transition">
-            <div class="flex items-center gap-3">
-                <div class="w-9 h-9 rounded-xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-400 text-lg">
-                    🏆
-                </div>
-                <div>
-                    <div class="text-xs font-bold text-white">Mening Yutuqlarim & Ballarim</div>
-                    <div class="text-[10px] text-slate-400">100 ballik e-Maktab DTS rag'batlari</div>
-                </div>
-            </div>
-            <span class="text-slate-500 text-sm font-bold">›</span>
-        </div>
-
-        <!-- 5. Ota-onam bilan Favqulodda Bog'lanish (SOS) -->
-        <div onclick="sendChildQuickStatus('sos')" class="glass-panel p-3.5 flex items-center justify-between cursor-pointer hover:border-rose-500/50 transition bg-rose-950/20">
-            <div class="flex items-center gap-3">
-                <div class="w-9 h-9 rounded-xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center text-rose-400 text-lg">
-                    🚨
-                </div>
-                <div>
-                    <div class="text-xs font-bold text-rose-300">Favqulodda SOS Xabar Yuborish</div>
-                    <div class="text-[10px] text-slate-400">Ota-onaga zudlik bilan lokatsiya va signal boradi</div>
-                </div>
-            </div>
-            <span class="text-rose-400 text-xs font-bold">SOS ↗</span>
-        </div>
-    </main>
+    
 
     <!-- ==================================================================== -->
     <!-- TAB 1: 📊 DASHBOARD (QALQON AI HIMOYACHI HERO & ASOSIY STATUS) -->
@@ -1097,11 +1020,6 @@
                     <div class="text-xl">⭐️</div>
                     <div class="text-[11px] font-bold text-white mt-1">Tarif</div>
                     <div class="text-[9px] text-slate-400">Bepul va Pro imkoniyatlari</div>
-                </button>
-                <button onclick="openSubpage('modal-delete-account')" class="p-3 rounded-2xl bg-slate-900/70 border border-slate-700 hover:border-rose-500/50 transition text-left">
-                    <div class="text-xl">🔒</div>
-                    <div class="text-[11px] font-bold text-white mt-1">Maxfiylik</div>
-                    <div class="text-[9px] text-slate-400">Ma'lumot va hisobni o'chirish</div>
                 </button>
             </div>
         </section>
@@ -1269,31 +1187,10 @@
                 </div>
             </div>
 
-            <!-- Qiziqishlar Vektorlari -->
-            <div class="pt-2 border-t border-slate-800/80 space-y-2">
-                <div class="text-[11px] font-bold text-slate-300" data-i18n="interestVectors">🎯 Farzand Qiziqishlari Vektorlari:</div>
-                <div class="space-y-2" id="aiInterestVectors">
-                    <!-- JS orqali to'ldiriladi -->
-                </div>
-            </div>
+            
         </section>
 
-        <!-- 2. Tezkor Jonli Radar & Navigatsiya Tugmasi -->
-        <div class="glass-panel p-3 flex items-center justify-between">
-            <div class="flex items-center gap-2.5">
-                <div class="w-8 h-8 rounded-lg bg-cyan-500/15 flex items-center justify-center text-cyan-400">
-                    <span class="material-symbols-outlined text-lg">distance</span>
-                </div>
-                <div>
-                    <div class="text-xs font-bold text-white">Jonli Radar & Joylashuv</div>
-                    <div class="text-[9px] text-emerald-400 font-semibold">Bepul: 1 farzand, 48 soatda 2 so'rov</div>
-                </div>
-            </div>
-            <button onclick="switchTab('tab-radar')" class="px-3 py-1.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 text-[10px] font-bold transition flex items-center gap-1">
-                <span>Xaritaga o'tish</span>
-                <span class="material-symbols-outlined text-xs">arrow_forward</span>
-            </button>
-        </div>
+        
 
         <!-- 3. AI Interaktiv Muloqot Majmuasi (Gemini Chat, Rasm, Ovoz) -->
         <section class="glass-panel p-4 space-y-3">
@@ -2088,41 +1985,14 @@
                     </div>
                     <div class="text-right">
                         <div class="text-base font-black text-amber-400">10,000 so'm</div>
-                        <span class="text-[10px] text-slate-400">yoki ⭐ 50 Stars / oy</span>
+                        <span class="text-[10px] text-slate-400">oyiga</span>
                     </div>
                 </div>
 
-                <!-- Telegram Stars To'lov Tugmasi -->
-                <!-- To'lov hozircha yoqilmagan: handlePayWithStars() va
-                     handlePayWithCardOrTon() app.js da umuman mavjud emas,
-                     bosilganda faqat konsol xatosi chiqardi. -->
-                <div class="pt-2 border-t border-slate-800 space-y-2 hidden">
-                    <button onclick="handlePayWithStars()" class="w-full py-2.5 bg-gradient-to-r from-amber-500 via-yellow-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-slate-950 font-black text-xs rounded-xl shadow-lg shadow-amber-500/25 transition flex items-center justify-center gap-2">
-                        <span>⭐</span>
-                        <span>50 Telegram Yulduzlari Bilan To'lash (10,000 so'm)</span>
-                    </button>
-                    
-                    <button onclick="handlePayWithCardOrTon()" class="w-full py-2 bg-slate-900/90 hover:bg-slate-800 border border-slate-700 text-slate-300 font-bold text-xs rounded-xl transition flex items-center justify-center gap-2">
-                        <span>💳</span>
-                        <span>Karta (Click / Payme) yoki 💎 TON Hamyon</span>
-                    </button>
-                </div>
+                
             </div>
 
-            <!-- Yulduzcha Sotib Olish Bo'limi -->
-            <!-- openStarsBuyBot() ham app.js da yo'q. -->
-            <div class="p-3.5 rounded-2xl bg-slate-900/90 border border-indigo-500/30 space-y-2 text-xs hidden">
-                <div class="font-bold text-indigo-300 flex items-center gap-1.5">
-                    <span>⭐</span>
-                    <span>Hisobingizda Yulduzcha (Stars) Yo'qmi?</span>
-                </div>
-                <p class="text-[11px] text-slate-400 leading-relaxed">
-                    Siz rasmiy Telegram platformasi orqali yoki to'g'ridan-to'g'ri kartangiz bilan yulduzchalarni tezkor xarid qilishingiz mumkin. Hech qanday murakkab qog'ozbozliksiz 1 soniyada faollashadi.
-                </p>
-                <button onclick="openStarsBuyBot()" class="w-full py-2 bg-indigo-600/30 hover:bg-indigo-600/50 border border-indigo-500/40 text-indigo-200 font-bold text-xs rounded-xl transition">
-                    ⭐ Yulduzcha Xarid Qilish (Bot orqali) ↗
-                </button>
-            </div>
+            
         </div>
     </div>
 
@@ -2416,9 +2286,6 @@
                 ⚙️
             </button>
             <div id="quickMenuDropdown" class="absolute bottom-14 right-0 w-48 bg-slate-900/95 border border-slate-700 rounded-2xl p-2 shadow-2xl backdrop-blur-xl space-y-1 hidden">
-                <button onclick="openSubpage('modal-plans'); toggleQuickMenu();" class="w-full text-left px-3 py-2 rounded-xl text-[11px] font-bold text-amber-300 hover:bg-slate-800 flex items-center gap-2">
-                    <span>⭐</span> <span>Stars To'lov Boti</span>
-                </button>
                 <button onclick="copyPairingLink(); toggleQuickMenu();" class="w-full text-left px-3 py-2 rounded-xl text-[11px] font-bold text-cyan-300 hover:bg-slate-800 flex items-center gap-2">
                     <span>🔗</span> <span>Farzand Havolasi</span>
                 </button>
@@ -2767,6 +2634,46 @@
     <!-- ==================================================================== -->
     <!-- OTA-ONA BOTTOM NAVIGATION BAR (STITCH 5 TA BO'LIM) -->
     <!-- ==================================================================== -->
+
+    <!-- ==================================================================== -->
+    <!-- OTA-ONA TAB: ✨ QO'SHIMCHA IMKONIYATLAR -->
+    <!-- ==================================================================== -->
+    <main id="tab-extras" class="tab-content space-y-3 hidden">
+        <h2 class="text-xs font-black text-white uppercase tracking-wider px-1">✨ Qo'shimcha imkoniyatlar</h2>
+        <div id="parentExtrasGrid" class="grid grid-cols-2 gap-2.5"></div>
+    </main>
+
+    <!-- ==================================================================== -->
+    <!-- OTA-ONA TAB: 🎮 O'YINLAR -->
+    <!-- ==================================================================== -->
+    <main id="tab-games" class="tab-content space-y-3 hidden">
+        <h2 class="text-xs font-black text-white uppercase tracking-wider px-1">🎮 O'yinlar</h2>
+        <div class="text-[10px] text-slate-400 leading-relaxed p-2.5 rounded-xl bg-slate-900/60 border border-slate-800">
+            Farzandingiz bilan birga o'ynang. O'yinlar ball bermaydi — ular birga vaqt o'tkazish uchun.
+        </div>
+        <div id="parentGamesHost"></div>
+    </main>
+
+    <!-- ==================================================================== -->
+    <!-- FARZAND TAB: ✨ QO'SHIMCHA -->
+    <!-- ==================================================================== -->
+    <main id="child-tab-extras" class="tab-content space-y-3 hidden">
+        <h2 class="text-xs font-black text-white uppercase tracking-wider px-1">✨ Qo'shimcha</h2>
+        <div id="childExtrasHost" class="space-y-3"></div>
+    </main>
+
+    <!-- ==================================================================== -->
+    <!-- FARZAND TAB: 🎮 O'YINLAR -->
+    <!-- ==================================================================== -->
+    <main id="child-tab-games" class="tab-content space-y-3 hidden">
+        <h2 class="text-xs font-black text-white uppercase tracking-wider px-1">🎮 O'yinlar</h2>
+        <div class="text-[10px] text-slate-400 leading-relaxed p-2.5 rounded-xl bg-slate-900/60 border border-slate-800">
+            Bu o'yinlar ball ham, ekran vaqti ham bermaydi — shunchaki o'ynash uchun.
+            Bir marta ochilgandan keyin <b>internetsiz</b> ham ishlaydi.
+        </div>
+        <div id="childGamesHost"></div>
+    </main>
+
     <nav id="parentBottomNav" class="bottom-nav">
         <button onclick="switchTab('tab-dashboard')" id="nav-tab-dashboard" class="nav-btn active">
             <span class="material-symbols-outlined">home</span>
@@ -2780,7 +2687,17 @@
 
         <button onclick="switchTab('tab-ai')" id="nav-tab-ai" class="nav-btn">
             <span class="material-symbols-outlined">psychology</span>
-            <span data-i18n="navAi">AI Murabbiy 💎</span>
+            <span data-i18n="navAi">AI Murabbiy</span>
+        </button>
+
+        <button onclick="switchTab('tab-extras')" id="nav-tab-extras" class="nav-btn">
+            <span class="material-symbols-outlined">apps</span>
+            <span>Qo'shimcha</span>
+        </button>
+
+        <button onclick="switchTab('tab-games')" id="nav-tab-games" class="nav-btn">
+            <span class="material-symbols-outlined">stadia_controller</span>
+            <span>O'yinlar</span>
         </button>
 
         <button onclick="switchTab('tab-school')" id="nav-tab-school" class="nav-btn hidden">
@@ -2808,6 +2725,16 @@
             <span data-i18n="childNavAi">AI Do'st</span>
         </button>
 
+        <button onclick="switchChildTab('child-tab-extras')" id="nav-child-tab-extras" class="nav-btn">
+            <span class="material-symbols-outlined">apps</span>
+            <span>Qo'shimcha</span>
+        </button>
+
+        <button onclick="switchChildTab('child-tab-games')" id="nav-child-tab-games" class="nav-btn">
+            <span class="material-symbols-outlined">stadia_controller</span>
+            <span>O'yinlar</span>
+        </button>
+
         <button onclick="switchChildTab('child-tab-rewards')" id="nav-child-tab-rewards" class="nav-btn">
             <span class="material-symbols-outlined">military_tech</span>
             <span data-i18n="childNavRewards">Yutuqlar</span>
@@ -2825,7 +2752,7 @@
     </nav>
 
     <!-- Custom JavaScript -->
-    <script src="app.js?v=6.2"></script>
+    <script src="app.js?v=6.3"></script>
     <!-- O'yinlar alohida faylda: app.js allaqachon katta, va o'yin kontenti
          (savollar, kartalar) o'sib boradi. Alohida fayl brauzerda alohida
          keshlanadi — o'yin qo'shilsa, butun ilova qayta yuklanmaydi. -->
