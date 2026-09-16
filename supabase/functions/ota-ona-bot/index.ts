@@ -1634,7 +1634,10 @@ async function handleRequest(req: Request): Promise<Response> {
     // cron_daily_digest — ichki chaqiruv, o'zi maxfiy sarlavha bilan himoyalangan.
     // web_login / web_logout — brauzerda Telegram imzosi yo'q; web_login o'zi
     //   login/parolni tekshiradi va urinishlar soni cheklangan.
-    const NO_ACTOR_TYPES = ["device_pair", "cron_daily_digest", "web_login", "web_logout"];
+    const NO_ACTOR_TYPES = [
+      "device_pair", "cron_daily_digest", "cron_live_reminder",
+      "cron_evening_check", "web_login", "web_logout",
+    ];
     let actor: Actor | null = null;
     if (typeof payload?.type === "string" && !NO_ACTOR_TYPES.includes(payload.type)) {
       actor = await authenticate(payload);
@@ -3329,6 +3332,167 @@ async function handleRequest(req: Request): Promise<Response> {
     //
     // Himoya: Telegram webhook'i bilan bir xil maxfiy sarlavha talab qilinadi,
     // ya'ni bu endpointni tashqaridan chaqirib bo'lmaydi.
+    // 0.0z1 JONLI JOYLASHUV TUGAGANDA ESLATMA.
+    //
+    // Chegara tugagach, bola hech narsa sezmasa — qayta yoqmaydi, va radar
+    // jimgina o'ladi. Bu "kuniga 2 marta yoqish = butun kun ko'rinib turish"
+    // rejimini ishlatadigan yagona narsa.
+    //
+    // Webhook tomonida ham shunday xabar bor, lekin u faqat bola hamon
+    // yangilanish yuborayotgan bo'lsa ishlaydi. Bola bir joyda tinch o'tirsa,
+    // Telegram yangilanish yubormaydi va u yo'l hech qachon ishga tushmaydi —
+    // aynan shu bo'shliqni cron yopadi.
+    if (payload.type === "cron_live_reminder") {
+      if (!WEBHOOK_SECRET || req.headers.get("x-telegram-bot-api-secret-token") !== WEBHOOK_SECRET) {
+        return new Response(JSON.stringify({ ok: false, error: "forbidden" }), {
+          status: 403, headers: { "Content-Type": "application/json" },
+        });
+      }
+      if (!db) {
+        return new Response(JSON.stringify({ ok: false, error: "Baza ulanmagan" }), {
+          status: 500, headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      // 12 soatlik oyna: undan eskisi uchun eslatma yuborish kech, faqat
+      // bezovta qilardi (masalan xizmat bir kecha to'xtab qolgan bo'lsa).
+      const { data: expired } = await db
+        .from("child_pairings")
+        .select("family_code, child_id, child_name, live_until")
+        .eq("is_active", true)
+        .not("live_until", "is", null)
+        .lte("live_until", new Date().toISOString())
+        .gte("live_until", new Date(Date.now() - 12 * 3600 * 1000).toISOString())
+        .limit(200);
+
+      let reminded = 0;
+      for (const row of expired || []) {
+        const tgId = String(row.child_id).startsWith("tg_")
+          ? String(row.child_id).slice(3)
+          : null;
+
+        // Avval belgini o'chiramiz: xabar yuborishda xato bo'lsa ham, keyingi
+        // yurishda bir xil eslatma qayta ketmasin.
+        await db
+          .from("child_pairings")
+          .update({ live_until: null, live_msg_id: null })
+          .eq("family_code", row.family_code)
+          .eq("child_id", row.child_id);
+
+        if (!tgId) continue;
+
+        const plan = await getPlan(row.family_code);
+        const hours = plan === "pro" ? PRO_LIVE_HOURS : FREE_LIVE_HOURS;
+
+        await sendMessage(
+          tgId,
+          `🛰️ <b>Jonli joylashuving o'chdi.</b>\n\n` +
+            `${hours} soat tugadi. Ota-onang endi seni xaritada jonli ko'rmaydi.\n\n` +
+            `Qayta yoqish: shu suhbatda <b>📎</b> → <b>Joylashuv</b> → <b>«Jonli joylashuvni ulashish»</b>.\n\n` +
+            `<i>Telefonda ishlaydi; kompyuterdagi Telegram'da bu band yo'q.</i>`,
+          {
+            inline_keyboard: [
+              [
+                {
+                  text: "📍 Hozirgi joylashuvni yuborish",
+                  web_app: { url: `${MINI_APP_URL}&role=child&ask=loc` },
+                },
+              ],
+            ],
+          }
+        );
+        reminded++;
+      }
+
+      return new Response(JSON.stringify({ ok: true, reminded }), {
+        status: 200, headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    // 0.0z2 KECHKI TEKSHIRUV — "farzandingiz uydami?"
+    //
+    // Kuniga bitta jumla, lekin ota-ona uchun kunning eng muhim savoli.
+    // Hudud nomiga tayanmaymiz (ota-ona uni istalgancha nomlashi mumkin) —
+    // oxirgi nuqta QAYSI hududga tushishini hisoblaymiz.
+    if (payload.type === "cron_evening_check") {
+      if (!WEBHOOK_SECRET || req.headers.get("x-telegram-bot-api-secret-token") !== WEBHOOK_SECRET) {
+        return new Response(JSON.stringify({ ok: false, error: "forbidden" }), {
+          status: 403, headers: { "Content-Type": "application/json" },
+        });
+      }
+      if (!db) {
+        return new Response(JSON.stringify({ ok: false, error: "Baza ulanmagan" }), {
+          status: 500, headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      const { data: kids } = await db
+        .from("child_pairings")
+        .select("family_code, child_id, child_name")
+        .eq("is_active", true)
+        .not("child_id", "like", "invite\\_%")
+        .limit(500);
+
+      const byFamily: Record<string, string[]> = {};
+
+      for (const k of kids || []) {
+        const { data: zones } = await db
+          .from("geofence_zones")
+          .select("name, center_lat, center_lng, radius_m")
+          .eq("family_code", k.family_code)
+          .eq("child_id", k.child_id);
+
+        // Hududi yo'q oilaga bu xabarning ma'nosi yo'q — jim o'tamiz.
+        if (!zones || !zones.length) continue;
+
+        const { data: ping } = await db
+          .from("location_pings")
+          .select("lat, lng, recorded_at")
+          .eq("family_code", k.family_code)
+          .eq("child_id", k.child_id)
+          .order("recorded_at", { ascending: false })
+          .limit(1);
+
+        const nom = k.child_name || "Farzandingiz";
+        const p = ping && ping[0];
+
+        let line: string;
+        if (!p || Date.now() - new Date(p.recorded_at).getTime() > 12 * 3600 * 1000) {
+          line = `❔ <b>${nom}</b> — bugun joylashuv kelmagan.`;
+        } else {
+          let inZone: string | null = null;
+          for (const z of zones) {
+            if (distanceMeters(p.lat, p.lng, z.center_lat, z.center_lng) <= z.radius_m) {
+              inZone = z.name;
+              break;
+            }
+          }
+          const vaqt = new Date(p.recorded_at).toLocaleTimeString("uz-UZ", {
+            hour: "2-digit", minute: "2-digit",
+          });
+          line = inZone
+            ? `✅ <b>${nom}</b> — <b>${inZone}</b> hududida (${vaqt}).`
+            : `⚠️ <b>${nom}</b> — belgilangan hududlardan tashqarida (${vaqt}).\n` +
+              `<a href="https://maps.google.com/?q=${p.lat},${p.lng}">Xaritada ko'rish</a>`;
+        }
+
+        (byFamily[k.family_code] = byFamily[k.family_code] || []).push(line);
+      }
+
+      let sent = 0;
+      for (const [fam, lines] of Object.entries(byFamily)) {
+        await notifyFamilyParents(
+          fam,
+          `🌙 <b>Kechki tekshiruv</b>\n\n${lines.join("\n\n")}`
+        );
+        sent++;
+      }
+
+      return new Response(JSON.stringify({ ok: true, families: sent }), {
+        status: 200, headers: { "Content-Type": "application/json" },
+      });
+    }
+
     if (payload.type === "cron_daily_digest") {
       if (!WEBHOOK_SECRET || req.headers.get("x-telegram-bot-api-secret-token") !== WEBHOOK_SECRET) {
         return new Response(JSON.stringify({ ok: false, error: "forbidden" }), {
