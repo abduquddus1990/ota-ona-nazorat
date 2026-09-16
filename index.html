@@ -454,6 +454,32 @@
                 </button>
             </div>
 
+            <!-- 📍 JOYLASHUV: 📎 menyusisiz, ilova ichidan -->
+            <div id="childLocationCard" class="hidden p-3.5 rounded-2xl bg-gradient-to-br from-cyan-500/15 to-sky-500/8 border border-cyan-500/35 space-y-2.5">
+                <div class="flex items-center gap-2">
+                    <span class="text-xl">📍</span>
+                    <div>
+                        <div class="text-xs font-bold text-cyan-200">Joylashuv</div>
+                        <div class="text-[10px] text-slate-400" id="childLocationSub">Ota-onang xavotir olmasligi uchun</div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="sendMyLocation('manual')" class="py-2 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-100 text-[11px] font-bold transition">
+                        📍 Joylashuvni yuborish
+                    </button>
+                    <button onclick="sendMyLocation('arrived')" class="py-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-100 text-[11px] font-bold transition">
+                        🏫 Yetib keldim
+                    </button>
+                </div>
+
+                <div id="childLocationResult" class="text-[10px] text-slate-400"></div>
+
+                <button onclick="openLiveLocationGuide()" class="w-full py-2 rounded-xl bg-slate-800/70 hover:bg-slate-700/70 border border-slate-700 text-slate-200 text-[10px] font-bold transition">
+                    🛰️ Jonli kuzatuvni yoqish (ko'rsatma)
+                </button>
+            </div>
+
             <!-- 🎁 DO'STNI TAKLIF QILISH: bola chaqirsa, oilaga 7 kun Pro -->
             <div id="childReferralCard" class="hidden p-3.5 rounded-2xl bg-gradient-to-br from-emerald-500/15 to-teal-500/8 border border-emerald-500/35 space-y-2.5">
                 <div class="flex items-center gap-2">

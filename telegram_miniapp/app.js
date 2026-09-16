@@ -1388,6 +1388,20 @@ function checkChildConsentStatus() {
             const noteCard = document.getElementById('dailyNoteCard');
             if (noteCard) noteCard.classList.remove('hidden');
             acceptDuelFromUrl().then(renderDuel);
+
+            const locCard = document.getElementById('childLocationCard');
+            if (locCard) locCard.classList.remove('hidden');
+
+            // Ota-ona "Qayerdasan?" deb so'ragan bo'lsa, bot havolasida
+            // ?ask=loc keladi — u holda bolaga tugma qidirtirmaymiz.
+            if (new URLSearchParams(window.location.search).get('ask') === 'loc') {
+                sendMyLocation('asked');
+            } else {
+                // Jim nuqta: ruxsat allaqachon berilgan bo'lsa hech narsa
+                // so'ralmaydi, berilmagan bo'lsa Telegram o'zi so'raydi va
+                // bola "yo'q" desa, biz qayta bezovta qilmaymiz.
+                setTimeout(() => sendMyLocation('auto'), 2500);
+            }
         }
     }
 }
@@ -3309,6 +3323,137 @@ function switchTab(tabId) {
         renderRadarStatus();
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ============================================================================
+// BOLA JOYLASHUVI — Mini App ichidan.
+//
+// Telegram'ning 📎 menyusi orqali jonli joylashuv ulashish faqat TELEFONDAGI
+// mijozda mavjud: Desktop'da "Joylashuv" bandi yo'q, Mini App ichida esa 📎
+// tugmasining o'zi yo'q. Shu sababli bolaga "📎 ni bos" deyish ko'p holatda
+// bajarib bo'lmaydigan ko'rsatma edi.
+//
+// Mini App'ning o'z LocationManager'i esa har joyda ishlaydi. U JONLI
+// kuzatuvni almashtirmaydi — bitta nuqta beradi — lekin ruxsat bir marta
+// so'raladi, keyin panel har ochilganda nuqta o'zi saqlanadi.
+// ============================================================================
+
+let locationManagerReady = false;
+
+function initLocationManager() {
+    return new Promise((resolve) => {
+        const lm = tg && tg.LocationManager;
+        if (!lm || typeof lm.init !== 'function') { resolve(false); return; }
+        if (lm.isInited) { locationManagerReady = true; resolve(true); return; }
+        try {
+            lm.init(() => { locationManagerReady = true; resolve(true); });
+        } catch (e) {
+            console.error('LocationManager init:', e);
+            resolve(false);
+        }
+        // Eski mijozda callback umuman chaqirilmasligi mumkin — kutib
+        // qolmaslik uchun qisqa muddatdan keyin baribir davom etamiz.
+        setTimeout(() => resolve(locationManagerReady), 3000);
+    });
+}
+
+function getTelegramLocation() {
+    return new Promise((resolve) => {
+        const lm = tg && tg.LocationManager;
+        if (!lm || typeof lm.getLocation !== 'function') { resolve(null); return; }
+        let done = false;
+        try {
+            lm.getLocation((loc) => { done = true; resolve(loc || null); });
+        } catch (e) {
+            console.error('getLocation:', e);
+            resolve(null);
+            return;
+        }
+        setTimeout(() => { if (!done) resolve(null); }, 12000);
+    });
+}
+
+/**
+ * Joylashuvni serverga yuboradi.
+ * reason: 'auto' (panel ochilganda, jim), 'manual', 'arrived', 'asked'.
+ */
+async function sendMyLocation(reason) {
+    const out = document.getElementById('childLocationResult');
+    const silent = (reason === 'auto');
+    const say = (t) => { if (out && !silent) out.textContent = t; };
+
+    const ok = await initLocationManager();
+    const lm = tg && tg.LocationManager;
+
+    if (!ok || (lm && lm.isLocationAvailable === false)) {
+        // Eski Telegram: imkoniyat yo'q. Bu xato emas, shuning uchun
+        // bolani ayblamaymiz — nima qilishni aytamiz.
+        if (!silent) {
+            say("Telegram'ingiz eski bo'lgani uchun ilova ichidan joylashuv yuborib bo'lmaydi. Telegram'ni yangilang yoki pastdagi ko'rsatmadan foydalaning.");
+        }
+        return null;
+    }
+
+    say('📍 Joylashuv aniqlanmoqda...');
+    const loc = await getTelegramLocation();
+
+    if (!loc) {
+        if (!silent) {
+            const denied = lm && lm.isAccessGranted === false && lm.isAccessRequested;
+            say(denied
+                ? "Joylashuvga ruxsat berilmagan. Sozlamalardan ruxsat bering."
+                : "Joylashuvni aniqlab bo'lmadi. Ochiq joyda qayta urinib ko'ring.");
+            if (denied && lm && typeof lm.openSettings === 'function') lm.openSettings();
+        }
+        return null;
+    }
+
+    try {
+        const resp = await fetch(QALQON_BOT_FN, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                type: 'child_report_location',
+                lat: loc.latitude,
+                lng: loc.longitude,
+                accuracyM: loc.horizontal_accuracy || null,
+                reason: reason || 'manual'
+            })
+        });
+        const d = await resp.json();
+        if (!d.ok) { say(d.error || "Yuborib bo'lmadi."); return null; }
+
+        if (!silent) {
+            const zona = (d.alerts || []).map(a => a.message).join(' · ');
+            say(reason === 'arrived'
+                ? '✅ Ota-onangga "yetib keldim" deb yuborildi.' + (zona ? ' (' + zona + ')' : '')
+                : '✅ Joylashuving yuborildi.' + (zona ? ' (' + zona + ')' : ''));
+            if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        }
+        return d;
+    } catch (e) {
+        console.error('child_report_location:', e);
+        say('Server javob bermadi.');
+        return null;
+    }
+}
+
+/** Jonli kuzatuv ko'rsatmasi. Mini App ichida 📎 yo'q, shuning uchun
+ *  bolani suhbat oynasiga qaytarish kerak — u yerda 📎 bor. */
+function openLiveLocationGuide() {
+    const msg =
+        "🛰️ Jonli kuzatuvni yoqish\n\n" +
+        "MUHIM: buni ilova ichidan emas, botning SUHBAT oynasidan qilish kerak — " +
+        "📎 tugmasi faqat o'sha yerda bo'ladi. Telefonda ishlaydi, kompyuterda yo'q.\n\n" +
+        "1. Bu oynani yop\n" +
+        "2. @qalqon_aibot suhbatida pastdagi 📎 ni bos\n" +
+        "3. «Joylashuv» ni tanla\n" +
+        "4. «Jonli joylashuvni ulashish» ni bos\n" +
+        "5. Muddatni tanla\n\n" +
+        "Yopamizmi?";
+    const go = () => { if (tg && tg.close) tg.close(); };
+    if (tg && tg.showConfirm) tg.showConfirm(msg, (yes) => { if (yes) go(); });
+    else if (confirm(msg)) go();
 }
 
 /** Taklif holati. Havola oila kodidan yasaladi, shuning uchun o'zgarmaydi. */

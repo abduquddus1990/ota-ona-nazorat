@@ -3627,6 +3627,32 @@ async function handleRequest(req: Request): Promise<Response> {
         plan_at_request: q.plan,
       });
 
+      // So'rov BOLAGA ham yetib boradi. Ilgari bu tugma faqat bazadagi eski
+      // nuqtani qaytarardi — ya'ni ota-ona "so'radim" deb o'ylardi-yu, bola
+      // hech narsa ko'rmasdi. Endi bu topshiriq: bolaning telefoniga bitta
+      // tugmali xabar boradi, u bossa aniq joylashuv keladi.
+      const askTgId = String(childId).startsWith("tg_")
+        ? String(childId).slice(3)
+        : null;
+      if (askTgId) {
+        await sendMessage(
+          askTgId,
+          `📍 <b>Ota-onang qayerdaligingni so'rayapti.</b>\n\n` +
+            `Pastdagi tugmani bosing — joylashuving bir zumda yuboriladi. ` +
+            `Doimiy kuzatuv emas, faqat shu daqiqadagi nuqta.`,
+          {
+            inline_keyboard: [
+              [
+                {
+                  text: "📍 Joylashuvni yuborish",
+                  web_app: { url: `${MINI_APP_URL}&role=child&ask=loc` },
+                },
+              ],
+            ],
+          }
+        );
+      }
+
       // Eng so'nggi ma'lum joylashuv (qurilma yuborgan).
       const { data: pings } = await db
         .from("location_pings")
@@ -3960,6 +3986,107 @@ async function handleRequest(req: Request): Promise<Response> {
 
     // 0.0o Qurilma joylashuv yuboradi (Android). Kvota bu yerga tegmaydi -
     // kvota ota-onaning SO'RASHIGA tegishli, qurilmaning yuborishiga emas.
+    // 0.0o- BOLA JOYLASHUVI — Mini App ichidan (Telegram LocationManager).
+    //
+    // Nega kerak: Telegram'ning 📎 menyusi orqali jonli joylashuv ulashish
+    // faqat TELEFONDAGI mijozda bor — Desktop'da "Joylashuv" bandi umuman
+    // yo'q, Mini App ichida esa 📎 tugmasining o'zi yo'q. Shu sabab bola
+    // ko'rsatmani bajara olmay qolardi. Mini App'ning o'z LocationManager'i
+    // esa har joyda ishlaydi va bitta bosish talab qiladi.
+    //
+    // Bu JONLI kuzatuvning o'rnini bosmaydi — u bitta nuqta beradi. Lekin
+    // bola panelni kuniga bir necha marta ochadi, ya'ni bepul nuqtalar
+    // hech qanday bosishsiz ham yig'ilib boradi.
+    if (payload.type === "child_report_location") {
+      if (!db) {
+        return new Response(JSON.stringify({ ok: false, error: "Baza ulanmagan" }), {
+          status: 500, headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      const familyCode = await resolveActorFamily(actor!);
+      const childId =
+        actor!.kind === "device" ? actor!.childId : "tg_" + actor!.telegramId;
+
+      // Faqat oilaga ulangan bola yuborishi mumkin. Aks holda istalgan
+      // Telegram hisobi begona oilaning xaritasiga nuqta qo'yib ketardi.
+      if (actor!.kind === "telegram" && !(await isPairedChild(actor!.telegramId))) {
+        return unauthorized("Faqat ulangan farzand");
+      }
+
+      const lat = Number(payload.lat);
+      const lng = Number(payload.lng);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng) ||
+          Math.abs(lat) > 90 || Math.abs(lng) > 180) {
+        return new Response(JSON.stringify({ ok: false, error: "lat/lng noto'g'ri" }), {
+          status: 400, headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      const reason = String(payload.reason || "manual");
+
+      // Panel ochilganda avtomatik yuboriladigan nuqtalarni siyraklashtirmasak,
+      // bola ilovani 10 marta ochib-yopsa baza bir xil nuqta bilan to'lardi va
+      // "kun marshruti" o'qib bo'lmas holga kelardi.
+      if (reason === "auto") {
+        const { data: recent } = await db
+          .from("location_pings")
+          .select("recorded_at")
+          .eq("family_code", familyCode)
+          .eq("child_id", childId)
+          .gte("recorded_at", new Date(Date.now() - 5 * 60 * 1000).toISOString())
+          .limit(1);
+        if (recent && recent[0]) {
+          return new Response(JSON.stringify({ ok: true, skipped: true }), {
+            status: 200, headers: { "Content-Type": "application/json" },
+          });
+        }
+      }
+
+      await db.from("location_pings").insert({
+        family_code: familyCode,
+        child_id: childId,
+        lat,
+        lng,
+        accuracy_m: Math.round(Number(payload.accuracyM) || 0) || null,
+      });
+
+      const fired = await evaluateGeofences(familyCode, childId, lat, lng);
+      for (const f of fired) {
+        await notifyFamilyParents(
+          familyCode,
+          "\u{1F4CD} <b>" + f.message + "</b>\n\n" +
+            '<a href="https://maps.google.com/?q=' + lat + "," + lng + '">Xaritada ko\'rish</a>' +
+            "\n🕒 " + new Date().toLocaleString("uz-UZ")
+        );
+      }
+
+      // "Yetib keldim" va "Qayerdasan?" javobi ota-onaga alohida boradi:
+      // bular bolaning o'z tashabbusi, ya'ni kuzatuv emas, xabar berish.
+      if (reason === "arrived" || reason === "asked") {
+        const { data: kid } = await db
+          .from("child_pairings")
+          .select("child_name")
+          .eq("family_code", familyCode)
+          .eq("child_id", childId)
+          .limit(1);
+        const nom = (kid && kid[0] && kid[0].child_name) || "Farzandingiz";
+        await notifyFamilyParents(
+          familyCode,
+          (reason === "arrived"
+            ? `🏫 <b>${nom}: "Yetib keldim"</b>`
+            : `📍 <b>${nom} joylashuvini yubordi</b>`) +
+            `\n\n<a href="https://maps.google.com/?q=${lat},${lng}">Xaritada ko'rish</a>` +
+            `\n🕒 ${new Date().toLocaleString("uz-UZ")}`
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ ok: true, alerts: fired, savedAt: new Date().toISOString() }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
     if (payload.type === "report_location") {
       if (actor!.kind !== "device") return unauthorized("Faqat juftlashgan qurilma");
       if (!db) {
