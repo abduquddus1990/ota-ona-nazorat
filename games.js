@@ -257,9 +257,13 @@ function renderGamesGrid() {
     const grid = document.getElementById('gamesGrid');
     if (!grid) return;
     grid.innerHTML = GAMES.map(g => {
-        const best = g.id === 'memory'
-            ? (gamesBest.memory != null ? `Eng yaxshi: ${gamesBest.memory} yurish` : '')
-            : (gamesBest.wolf != null ? `Yechilgan: ${gamesBest.wolf} topshiriq` : '');
+        const bestMap = {
+            memory: gamesBest.memory != null ? 'Eng yaxshi: ' + gamesBest.memory + ' yurish' : '',
+            wolf: gamesBest.wolf != null ? 'Yechilgan: ' + gamesBest.wolf + ' topshiriq' : '',
+            tower: gamesBest.tower != null ? 'Eng baland: ' + gamesBest.tower + ' qavat' : '',
+            snake: gamesBest.snake != null ? 'Eng yaxshi: ' + gamesBest.snake : ''
+        };
+        const best = bestMap[g.id] || '';
         return `
         <div onclick="openGame('${g.id}')" class="p-3.5 rounded-2xl bg-slate-900/70 border border-slate-700 hover:border-indigo-500/60 transition cursor-pointer flex items-center gap-3">
             <div class="w-12 h-12 rounded-xl bg-slate-950/80 border border-slate-700 flex items-center justify-center text-2xl">${g.emoji}</div>
@@ -287,10 +291,16 @@ function openGame(id) {
     if (id === 'wolf') startWolfGame(stage);
     if (id === 'memory') startMemoryGame(stage);
     if (id === 'quiz') startQuiz(stage);
+    if (id === 'tower') startTowerGame(stage);
+    if (id === 'snake') startSnakeGame(stage);
 }
 
 function closeGame() {
     stopWolfGame();
+    // Arkada o'yinlari o'z tsikli va klaviatura tinglovchilarini qoldirib
+    // ketmasligi kerak: aks holda bola boshqa bo'limga o'tganda ham o'yin
+    // fon rejimida ishlab, batareyani yeb turardi.
+    if (typeof stopArcade === 'function') stopArcade();
     const grid = document.getElementById('gamesGrid');
     const stage = document.getElementById('gameStage');
     const intro = document.getElementById('gamesIntro');
