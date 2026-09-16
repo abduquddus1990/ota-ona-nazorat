@@ -313,204 +313,12 @@ function startTowerGame(stage) {
     frame();
 }
 
-/* ===========================================================================
- * 2) ILON
- *
- * Nokia'dagi o'yinning o'zi, faqat yumaloq bo'g'inlar, yorug'lik va ravon
- * harakat bilan. Boshqaruv uch xil: surish (swipe), tugmalar va klaviatura —
- * telefonda ham, kompyuterda ham o'ynash uchun.
- * ======================================================================== */
-
-function startSnakeGame(stage) {
-    stopArcade();
-    const host = arcadeShell(stage, '🐍 Ilon', '0');
-    const W = Math.min(stage.clientWidth || 340, 400);
-    const COLS = 17;
-    const CELL = Math.floor(W / COLS);
-    const CW = CELL * COLS;
-    // Qatorlar soni EKRAN BALANDLIGIDAN kelib chiqadi. Qat'iy 21 qator
-    // qilinganda maydon telefonga sig'may, boshqaruv tugmalari pastda
-    // ko'rinmay qolardi — o'yinni boshqarib bo'lmasdi.
-    const bosh = Math.max(240, (window.innerHeight || 700) - 380);
-    const ROWS = Math.max(12, Math.min(21, Math.floor(bosh / CELL)));
-    const CH = CELL * ROWS;
-    const { canvas, x } = arcadeCanvas(host, CW, CH);
-
-    document.getElementById('arcadeFoot').innerHTML =
-        '<div class="grid grid-cols-3 gap-2 mt-1 max-w-[210px] mx-auto select-none" id="snakePad">' +
-            '<span></span>' +
-            '<button data-d="u" class="py-3 rounded-xl bg-slate-800 border border-slate-700 text-white font-bold">↑</button>' +
-            '<span></span>' +
-            '<button data-d="l" class="py-3 rounded-xl bg-slate-800 border border-slate-700 text-white font-bold">←</button>' +
-            '<button data-d="d" class="py-3 rounded-xl bg-slate-800 border border-slate-700 text-white font-bold">↓</button>' +
-            '<button data-d="r" class="py-3 rounded-xl bg-slate-800 border border-slate-700 text-white font-bold">→</button>' +
-        '</div>';
-
-    let snake, dir, nextDir, food, score, over, tick, speed, glow;
-
-    function reset() {
-        const y0 = Math.floor(ROWS / 2);
-        snake = [{ x: 8, y: y0 }, { x: 8, y: y0 + 1 }, { x: 8, y: y0 + 2 }];
-        dir = { x: 0, y: -1 };
-        nextDir = dir;
-        score = 0; over = false; tick = 0; speed = 8; glow = 0;
-        placeFood();
-        const hud = document.getElementById('arcadeHud');
-        if (hud) hud.textContent = '0';
-    }
-
-    function placeFood() {
-        let p;
-        do {
-            p = { x: Math.floor(Math.random() * COLS), y: Math.floor(Math.random() * ROWS) };
-        } while (snake.some(s => s.x === p.x && s.y === p.y));
-        food = p;
-    }
-
-    function turn(d) {
-        const m = { u: { x: 0, y: -1 }, d: { x: 0, y: 1 }, l: { x: -1, y: 0 }, r: { x: 1, y: 0 } }[d];
-        if (!m) return;
-        // Teskari tomonga burilish o'zini o'zi yeyishga olib kelardi.
-        if (m.x === -dir.x && m.y === -dir.y) return;
-        nextDir = m;
-    }
-
-    const keyFn = (e) => {
-        const m = { ArrowUp: 'u', ArrowDown: 'd', ArrowLeft: 'l', ArrowRight: 'r' }[e.key];
-        if (m) { e.preventDefault(); turn(m); }
-        if (over && (e.code === 'Space' || e.key === 'Enter')) reset();
-    };
-    window.addEventListener('keydown', keyFn);
-    arcadeCleanup.push(() => window.removeEventListener('keydown', keyFn));
-
-    document.querySelectorAll('#snakePad button').forEach(b => {
-        const d = b.getAttribute('data-d');
-        const go = (ev) => { ev.preventDefault(); if (over) reset(); else turn(d); };
-        b.addEventListener('touchstart', go, { passive: false });
-        b.addEventListener('mousedown', go);
-    });
-
-    // Surish bilan boshqarish
-    let sx = 0, sy = 0;
-    canvas.addEventListener('pointerdown', (e) => { sx = e.offsetX; sy = e.offsetY; });
-    canvas.addEventListener('pointerup', (e) => {
-        if (over) { reset(); return; }
-        const dx = e.offsetX - sx, dy = e.offsetY - sy;
-        if (Math.abs(dx) < 16 && Math.abs(dy) < 16) return;
-        turn(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'r' : 'l') : (dy > 0 ? 'd' : 'u'));
-    });
-
-    function step() {
-        dir = nextDir;
-        const head = { x: snake[0].x + dir.x, y: snake[0].y + dir.y };
-
-        // Devordan o'tib, narigi tomondan chiqadi — bu bolalar uchun
-        // kechirimliroq va o'yin uzoqroq davom etadi.
-        if (head.x < 0) head.x = COLS - 1;
-        if (head.x >= COLS) head.x = 0;
-        if (head.y < 0) head.y = ROWS - 1;
-        if (head.y >= ROWS) head.y = 0;
-
-        if (snake.some(s => s.x === head.x && s.y === head.y)) {
-            over = true;
-            if (typeof saveBest === 'function') saveBest('snake', score, false);
-            return;
-        }
-
-        snake.unshift(head);
-        if (head.x === food.x && head.y === food.y) {
-            score++;
-            glow = 1;
-            speed = Math.min(18, 8 + score * 0.35);
-            placeFood();
-            const hud = document.getElementById('arcadeHud');
-            if (hud) hud.textContent = String(score);
-            if (typeof tg !== 'undefined' && tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
-        } else {
-            snake.pop();
-        }
-    }
-
-    function frame() {
-        tick++;
-        if (!over && tick % Math.max(2, Math.round(60 / speed)) === 0) step();
-
-        const g = x.createLinearGradient(0, 0, CW, CH);
-        g.addColorStop(0, '#0b1220');
-        g.addColorStop(1, '#111c34');
-        x.fillStyle = g;
-        x.fillRect(0, 0, CW, CH);
-
-        x.strokeStyle = 'rgba(148,163,184,0.06)';
-        x.lineWidth = 1;
-        for (let i = 1; i < COLS; i++) { x.beginPath(); x.moveTo(i * CELL, 0); x.lineTo(i * CELL, CH); x.stroke(); }
-        for (let i = 1; i < ROWS; i++) { x.beginPath(); x.moveTo(0, i * CELL); x.lineTo(CW, i * CELL); x.stroke(); }
-
-        // Ovqat — nafas olayotgandek pulsatsiya
-        glow = Math.max(0, glow - 0.04);
-        const pr = CELL * 0.36 + Math.sin(tick / 9) * 1.6;
-        x.shadowColor = '#f472b6';
-        x.shadowBlur = 16;
-        x.fillStyle = '#f472b6';
-        x.beginPath();
-        x.arc(food.x * CELL + CELL / 2, food.y * CELL + CELL / 2, pr, 0, Math.PI * 2);
-        x.fill();
-        x.shadowBlur = 0;
-
-        snake.forEach((s, i) => {
-            const t = i / snake.length;
-            x.fillStyle = i === 0 ? '#5eead4' : 'hsl(' + (170 + t * 60) + ',70%,' + (58 - t * 18) + '%)';
-            if (i === 0) { x.shadowColor = '#5eead4'; x.shadowBlur = 12 + glow * 16; }
-            const pad = i === 0 ? 1 : 2;
-            if (x.roundRect) {
-                x.beginPath();
-                x.roundRect(s.x * CELL + pad, s.y * CELL + pad, CELL - pad * 2, CELL - pad * 2, CELL * 0.34);
-                x.fill();
-            } else {
-                x.fillRect(s.x * CELL + pad, s.y * CELL + pad, CELL - pad * 2, CELL - pad * 2);
-            }
-            x.shadowBlur = 0;
-
-            if (i === 0) {
-                x.fillStyle = '#0b1220';
-                const ex = s.x * CELL + CELL / 2 + dir.x * 3;
-                const ey = s.y * CELL + CELL / 2 + dir.y * 3;
-                x.beginPath(); x.arc(ex - 3, ey - 3, 1.8, 0, Math.PI * 2); x.fill();
-                x.beginPath(); x.arc(ex + 3, ey + 3, 1.8, 0, Math.PI * 2); x.fill();
-            }
-        });
-
-        if (over) {
-            x.fillStyle = 'rgba(2,6,23,0.82)';
-            x.fillRect(0, 0, CW, CH);
-            x.textAlign = 'center';
-            x.fillStyle = '#fff';
-            x.font = 'bold 24px system-ui, sans-serif';
-            x.fillText('O\'yin tugadi', CW / 2, CH / 2 - 20);
-            x.fillStyle = '#5eead4';
-            x.font = 'bold 44px system-ui, sans-serif';
-            x.fillText(String(score), CW / 2, CH / 2 + 24);
-            x.fillStyle = '#94a3b8';
-            x.font = '13px system-ui, sans-serif';
-            const rekord = (typeof gamesBest !== 'undefined' && gamesBest.snake) || 0;
-            x.fillText('Eng yaxshi: ' + rekord, CW / 2, CH / 2 + 50);
-            x.fillText('Qaytadan boshlash uchun bos', CW / 2, CH / 2 + 76);
-        }
-
-        arcadeLoop = requestAnimationFrame(frame);
-    }
-
-    reset();
-    frame();
-}
-
 /* ------------------------------------------------------------------------ */
 /* Ro'yxatga qo'shamiz. games.js oldinroq yuklanadi, shuning uchun GAMES
    massivi shu paytda mavjud bo'ladi.                                         */
 if (typeof GAMES !== 'undefined') {
     GAMES.push(
-        { id: 'tower', name: 'Qalqon Minorasi', emoji: '🏗️', desc: 'Bloklarni aniq tushirib, osmono\'par bino qur', tag: 'Oflayn' },
-        { id: 'snake', name: 'Ilon', emoji: '🐍', desc: 'Klassik o\'yin — zamonaviy ko\'rinishda', tag: 'Oflayn' }
+        { id: 'tower', name: 'Qalqon Minorasi', emoji: '🏗️', desc: 'Bloklarni aniq tushirib, osmono\'par bino qur', tag: 'Oflayn' }
     );
 }
 
@@ -1074,4 +882,262 @@ if (typeof GAMES !== 'undefined') {
         { id: 'g2048', name: '2048', emoji: '🔢', desc: 'Sonlarni qo\'shib, 2048 ga yet', tag: 'Oflayn' },
         { id: 'penalty', name: 'Penalti', emoji: '⚽', desc: '5 ta zarba — yo\'nalish va kuchni to\'g\'ri tanla', tag: 'Oflayn' }
     );
+}
+
+/* ===========================================================================
+ * TETRIS
+ *
+ * Tushish tezligi daraja bilan oshadi: har 10 ta to'la qator — yangi daraja.
+ * Boshida shakl sekin tushadi va bola o'ylab ulguradi; 8-darajaga kelganda
+ * qo'l o'ylashdan tezroq harakat qilishi kerak bo'ladi. Aynan shu o'sish
+ * o'yinni ushlab turadi — tezlik o'zgarmasa, u 5 daqiqada zerikarli bo'ladi.
+ * ======================================================================== */
+
+const TETRIS_SHAPES = [
+    { c: '#22d3ee', k: [[1, 1, 1, 1]] },                    // I
+    { c: '#fbbf24', k: [[1, 1], [1, 1]] },                  // O
+    { c: '#a78bfa', k: [[0, 1, 0], [1, 1, 1]] },            // T
+    { c: '#34d399', k: [[0, 1, 1], [1, 1, 0]] },            // S
+    { c: '#f87171', k: [[1, 1, 0], [0, 1, 1]] },            // Z
+    { c: '#60a5fa', k: [[1, 0, 0], [1, 1, 1]] },            // J
+    { c: '#fb923c', k: [[0, 0, 1], [1, 1, 1]] }             // L
+];
+
+function startTetrisGame(stage) {
+    stopArcade();
+    const host = arcadeShell(stage, '🧱 Tetris', '0');
+    const COLS = 10, ROWS = 18;
+    const Wmax = Math.min(stage.clientWidth || 340, 360);
+    const bosh = Math.max(240, (window.innerHeight || 700) - 400);
+    const CELL = Math.max(14, Math.min(Math.floor(Wmax / COLS), Math.floor(bosh / ROWS)));
+    const W = CELL * COLS, H = CELL * ROWS;
+    const { canvas, x } = arcadeCanvas(host, W, H);
+
+    document.getElementById('arcadeFoot').innerHTML =
+        '<div class="grid grid-cols-4 gap-2 mt-1 max-w-[280px] mx-auto select-none" id="tetPad">' +
+            '<button data-a="l" class="py-3 rounded-xl bg-slate-800 border border-slate-700 text-white font-bold">←</button>' +
+            '<button data-a="rot" class="py-3 rounded-xl bg-indigo-600/40 border border-indigo-500 text-white font-bold">⟳</button>' +
+            '<button data-a="r" class="py-3 rounded-xl bg-slate-800 border border-slate-700 text-white font-bold">→</button>' +
+            '<button data-a="d" class="py-3 rounded-xl bg-slate-800 border border-slate-700 text-white font-bold">↓</button>' +
+        '</div>' +
+        '<div class="flex items-center justify-between text-[10px] text-slate-400 mt-1.5 px-1 max-w-[280px] mx-auto">' +
+            '<span>Daraja: <b id="tetLevel" class="text-slate-200">1</b></span>' +
+            '<span>Qatorlar: <b id="tetLines" class="text-slate-200">0</b></span>' +
+        '</div>';
+
+    let grid, cur, score, lines, level, over, tick, tushish, next;
+
+    function bosh_grid() {
+        return Array.from({ length: ROWS }, () => Array(COLS).fill(null));
+    }
+    function yangiShakl() {
+        const t = TETRIS_SHAPES[Math.floor(Math.random() * TETRIS_SHAPES.length)];
+        return {
+            k: t.k.map(r => r.slice()),
+            c: t.c,
+            x: Math.floor((COLS - t.k[0].length) / 2),
+            y: 0
+        };
+    }
+    function reset() {
+        grid = bosh_grid();
+        cur = yangiShakl();
+        next = yangiShakl();
+        score = 0; lines = 0; level = 1; over = false; tick = 0;
+        tushish = 48;   // necha kadrda bir qator pastga
+        paint();
+    }
+    function paint() {
+        const h = document.getElementById('arcadeHud');
+        if (h) h.textContent = String(score);
+        const l = document.getElementById('tetLevel');
+        if (l) l.textContent = String(level);
+        const q = document.getElementById('tetLines');
+        if (q) q.textContent = String(lines);
+    }
+
+    function toqnash(shakl, nx, ny) {
+        for (let r = 0; r < shakl.k.length; r++) {
+            for (let c = 0; c < shakl.k[r].length; c++) {
+                if (!shakl.k[r][c]) continue;
+                const gx = nx + c, gy = ny + r;
+                if (gx < 0 || gx >= COLS || gy >= ROWS) return true;
+                if (gy >= 0 && grid[gy][gx]) return true;
+            }
+        }
+        return false;
+    }
+
+    function burish() {
+        // Soat yo'nalishi bo'yicha aylantirish
+        const k = cur.k;
+        const yangi = k[0].map((_, i) => k.map(r => r[i]).reverse());
+        const eski = cur.k;
+        cur.k = yangi;
+        // Devorga tegib qolsa, chapga-o'ngga surib ko'ramiz — busiz shakl
+        // chetda umuman burilmasdi va o'yin g'ashga tegardi.
+        for (const siljish of [0, -1, 1, -2, 2]) {
+            if (!toqnash(cur, cur.x + siljish, cur.y)) { cur.x += siljish; return; }
+        }
+        cur.k = eski;
+    }
+
+    function joylash() {
+        for (let r = 0; r < cur.k.length; r++) {
+            for (let c = 0; c < cur.k[r].length; c++) {
+                if (!cur.k[r][c]) continue;
+                const gy = cur.y + r, gx = cur.x + c;
+                if (gy < 0) { over = true; return; }
+                grid[gy][gx] = cur.c;
+            }
+        }
+        // To'la qatorlarni olib tashlaymiz
+        let olindi = 0;
+        for (let r = ROWS - 1; r >= 0; r--) {
+            if (grid[r].every(v => v)) {
+                grid.splice(r, 1);
+                grid.unshift(Array(COLS).fill(null));
+                olindi++;
+                r++;
+            }
+        }
+        if (olindi) {
+            // Bir yo'la ko'p qator olish ko'proq ball beradi — bu bolani
+            // shoshmay, to'rttani birga olishga undaydi.
+            score += [0, 40, 100, 300, 1200][olindi] * level;
+            lines += olindi;
+            const yangiDaraja = Math.floor(lines / 10) + 1;
+            if (yangiDaraja > level) {
+                level = yangiDaraja;
+                tushish = Math.max(6, 48 - (level - 1) * 5);
+            }
+            if (typeof tg !== 'undefined' && tg && tg.HapticFeedback) {
+                tg.HapticFeedback.impactOccurred(olindi >= 3 ? 'medium' : 'light');
+            }
+        }
+        cur = next;
+        next = yangiShakl();
+        if (toqnash(cur, cur.x, cur.y)) over = true;
+        paint();
+        if (over && typeof saveBest === 'function') saveBest('tetris', score, false);
+    }
+
+    function harakat(a) {
+        if (over) { reset(); return; }
+        if (a === 'l' && !toqnash(cur, cur.x - 1, cur.y)) cur.x--;
+        if (a === 'r' && !toqnash(cur, cur.x + 1, cur.y)) cur.x++;
+        if (a === 'rot') burish();
+        if (a === 'd') {
+            if (!toqnash(cur, cur.x, cur.y + 1)) { cur.y++; score++; paint(); }
+            else joylash();
+        }
+    }
+
+    const keyFn = (e) => {
+        const m = { ArrowLeft: 'l', ArrowRight: 'r', ArrowUp: 'rot', ArrowDown: 'd' }[e.key];
+        if (m) { e.preventDefault(); harakat(m); }
+        if (e.code === 'Space') { e.preventDefault(); harakat('rot'); }
+    };
+    window.addEventListener('keydown', keyFn);
+    arcadeCleanup.push(() => window.removeEventListener('keydown', keyFn));
+
+    document.querySelectorAll('#tetPad button').forEach(b => {
+        const a = b.getAttribute('data-a');
+        const go = (ev) => { ev.preventDefault(); harakat(a); };
+        b.addEventListener('touchstart', go, { passive: false });
+        b.addEventListener('mousedown', go);
+    });
+
+    let sx = 0, sy = 0;
+    canvas.addEventListener('pointerdown', (e) => { sx = e.offsetX; sy = e.offsetY; });
+    canvas.addEventListener('pointerup', (e) => {
+        if (over) { reset(); return; }
+        const dx = e.offsetX - sx, dy = e.offsetY - sy;
+        if (Math.abs(dx) < 16 && Math.abs(dy) < 16) { harakat('rot'); return; }
+        if (Math.abs(dx) > Math.abs(dy)) harakat(dx > 0 ? 'r' : 'l');
+        else if (dy > 0) harakat('d');
+    });
+
+    function blok(cx, cy, color) {
+        x.fillStyle = color;
+        if (x.roundRect) { x.beginPath(); x.roundRect(cx + 1, cy + 1, CELL - 2, CELL - 2, 3); x.fill(); }
+        else x.fillRect(cx + 1, cy + 1, CELL - 2, CELL - 2);
+        // Yuqori chetiga yorug'lik — tekis kvadratga hajm beradi
+        x.fillStyle = 'rgba(255,255,255,0.28)';
+        x.fillRect(cx + 2, cy + 2, CELL - 4, Math.max(2, CELL * 0.14));
+    }
+
+    function frame() {
+        tick++;
+        if (!over && tick % tushish === 0) {
+            if (!toqnash(cur, cur.x, cur.y + 1)) cur.y++;
+            else joylash();
+        }
+
+        const g = x.createLinearGradient(0, 0, 0, H);
+        g.addColorStop(0, '#0b1220');
+        g.addColorStop(1, '#131f38');
+        x.fillStyle = g;
+        x.fillRect(0, 0, W, H);
+
+        x.strokeStyle = 'rgba(148,163,184,0.07)';
+        x.lineWidth = 1;
+        for (let i = 1; i < COLS; i++) { x.beginPath(); x.moveTo(i * CELL, 0); x.lineTo(i * CELL, H); x.stroke(); }
+        for (let i = 1; i < ROWS; i++) { x.beginPath(); x.moveTo(0, i * CELL); x.lineTo(W, i * CELL); x.stroke(); }
+
+        for (let r = 0; r < ROWS; r++) {
+            for (let c = 0; c < COLS; c++) {
+                if (grid[r][c]) blok(c * CELL, r * CELL, grid[r][c]);
+            }
+        }
+
+        if (!over) {
+            // Soya: shakl qayerga tushishini oldindan ko'rsatadi
+            let gy = cur.y;
+            while (!toqnash(cur, cur.x, gy + 1)) gy++;
+            x.globalAlpha = 0.18;
+            for (let r = 0; r < cur.k.length; r++) {
+                for (let c = 0; c < cur.k[r].length; c++) {
+                    if (cur.k[r][c]) blok((cur.x + c) * CELL, (gy + r) * CELL, cur.c);
+                }
+            }
+            x.globalAlpha = 1;
+
+            for (let r = 0; r < cur.k.length; r++) {
+                for (let c = 0; c < cur.k[r].length; c++) {
+                    if (cur.k[r][c] && cur.y + r >= 0) blok((cur.x + c) * CELL, (cur.y + r) * CELL, cur.c);
+                }
+            }
+        }
+
+        if (over) {
+            x.fillStyle = 'rgba(2,6,23,0.86)';
+            x.fillRect(0, 0, W, H);
+            x.textAlign = 'center';
+            x.fillStyle = '#fff';
+            x.font = 'bold 22px system-ui, sans-serif';
+            x.fillText("O'yin tugadi", W / 2, H / 2 - 30);
+            x.fillStyle = '#22d3ee';
+            x.font = 'bold 40px system-ui, sans-serif';
+            x.fillText(String(score), W / 2, H / 2 + 12);
+            x.fillStyle = '#94a3b8';
+            x.font = '13px system-ui, sans-serif';
+            x.fillText(lines + ' qator · ' + level + '-daraja', W / 2, H / 2 + 38);
+            const rekord = (typeof gamesBest !== 'undefined' && gamesBest.tetris) || 0;
+            x.fillText('Eng yaxshi: ' + rekord, W / 2, H / 2 + 62);
+            x.fillText('Qaytadan boshlash uchun bos', W / 2, H / 2 + 86);
+        }
+
+        arcadeLoop = requestAnimationFrame(frame);
+    }
+
+    reset();
+    frame();
+}
+
+if (typeof GAMES !== 'undefined') {
+    GAMES.push({
+        id: 'tetris', name: 'Tetris', emoji: '🧱',
+        desc: "Shakllarni joyla — tezlik daraja bilan oshadi", tag: 'Oflayn'
+    });
 }

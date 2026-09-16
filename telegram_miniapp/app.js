@@ -4613,6 +4613,7 @@ function renderParentExtras() {
     if (!grid) return;
 
     const tiles = [
+        { emoji: '🧠', name: 'Farzandingiz haqida', desc: 'Haftalik tahlil va suhbat savollari', fn: 'openWeeklyReport()' },
         { emoji: '💰', name: 'Vaqt banki', desc: 'Ekran vaqti kursini belgilang', fn: "openSubpage('modal-time-bank')" },
         { emoji: '🗺️', name: 'Kun marshruti', desc: "Bugun qayerlarda bo'ldi", fn: "switchTab('tab-radar'); setTimeout(renderDayRoute, 500);" },
         { emoji: '🎁', name: "Do'stingizni taklif qiling", desc: 'Ikkalangizga ham bepul Pro', fn: 'shareReferralLink()' },
@@ -4687,5 +4688,102 @@ async function renderAiQuota() {
         }
     } catch (e) {
         console.error('ai_quota:', e);
+    }
+}
+
+// ============================================================================
+// "FARZANDINGIZ HAQIDA" — HAFTALIK TAHLIL
+//
+// Reels tahlilining o'rnini bosadigan ekran. U bola NIMA KO'RGANINI emas,
+// NIMA HIS QILAYOTGANINI ko'rsatadi — va faqat haqiqiy ma'lumotdan:
+// fokus vaqti, kayfiyat kundaligi, AI do'st bilan suhbat.
+//
+// Bolaning yozgan gaplari bu yerda KO'RSATILMAYDI. Faqat xulosa. Aks holda
+// bu suhbat emas, o'qib chiqish bo'lardi.
+// ============================================================================
+
+async function openWeeklyReport() {
+    openSubpage('modal-weekly');
+    const body = document.getElementById('weeklyBody');
+    if (!body) return;
+    body.innerHTML = '<div class="text-center py-8 text-[11px] text-slate-400">🧠 Hafta tahlil qilinmoqda...</div>';
+
+    try {
+        const resp = await fetch(QALQON_BOT_FN, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'weekly_report', childId: currentChildKey })
+        });
+        const d = await resp.json();
+
+        if (!d.ok) {
+            body.innerHTML = '<div class="text-[11px] text-rose-300 text-center py-6">' + escapeHtml(d.error || 'Xato') + '</div>';
+            return;
+        }
+        if (d.empty) {
+            body.innerHTML = '<div class="p-3.5 rounded-2xl bg-slate-900/70 border border-slate-800 text-[11px] text-slate-300 leading-relaxed">' +
+                escapeHtml(d.message) + '</div>';
+            return;
+        }
+
+        const r = d.report || {};
+        const st = d.stats || {};
+        const kayf = st.kayfiyat || {};
+        const kayfNom = { great: "zo'r", good: 'yaxshi', tired: 'charchagan', sad: 'xafa' };
+        const kayfMatn = Object.keys(kayf).map(k => (kayfNom[k] || k) + ': ' + kayf[k]).join(' · ') || "belgilanmagan";
+
+        let html = '';
+
+        if (r.xavf && String(r.xavf).trim()) {
+            html += '<div class="p-3.5 rounded-2xl bg-rose-950/50 border border-rose-500/50 space-y-1 mb-3">' +
+                '<div class="text-[11px] font-black text-rose-200">⚠️ E\'tibor talab qiladi</div>' +
+                '<div class="text-[11px] text-rose-100 leading-relaxed">' + escapeHtml(r.xavf) + '</div>' +
+                '</div>';
+        }
+
+        html += '<div class="grid grid-cols-3 gap-2 mb-3">' +
+            '<div class="p-2.5 rounded-xl bg-slate-900/70 border border-slate-800 text-center">' +
+                '<div class="text-lg font-black text-emerald-300">' + (st.fokusDaqiqa || 0) + '</div>' +
+                '<div class="text-[9px] text-slate-400">daqiqa fokus</div></div>' +
+            '<div class="p-2.5 rounded-xl bg-slate-900/70 border border-slate-800 text-center">' +
+                '<div class="text-lg font-black text-violet-300">' + (st.aiSavollar || 0) + '</div>' +
+                '<div class="text-[9px] text-slate-400">AI savoli</div></div>' +
+            '<div class="p-2.5 rounded-xl bg-slate-900/70 border border-slate-800 text-center">' +
+                '<div class="text-lg font-black text-amber-300">' + (st.kunlikXabar || 0) + '</div>' +
+                '<div class="text-[9px] text-slate-400">kayfiyat belgisi</div></div>' +
+        '</div>';
+
+        const blok = (sarlavha, matn, rang) => matn && String(matn).trim()
+            ? '<div class="p-3 rounded-2xl bg-slate-900/70 border border-slate-800 space-y-1">' +
+                '<div class="text-[10px] font-bold ' + rang + '">' + sarlavha + '</div>' +
+                '<div class="text-[11px] text-slate-200 leading-relaxed">' + escapeHtml(matn) + '</div>' +
+              '</div>'
+            : '';
+
+        html += '<div class="space-y-2">' +
+            blok('📊 BU HAFTA NIMA O\'ZGARDI', r.ozgarish, 'text-slate-400') +
+            blok('💚 XURSAND BO\'LADIGAN NARSA', r.yaxshi, 'text-emerald-300') +
+            blok('👀 E\'TIBOR BERING', r.etibor, 'text-amber-300') +
+        '</div>';
+
+        if (Array.isArray(r.savollar) && r.savollar.length) {
+            html += '<div class="mt-3 p-3.5 rounded-2xl bg-violet-950/40 border border-violet-500/40 space-y-2">' +
+                '<div class="text-[11px] font-bold text-violet-200">💬 Farzandingizdan shuni so\'rang</div>' +
+                r.savollar.slice(0, 3).map((q, i) =>
+                    '<div class="text-[11px] text-slate-200 leading-relaxed">' + (i + 1) + '. ' + escapeHtml(q) + '</div>'
+                ).join('') +
+            '</div>';
+        }
+
+        html += '<div class="mt-3 text-[9px] text-slate-500 leading-relaxed">' +
+            'Kayfiyat: ' + escapeHtml(kayfMatn) + '.<br>' +
+            'Bu xulosa farzandingizning yozgan gaplarini ko\'chirmaydi — faqat umumiy tahlil. ' +
+            'Shunday qilinmasa, u ilovaga yozishni to\'xtatgan bo\'lardi.' +
+        '</div>';
+
+        body.innerHTML = html;
+    } catch (e) {
+        console.error('weekly_report:', e);
+        body.innerHTML = '<div class="text-[11px] text-rose-300 text-center py-6">Server javob bermadi.</div>';
     }
 }

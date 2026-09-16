@@ -4667,7 +4667,24 @@ async function handleRequest(req: Request): Promise<Response> {
         );
       }
 
-      const q = await evaluateLocationQuota(familyCode, childId);
+      // Jonli translyatsiya YONIQ bo'lsa, so'rov kvotani yemaydi.
+      // Sababi oddiy: bu holatda joylashuv allaqachon o'zi oqib turibdi,
+      // ota-ona esa faqat ekranni yangilayapti. Buning uchun bepul
+      // limitdan yechib olish — hech narsa bermay pul olishdek gap.
+      const { data: liveNow } = await db
+        .from("child_pairings")
+        .select("live_until")
+        .eq("family_code", familyCode)
+        .eq("child_id", childId)
+        .limit(1);
+      const jonliYoniq = !!(
+        liveNow && liveNow[0] && liveNow[0].live_until &&
+        new Date(liveNow[0].live_until).getTime() > Date.now()
+      );
+
+      const q = jonliYoniq
+        ? { allowed: true, plan: await getPlan(familyCode), remaining: -1, resetInHours: 0, reason: "", upgradeRequired: false }
+        : await evaluateLocationQuota(familyCode, childId);
 
       if (!q.allowed) {
         return new Response(
@@ -4684,12 +4701,15 @@ async function handleRequest(req: Request): Promise<Response> {
       }
 
       // So'rovni yozamiz - kvota keyingi safar shundan hisoblanadi.
-      await db.from("location_requests").insert({
-        family_code: familyCode,
-        child_id: childId,
-        requested_by_telegram_id: actor!.kind === "telegram" ? actor!.telegramId : null,
-        plan_at_request: q.plan,
-      });
+      // Jonli translyatsiya paytida yozmaymiz: u kvotaga kirmasligi kerak.
+      if (!jonliYoniq) {
+        await db.from("location_requests").insert({
+          family_code: familyCode,
+          child_id: childId,
+          requested_by_telegram_id: actor!.kind === "telegram" ? actor!.telegramId : null,
+          plan_at_request: q.plan,
+        });
+      }
 
       // So'rov BOLAGA ham yetib boradi. Ilgari bu tugma faqat bazadagi eski
       // nuqtani qaytarardi — ya'ni ota-ona "so'radim" deb o'ylardi-yu, bola
@@ -4698,7 +4718,11 @@ async function handleRequest(req: Request): Promise<Response> {
       const askTgId = String(childId).startsWith("tg_")
         ? String(childId).slice(3)
         : null;
-      if (askTgId) {
+      // Jonli translyatsiya yoniq bo'lsa, bolani bezovta qilmaymiz: uning
+      // joylashuvi allaqachon ko'rinib turibdi. Har ekran yangilaganda
+      // xabar yuborsak, bola bir kunda o'nlab bildirishnoma olardi va
+      // jonli ulashishni butunlay o'chirib qo'yardi.
+      if (askTgId && !jonliYoniq) {
         await sendMessage(
           askTgId,
           `📍 <b>Ota-onang qayerdaligingni so'rayapti.</b>\n\n` +
@@ -5028,6 +5052,231 @@ async function handleRequest(req: Request): Promise<Response> {
           liveHours: plan === "pro" ? PRO_LIVE_HOURS : FREE_LIVE_HOURS,
           proLiveHours: PRO_LIVE_HOURS,
           children,
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+
+    // ========================================================================
+    // "FARZANDINGIZ HAQIDA" — HAFTALIK TAHLIL
+    //
+    // Bu Reels tahlilining o'rnini bosadigan funksiya, va u kuchliroq:
+    // Reels bola NIMA KO'RGANINI aytadi, bu esa NIMA HIS QILAYOTGANINI.
+    //
+    // Uchta haqiqiy manbadan yig'iladi — birortasi ham o'ylab topilgan emas:
+    //   1) bolaning AI do'st bilan suhbatlari (bizning o'z xizmatimiz),
+    //   2) kayfiyat kundaligi ("Bugun men..."),
+    //   3) xulq signallari: fokus daqiqalari, hududga kelish-ketish vaqtlari.
+    //
+    // Bolaning YOZGAN MATNI ota-onaga ko'chirilmaydi. AI faqat XULOSA yozadi.
+    // Aks holda bu suhbat emas, o'qib chiqish bo'lardi — va bola buni bilgan
+    // kuni AI'ga yozishni butunlay to'xtatardi, ya'ni manbaning o'zi o'lardi.
+    // ========================================================================
+    if (payload.type === "weekly_report") {
+      if (actor!.kind !== "telegram") return unauthorized("Faqat ota-ona");
+      if (!db) {
+        return new Response(JSON.stringify({ ok: false, error: "Baza ulanmagan" }), {
+          status: 500, headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      const familyCode = actor!.familyCode;
+      const childId = String(payload.childId || "").trim();
+      if (!childId) {
+        return new Response(JSON.stringify({ ok: false, error: "childId majburiy" }), {
+          status: 400, headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      const haftaOldin = new Date(Date.now() - 7 * 86400000).toISOString();
+      const ikkiHafta = new Date(Date.now() - 14 * 86400000).toISOString();
+
+      // --- 1. Fokus: bu hafta va o'tgan hafta (taqqoslash uchun) ---
+      const { data: fokus } = await db
+        .from("focus_sessions")
+        .select("planned_minutes, completed_at")
+        .eq("family_code", familyCode)
+        .eq("child_id", childId)
+        .not("completed_at", "is", null)
+        .gte("completed_at", ikkiHafta)
+        .limit(500);
+
+      let buHafta = 0, otganHafta = 0, seansSoni = 0;
+      for (const f of fokus || []) {
+        const m = Number(f.planned_minutes) || 0;
+        if (f.completed_at >= haftaOldin) { buHafta += m; seansSoni++; }
+        else otganHafta += m;
+      }
+
+      // --- 2. Kayfiyat ---
+      const { data: notes } = await db
+        .from("child_notes")
+        .select("mood, note, created_at")
+        .eq("family_code", familyCode)
+        .eq("child_id", childId)
+        .gte("created_at", haftaOldin)
+        .order("created_at", { ascending: true })
+        .limit(50);
+
+      const kayfiyat: Record<string, number> = {};
+      for (const n of notes || []) kayfiyat[n.mood] = (kayfiyat[n.mood] || 0) + 1;
+
+      // --- 3. Hududga kelish-ketish ---
+      const { data: alerts } = await db
+        .from("geofence_alerts")
+        .select("zone_name, alert_type, created_at")
+        .eq("family_code", familyCode)
+        .eq("child_id", childId)
+        .gte("created_at", haftaOldin)
+        .order("created_at", { ascending: true })
+        .limit(100);
+
+      // --- 4. AI suhbatlari: faqat BOLANING savollari ---
+      const kidTgId = String(childId).startsWith("tg_") ? Number(String(childId).slice(3)) : 0;
+      let suhbat: string[] = [];
+      if (kidTgId) {
+        const { data: msgs } = await db
+          .from("ai_chat_messages")
+          .select("message, created_at")
+          .eq("telegram_id", kidTgId)
+          .eq("role", "user")
+          .gte("created_at", haftaOldin)
+          .order("created_at", { ascending: true })
+          .limit(60);
+        suhbat = (msgs || []).map((m: any) => String(m.message || "").slice(0, 300));
+      }
+
+      const { data: kid } = await db
+        .from("child_pairings")
+        .select("child_name")
+        .eq("family_code", familyCode)
+        .eq("child_id", childId)
+        .limit(1);
+      const nom = (kid && kid[0] && kid[0].child_name) || "Farzandingiz";
+
+      // Ma'lumot juda kam bo'lsa AI chaqirmaymiz: u bo'sh ma'lumotdan
+      // ishonchli ko'rinadigan, lekin asossiz xulosa yasab beradi — bu
+      // ota-onani noto'g'ri yo'lga boshlaydi.
+      const yetarli = buHafta > 0 || (notes || []).length > 0 || suhbat.length > 0;
+      if (!yetarli) {
+        return new Response(
+          JSON.stringify({
+            ok: true,
+            empty: true,
+            childName: nom,
+            message:
+              `${nom} bu hafta ilovadan deyarli foydalanmadi, shuning uchun ` +
+              `tahlil qilishga ma'lumot yo'q. Fokus seansi, kayfiyat kundaligi ` +
+              `yoki AI do'st bilan suhbat bo'lsa, keyingi hafta xulosa tayyor bo'ladi.`,
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      const raqamlar = {
+        fokusDaqiqa: buHafta,
+        otganHaftaFokus: otganHafta,
+        seansSoni,
+        kayfiyat,
+        kunlikXabar: (notes || []).length,
+        aiSavollar: suhbat.length,
+        hududHodisalari: (alerts || []).length,
+      };
+
+      const apiKey = Deno.env.get("GEMINI_API_KEY") || "";
+      let hisobot: any = null;
+
+      if (apiKey) {
+        const model = Deno.env.get("GEMINI_MODEL") || "gemini-3.6-flash";
+        const prompt =
+          `Sen O'zbekistondagi ota-onaga farzandi haqida HAFTALIK xulosa yozasan.\n\n` +
+          `Farzand ismi: ${nom}\n\n` +
+          `MA'LUMOT:\n` +
+          `- Bu hafta diqqat bilan ishlagan vaqti: ${buHafta} daqiqa (${seansSoni} seans)\n` +
+          `- O'tgan hafta: ${otganHafta} daqiqa\n` +
+          `- Kayfiyat belgilari: ${JSON.stringify(kayfiyat)} ` +
+          `(great=zo'r, good=yaxshi, tired=charchagan, sad=xafa)\n` +
+          `- Uy/maktab hududiga kelish-ketish hodisalari: ${(alerts || []).length} ta\n` +
+          `- AI do'stga bergan savollari (${suhbat.length} ta):\n` +
+          suhbat.slice(0, 40).map((q) => `  · ${q}`).join("\n") + `\n\n` +
+          `QOIDALAR — buzilmasin:\n` +
+          `- Bolaning yozgan gaplarini AYNAN ko'chirma. Faqat umumiy xulosa.\n` +
+          `- Faqat berilgan ma'lumotga tayan. Ma'lumot yetmasa, "ma'lumot yetarli emas" deb yoz.\n` +
+          `- Tashxis qo'yma, kasallik nomini aytma.\n` +
+          `- Ota-onani ayblama va qo'rqitma. Ohang xotirjam va hurmatli bo'lsin.\n` +
+          `- Hammasi o'zbek tilida (lotin yozuvida).\n\n` +
+          `FAQAT shu JSON ni qaytar:\n` +
+          `{"ozgarish":"bu hafta nima o'zgardi, 1-2 jumla",` +
+          `"yaxshi":"xursand bo'ladigan bitta narsa, 1 jumla",` +
+          `"etibor":"e'tibor berish kerak bo'lgan bitta narsa, 1-2 jumla",` +
+          `"savollar":["farzandga beriladigan aniq savol 1","savol 2","savol 3"],` +
+          `"xavf":"agar zo'ravonlik, o'ziga zarar, qo'rquv yoki majburlash belgisi bo'lsa qisqa izoh, aks holda bo'sh satr"}`;
+
+        try {
+          const res = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                contents: [{ role: "user", parts: [{ text: prompt }] }],
+                generationConfig: {
+                  temperature: 0.6,
+                  maxOutputTokens: 6144,
+                  responseMimeType: "application/json",
+                },
+              }),
+            }
+          );
+          const j = await res.json();
+          const text = (j?.candidates?.[0]?.content?.parts || [])
+            .filter((p: any) => p && typeof p.text === "string" && p.thought !== true)
+            .map((p: any) => p.text)
+            .join("");
+
+          const tozalangan = text.replace(/```(?:json)?/gi, "").trim();
+          const start = tozalangan.indexOf("{");
+          const end = tozalangan.lastIndexOf("}");
+          if (start >= 0 && end > start) {
+            hisobot = JSON.parse(tozalangan.slice(start, end + 1));
+          }
+        } catch (e) {
+          console.error("weekly_report AI xatosi:", e instanceof Error ? e.message : e);
+        }
+      }
+
+      // AI ishlamasa ham ota-ona bo'sh ekran ko'rmasin: raqamlardan
+      // tuzilgan xulosa — kambag'alroq, lekin rost.
+      if (!hisobot) {
+        const farq = buHafta - otganHafta;
+        hisobot = {
+          ozgarish:
+            otganHafta === 0
+              ? `${nom} bu hafta ${buHafta} daqiqa diqqat bilan ishladi.`
+              : `Diqqat bilan ishlagan vaqti ${farq >= 0 ? "oshdi" : "kamaydi"}: ` +
+                `${otganHafta} → ${buHafta} daqiqa.`,
+          yaxshi: seansSoni > 0 ? `${seansSoni} ta fokus seansini oxirigacha yetkazdi.` : "",
+          etibor: (kayfiyat["tired"] || 0) + (kayfiyat["sad"] || 0) >= 3
+            ? "Bu hafta bir necha kun charchagan yoki xafa kayfiyat belgilandi."
+            : "",
+          savollar: [
+            "Bu hafta eng qiyin bo'lgan narsa nima edi?",
+            "Kim bilan ko'proq vaqt o'tkazding?",
+            "Keyingi hafta nimani boshqacha qilmoqchisan?",
+          ],
+          xavf: "",
+          manba: "raqamlar",
+        };
+      }
+
+      return new Response(
+        JSON.stringify({
+          ok: true,
+          childName: nom,
+          stats: raqamlar,
+          report: hisobot,
+          generatedAt: new Date().toISOString(),
         }),
         { status: 200, headers: { "Content-Type": "application/json" } }
       );
