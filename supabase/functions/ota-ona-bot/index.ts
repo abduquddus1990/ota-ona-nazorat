@@ -1755,24 +1755,29 @@ async function buildQuizQuestions(category: string, grade: number): Promise<any[
 
   if (category === "hayot") {
     lastQuizSource = "zaxira (hayot toifasi ataylab)";
+    // Hayot savollari ataylab kamroq: ularni sun'iy ko'paytirish mumkin emas,
+    // har biri o'ylab yozilgan.
     return quizPick(fallback, 5);
   }
 
   const apiKey = Deno.env.get("GEMINI_API_KEY") || "";
   if (!apiKey) {
     lastQuizError = "GEMINI_API_KEY sozlanmagan";
-    return quizPick(fallback, 5);
+    return quizPick(fallback, 8);
   }
 
   const model = Deno.env.get("GEMINI_MODEL") || "gemini-3.6-flash";
   const prompt =
     `Sen O'zbekistondagi ${grade}-sinf o'quvchisi uchun viktorina savollari tuzasan.\n` +
     `Mavzu: ${QUIZ_TOPICS[category] || QUIZ_TOPICS.maktab}.\n\n` +
-    `AYNAN 5 ta savol yoz. Faqat JSON massiv qaytar, boshqa hech narsa yozma.\n` +
+    `AYNAN 8 ta savol yoz. Faqat JSON massiv qaytar, boshqa hech narsa yozma.\n` +
     `Har element: {"q": "savol", "a": ["variant1","variant2","variant3","variant4"], "c": to'g'ri variant indeksi (0-3), "why": "bir jumlalik izoh"}\n\n` +
     `Qoidalar:\n` +
     `- Hammasi o'zbek tilida (lotin yozuvida).\n` +
     `- ${grade}-sinf darajasiga mos: na juda oson, na juda qiyin.\n` +
+    `- Savollar TARTIB BILAN qiyinlashsin: 1-2 savol oson (deyarli hamma biladi), ` +
+    `3-6 o'rtacha, 7-8 esa o'ylashni talab qilsin. Bola boshida o'zini bilimdon ` +
+    `his qilsin, oxirida esa qiynalsin.\n` +
     `- To'rtala variant ham jiddiy ko'rinsin; kulgili variant qo'yma.\n` +
     `- To'g'ri javob indeksi har safar turlicha bo'lsin.\n` +
     `- Siyosat, din, zo'ravonlik yoki kattalarga oid mavzularga tegma.\n` +
@@ -1814,7 +1819,7 @@ async function buildQuizQuestions(category: string, grade: number): Promise<any[
         j?.error?.message || j?.promptFeedback?.blockReason || `HTTP ${res.status}`
       ).slice(0, 200);
       console.error("Viktorina: AI bo'sh javob", JSON.stringify(j).slice(0, 400));
-      return quizPick(fallback, 5);
+      return quizPick(fallback, 8);
     }
 
     // Model javobini QAT'IY JSON deb hisoblamaymiz. Amalda u ba'zan
@@ -1854,9 +1859,9 @@ async function buildQuizQuestions(category: string, grade: number): Promise<any[
       return [] as any[];
     })();
 
-    if (items.length >= 5) {
+    if (items.length >= 8) {
       lastQuizSource = "ai";
-      return items.slice(0, 5);
+      return items.slice(0, 8);
     }
     // 5 tasi to'liq chiqmasa, yetmaganini zaxiradan to'ldiramiz — o'yin
     // baribir boshlanadi.
@@ -1864,11 +1869,11 @@ async function buildQuizQuestions(category: string, grade: number): Promise<any[
     lastQuizError =
       `AI ${items.length} ta yaroqli savol berdi. Javob boshi: ` +
       JSON.stringify(text.slice(0, 120));
-    return items.concat(quizPick(fallback, 5 - items.length));
+    return items.concat(quizPick(fallback, Math.max(0, 8 - items.length)));
   } catch (e) {
     lastQuizError = (e instanceof Error ? e.message : String(e)).slice(0, 200);
     console.error("Viktorina AI xatosi:", lastQuizError);
-    return quizPick(fallback, 5);
+    return quizPick(fallback, 8);
   }
 }
 

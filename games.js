@@ -139,15 +139,26 @@ const MEMORY_DECKS = [
         id: 'tarix',
         name: 'Tarix sanalari',
         emoji: '📜',
+        // Har bir juft ichida daraja bor: 1 — hamma biladigan, 3 — qiyinroq.
+        // O'yin bosqichma-bosqich qiyinlashadi, shuning uchun birinchi
+        // bosqichda bola o'zini bilimdon his qiladi va davom etadi.
         pairs: [
-            ['1991', "O'zbekiston mustaqilligi"],
-            ['1370', 'Amir Temur davlati'],
-            ['1917', 'Rossiyada inqilob'],
-            ['1945', 'Ikkinchi jahon urushi tugadi'],
-            ['1969', 'Odam Oyga qadam qo\'ydi'],
-            ['1428', 'Ulug\'bek rasadxonasi'],
-            ['2016', 'Yangi O\'zbekiston islohotlari'],
-            ['1206', 'Chingizxon imperiyasi']
+            ['1991', "O'zbekiston mustaqilligi", 1],
+            ['1945', 'Ikkinchi jahon urushi tugadi', 1],
+            ['1969', "Odam Oyga qadam qo'ydi", 1],
+            ['1961', 'Gagarin kosmosga uchdi', 1],
+            ['1370', 'Amir Temur davlati', 2],
+            ['1917', 'Rossiyada inqilob', 2],
+            ['1428', "Ulug'bek rasadxonasi", 2],
+            ['1206', 'Chingizxon imperiyasi', 2],
+            ['1492', 'Kolumb Amerikaga yetdi', 2],
+            ['1789', 'Fransiya inqilobi', 3],
+            ['1453', 'Konstantinopol zabt etildi', 3],
+            ['1219', "Mo'g'ullar Movarounnahrga bostirib kirdi", 3],
+            ['1876', "Qo'qon xonligi tugatildi", 3],
+            ['1991-31-avgust', 'Mustaqillik e\'lon qilingan kun', 1],
+            ['2016', 'Yangi islohotlar davri', 1],
+            ['1483', 'Bobur tug\'ilgan yil', 3]
         ]
     },
     {
@@ -155,14 +166,22 @@ const MEMORY_DECKS = [
         name: 'Formulalar',
         emoji: '🧪',
         pairs: [
-            ['H₂O', 'Suv'],
-            ['CO₂', 'Karbonat angidrid'],
-            ['NaCl', 'Osh tuzi'],
-            ['E = mc²', 'Eynshteyn tenglamasi'],
-            ['S = πr²', 'Doira yuzasi'],
-            ['O₂', 'Kislorod'],
-            ['V = a³', 'Kub hajmi'],
-            ['a² + b² = c²', 'Pifagor teoremasi']
+            ['H₂O', 'Suv', 1],
+            ['O₂', 'Kislorod', 1],
+            ['CO₂', 'Karbonat angidrid', 1],
+            ['NaCl', 'Osh tuzi', 1],
+            ['S = πr²', 'Doira yuzasi', 2],
+            ['L = 2πr', 'Aylana uzunligi', 2],
+            ['V = a³', 'Kub hajmi', 2],
+            ['a² + b² = c²', 'Pifagor teoremasi', 2],
+            ['E = mc²', 'Eynshteyn tenglamasi', 2],
+            ['F = m · a', 'Nyutonning 2-qonuni', 2],
+            ['V = I · R', 'Om qonuni', 3],
+            ['S = v · t', 'Bosib o\'tilgan yo\'l', 1],
+            ['CH₄', 'Metan', 3],
+            ['H₂SO₄', 'Sulfat kislota', 3],
+            ['ρ = m / V', 'Zichlik', 3],
+            ['P = F / S', 'Bosim', 3]
         ]
     },
     {
@@ -170,14 +189,22 @@ const MEMORY_DECKS = [
         name: 'Tabiat',
         emoji: '🌍',
         pairs: [
-            ['Eng baland tog\'', 'Everest'],
-            ['Eng uzun daryo', 'Nil'],
-            ['Eng katta okean', 'Tinch okeani'],
-            ['Eng katta hayvon', 'Ko\'k kit'],
-            ['Eng tez hayvon', 'Gepard'],
-            ['O\'zbekistondagi eng katta ko\'l', 'Orol (qurigan)'],
-            ['Eng issiq sayyora', 'Venera'],
-            ['Quyoshga eng yaqin sayyora', 'Merkuriy']
+            ['Eng baland tog\'', 'Everest', 1],
+            ['Eng katta okean', 'Tinch okeani', 1],
+            ['Eng katta hayvon', 'Ko\'k kit', 1],
+            ['Eng tez hayvon', 'Gepard', 1],
+            ['Eng uzun daryo', 'Nil', 2],
+            ['Quyoshga eng yaqin sayyora', 'Merkuriy', 2],
+            ['Eng issiq sayyora', 'Venera', 2],
+            ['Halqali sayyora', 'Saturn', 1],
+            ['Eng katta sayyora', 'Yupiter', 2],
+            ['Eng katta cho\'l', 'Sahroi Kabir', 2],
+            ['Eng chuqur ko\'l', 'Baykal', 3],
+            ['Eng katta orol', 'Grenlandiya', 3],
+            ['Yer yo\'ldoshi', 'Oy', 1],
+            ['Eng uzun umr ko\'ruvchi daraxt', 'Sekvoya', 3],
+            ['Suvning qaynash harorati', '100 °C', 1],
+            ['Suvning muzlash harorati', '0 °C', 1]
         ]
     },
     {
@@ -185,14 +212,22 @@ const MEMORY_DECKS = [
         name: 'Ingliz tili',
         emoji: '🔤',
         pairs: [
-            ['Brave', 'Jasur'],
-            ['Honest', 'Halol'],
-            ['Curious', 'Qiziquvchan'],
-            ['Patient', 'Sabrli'],
-            ['Grateful', 'Minnatdor'],
-            ['Wisdom', 'Donolik'],
-            ['Effort', 'Harakat'],
-            ['Promise', 'Va\'da']
+            ['Brave', 'Jasur', 1],
+            ['Honest', 'Halol', 1],
+            ['Friend', 'Do\'st', 1],
+            ['Knowledge', 'Bilim', 1],
+            ['Curious', 'Qiziquvchan', 2],
+            ['Patient', 'Sabrli', 2],
+            ['Grateful', 'Minnatdor', 2],
+            ['Wisdom', 'Donolik', 2],
+            ['Effort', 'Harakat', 2],
+            ['Promise', 'Va\'da', 2],
+            ['Generous', 'Saxiy', 3],
+            ['Humble', 'Kamtar', 3],
+            ['Responsible', 'Mas\'uliyatli', 3],
+            ['Achievement', 'Yutuq', 3],
+            ['Courage', 'Jasorat', 3],
+            ['Kindness', 'Mehribonlik', 2]
         ]
     },
     {
@@ -200,14 +235,68 @@ const MEMORY_DECKS = [
         name: 'Ona tili',
         emoji: '📖',
         pairs: [
-            ['Sinonim', 'Ma\'nodosh so\'z'],
-            ['Antonim', 'Zid ma\'noli so\'z'],
-            ['Omonim', 'Shakldosh so\'z'],
-            ['Ega', 'Kim? Nima?'],
-            ['Kesim', 'Nima qildi?'],
-            ['Sifat', 'Qanday?'],
-            ['Son', 'Nechta?'],
-            ['Ravish', 'Qanday qilib?']
+            ['Ega', 'Kim? Nima?', 1],
+            ['Kesim', 'Nima qildi?', 1],
+            ['Sifat', 'Qanday?', 1],
+            ['Son', 'Nechta?', 1],
+            ['Sinonim', 'Ma\'nodosh so\'z', 2],
+            ['Antonim', 'Zid ma\'noli so\'z', 2],
+            ['Omonim', 'Shakldosh so\'z', 2],
+            ['Ravish', 'Qanday qilib?', 2],
+            ['To\'ldiruvchi', 'Kimni? Nimani?', 2],
+            ['Aniqlovchi', 'Qanaqa? Qaysi?', 2],
+            ['Ot', 'Narsa-buyum nomi', 1],
+            ['Fe\'l', 'Ish-harakat', 1],
+            ['Undov', 'His-hayajon ifodasi', 3],
+            ['Ko\'makchi', 'Bilan, uchun, kabi', 3],
+            ['Bog\'lovchi', 'Va, lekin, ammo', 3],
+            ['Yuklama', '-mi, -chi, faqat', 3]
+        ]
+    },
+    {
+        id: 'geografiya',
+        name: 'Poytaxtlar',
+        emoji: '🏛️',
+        pairs: [
+            ["O'zbekiston", 'Toshkent', 1],
+            ['Qozog\'iston', 'Ostona', 1],
+            ['Qirg\'iziston', 'Bishkek', 1],
+            ['Tojikiston', 'Dushanbe', 1],
+            ['Turkmaniston', 'Ashxobod', 2],
+            ['Turkiya', 'Anqara', 2],
+            ['Yaponiya', 'Tokio', 1],
+            ['Fransiya', 'Parij', 1],
+            ['Germaniya', 'Berlin', 1],
+            ['Italiya', 'Rim', 2],
+            ['Misr', 'Qohira', 2],
+            ['Hindiston', 'Dehli', 2],
+            ['Braziliya', 'Brazilia', 3],
+            ['Kanada', 'Ottava', 3],
+            ['Avstraliya', 'Kanberra', 3],
+            ['Xitoy', 'Pekin', 1]
+        ]
+    },
+    {
+        id: 'matematika',
+        name: 'Matematika',
+        emoji: '🔢',
+        pairs: [
+            ['7 × 8', '56', 1],
+            ['9 × 7', '63', 1],
+            ['12 × 12', '144', 1],
+            ['15² ', '225', 2],
+            ['√81', '9', 1],
+            ['√144', '12', 2],
+            ['2⁵', '32', 2],
+            ['3⁴', '81', 2],
+            ['100 ning 15%', '15', 1],
+            ['200 ning 25%', '50', 2],
+            ['1/2 + 1/4', '3/4', 2],
+            ['0,25 kasr ko\'rinishi', '1/4', 2],
+            ['Uchburchak burchaklari yig\'indisi', '180°', 1],
+            ['To\'rtburchak burchaklari yig\'indisi', '360°', 2],
+            ['Eng kichik tub son', '2', 3],
+            ['π ning taxminiy qiymati', '3,14', 1]
         ]
     }
 ];
@@ -550,7 +639,7 @@ function startMemoryGame(stage) {
         <div class="text-[11px] text-slate-300 mb-2">Mavzuni tanla:</div>
         <div class="grid grid-cols-2 gap-2" id="deckList">
             ${MEMORY_DECKS.map(d => `
-                <button onclick="playMemoryDeck('${d.id}')" class="p-3 rounded-2xl bg-slate-900/70 border border-slate-700 hover:border-indigo-500/60 transition text-left">
+                <button onclick="playMemoryDeck('${d.id}', 0, 0)" class="p-3 rounded-2xl bg-slate-900/70 border border-slate-700 hover:border-indigo-500/60 transition text-left">
                     <div class="text-xl">${d.emoji}</div>
                     <div class="text-[11px] font-bold text-white mt-1">${d.name}</div>
                     <div class="text-[9px] text-slate-400">${d.pairs.length} juft</div>
@@ -558,18 +647,38 @@ function startMemoryGame(stage) {
         </div>`;
 }
 
-function playMemoryDeck(deckId) {
+/* Bosqichlar: juft soni ham, savollarning qiyinligi ham oshib boradi.
+   Oldin har safar 6 juft berilardi va o'yin 2 daqiqada tugardi — oila
+   birga o'tirib o'ynashi uchun bu juda qisqa edi. Endi to'rt bosqich
+   ketma-ket keladi va bir seans 15-20 daqiqaga cho'ziladi. */
+const MEMORY_LEVELS = [
+    { pairs: 4, maxDaraja: 1, nom: '1-bosqich · Tanishuv' },
+    { pairs: 6, maxDaraja: 2, nom: '2-bosqich · Qiziydi' },
+    { pairs: 8, maxDaraja: 3, nom: '3-bosqich · Jiddiy' },
+    { pairs: 10, maxDaraja: 3, nom: '4-bosqich · Usta' }
+];
+
+let memoryRun = null;
+
+function playMemoryDeck(deckId, level, jamiYurish) {
     const deck = MEMORY_DECKS.find(d => d.id === deckId);
     const stage = document.getElementById('gameStage');
     if (!deck || !stage) return;
 
-    // Har safar 6 juft — 12 karta telefon ekraniga sig'adi va o'yin
-    // 2-3 daqiqada tugaydi. Hammasi qo'yilsa, bola zerikib tashlab ketardi.
-    const chosen = deck.pairs.slice().sort(() => Math.random() - 0.5).slice(0, 6);
+    const lvl = Math.max(0, Math.min(MEMORY_LEVELS.length - 1, Number(level) || 0));
+    const conf = MEMORY_LEVELS[lvl];
+    memoryRun = { deckId: deckId, level: lvl, total: Number(jamiYurish) || 0 };
+
+    // Shu bosqichga mos qiyinlikdagi juftlar. Yetarli bo'lmasa, quyi
+    // darajadagilar bilan to'ldiramiz — mavzu hech qachon bo'sh qolmaydi.
+    let hovuz = deck.pairs.filter(p => (p[2] || 1) <= conf.maxDaraja);
+    if (hovuz.length < conf.pairs) hovuz = deck.pairs.slice();
+    const chosen = hovuz.slice().sort(() => Math.random() - 0.5).slice(0, conf.pairs);
+
     const cards = [];
-    chosen.forEach((p, i) => {
-        cards.push({ pair: i, text: p[0] });
-        cards.push({ pair: i, text: p[1] });
+    chosen.forEach((pair, i) => {
+        cards.push({ pair: i, text: pair[0] });
+        cards.push({ pair: i, text: pair[1] });
     });
     cards.sort(() => Math.random() - 0.5);
 
@@ -578,32 +687,44 @@ function playMemoryDeck(deckId) {
     let moves = 0;
     let lock = false;
 
-    stage.innerHTML = `
-        <div class="flex items-center justify-between mb-2">
-            <button onclick="startMemoryGame(document.getElementById('gameStage'))" class="text-[11px] font-bold text-indigo-300">← Mavzular</button>
-            <div class="text-[11px] font-bold text-white">${deck.emoji} ${deck.name}</div>
-            <div class="text-[10px] text-amber-300 font-mono" id="memMoves">0</div>
-        </div>
-        <div class="grid grid-cols-3 gap-2" id="memGrid"></div>
-        <div id="memDone" class="hidden mt-3 p-3.5 rounded-2xl bg-emerald-950/50 border border-emerald-500/40 text-center space-y-2"></div>`;
+    // Ustunlar soni juft soniga qarab: 10 juft (20 karta) 3 ustunda juda
+    // uzun bo'lib ketardi.
+    const ustun = conf.pairs >= 8 ? 4 : 3;
+
+    stage.innerHTML =
+        '<div class="flex items-center justify-between mb-2">' +
+            '<button onclick="startMemoryGame(document.getElementById(\'gameStage\'))" class="text-[11px] font-bold text-indigo-300">← Mavzular</button>' +
+            '<div class="text-[11px] font-bold text-white">' + deck.emoji + ' ' + deck.name + '</div>' +
+            '<div class="text-[10px] text-amber-300 font-mono" id="memMoves">0</div>' +
+        '</div>' +
+        '<div class="flex items-center justify-between mb-2">' +
+            '<span class="text-[10px] text-slate-400">' + conf.nom + '</span>' +
+            '<span class="text-[10px] text-slate-500">' + conf.pairs + ' juft</span>' +
+        '</div>' +
+        '<div class="h-1 rounded bg-slate-800 mb-2"><div class="h-1 rounded bg-indigo-400" style="width:' +
+            (lvl / MEMORY_LEVELS.length * 100) + '%"></div></div>' +
+        '<div class="grid grid-cols-' + ustun + ' gap-2" id="memGrid"></div>' +
+        '<div id="memDone" class="hidden mt-3 p-3.5 rounded-2xl bg-emerald-950/50 border border-emerald-500/40 text-center space-y-2"></div>';
 
     const grid = document.getElementById('memGrid');
-    grid.innerHTML = cards.map((c, i) => `
-        <button data-i="${i}" class="mem-card h-20 rounded-xl bg-slate-800 border border-slate-700 text-[10px] font-bold text-white p-1.5 leading-tight flex items-center justify-center text-center transition">
-            <span class="text-lg">❓</span>
-        </button>`).join('');
+    const balandlik = conf.pairs >= 8 ? 'h-16' : 'h-20';
+    grid.innerHTML = cards.map((c, i) =>
+        '<button data-i="' + i + '" class="mem-card ' + balandlik + ' rounded-xl bg-slate-800 border border-slate-700 text-[10px] font-bold text-white p-1.5 leading-tight flex items-center justify-center text-center transition">' +
+            '<span class="text-lg">❓</span>' +
+        '</button>').join('');
 
     const paint = (btn, card, state) => {
+        const base = 'mem-card ' + balandlik + ' rounded-xl text-[10px] font-bold p-1.5 leading-tight flex items-center justify-center text-center transition ';
         if (state === 'open') {
-            btn.innerHTML = `<span>${escapeHtml(card.text)}</span>`;
-            btn.className = 'mem-card h-20 rounded-xl bg-indigo-600/30 border border-indigo-400 text-[10px] font-bold text-white p-1.5 leading-tight flex items-center justify-center text-center transition';
+            btn.innerHTML = '<span>' + escapeHtml(card.text) + '</span>';
+            btn.className = base + 'bg-indigo-600/30 border border-indigo-400 text-white';
         } else if (state === 'matched') {
-            btn.innerHTML = `<span>${escapeHtml(card.text)}</span>`;
-            btn.className = 'mem-card h-20 rounded-xl bg-emerald-600/25 border border-emerald-400/60 text-[10px] font-bold text-emerald-100 p-1.5 leading-tight flex items-center justify-center text-center';
+            btn.innerHTML = '<span>' + escapeHtml(card.text) + '</span>';
+            btn.className = base + 'bg-emerald-600/25 border border-emerald-400/60 text-emerald-100';
             btn.disabled = true;
         } else {
             btn.innerHTML = '<span class="text-lg">❓</span>';
-            btn.className = 'mem-card h-20 rounded-xl bg-slate-800 border border-slate-700 text-[10px] font-bold text-white p-1.5 leading-tight flex items-center justify-center text-center transition';
+            btn.className = base + 'bg-slate-800 border border-slate-700 text-white';
         }
     };
 
@@ -614,31 +735,37 @@ function playMemoryDeck(deckId) {
             if (open.find(o => o.i === i)) return;
 
             paint(btn, cards[i], 'open');
-            open.push({ i, btn });
+            open.push({ i: i, btn: btn });
 
             if (open.length === 2) {
                 moves++;
                 document.getElementById('memMoves').textContent = moves;
-                const [a, b] = open;
+                const a = open[0], b = open[1];
 
                 if (cards[a.i].pair === cards[b.i].pair) {
                     paint(a.btn, cards[a.i], 'matched');
                     paint(b.btn, cards[b.i], 'matched');
                     matched++;
                     open = [];
-                    if (typeof tg !== 'undefined' && tg && tg.HapticFeedback) {
-                        tg.HapticFeedback.impactOccurred('light');
-                    }
-                    if (matched === chosen.length) {
-                        const rekord = saveBest('memory', moves, true);
+                    if (typeof tg !== 'undefined' && tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+
+                    if (matched === conf.pairs) {
+                        const jami = memoryRun.total + moves;
+                        const oxirgi = lvl >= MEMORY_LEVELS.length - 1;
+                        const rekord = oxirgi ? saveBest('memory', jami, true) : false;
                         const done = document.getElementById('memDone');
                         done.classList.remove('hidden');
-                        done.innerHTML = `
-                            <div class="text-2xl">🎉</div>
-                            <div class="text-sm font-black text-white">${moves} yurishda topding!</div>
-                            ${rekord ? '<div class="text-[11px] text-amber-300 font-bold">🏆 Yangi rekord!</div>' : ''}
-                            <button onclick="playMemoryDeck('${deck.id}')" class="w-full py-2 rounded-xl bg-emerald-500/25 border border-emerald-500/50 text-emerald-100 text-[11px] font-bold">🔁 Yana</button>
-                            <button onclick="startMemoryGame(document.getElementById('gameStage'))" class="w-full py-2 rounded-xl bg-slate-800 border border-slate-700 text-slate-200 text-[11px] font-bold">← Boshqa mavzu</button>`;
+                        done.innerHTML =
+                            '<div class="text-2xl">' + (oxirgi ? '🏆' : '🎉') + '</div>' +
+                            '<div class="text-sm font-black text-white">' +
+                                (oxirgi ? 'Hamma bosqich tugadi! Jami ' + jami + ' yurish'
+                                        : conf.nom + ' tugadi — ' + moves + ' yurish') +
+                            '</div>' +
+                            (rekord ? '<div class="text-[11px] text-amber-300 font-bold">🏆 Yangi rekord!</div>' : '') +
+                            (oxirgi
+                                ? '<button onclick="playMemoryDeck(\'' + deck.id + '\', 0, 0)" class="w-full py-2 rounded-xl bg-emerald-500/25 border border-emerald-500/50 text-emerald-100 text-[11px] font-bold">🔁 Boshidan</button>'
+                                : '<button onclick="playMemoryDeck(\'' + deck.id + '\', ' + (lvl + 1) + ', ' + jami + ')" class="w-full py-2 rounded-xl bg-emerald-500/25 border border-emerald-500/50 text-emerald-100 text-[11px] font-bold">▶️ Keyingi bosqich</button>') +
+                            '<button onclick="startMemoryGame(document.getElementById(\'gameStage\'))" class="w-full py-2 rounded-xl bg-slate-800 border border-slate-700 text-slate-200 text-[11px] font-bold">← Boshqa mavzu</button>';
                         done.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                     }
                 } else {
