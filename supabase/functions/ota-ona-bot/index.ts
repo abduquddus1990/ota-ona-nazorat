@@ -11,7 +11,31 @@ const BOT_TOKEN = Deno.env.get("BOT_TOKEN") || "";
 if (!BOT_TOKEN) {
   console.error("BOT_TOKEN missing");
 }
-const MINI_APP_URL = Deno.env.get("MINI_APP_URL") || "https://abduquddus1990.github.io/ota-ona-nazorat/?v=5.8";
+const MINI_APP_BASE =
+  Deno.env.get("MINI_APP_URL") || "https://abduquddus1990.github.io/ota-ona-nazorat/?v=6.0";
+
+/**
+ * Mini App havolasi — o'z-o'zidan yangilanadigan kesh kaliti bilan.
+ *
+ * Nega kerak bo'ldi: MINI_APP_URL maxfiy sozlamada `?v=5.8` ga qotib qolgan
+ * edi. Sahifa o'zgarsa ham havola o'zgarmagani uchun Telegram'ning ichki
+ * brauzeri eski index.html ni keshdan berardi — natijada panelga qo'shilgan
+ * yangi bo'limlar (va ular chaqiradigan games.js fayli) bolada UMUMAN paydo
+ * bo'lmasdi. Bu nuqsonning tashqi ko'rinishi juda chalg'ituvchi: server
+ * to'g'ri javob beradi, kod to'g'ri, lekin "yangi bo'lim ko'rinmayapti".
+ *
+ * Yechim ataylab QO'LDA boshqarilmaydi. Versiyani har safar oshirishni
+ * eslab qolish kerak bo'lsa, bir kuni esdan chiqadi va aynan shu nuqson
+ * qaytadi. Kalit 10 daqiqalik oynaga bog'langan: eng yomon holatda eski
+ * sahifa 10 daqiqa yashaydi, keyin o'zi yangilanadi — hech kimning
+ * aralashuvisiz.
+ *
+ * index.html kichik, uni qayta yuklash arzon. Og'ir fayllar (app.js,
+ * games.js) esa o'z `?v=` raqamlari bilan keshda qolaveradi.
+ */
+function miniAppUrl(): string {
+  return `${MINI_APP_BASE}&cb=${Math.floor(Date.now() / 600000).toString(36)}`;
+}
 const TELEGRAM_API = `https://api.telegram.org/bot${BOT_TOKEN}`;
 // setWebhook paytida berilgan maxfiy token. Bo'sh bo'lsa tekshiruv o'chiq
 // qoladi — shunda kod Telegram tomonida token o'rnatilgunga qadar ham
@@ -1115,7 +1139,7 @@ function getStartKeyboard(userId: string | number, lang: string = "uz", isChild:
         [
           {
             text: lang === "ru" ? "🌟 Открыть мою панель" : "🌟 O'z panelimni ochish",
-            web_app: { url: `${MINI_APP_URL}&role=child&lang=${lang}` },
+            web_app: { url: `${miniAppUrl()}&role=child&lang=${lang}` },
           },
         ],
         [{ text: "🌐 Til / Язык (UZ/RU)", callback_data: "action_lang" }],
@@ -1126,7 +1150,7 @@ function getStartKeyboard(userId: string | number, lang: string = "uz", isChild:
   if (lang === "ru") {
     return {
       inline_keyboard: [
-        [{ text: "📱 Открыть панель (Mini App)", web_app: { url: `${MINI_APP_URL}&lang=ru` } }],
+        [{ text: "📱 Открыть панель (Mini App)", web_app: { url: `${miniAppUrl()}&lang=ru` } }],
         [{ text: "👶 Подключить ребёнка", callback_data: `action_pair_${code}` }],
         [{ text: "🌐 Til / Язык (UZ/RU)", callback_data: "action_lang" }],
       ],
@@ -1134,7 +1158,7 @@ function getStartKeyboard(userId: string | number, lang: string = "uz", isChild:
   }
   return {
     inline_keyboard: [
-      [{ text: "📱 Ota-ona paneli (Mini App)", web_app: { url: `${MINI_APP_URL}&lang=uz` } }],
+      [{ text: "📱 Ota-ona paneli (Mini App)", web_app: { url: `${miniAppUrl()}&lang=uz` } }],
       [{ text: "👶 Farzandni ulash", callback_data: `action_pair_${code}` }],
       [{ text: "🌐 Til / Язык (UZ/RU)", callback_data: "action_lang" }],
     ],
@@ -1192,13 +1216,13 @@ function getWelcomeGateKeyboard(lang: string = "uz"): any {
       [
         {
           text: lang === "ru" ? "📝 Регистрация" : "📝 Ro'yxatdan o'tish",
-          web_app: { url: `${MINI_APP_URL}&lang=${lang}` },
+          web_app: { url: `${miniAppUrl()}&lang=${lang}` },
         },
       ],
       [
         {
           text: lang === "ru" ? "🔐 Вход (логин и пароль)" : "🔐 Kirish (login va parol)",
-          web_app: { url: `${MINI_APP_URL}&lang=${lang}&mode=login` },
+          web_app: { url: `${miniAppUrl()}&lang=${lang}&mode=login` },
         },
       ],
       [{ text: "🌐 Til / Язык (UZ/RU)", callback_data: "action_lang" }],
@@ -4108,7 +4132,7 @@ async function handleRequest(req: Request): Promise<Response> {
               [
                 {
                   text: "📍 Hozirgi joylashuvni yuborish",
-                  web_app: { url: `${MINI_APP_URL}&role=child&ask=loc` },
+                  web_app: { url: `${miniAppUrl()}&role=child&ask=loc` },
                 },
               ],
             ],
@@ -4527,7 +4551,7 @@ async function handleRequest(req: Request): Promise<Response> {
               [
                 {
                   text: "📍 Joylashuvni yuborish",
-                  web_app: { url: `${MINI_APP_URL}&role=child&ask=loc` },
+                  web_app: { url: `${miniAppUrl()}&role=child&ask=loc` },
                 },
               ],
             ],
@@ -5934,7 +5958,7 @@ async function handleRequest(req: Request): Promise<Response> {
                 [
                   {
                     text: "\u{1F6E1}️ Qalqonni ochish",
-                    web_app: { url: MINI_APP_URL + "&role=child&inv=" + invCode },
+                    web_app: { url: miniAppUrl() + "&role=child&inv=" + invCode },
                   },
                 ],
               ],
@@ -5970,7 +5994,7 @@ async function handleRequest(req: Request): Promise<Response> {
               inline_keyboard: [[
                 {
                   text: "⚔️ Jangni qabul qilish",
-                  web_app: { url: `${MINI_APP_URL}&role=child&duel=${duelCode}` },
+                  web_app: { url: `${miniAppUrl()}&role=child&duel=${duelCode}` },
                 },
               ]],
             }
@@ -5997,7 +6021,7 @@ async function handleRequest(req: Request): Promise<Response> {
                   {
                     text: "📝 Ro'yxatdan o'tish",
                     web_app: {
-                      url: `${MINI_APP_URL}&lang=${lang}&ref=${refCode}&refc=${refChild}`,
+                      url: `${miniAppUrl()}&lang=${lang}&ref=${refCode}&refc=${refChild}`,
                     },
                   },
                 ],
@@ -6018,7 +6042,7 @@ async function handleRequest(req: Request): Promise<Response> {
                 [
                   {
                     text: "📝 Ro'yxatdan o'tish",
-                    web_app: { url: `${MINI_APP_URL}&lang=${lang}&ref=${refCode}` },
+                    web_app: { url: `${miniAppUrl()}&lang=${lang}&ref=${refCode}` },
                   },
                 ],
               ],

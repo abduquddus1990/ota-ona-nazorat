@@ -3964,8 +3964,79 @@ async function fetchAndApplyRole() {
         console.error('check_role sorovida xato:', e);
     }
 }
+// ============================================================================
+// EKRAN KLAVIATURASI YOZILAYOTGAN MATNNI TO'SIB QO'YMASLIGI UCHUN
+//
+// Telefonda klaviatura ochilganda sahifa qisqarmaydi — u shunchaki matn
+// maydonining ustiga chiqadi, va bola nima yozayotganini ko'rmaydi. Bu
+// ayniqsa AI suhbatida sezilgan: kirish maydoni sahifaning eng pastida.
+//
+// Uchta narsa birga hal qiladi:
+//  1) visualViewport orqali klaviatura balandligini o'lchaymiz va sahifa
+//     ostiga shuncha bo'sh joy qo'shamiz — shunda maydon yuqoriga siljiydi;
+//  2) pastdagi qat'iy (fixed) navigatsiyani yashiramiz, aks holda u
+//     klaviatura ustida turib maydonni yana to'sardi;
+//  3) fokusga kelgan maydonni ko'rinadigan qismning o'rtasiga olib kelamiz.
+//
+// visualViewport bo'lmagan eski brauzerda hech narsa buzilmaydi — shunchaki
+// oldingi xatti-harakat qoladi.
+// ============================================================================
+function setupKeyboardHandling() {
+    const vv = window.visualViewport;
+    const navs = () => [
+        document.getElementById('parentBottomNav'),
+        document.getElementById('childBottomNav')
+    ].filter(Boolean);
+
+    // Navigatsiya allaqachon yashirin bo'lsa (masalan ota-ona panelida
+    // bola navigatsiyasi), uni keyin ko'rinadigan qilib yubormaslik kerak.
+    let hiddenByKeyboard = [];
+
+    const apply = () => {
+        const kb = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+        const ochiq = kb > 100; // 100px dan kichigi klaviatura emas
+
+        document.body.style.paddingBottom = ochiq ? kb + 'px' : '';
+
+        if (ochiq && !hiddenByKeyboard.length) {
+            hiddenByKeyboard = navs().filter(n => !n.classList.contains('hidden'));
+            hiddenByKeyboard.forEach(n => n.classList.add('hidden'));
+        } else if (!ochiq && hiddenByKeyboard.length) {
+            hiddenByKeyboard.forEach(n => n.classList.remove('hidden'));
+            hiddenByKeyboard = [];
+        }
+
+        const el = document.activeElement;
+        if (ochiq && el && /^(INPUT|TEXTAREA)$/.test(el.tagName)) {
+            el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        }
+    };
+
+    if (vv) {
+        let raf = null;
+        const onChange = () => {
+            if (raf) cancelAnimationFrame(raf);
+            raf = requestAnimationFrame(apply);
+        };
+        vv.addEventListener('resize', onChange);
+        vv.addEventListener('scroll', onChange);
+    }
+
+    // Klaviatura ochilishi kechikadi, shuning uchun fokusdan keyin biroz
+    // kutib, maydonni ko'rinadigan joyga suramiz. visualViewport yo'q
+    // bo'lsa ham bu qism ishlaydi va muammoning katta qismini yopadi.
+    document.addEventListener('focusin', (e) => {
+        const el = e.target;
+        if (!el || !/^(INPUT|TEXTAREA)$/.test(el.tagName)) return;
+        setTimeout(() => {
+            try { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (_) {}
+        }, 350);
+    });
+}
+
 // DOM Init
 document.addEventListener('DOMContentLoaded', async () => {
+    setupKeyboardHandling();
     setTheme(currentTheme);
     applyLanguageTranslations();
     updateAuthUI();
