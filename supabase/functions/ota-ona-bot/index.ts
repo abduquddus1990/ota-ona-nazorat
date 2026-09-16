@@ -1604,12 +1604,26 @@ function validQuizItem(it: any): boolean {
   );
 }
 
+// Savollar qayerdan kelgani va AI nega ishlamagani — tashxis uchun.
+// Kalitning o'zi hech qachon bu yerga tushmaydi.
+let lastQuizSource = "zaxira";
+let lastQuizError: string | null = null;
+
 async function buildQuizQuestions(category: string, grade: number): Promise<any[]> {
   const fallback = QUIZ_FALLBACK[category] || QUIZ_FALLBACK.maktab;
-  if (category === "hayot") return quizPick(fallback, 5);
+  lastQuizSource = "zaxira";
+  lastQuizError = null;
+
+  if (category === "hayot") {
+    lastQuizSource = "zaxira (hayot toifasi ataylab)";
+    return quizPick(fallback, 5);
+  }
 
   const apiKey = Deno.env.get("GEMINI_API_KEY") || "";
-  if (!apiKey) return quizPick(fallback, 5);
+  if (!apiKey) {
+    lastQuizError = "GEMINI_API_KEY sozlanmagan";
+    return quizPick(fallback, 5);
+  }
 
   const model = Deno.env.get("GEMINI_MODEL") || "gemini-3.6-flash";
   const prompt =
@@ -1622,7 +1636,9 @@ async function buildQuizQuestions(category: string, grade: number): Promise<any[
     `- ${grade}-sinf darajasiga mos: na juda oson, na juda qiyin.\n` +
     `- To'rtala variant ham jiddiy ko'rinsin; kulgili variant qo'yma.\n` +
     `- To'g'ri javob indeksi har safar turlicha bo'lsin.\n` +
-    `- Siyosat, din, zo'ravonlik yoki kattalarga oid mavzularga tegma.`;
+    `- Siyosat, din, zo'ravonlik yoki kattalarga oid mavzularga tegma.\n` +
+    `- LaTeX yozma ($...$ kabi) — oddiy matn bilan yoz.\n` +
+    `- Uzoq o'ylama, to'g'ridan-to'g'ri JSON yoz.`;
 
   try {
     const res = await fetch(
@@ -1634,33 +1650,85 @@ async function buildQuizQuestions(category: string, grade: number): Promise<any[
           contents: [{ role: "user", parts: [{ text: prompt }] }],
           generationConfig: {
             temperature: 1.0,
-            maxOutputTokens: 2048,
+            // maxOutputTokens modelning "o'ylash" tokenlarini ham sanaydi.
+            // 2048 da model o'ylab tugatgach javob yozishga joy qolmay,
+            // JSON massiv o'rtasidan kesilib qolar edi — natijada har safar
+            // zaxira savollar chiqardi. 8192 ikkalasiga ham yetadi.
+            maxOutputTokens: 8192,
             responseMimeType: "application/json",
           },
         }),
       }
     );
     const j = await res.json();
-    const text =
-      j?.candidates?.[0]?.content?.parts?.map((p: any) => p.text).join("") || "";
+
+    // "O'ylash" bo'laklarini tashlaymiz: ular javob emas, modelning ichki
+    // mulohazasi, va matnga qo'shilsa JSON gap o'rtasidan boshlanib qoladi.
+    const parts = j?.candidates?.[0]?.content?.parts || [];
+    const text = parts
+      .filter((p: any) => p && typeof p.text === "string" && p.thought !== true)
+      .map((p: any) => p.text)
+      .join("");
+
     if (!text) {
-      console.error("Viktorina: AI bo'sh javob", JSON.stringify(j).slice(0, 300));
+      lastQuizError = String(
+        j?.error?.message || j?.promptFeedback?.blockReason || `HTTP ${res.status}`
+      ).slice(0, 200);
+      console.error("Viktorina: AI bo'sh javob", JSON.stringify(j).slice(0, 400));
       return quizPick(fallback, 5);
     }
 
-    // Model ba'zan JSON'ni ```json ... ``` ichiga o'rab yuboradi.
-    const cleaned = text.replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
-    const parsed = JSON.parse(cleaned);
-    const items = (Array.isArray(parsed) ? parsed : parsed.questions || []).filter(
-      validQuizItem
-    );
+    // Model javobini QAT'IY JSON deb hisoblamaymiz. Amalda u ba'zan
+    // ```json ... ``` ichiga o'raydi, ba'zan oldiga bir jumla qo'shadi,
+    // ba'zan "o'ylash" qismini alohida bo'lak qilib yuboradi va matn
+    // o'rtasidan boshlanadi. Shuning uchun matnning ichidan birinchi
+    // to'liq massivni qavslar bo'yicha ajratib olamiz.
+    const items = (() => {
+      const tryParse = (s: string) => {
+        try {
+          const p = JSON.parse(s);
+          const arr = Array.isArray(p) ? p : p.questions;
+          return Array.isArray(arr) ? arr : null;
+        } catch (_) {
+          return null;
+        }
+      };
 
+      const direct = tryParse(text.replace(/```(?:json)?/gi, "").trim());
+      if (direct) return direct.filter(validQuizItem);
+
+      const start = text.indexOf("[");
+      if (start >= 0) {
+        let depth = 0;
+        for (let i = start; i < text.length; i++) {
+          if (text[i] === "[") depth++;
+          else if (text[i] === "]") {
+            depth--;
+            if (depth === 0) {
+              const arr = tryParse(text.slice(start, i + 1));
+              if (arr) return arr.filter(validQuizItem);
+              break;
+            }
+          }
+        }
+      }
+      return [] as any[];
+    })();
+
+    if (items.length >= 5) {
+      lastQuizSource = "ai";
+      return items.slice(0, 5);
+    }
     // 5 tasi to'liq chiqmasa, yetmaganini zaxiradan to'ldiramiz — o'yin
     // baribir boshlanadi.
-    if (items.length >= 5) return items.slice(0, 5);
+    lastQuizSource = items.length ? "ai + zaxira" : "zaxira";
+    lastQuizError =
+      `AI ${items.length} ta yaroqli savol berdi. Javob boshi: ` +
+      JSON.stringify(text.slice(0, 120));
     return items.concat(quizPick(fallback, 5 - items.length));
   } catch (e) {
-    console.error("Viktorina AI xatosi:", e instanceof Error ? e.message : e);
+    lastQuizError = (e instanceof Error ? e.message : String(e)).slice(0, 200);
+    console.error("Viktorina AI xatosi:", lastQuizError);
     return quizPick(fallback, 5);
   }
 }
@@ -2462,6 +2530,8 @@ async function handleRequest(req: Request): Promise<Response> {
           // To'g'ri javob olib tashlanadi.
           questions: questions.map((q: any) => ({ q: q.q, a: q.a })),
           scored: category !== "hayot",
+          source: lastQuizSource,
+          sourceNote: lastQuizError,
         }),
         { status: 200, headers: { "Content-Type": "application/json" } }
       );
