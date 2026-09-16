@@ -4693,6 +4693,83 @@ async function handleRequest(req: Request): Promise<Response> {
     }
 
     // 0.0l Xavfsiz hududlar ro'yxati va so'nggi ogohlantirishlar.
+    // Hududni o'chirish. Busiz ota-ona xato qo'ygan uyni tuzatolmasdi —
+    // faqat ustiga yangisini yozishi mumkin edi, eskisi esa xaritada qolib,
+    // "kirdi/chiqdi" xabarlarini yuboraverardi.
+    if (payload.type === "delete_geofence_zone") {
+      if (actor!.kind !== "telegram") return unauthorized("Faqat ota-ona");
+      if (!db) {
+        return new Response(JSON.stringify({ ok: false, error: "Baza ulanmagan" }), {
+          status: 500, headers: { "Content-Type": "application/json" },
+        });
+      }
+      const childId = String(payload.childId || "").trim();
+      const name = String(payload.name || "").trim();
+      if (!childId || !name) {
+        return new Response(JSON.stringify({ ok: false, error: "childId va name majburiy" }), {
+          status: 400, headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      const { error } = await db
+        .from("geofence_zones")
+        .delete()
+        .eq("family_code", actor!.familyCode)
+        .eq("child_id", childId)
+        .eq("name", name);
+
+      if (error) {
+        return new Response(JSON.stringify({ ok: false, error: error.message }), {
+          status: 500, headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      // Shu hududga tegishli eski ogohlantirishlarni ham olib tashlaymiz:
+      // hudud yo'q bo'lsa, uning tarixi ham ma'nosini yo'qotadi va lentada
+      // mavjud bo'lmagan joy nomi turib qolardi.
+      await db
+        .from("geofence_alerts")
+        .delete()
+        .eq("family_code", actor!.familyCode)
+        .eq("child_id", childId)
+        .eq("zone_name", name);
+
+      return new Response(JSON.stringify({ ok: true }), {
+        status: 200, headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    // Bildirishnoma sozlamalari: kunlik hisobot va kechki tekshiruv.
+    if (payload.type === "notification_settings") {
+      if (actor!.kind !== "telegram") return unauthorized("Faqat ota-ona");
+      if (!db) {
+        return new Response(JSON.stringify({ ok: false, error: "Baza ulanmagan" }), {
+          status: 500, headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      if (typeof payload.digestEnabled === "boolean") {
+        await db
+          .from("parent_registrations")
+          .update({ digest_enabled: payload.digestEnabled })
+          .eq("family_code", actor!.familyCode);
+      }
+
+      const { data } = await db
+        .from("parent_registrations")
+        .select("digest_enabled")
+        .eq("family_code", actor!.familyCode)
+        .limit(1);
+
+      return new Response(
+        JSON.stringify({
+          ok: true,
+          digestEnabled: !!(data && data[0] && data[0].digest_enabled),
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
     if (payload.type === "list_geofences") {
       if (actor!.kind !== "telegram") return unauthorized("Faqat ota-ona");
       if (!db) {

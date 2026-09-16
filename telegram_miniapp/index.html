@@ -1083,10 +1083,25 @@
                     <div class="text-[11px] font-bold text-white mt-1">Kun marshruti</div>
                     <div class="text-[9px] text-slate-400">Bugun qayerlarda bo'ldi</div>
                 </button>
+                <button onclick="openZonesModal()" class="p-3 rounded-2xl bg-slate-900/70 border border-slate-700 hover:border-cyan-500/60 transition text-left">
+                    <div class="text-xl">📍</div>
+                    <div class="text-[11px] font-bold text-white mt-1">Xavfsiz hududlar</div>
+                    <div class="text-[9px] text-slate-400">Uy va maktabni belgilang</div>
+                </button>
+                <button onclick="openNotificationsModal()" class="p-3 rounded-2xl bg-slate-900/70 border border-slate-700 hover:border-amber-500/60 transition text-left">
+                    <div class="text-xl">🔔</div>
+                    <div class="text-[11px] font-bold text-white mt-1">Bildirishnomalar</div>
+                    <div class="text-[9px] text-slate-400">Nima va qachon keladi</div>
+                </button>
                 <button onclick="openSubpage('modal-plans')" class="p-3 rounded-2xl bg-slate-900/70 border border-slate-700 hover:border-emerald-500/60 transition text-left">
                     <div class="text-xl">⭐️</div>
                     <div class="text-[11px] font-bold text-white mt-1">Tarif</div>
                     <div class="text-[9px] text-slate-400">Bepul va Pro imkoniyatlari</div>
+                </button>
+                <button onclick="openSubpage('modal-delete-account')" class="p-3 rounded-2xl bg-slate-900/70 border border-slate-700 hover:border-rose-500/50 transition text-left">
+                    <div class="text-xl">🔒</div>
+                    <div class="text-[11px] font-bold text-white mt-1">Maxfiylik</div>
+                    <div class="text-[9px] text-slate-400">Ma'lumot va hisobni o'chirish</div>
                 </button>
             </div>
         </section>
@@ -1770,6 +1785,94 @@
     </div>
 
     <!-- 💰 MODAL: VAQT BANKI KURSI (ota-ona belgilaydi) -->
+    <!-- 📍 XAVFSIZ HUDUDLAR
+         Busiz "maktabga kirdi", "uyga keldi" va kechki tekshiruv haqiqiy
+         oilada hech qachon ishlamaydi: server tayyor edi, lekin hududni
+         qo'shadigan ekran yo'q edi. -->
+    <div id="modal-zones" class="subpage-modal space-y-4">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+            <button onclick="closeSubpage()" class="text-xs font-bold text-cyan-400">← Orqaga</button>
+            <h2 class="text-xs font-bold text-white">📍 Xavfsiz hududlar</h2>
+            <span class="w-8"></span>
+        </div>
+
+        <div class="text-[10px] text-slate-400 leading-relaxed p-2.5 rounded-xl bg-slate-900/60 border border-slate-800">
+            Uy va maktabni belgilab qo'ying — farzandingiz u yerga kirganda yoki
+            chiqqanda sizga darhol xabar keladi. Kechki tekshiruv ham shu hududlarga
+            qarab ishlaydi.
+        </div>
+
+        <div id="zoneList" class="space-y-2"></div>
+
+        <section class="glass-card p-4 space-y-3">
+            <h3 class="text-xs font-bold text-white">Yangi hudud qo'shish</h3>
+
+            <div class="flex gap-1.5 flex-wrap" id="zonePresets">
+                <button onclick="setZoneName('Uy')" class="px-2.5 py-1.5 rounded-xl bg-slate-800 border border-slate-700 text-[10px] font-bold text-slate-200">🏠 Uy</button>
+                <button onclick="setZoneName('Maktab')" class="px-2.5 py-1.5 rounded-xl bg-slate-800 border border-slate-700 text-[10px] font-bold text-slate-200">🏫 Maktab</button>
+                <button onclick="setZoneName('To\'garak')" class="px-2.5 py-1.5 rounded-xl bg-slate-800 border border-slate-700 text-[10px] font-bold text-slate-200">🎨 To'garak</button>
+                <button onclick="setZoneName('Buvim uyi')" class="px-2.5 py-1.5 rounded-xl bg-slate-800 border border-slate-700 text-[10px] font-bold text-slate-200">👵 Buvim uyi</button>
+            </div>
+
+            <input type="text" id="zoneName" placeholder="Hudud nomi" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500">
+
+            <div id="zoneMap" style="height:200px;border-radius:14px;overflow:hidden"></div>
+            <div class="text-[10px] text-slate-400" id="zoneCoords">Xaritani bosib joyni tanlang</div>
+
+            <div class="grid grid-cols-2 gap-2">
+                <button onclick="zoneUseChildLocation()" class="py-2 rounded-xl bg-cyan-500/15 border border-cyan-500/40 text-cyan-200 text-[10px] font-bold">👦 Farzandim shu yerda</button>
+                <button onclick="zoneUseMyLocation()" class="py-2 rounded-xl bg-slate-800 border border-slate-700 text-slate-200 text-[10px] font-bold">📍 Men shu yerdaman</button>
+            </div>
+
+            <div>
+                <div class="flex items-center justify-between text-[10px] text-slate-400 mb-1">
+                    <span>Radius</span><span id="zoneRadiusLabel" class="text-slate-200 font-bold">150 m</span>
+                </div>
+                <input type="range" id="zoneRadius" min="50" max="1000" step="25" value="150" oninput="onZoneRadiusChange()" class="w-full">
+            </div>
+
+            <div>
+                <label class="text-[10px] text-slate-400">Kelish vaqti (ixtiyoriy)</label>
+                <input type="time" id="zoneArriveBy" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500">
+                <div class="text-[9px] text-slate-500 mt-1">Belgilansa, farzandingiz shu vaqtdan oldin yetib kelsa vaqt bankiga daqiqa qo'shiladi.</div>
+            </div>
+
+            <div id="zoneSaveMsg" class="text-[10px]"></div>
+            <button onclick="saveZone()" id="zoneSaveBtn" class="w-full py-2.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-100 text-[11px] font-bold transition">
+                💾 Hududni saqlash
+            </button>
+        </section>
+    </div>
+
+    <!-- 🔔 BILDIRISHNOMALAR -->
+    <div id="modal-notifications" class="subpage-modal space-y-4">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+            <button onclick="closeSubpage()" class="text-xs font-bold text-amber-400">← Orqaga</button>
+            <h2 class="text-xs font-bold text-white">🔔 Bildirishnomalar</h2>
+            <span class="w-8"></span>
+        </div>
+
+        <section class="glass-card p-4 space-y-3">
+            <div class="flex items-center justify-between gap-3">
+                <div class="flex-1">
+                    <div class="text-[11px] font-bold text-white">📊 Kunlik hisobot</div>
+                    <div class="text-[10px] text-slate-400">Har kuni kechqurun: fokus daqiqalari, joylashuv, kayfiyat</div>
+                </div>
+                <button onclick="toggleDigest()" id="digestToggle" class="px-3 py-1.5 rounded-xl border text-[10px] font-bold transition">—</button>
+            </div>
+
+            <div class="pt-3 border-t border-slate-800 space-y-2 text-[10px] text-slate-300">
+                <div class="font-bold text-slate-200 text-[11px]">Doimiy yoqilgan xabarlar</div>
+                <div>🟢 Jonli joylashuv yoqilganda va to'xtatilganda</div>
+                <div>📍 Xavfsiz hududga kirganda va chiqqanda</div>
+                <div>🌙 Kechki tekshiruv — soat 22:00 da «farzandingiz uydami?»</div>
+                <div>🆘 SOS tugmasi bosilganda</div>
+                <div>⭐️ Farzandingiz Pro so'raganda</div>
+                <div class="text-[9px] text-slate-500 pt-1">Bular xavfsizlikka tegishli, shuning uchun o'chirilmaydi.</div>
+            </div>
+        </section>
+    </div>
+
     <!-- 🎮 O'YINLAR BO'LIMI -->
     <div id="modal-games" class="subpage-modal space-y-4">
         <div class="flex items-center justify-between pb-3 border-b border-slate-800">
@@ -2722,7 +2825,7 @@
     </nav>
 
     <!-- Custom JavaScript -->
-    <script src="app.js?v=6.1"></script>
+    <script src="app.js?v=6.2"></script>
     <!-- O'yinlar alohida faylda: app.js allaqachon katta, va o'yin kontenti
          (savollar, kartalar) o'sib boradi. Alohida fayl brauzerda alohida
          keshlanadi — o'yin qo'shilsa, butun ilova qayta yuklanmaydi. -->

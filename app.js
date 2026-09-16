@@ -4260,3 +4260,277 @@ function handleCompleteParentOnboarding() {
         alert(isRu ? "⚠️ Сервер не отвечает. Попробуйте позже." : "⚠️ Server javob bermadi. Keyinroq urinib ko'ring.");
     });
 }
+
+// ============================================================================
+// XAVFSIZ HUDUDLAR — ota-ona ekrani
+//
+// Server tomoni ancha oldin tayyor edi (save_geofence_zone, evaluateGeofences),
+// lekin hududni QO'SHADIGAN ekran yo'q edi. Ya'ni "maktabga kirdi", "uyga
+// keldi" xabarlari va kechki tekshiruv haqiqiy oilada hech qachon ishlay
+// olmasdi — hudud bo'lmasa, tekshiriladigan narsa ham yo'q.
+//
+// Joyni tanlashning uchta yo'li bor va uchalasi ham kerak:
+//   1) xaritani bosish — eng aniq, lekin manzilni bilish kerak;
+//   2) "farzandim shu yerda" — bola maktabda turganda bir bosishda;
+//   3) "men shu yerdaman" — ota-ona uyda turganda.
+// ============================================================================
+
+let zoneMap = null;
+let zoneMarker = null;
+let zoneCircle = null;
+let zonePoint = null;
+
+function openZonesModal() {
+    openSubpage('modal-zones');
+    // Modal ochilgach xarita o'lchamini bilishi uchun biroz kutamiz —
+    // yashirin elementda Leaflet noto'g'ri o'lcham oladi.
+    setTimeout(() => {
+        initZoneMap();
+        loadZoneList();
+    }, 250);
+}
+
+function initZoneMap() {
+    const el = document.getElementById('zoneMap');
+    if (!el || typeof L === 'undefined') return;
+
+    if (!zoneMap) {
+        // Toshkent markazi — boshlang'ich nuqta sifatida.
+        zoneMap = L.map('zoneMap', { zoomControl: true, attributionControl: false })
+            .setView([41.3111, 69.2797], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(zoneMap);
+        zoneMap.on('click', (e) => setZonePoint(e.latlng.lat, e.latlng.lng));
+    }
+    zoneMap.invalidateSize();
+}
+
+function setZonePoint(lat, lng) {
+    zonePoint = { lat: lat, lng: lng };
+    const r = Number(document.getElementById('zoneRadius').value) || 150;
+
+    if (!zoneMarker) {
+        zoneMarker = L.marker([lat, lng], { draggable: true }).addTo(zoneMap);
+        zoneMarker.on('dragend', () => {
+            const p = zoneMarker.getLatLng();
+            setZonePoint(p.lat, p.lng);
+        });
+    } else {
+        zoneMarker.setLatLng([lat, lng]);
+    }
+
+    if (!zoneCircle) {
+        zoneCircle = L.circle([lat, lng], { radius: r, color: '#22d3ee', fillColor: '#22d3ee', fillOpacity: 0.15 }).addTo(zoneMap);
+    } else {
+        zoneCircle.setLatLng([lat, lng]);
+        zoneCircle.setRadius(r);
+    }
+
+    zoneMap.setView([lat, lng], Math.max(zoneMap.getZoom(), 15));
+    const c = document.getElementById('zoneCoords');
+    if (c) c.textContent = '📍 ' + lat.toFixed(5) + ', ' + lng.toFixed(5);
+}
+
+function onZoneRadiusChange() {
+    const r = Number(document.getElementById('zoneRadius').value) || 150;
+    const lbl = document.getElementById('zoneRadiusLabel');
+    if (lbl) lbl.textContent = r + ' m';
+    if (zoneCircle) zoneCircle.setRadius(r);
+}
+
+function setZoneName(name) {
+    const el = document.getElementById('zoneName');
+    if (el) el.value = name;
+    // Maktabga odatda kelish vaqti qo'yiladi — uni oldindan taklif qilamiz.
+    const t = document.getElementById('zoneArriveBy');
+    if (t && name === 'Maktab' && !t.value) t.value = '08:00';
+}
+
+async function zoneUseChildLocation() {
+    const msg = document.getElementById('zoneCoords');
+    if (msg) msg.textContent = 'Farzandingiz joyi so\'ralmoqda...';
+    try {
+        const resp = await fetch(QALQON_BOT_FN, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'radar_status' })
+        });
+        const d = await resp.json();
+        const kid = (d.children || []).find(k => k.childId === currentChildKey) || (d.children || [])[0];
+        if (!kid || !kid.lastPing) {
+            if (msg) msg.textContent = 'Farzandingizdan hali joylashuv kelmagan. Xaritadan tanlang.';
+            return;
+        }
+        setZonePoint(kid.lastPing.lat, kid.lastPing.lng);
+    } catch (e) {
+        console.error('zoneUseChildLocation:', e);
+        if (msg) msg.textContent = 'Server javob bermadi.';
+    }
+}
+
+function zoneUseMyLocation() {
+    const msg = document.getElementById('zoneCoords');
+    if (!navigator.geolocation) {
+        if (msg) msg.textContent = 'Bu qurilmada joylashuv mavjud emas. Xaritadan tanlang.';
+        return;
+    }
+    if (msg) msg.textContent = 'Joylashuvingiz aniqlanmoqda...';
+    navigator.geolocation.getCurrentPosition(
+        (pos) => setZonePoint(pos.coords.latitude, pos.coords.longitude),
+        () => {
+            // Telegram ichidagi brauzer ruxsat bermasligi mumkin — bu xato
+            // emas, shunchaki boshqa yo'ldan borish kerak.
+            if (msg) msg.textContent = 'Joylashuvga ruxsat berilmadi. Xaritadan qo\'lda tanlang.';
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+    );
+}
+
+async function loadZoneList() {
+    const list = document.getElementById('zoneList');
+    if (!list) return;
+    try {
+        const resp = await fetch(QALQON_BOT_FN, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'list_geofences', childId: currentChildKey })
+        });
+        const d = await resp.json();
+        const zones = d.zones || [];
+
+        if (!zones.length) {
+            list.innerHTML = '<div class="text-[10px] text-slate-500 p-2.5 rounded-xl bg-slate-900/50 border border-slate-800">Hali hudud qo\'shilmagan.</div>';
+            return;
+        }
+
+        list.innerHTML = zones.map(z =>
+            '<div class="flex items-center justify-between p-2.5 rounded-xl bg-slate-900/70 border border-slate-800">' +
+                '<div class="min-w-0">' +
+                    '<div class="text-[11px] font-bold text-white">' + escapeHtml(z.name) + '</div>' +
+                    '<div class="text-[9px] text-slate-400">' + z.radius_m + ' m' +
+                        (z.arrive_by ? ' · kelish: ' + z.arrive_by : '') + '</div>' +
+                '</div>' +
+                '<div class="flex gap-1.5">' +
+                    '<button onclick="editZone(' + JSON.stringify(JSON.stringify(z)) + ')" class="px-2 py-1 rounded-lg bg-slate-800 border border-slate-700 text-[10px] text-slate-200">✏️</button>' +
+                    '<button onclick="deleteZone(' + JSON.stringify(z.name) + ')" class="px-2 py-1 rounded-lg bg-rose-500/15 border border-rose-500/40 text-[10px] text-rose-300">🗑</button>' +
+                '</div>' +
+            '</div>').join('');
+    } catch (e) {
+        console.error('list_geofences:', e);
+    }
+}
+
+function editZone(json) {
+    let z;
+    try { z = JSON.parse(json); } catch (e) { return; }
+    document.getElementById('zoneName').value = z.name || '';
+    document.getElementById('zoneRadius').value = z.radius_m || 150;
+    document.getElementById('zoneArriveBy').value = z.arrive_by || '';
+    onZoneRadiusChange();
+    initZoneMap();
+    setZonePoint(Number(z.center_lat), Number(z.center_lng));
+}
+
+async function deleteZone(name) {
+    const savol = '«' + name + '» hududini o\'chiramizmi? Bu hudud bo\'yicha kelish-ketish xabarlari to\'xtaydi.';
+    const bajar = async () => {
+        try {
+            await fetch(QALQON_BOT_FN, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ type: 'delete_geofence_zone', childId: currentChildKey, name: name })
+            });
+            loadZoneList();
+        } catch (e) { console.error('delete_geofence_zone:', e); }
+    };
+    if (tg && tg.showConfirm) tg.showConfirm(savol, (ha) => { if (ha) bajar(); });
+    else if (confirm(savol)) bajar();
+}
+
+async function saveZone() {
+    const msg = document.getElementById('zoneSaveMsg');
+    const btn = document.getElementById('zoneSaveBtn');
+    const name = (document.getElementById('zoneName').value || '').trim();
+    const radius = Number(document.getElementById('zoneRadius').value) || 150;
+    const arriveBy = (document.getElementById('zoneArriveBy').value || '').trim();
+
+    if (!name) { msg.innerHTML = '<span class="text-rose-300">Hudud nomini yozing.</span>'; return; }
+    if (!zonePoint) { msg.innerHTML = '<span class="text-rose-300">Xaritadan joyni tanlang.</span>'; return; }
+    if (!currentChildKey) { msg.innerHTML = '<span class="text-rose-300">Avval farzandni tanlang.</span>'; return; }
+
+    if (btn) { btn.disabled = true; btn.textContent = 'Saqlanmoqda...'; }
+    try {
+        const resp = await fetch(QALQON_BOT_FN, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                type: 'save_geofence_zone',
+                childId: currentChildKey,
+                name: name,
+                lat: zonePoint.lat,
+                lng: zonePoint.lng,
+                radiusM: radius,
+                arriveBy: arriveBy || null
+            })
+        });
+        const d = await resp.json();
+        if (!d.ok) {
+            msg.innerHTML = '<span class="text-amber-300">' + escapeHtml(d.error || 'Saqlanmadi') + '</span>';
+        } else {
+            msg.innerHTML = '<span class="text-emerald-300">✅ «' + escapeHtml(name) + '» saqlandi.</span>';
+            document.getElementById('zoneName').value = '';
+            document.getElementById('zoneArriveBy').value = '';
+            loadZoneList();
+        }
+    } catch (e) {
+        console.error('save_geofence_zone:', e);
+        msg.innerHTML = '<span class="text-rose-300">Server javob bermadi.</span>';
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '💾 Hududni saqlash'; }
+    }
+}
+
+// ============================================================================
+// BILDIRISHNOMALAR
+// ============================================================================
+
+async function openNotificationsModal() {
+    openSubpage('modal-notifications');
+    try {
+        const resp = await fetch(QALQON_BOT_FN, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'notification_settings' })
+        });
+        const d = await resp.json();
+        if (d.ok) paintDigestToggle(d.digestEnabled);
+    } catch (e) { console.error('notification_settings:', e); }
+}
+
+function paintDigestToggle(on) {
+    const btn = document.getElementById('digestToggle');
+    if (!btn) return;
+    btn.dataset.on = on ? '1' : '0';
+    btn.textContent = on ? '✅ Yoqilgan' : '⭕️ O\'chirilgan';
+    btn.className = on
+        ? 'px-3 py-1.5 rounded-xl border text-[10px] font-bold transition bg-emerald-500/20 border-emerald-500/40 text-emerald-200'
+        : 'px-3 py-1.5 rounded-xl border text-[10px] font-bold transition bg-slate-800 border-slate-700 text-slate-300';
+}
+
+async function toggleDigest() {
+    const btn = document.getElementById('digestToggle');
+    if (!btn) return;
+    const next = btn.dataset.on !== '1';
+    btn.textContent = '...';
+    try {
+        const resp = await fetch(QALQON_BOT_FN, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'notification_settings', digestEnabled: next })
+        });
+        const d = await resp.json();
+        paintDigestToggle(d.ok ? d.digestEnabled : !next);
+    } catch (e) {
+        console.error('toggleDigest:', e);
+        paintDigestToggle(!next);
+    }
+}
