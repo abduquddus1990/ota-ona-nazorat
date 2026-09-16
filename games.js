@@ -288,6 +288,11 @@ function openGame(id) {
     if (grid) grid.classList.add('hidden');
     if (intro) intro.classList.add('hidden');
     stage.classList.remove('hidden');
+    // O'yin ochilganda uni ko'rinadigan joyga suramiz: aks holda bola
+    // sahifaning yuqorisida qolib, maydonni qo'lda qidirishi kerak bo'lardi.
+    setTimeout(() => {
+        try { stage.scrollIntoView({ block: 'start', behavior: 'smooth' }); } catch (e) {}
+    }, 120);
     if (id === 'wolf') startWolfGame(stage);
     if (id === 'memory') startMemoryGame(stage);
     if (id === 'quiz') startQuiz(stage);

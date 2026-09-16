@@ -62,7 +62,7 @@ function startTowerGame(stage) {
     stopArcade();
     const host = arcadeShell(stage, '🏗️ Qalqon Minorasi', '0');
     const W = Math.min(stage.clientWidth || 340, 400);
-    const H = Math.round(W * 1.35);
+    const H = Math.min(Math.round(W * 1.35), Math.max(320, (window.innerHeight || 700) - 300));
     const { canvas, x } = arcadeCanvas(host, W, H);
 
     document.getElementById('arcadeFoot').innerHTML =
@@ -325,10 +325,14 @@ function startSnakeGame(stage) {
     stopArcade();
     const host = arcadeShell(stage, '🐍 Ilon', '0');
     const W = Math.min(stage.clientWidth || 340, 400);
-    const CELL = Math.floor(W / 17);
     const COLS = 17;
-    const ROWS = 21;
+    const CELL = Math.floor(W / COLS);
     const CW = CELL * COLS;
+    // Qatorlar soni EKRAN BALANDLIGIDAN kelib chiqadi. Qat'iy 21 qator
+    // qilinganda maydon telefonga sig'may, boshqaruv tugmalari pastda
+    // ko'rinmay qolardi — o'yinni boshqarib bo'lmasdi.
+    const bosh = Math.max(240, (window.innerHeight || 700) - 380);
+    const ROWS = Math.max(12, Math.min(21, Math.floor(bosh / CELL)));
     const CH = CELL * ROWS;
     const { canvas, x } = arcadeCanvas(host, CW, CH);
 
@@ -345,7 +349,8 @@ function startSnakeGame(stage) {
     let snake, dir, nextDir, food, score, over, tick, speed, glow;
 
     function reset() {
-        snake = [{ x: 8, y: 12 }, { x: 8, y: 13 }, { x: 8, y: 14 }];
+        const y0 = Math.floor(ROWS / 2);
+        snake = [{ x: 8, y: y0 }, { x: 8, y: y0 + 1 }, { x: 8, y: y0 + 2 }];
         dir = { x: 0, y: -1 };
         nextDir = dir;
         score = 0; over = false; tick = 0; speed = 8; glow = 0;
