@@ -1405,7 +1405,6 @@ function checkChildConsentStatus() {
             if (locCard) locCard.classList.remove('hidden');
             const gamesCard = document.getElementById('gamesEntryCard');
             if (gamesCard) gamesCard.classList.remove('hidden');
-            renderProExchange();
 
             // Ota-ona "Qayerdasan?" deb so'ragan bo'lsa, bot havolasida
             // ?ask=loc keladi — u holda bolaga tugma qidirtirmaymiz.
@@ -2047,7 +2046,7 @@ function togglePomodoroTimer() {
     }
 }
 
-/** Taymer tugadi — serverdan vaqt so'raymiz. Mukofotni server hal qiladi. */
+/** Taymer tugadi. Ball darhol berilmaydi: avval 3 ta tekshiruv savoli. */
 async function finishFocusSession() {
     const isRu = (currentLang === 'ru');
     if (!activeFocusSessionId) {
@@ -2066,10 +2065,13 @@ async function finishFocusSession() {
         });
         const data = await resp.json();
 
-        if (data.ok && data.awarded > 0) {
-            alert(`🎉 Ajoyib! Diqqat bilan ishlading.\n\n⏱ Vaqt bankingga +${data.awarded} daqiqa yozildi.\n💰 Jami: ${data.balance} daqiqa`);
-        } else if (data.ok && data.capReached) {
-            alert(`🎉 Zo'r ish! Lekin bugungi chegaraga yetding (${data.dailyCap} daqiqa).\n\nErtaga yana ishlab topsang bo'ladi.`);
+        if (data.ok && data.check) {
+            resetPomodoroTimer();
+            const ready = () => runFocusCheck(sessionId).then(() => renderTimeBank());
+            const msg = `⏱ Seans tugadi!\n\nBall olish uchun ${data.check.total} ta savol — har biriga ${data.check.seconds} soniya. Ilovadan chiqma.\n\nTayyormisan?`;
+            if (tg && tg.showAlert) tg.showAlert(msg, ready);
+            else { alert(msg); ready(); }
+            return;
         } else if (data.tooEarly) {
             alert(`⏳ Seans hali tugamadi — yana ${data.remainingMinutes} daqiqa.`);
         } else {
@@ -2149,10 +2151,10 @@ async function resolveRealChildKey() {
 
 async function openTimeBankRules() {
     openSubpage('modal-time-bank');
+    renderParentGifts();
     const childKey = await resolveRealChildKey();
     if (!childKey) {
-        alert("Avval farzand qo'shing — vaqt banki kursi har bir farzandga alohida belgilanadi.");
-        closeSubpage();
+        // Sovg'alar ro'yxati butun oila uchun — farzand bo'lmasa ham ochiq qoladi.
         return;
     }
     try {
@@ -2168,15 +2170,15 @@ async function openTimeBankRules() {
         const r = d.rules || {};
         set('tbFocus', r.minutes_per_focus ?? 10);
         set('tbSchool', r.minutes_per_school_ontime ?? 20);
-        set('tbHomework', r.minutes_per_homework ?? 10);
-        set('tbCap', r.daily_cap_minutes ?? 90);
+        set('tbHomework', r.minutes_per_homework ?? 15);
+        set('tbCap', r.daily_cap_minutes ?? 60);
         const en = document.getElementById('tbEnabled');
         if (en) en.checked = r.enabled !== false;
 
         const box = document.getElementById('tbCurrentBalance');
         const val = document.getElementById('tbBalanceValue');
         if (box && val) {
-            val.innerText = d.balance + ' daqiqa';
+            val.innerText = d.balance + ' ball';
             box.classList.remove('hidden');
         }
     } catch (e) {
@@ -2206,13 +2208,13 @@ async function saveTimeBankRules() {
                 enabled: document.getElementById('tbEnabled')?.checked !== false,
                 minutesPerFocus: num('tbFocus', 10),
                 minutesPerSchoolOntime: num('tbSchool', 20),
-                minutesPerHomework: num('tbHomework', 10),
-                dailyCapMinutes: num('tbCap', 90)
+                minutesPerHomework: num('tbHomework', 15),
+                dailyCapMinutes: num('tbCap', 60)
             })
         });
         const d = await resp.json();
         if (d.ok) {
-            alert("✅ Kurs saqlandi. Farzandingiz shu kurs bo'yicha vaqt ishlab topadi.");
+            alert("✅ Kurs saqlandi. Farzandingiz shu kurs bo'yicha ball ishlab topadi.");
             closeSubpage();
         } else {
             alert('Xatolik: ' + (d.error || "qayta urinib ko'ring"));
@@ -2240,8 +2242,8 @@ async function renderTimeBank() {
 
         card.classList.remove('hidden');
         const set = (id, text) => { const el = document.getElementById(id); if (el) el.innerText = text; };
-        set('timeBankBalance', d.balance + ' daqiqa');
-        set('timeBankToday', `Bugun ishlab topilgani: ${d.earnedToday} / ${d.dailyCap} daqiqa`);
+        set('timeBankBalance', d.balance + ' ball');
+        set('timeBankToday', `Bugun: ${d.earnedToday} / ${d.dailyCap} ball`);
 
         const list = document.getElementById('timeBankHistory');
         if (list) {
@@ -2249,18 +2251,22 @@ async function renderTimeBank() {
                 focus: '🎯 Fokus',
                 school_ontime: '🏫 O\'z vaqtida',
                 homework: '📚 Uy vazifasi',
-                parent_bonus: '🎁 Ota-ona sovg\'asi',
-                spend: '📱 Sarflandi'
+                parent_bonus: '🎁 Ota-ona bonusi',
+                spend: '📱 Sarflandi',
+                gift: '🎁 Sovg\'a',
+                shop: '🛍 Do\'kon',
+                pro_exchange: '⭐️ Pro'
             };
             list.innerHTML = (d.history || []).slice(0, 4).map(h =>
                 `<div class="flex items-center justify-between text-[10px]">
                     <span class="text-slate-400">${labels[h.reason] || h.reason}</span>
-                    <span class="font-bold ${h.minutes > 0 ? 'text-emerald-400' : 'text-rose-400'}">${h.minutes > 0 ? '+' : ''}${h.minutes} daq</span>
+                    <span class="font-bold ${h.minutes > 0 ? 'text-emerald-400' : 'text-rose-400'}">${h.minutes > 0 ? '+' : ''}${h.minutes} ball</span>
                 </div>`
             ).join('') || '<div class="text-[10px] text-slate-500">Hali yozuv yo\'q — fokus seansini boshla!</div>';
         }
 
         renderCompanion(d.companion);
+        loadShop().catch(() => {});
     } catch (e) {
         console.error('time_bank_status error:', e);
     }
@@ -2599,6 +2605,16 @@ function renderCompanion(c) {
 
     const set = (id, text) => { const el = document.getElementById(id); if (el) el.innerText = text; };
     set('companionName', c.name || 'Qalqon');
+    const badge = document.getElementById('companionBadge');
+    if (badge) {
+        badge.textContent = c.badge ? c.badge.emoji + ' ' + c.badge.title : '';
+        badge.classList.toggle('hidden', !c.badge);
+    }
+    const acc = document.getElementById('companionAccessory');
+    if (acc) {
+        acc.textContent = c.accessory ? c.accessory.emoji : '';
+        acc.classList.toggle('hidden', !c.accessory);
+    }
     set('companionLevel', c.level + '-daraja');
     set('companionXp', c.xp + ' XP');
     set('companionStreak', c.streak + ' kun');
@@ -3524,110 +3540,503 @@ function openLiveLocationGuide() {
 }
 
 // ============================================================================
-// BALLARNI PRO'GA ALMASHTIRISH
+// BALL DO'KONI (farzand) va SOVG'ALAR RO'YXATI (ota-ona)
 //
-// Faqat bolaning O'ZI ishlab topgan daqiqalari hisobga olinadi — fokus
-// seanslari va maktabga o'z vaqtida yetish. Ota-ona bergan bonus kirmaydi,
-// aks holda ota-ona o'ziga cheksiz bepul Pro yozib olardi.
-//
-// Chegaralarni ham, hisobni ham SERVER qaraydi. Bu yerdagi kod faqat
-// ko'rsatadi: mijozdagi son o'zgartirilsa ham, server rad etadi.
+// Ball Pro'ga almashtirilmaydi — Pro'ni ota-ona sotib oladi. Bola ballni
+// o'zi his qiladigan narsaga sarflaydi. Narx, balans va egalik SERVERDA:
+// bu yerdagi kod faqat ko'rsatadi, mijozdagi sonni o'zgartirish hech narsa
+// bermaydi.
 // ============================================================================
 
-let proExchangeState = null;
+const RARITY_STYLE = {
+    oddiy: { ring: 'border-slate-500/60', bg: 'from-slate-700/40 to-slate-900/60', text: 'text-slate-200' },
+    noyob: { ring: 'border-sky-400/70', bg: 'from-sky-600/30 to-indigo-900/60', text: 'text-sky-200' },
+    afsonaviy: { ring: 'border-amber-400/80', bg: 'from-amber-500/35 to-rose-900/60', text: 'text-amber-200' }
+};
 
-async function renderProExchange() {
-    if (currentAppRole !== 'child') return;
-    const card = document.getElementById('proExchangeCard');
-    const body = document.getElementById('proExchangeBody');
-    const btn = document.getElementById('proExchangeBtn');
-    const sub = document.getElementById('proExchangeSub');
-    if (!card) return;
+let shopState = null;
+let shopTab = 'gifts';
 
+/** O'yin qulflari internetsiz ham ishlashi uchun oxirgi holat eslab qolinadi. */
+function rememberOwnedGames(items) {
+    const owned = (items || []).filter(i => i.kind === 'game' && i.owned).map(i => i.gameId);
+    const locked = (items || []).filter(i => i.kind === 'game').map(i => ({ id: i.gameId, price: i.price, key: i.key }));
+    try { localStorage.setItem('qalqon_games', JSON.stringify({ owned, locked })); } catch (e) {}
+}
+
+function gameLockInfo(gameId) {
+    if (currentAppRole !== 'child') return null;
+    let st = null;
+    try { st = JSON.parse(localStorage.getItem('qalqon_games') || 'null'); } catch (e) {}
+    // Holat hali kelmagan bo'lsa ham pullik o'yinlar qulf ko'rinadi.
+    const locked = (st && st.locked) || [
+        { id: 'race', price: 200, key: 'game_race' },
+        { id: 'g2048', price: 200, key: 'game_g2048' },
+        { id: 'penalty', price: 250, key: 'game_penalty' }
+    ];
+    const owned = (st && st.owned) || [];
+    const l = locked.find(x => x.id === gameId);
+    if (!l || owned.includes(gameId)) return null;
+    return l;
+}
+
+async function loadShop() {
+    const resp = await fetch(QALQON_BOT_FN, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'shop_status' })
+    });
+    const d = await resp.json();
+    if (!d.ok) throw new Error(d.error || 'shop_status');
+    shopState = d;
+    rememberOwnedGames(d.items);
+    return d;
+}
+
+async function openShop(tab) {
+    if (tab) shopTab = tab;
+    openSubpage('modal-shop');
+    document.querySelectorAll('#shopTabs .shop-tab').forEach(b => {
+        const on = b.dataset.tab === shopTab;
+        b.classList.toggle('bg-amber-500/25', on);
+        b.classList.toggle('border-amber-500/60', on);
+        b.classList.toggle('text-amber-100', on);
+    });
+    const body = document.getElementById('shopBody');
+    if (!shopState && body) body.innerHTML = '<div class="text-[11px] text-slate-400 p-3">Yuklanmoqda...</div>';
     try {
-        const resp = await fetch(QALQON_BOT_FN, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ type: 'pro_exchange_status' })
-        });
-        const d = await resp.json();
-        if (!d.ok) return;
-        proExchangeState = d;
-        card.classList.remove('hidden');
-
-        if (sub) sub.textContent = `${d.minutesPerDay} daqiqa = 1 kun Pro · oyiga ${d.monthlyCap} kungacha`;
-
-        if (d.pending) {
-            body.innerHTML = `⏳ <b>${d.pending.days} kun</b> uchun so'roving ota-onangda — javobini kutamiz.`;
-            if (btn) { btn.disabled = true; btn.textContent = '⏳ Javob kutilmoqda'; btn.classList.add('opacity-50'); }
-            return;
-        }
-
-        if (btn) { btn.disabled = false; btn.classList.remove('opacity-50'); }
-
-        if (d.maxDays < 1) {
-            const kerak = d.minutesPerDay - (d.available % d.minutesPerDay);
-            body.innerHTML = d.capLeft < 1
-                ? `Bu oyda chegaraga yetding (${d.monthlyCap} kun). Keyingi oyda yana mumkin.`
-                : `Yig'ilgan: <b>${d.available}</b> daqiqa. 1 kun Pro uchun yana <b>${kerak}</b> daqiqa kerak.`;
-            if (btn) { btn.disabled = true; btn.textContent = '⭐️ Hali yetarli emas'; btn.classList.add('opacity-50'); }
-            return;
-        }
-
-        body.innerHTML =
-            `Yig'ilgan: <b>${d.available}</b> daqiqa · ` +
-            `Almashtirish mumkin: <b>${d.maxDays} kun Pro</b>` +
-            (d.usedDaysThisMonth ? `<br><span class="text-[10px] text-slate-400">Bu oyda allaqachon ${d.usedDaysThisMonth} kun olingan.</span>` : '');
-        if (btn) btn.textContent = `⭐️ ${d.maxDays} kun Pro so'rash`;
+        await loadShop();
     } catch (e) {
-        console.error('pro_exchange_status:', e);
+        console.error('shop_status:', e);
+        if (body) body.innerHTML = '<div class="text-[11px] text-rose-300 p-3">Do\'kon yuklanmadi. Internetni tekshirib, qayta och.</div>';
+        return;
+    }
+    renderShop();
+}
+
+function shopBtn(label, onclick, enabled, tone) {
+    const cls = enabled
+        ? (tone === 'owned'
+            ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-100'
+            : 'bg-amber-500/25 hover:bg-amber-500/35 border-amber-500/50 text-amber-100')
+        : 'bg-slate-800/70 border-slate-700 text-slate-500';
+    return `<button ${enabled ? `onclick="${onclick}"` : 'disabled'} class="shrink-0 px-3 py-1.5 rounded-xl border text-[10px] font-bold transition ${cls}">${label}</button>`;
+}
+
+function shopRow(emoji, title, desc, right) {
+    return `<div class="p-3 rounded-2xl bg-slate-900/70 border border-slate-700 flex items-center gap-3">
+        <div class="w-11 h-11 rounded-xl bg-slate-950/80 border border-slate-700 flex items-center justify-center text-2xl shrink-0">${emoji}</div>
+        <div class="flex-1 min-w-0">
+            <div class="text-xs font-bold text-white">${title}</div>
+            <div class="text-[10px] text-slate-400">${desc}</div>
+        </div>
+        ${right}
+    </div>`;
+}
+
+function renderShop() {
+    const d = shopState;
+    const body = document.getElementById('shopBody');
+    if (!d || !body) return;
+    const bal = document.getElementById('shopBalance');
+    if (bal) bal.textContent = d.available + ' ball';
+    const can = price => d.available >= price;
+    let html = '';
+
+    if (shopTab === 'gifts') {
+        html += `<div class="text-[10px] text-slate-400 leading-relaxed p-2.5 rounded-xl bg-slate-900/60 border border-slate-800">
+            Bu sovg'alarni <b>ota-onang</b> belgilagan. So'raganingda botda tasdiqlaydi — shunda ball yechiladi.</div>`;
+        for (const p of d.pendingGifts || []) {
+            html += shopRow(escapeHtml(p.emoji || '🎁'), escapeHtml(p.title), `${p.price} ball · ota-onang javobini kutyapmiz`,
+                '<span class="text-[10px] font-bold text-amber-300 shrink-0">⏳</span>');
+        }
+        const pendingIds = new Set((d.pendingGifts || []).map(p => p.item_id));
+        const gifts = (d.gifts || []).filter(g => !pendingIds.has(g.id));
+        if (!gifts.length && !(d.pendingGifts || []).length) {
+            html += `<div class="p-4 rounded-2xl bg-slate-900/70 border border-slate-700 text-center space-y-1">
+                <div class="text-2xl">🎁</div>
+                <div class="text-[11px] text-slate-300">Ota-onang hali sovg'a qo'shmagan.</div>
+                <div class="text-[10px] text-slate-500">Unga ayt: panelda "Ball tizimi" → "Sovg'alar ro'yxati".</div>
+            </div>`;
+        }
+        for (const g of gifts) {
+            html += shopRow(escapeHtml(g.emoji || '🎁'), escapeHtml(g.title), `${g.price} ball`,
+                shopBtn(can(g.price) ? "So'rash" : `${g.price}`, `requestGift('${g.id}')`, can(g.price)));
+        }
+    }
+
+    if (shopTab === 'cards') {
+        const box = d.cardBox;
+        const r = box.rarities;
+        html += `<div class="p-4 rounded-2xl bg-gradient-to-br from-violet-600/25 to-fuchsia-900/40 border border-violet-500/50 text-center space-y-2">
+            <div class="text-4xl">🎁</div>
+            <div class="text-xs font-bold text-white">Karta qutisi</div>
+            <div class="text-[10px] text-slate-300">Har karta raqamlangan va soni cheklangan — butun ilova bo'yicha.</div>
+            <div class="text-[10px] text-slate-400">Oddiy ${r.oddiy.chance}% · <span class="text-sky-300">Noyob ${r.noyob.chance}%</span> · <span class="text-amber-300">Afsonaviy ${r.afsonaviy.chance}%</span></div>
+            <button ${can(box.price) ? 'onclick="openCardBox()"' : 'disabled'} id="cardBoxBtn" class="w-full py-2 rounded-xl border text-[11px] font-bold ${can(box.price) ? 'bg-violet-500/30 hover:bg-violet-500/40 border-violet-400/60 text-violet-100' : 'bg-slate-800/70 border-slate-700 text-slate-500'}">
+                ${can(box.price) ? `Ochish — ${box.price} ball` : `${box.price} ball kerak`}
+            </button>
+        </div>`;
+        const mine = {};
+        for (const c of d.myCards || []) (mine[c.card_key] = mine[c.card_key] || []).push(c.serial);
+        const have = Object.keys(mine).length;
+        html += `<div class="text-[11px] font-bold text-slate-200 pt-1">Kolleksiyam: ${have} / ${d.cardCatalog.length}</div>`;
+        html += '<div class="grid grid-cols-3 gap-2">';
+        for (const c of d.cardCatalog) {
+            const st = RARITY_STYLE[c.rarity] || RARITY_STYLE.oddiy;
+            const serials = mine[c.key];
+            html += serials
+                ? `<div class="p-2 rounded-xl border-2 ${st.ring} bg-gradient-to-br ${st.bg} text-center">
+                    <div class="text-2xl">${c.emoji}</div>
+                    <div class="text-[9px] font-bold ${st.text} leading-tight mt-1">${escapeHtml(c.title)}</div>
+                    <div class="text-[9px] text-slate-300 font-mono">#${String(Math.min(...serials)).padStart(3, '0')}${serials.length > 1 ? ' ×' + serials.length : ''}</div>
+                    <div class="text-[8px] text-slate-500">${c.minted} / ${c.supply}</div>
+                  </div>`
+                : `<div class="p-2 rounded-xl border border-slate-800 bg-slate-900/50 text-center opacity-60">
+                    <div class="text-2xl grayscale">❔</div>
+                    <div class="text-[9px] text-slate-500 leading-tight mt-1">${escapeHtml(c.title)}</div>
+                    <div class="text-[8px] text-slate-600">${c.minted} / ${c.supply}</div>
+                  </div>`;
+        }
+        html += '</div>';
+    }
+
+    if (shopTab === 'badge' || shopTab === 'companion') {
+        if (shopTab === 'badge') {
+            html += '<div class="text-[10px] text-slate-400">Yorliq bo\'ring yonida, isming oldida ko\'rinadi. Bittasini kiyasan.</div>';
+            for (const b of d.earnedBadges || []) {
+                html += shopRow(b.emoji, escapeHtml(b.title), b.earned ? 'Ishlab topding!' : `Faqat ishlab topiladi — ${b.need} kun ketma-ket dars`,
+                    `<span class="text-[10px] font-bold ${b.earned ? 'text-emerald-300' : 'text-slate-500'} shrink-0">${b.earned ? '✅' : '🔒'}</span>`);
+            }
+        } else {
+            html += '<div class="text-[10px] text-slate-400">Bo\'ring kiyadi — bitta buyum bir vaqtda.</div>';
+        }
+        for (const it of d.items.filter(i => i.kind === shopTab)) {
+            const right = it.owned
+                ? shopBtn(it.equipped ? '✅ Kiyilgan' : 'Kiyish', `equipShopItem('${it.key}')`, true, 'owned')
+                : shopBtn(can(it.price) ? `${it.price} ball` : `🔒 ${it.price}`, `buyShopItem('${it.key}')`, can(it.price));
+            html += shopRow(it.emoji, escapeHtml(it.title), escapeHtml(it.desc), right);
+        }
+    }
+
+    if (shopTab === 'extra') {
+        for (const it of d.items.filter(i => i.kind === 'game' || i.kind === 'boost')) {
+            const desc = it.kind === 'boost'
+                ? `${escapeHtml(it.desc)}${d.aiBoostToday ? ` · bugun +${d.aiBoostToday} olingan` : ''}`
+                : escapeHtml(it.desc);
+            const right = it.owned
+                ? shopBtn('✅ Ochiq', `closeSubpage(); openSubpage('modal-games'); renderGamesGrid();`, true, 'owned')
+                : shopBtn(can(it.price) ? `${it.price} ball` : `🔒 ${it.price}`, `buyShopItem('${it.key}')`, can(it.price));
+            html += shopRow(it.emoji, escapeHtml(it.title), desc, right);
+        }
+    }
+
+    body.innerHTML = html;
+}
+
+function showShopReveal(html) {
+    const ov = document.getElementById('shopRevealOverlay');
+    const body = document.getElementById('shopRevealBody');
+    if (!ov || !body) return;
+    body.innerHTML = html + '<div class="text-[10px] text-slate-500 pt-2">Yopish uchun bos</div>';
+    ov.classList.remove('hidden');
+    if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+}
+
+function closeShopReveal() {
+    const ov = document.getElementById('shopRevealOverlay');
+    if (ov) ov.classList.add('hidden');
+}
+
+function shopConfirm(text, onYes) {
+    if (tg && tg.showConfirm) tg.showConfirm(text, ok => { if (ok) onYes(); });
+    else if (confirm(text)) onYes();
+}
+
+function shopAlert(text) {
+    if (tg && tg.showAlert) tg.showAlert(text); else alert(text);
+}
+
+async function shopCall(body) {
+    const resp = await fetch(QALQON_BOT_FN, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+    });
+    return resp.json();
+}
+
+function buyShopItem(key) {
+    const it = shopState && shopState.items.find(i => i.key === key);
+    if (!it) return;
+    shopConfirm(`${it.emoji} ${it.title} — ${it.price} ball.\n\nSotib olasanmi?`, async () => {
+        try {
+            const r = await shopCall({ type: 'shop_buy', itemKey: key });
+            if (!r.ok) { shopAlert(r.error || "Sotib olib bo'lmadi."); return; }
+            const extra = it.kind === 'game' ? "O'yinlar bo'limida ochildi."
+                : it.kind === 'boost' ? "AI do'stingga bugun yana 10 ta savol bera olasan."
+                : "Darhol kiyildi.";
+            showShopReveal(`<div class="text-6xl">${it.emoji}</div>
+                <div class="text-sm font-black text-white">${escapeHtml(it.title)}</div>
+                <div class="text-[11px] text-slate-300">${extra}</div>`);
+            await loadShop();
+            renderShop();
+            renderTimeBank();
+        } catch (e) {
+            console.error('shop_buy:', e);
+            shopAlert('Server javob bermadi.');
+        }
+    });
+}
+
+async function equipShopItem(key) {
+    try {
+        const r = await shopCall({ type: 'shop_equip', itemKey: key });
+        if (!r.ok) { shopAlert(r.error || "Bo'lmadi."); return; }
+        await loadShop();
+        renderShop();
+        renderTimeBank();
+    } catch (e) {
+        console.error('shop_equip:', e);
     }
 }
 
-async function requestProExchange() {
-    // Holat hali kelmagan bo'lsa jim turmaymiz: bola tugmani bosgan, unga
-    // javob berish kerak. Avval holatni olamiz, keyin davom etamiz.
-    if (!proExchangeState) {
-        const btn0 = document.getElementById('proExchangeBtn');
-        if (btn0) btn0.textContent = 'Yuklanmoqda...';
-        await renderProExchange();
+async function openCardBox() {
+    const btn = document.getElementById('cardBoxBtn');
+    if (btn) { btn.disabled = true; btn.textContent = '🎁 Ochilmoqda...'; }
+    try {
+        const r = await shopCall({ type: 'shop_open_box' });
+        if (!r.ok) { shopAlert(r.error || "Ochib bo'lmadi."); return; }
+        const c = r.card;
+        const st = RARITY_STYLE[c.rarity] || RARITY_STYLE.oddiy;
+        showShopReveal(`<div class="mx-auto w-48 p-5 rounded-3xl border-4 ${st.ring} bg-gradient-to-br ${st.bg} space-y-2">
+                <div class="text-[10px] font-black uppercase tracking-widest ${st.text}">${escapeHtml(c.rarityLabel)}</div>
+                <div class="text-7xl">${c.emoji}</div>
+                <div class="text-sm font-black text-white">${escapeHtml(c.title)}</div>
+                <div class="font-mono text-lg font-black ${st.text}">#${String(c.serial).padStart(3, '0')}</div>
+                <div class="text-[10px] text-slate-300">butun ilovada ${c.supply} ta</div>
+            </div>`);
+        await loadShop();
+        renderShop();
+        renderTimeBank();
+    } catch (e) {
+        console.error('shop_open_box:', e);
+        shopAlert('Server javob bermadi.');
+    } finally {
+        if (btn) btn.disabled = false;
     }
-    const d = proExchangeState;
-    if (!d) return;
-    if (d.maxDays < 1) {
-        const body = document.getElementById('proExchangeBody');
-        if (body && !body.innerText) body.textContent = "Hozircha almashtirish uchun yetarli daqiqa yo'q.";
-        return;
-    }
+}
 
-    const savol = `${d.maxDays * d.minutesPerDay} daqiqangni ${d.maxDays} kun Pro ga almashtirishni so'raysanmi?\n\n` +
-                  `Ota-onang tasdiqlasa, daqiqalar bankdan yechiladi va butun oilangga Pro ochiladi.`;
-    const yubor = async () => {
-        const btn = document.getElementById('proExchangeBtn');
-        if (btn) { btn.disabled = true; btn.textContent = 'Yuborilmoqda...'; }
+function requestGift(id) {
+    const g = shopState && (shopState.gifts || []).find(x => x.id === id);
+    if (!g) return;
+    shopConfirm(`${g.emoji} ${g.title} — ${g.price} ball.\n\nOta-onangga so'rov yuboraymi? Ular tasdiqlasa ball yechiladi.`, async () => {
         try {
-            const resp = await fetch(QALQON_BOT_FN, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ type: 'pro_exchange_request', days: d.maxDays })
-            });
-            const r = await resp.json();
-            const body = document.getElementById('proExchangeBody');
-            if (!r.ok) {
-                if (body) body.innerHTML = `<span class="text-rose-300">${escapeHtml(r.error || 'Yuborib bo\'lmadi')}</span>`;
-                renderProExchange();
-                return;
-            }
-            if (body) body.innerHTML = `✅ So'roving ota-onangga yuborildi.`;
-            renderProExchange();
+            const r = await shopCall({ type: 'reward_request', itemId: id });
+            if (!r.ok) { shopAlert(r.error || "Yuborib bo'lmadi."); return; }
+            shopAlert("✅ So'roving ota-onangga yuborildi. Javob botga keladi.");
+            await loadShop();
+            renderShop();
         } catch (e) {
-            console.error('pro_exchange_request:', e);
-            renderProExchange();
+            console.error('reward_request:', e);
+            shopAlert('Server javob bermadi.');
         }
-    };
+    });
+}
 
-    if (tg && tg.showConfirm) tg.showConfirm(savol, (ha) => { if (ha) yubor(); });
-    else if (confirm(savol)) yubor();
+/** "Uy vazifam tayyor" — ota-onaga botda tasdiqlash tugmasi boradi. */
+async function claimHomework() {
+    const subject = prompt("Qaysi fan? (masalan: Matematika)") ;
+    if (subject === null) return;
+    const note = prompt("Nima qilding? Qisqa yoz (ixtiyoriy)") || '';
+    const btn = document.getElementById('homeworkClaimBtn');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Yuborilmoqda...'; }
+    try {
+        const r = await shopCall({ type: 'homework_claim', subject: subject.trim(), note: note.trim() });
+        shopAlert(r.ok
+            ? "✅ Ota-onangga yuborildi. Ular tekshirib tasdiqlasa, ball tushadi."
+            : (r.error || "Yuborib bo'lmadi."));
+    } catch (e) {
+        console.error('homework_claim:', e);
+        shopAlert('Server javob bermadi.');
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '📚 Uy vazifam tayyor'; }
+    }
+}
+
+// ----------------------------------------------------------------------------
+// FOKUS TEKSHIRUVI: 3 ta savol, har biriga 15 soniya.
+//
+// Vaqtni SERVER o'lchaydi — bu yerdagi taymer faqat ko'rsatkich. Bola
+// ilovadan chiqsa (boshqa AI'dan javob qidirish uchun), savol darhol
+// javobsiz yuboriladi. Sahifani yangilab qayta so'rash ham serverda
+// noto'g'ri hisoblanadi.
+// ----------------------------------------------------------------------------
+async function runFocusCheck(sessionId) {
+    const ov = document.getElementById('focusCheckOverlay');
+    const qEl = document.getElementById('fcQuestion');
+    const opts = document.getElementById('fcOptions');
+    const fb = document.getElementById('fcFeedback');
+    const prog = document.getElementById('fcProgress');
+    const timerEl = document.getElementById('fcTimer');
+    const bar = document.getElementById('fcBar');
+    if (!ov) return null;
+    ov.classList.remove('hidden');
+
+    const sleep = ms => new Promise(r => setTimeout(r, ms));
+    let final = null;
+
+    try {
+        while (!final) {
+            const q = await shopCall({ type: 'focus_check_question', sessionId });
+            if (!q.ok) { shopAlert(q.error || 'Savol kelmadi.'); break; }
+            if (q.done) { final = q; break; }
+
+            if (prog) prog.textContent = `Savol ${q.index + 1} / ${q.total}`;
+            if (qEl) qEl.textContent = q.question.q;
+            if (fb) fb.textContent = '';
+            if (opts) {
+                opts.innerHTML = q.question.a.map((a, i) =>
+                    `<button data-i="${i}" class="fc-opt w-full text-left px-3 py-2.5 rounded-xl bg-slate-900/80 border border-slate-700 text-xs text-white">${escapeHtml(a)}</button>`
+                ).join('');
+            }
+
+            const choice = await new Promise(resolve => {
+                let left = q.seconds;
+                const started = Date.now();
+                let done = false;
+                const finish = v => {
+                    if (done) return;
+                    done = true;
+                    clearInterval(iv);
+                    document.removeEventListener('visibilitychange', onHide);
+                    resolve(v);
+                };
+                const onHide = () => { if (document.hidden) finish(-1); };
+                document.addEventListener('visibilitychange', onHide);
+                const iv = setInterval(() => {
+                    const passed = (Date.now() - started) / 1000;
+                    left = Math.max(0, q.seconds - passed);
+                    if (timerEl) timerEl.textContent = Math.ceil(left);
+                    if (bar) bar.style.width = (left / q.seconds * 100) + '%';
+                    if (left <= 0) finish(-1);
+                }, 200);
+                if (opts) opts.querySelectorAll('.fc-opt').forEach(b => {
+                    b.onclick = () => finish(Number(b.dataset.i));
+                });
+            });
+
+            if (opts) opts.querySelectorAll('.fc-opt').forEach(b => { b.disabled = true; });
+            const a = await shopCall({ type: 'focus_check_answer', sessionId, choice });
+            if (!a.ok) { shopAlert(a.error || 'Javob qabul qilinmadi.'); break; }
+
+            if (opts) opts.querySelectorAll('.fc-opt').forEach(b => {
+                const i = Number(b.dataset.i);
+                if (i === a.correctIndex) b.classList.add('bg-emerald-600/40', 'border-emerald-400');
+                else if (i === choice) b.classList.add('bg-rose-600/40', 'border-rose-400');
+            });
+            if (fb) {
+                fb.textContent = (a.correct ? "✅ To'g'ri! " : a.timedOut || choice < 0 ? '⏰ Vaqt tugadi. ' : "❌ Noto'g'ri. ") + (a.why || '');
+            }
+            if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred(a.correct ? 'success' : 'error');
+            await sleep(1800);
+            if (a.done) final = a;
+        }
+    } catch (e) {
+        console.error('focus check:', e);
+        shopAlert('Server javob bermadi.');
+    } finally {
+        ov.classList.add('hidden');
+    }
+
+    if (final) {
+        let msg;
+        if (!final.passed) {
+            msg = `😕 ${final.total} ta savoldan ${final.correct} tasiga to'g'ri javob berding.\n\nBall uchun kamida 2 ta kerak. Keyingi seansda albatta chiqadi!`;
+        } else if (final.awarded > 0) {
+            msg = `🎉 Zo'r! ${final.correct} / ${final.total} to'g'ri.\n\n+${final.awarded} ball\n💰 Jami: ${final.balance} ball`;
+        } else if (final.limitReached) {
+            msg = `🎉 ${final.correct} / ${final.total} to'g'ri! Lekin bugun ${final.perDay} ta seans uchun ball olding — ertaga yana.\n\nLiga va jangda bu seans hisoblandi.`;
+        } else {
+            msg = `🎉 ${final.correct} / ${final.total} to'g'ri! Bugungi ball chegarasiga yetding (${final.dailyCap}).`;
+        }
+        shopAlert(msg);
+        if (final.companion) renderCompanion(final.companion);
+    }
+    return final;
+}
+
+// ----------------------------------------------------------------------------
+// OTA-ONA: sovg'alar ro'yxati
+// ----------------------------------------------------------------------------
+const GIFT_TEMPLATES = [
+    { emoji: '🍕', title: 'Sevimli ovqat', price: 200 },
+    { emoji: '🎬', title: 'Dam olish kuni kino', price: 400 },
+    { emoji: '📱', title: '1 soat qo\'shimcha telefon', price: 150 },
+    { emoji: '🏞', title: 'Oilaviy sayr — o\'zi tanlaydi', price: 600 },
+    { emoji: '👫', title: 'Do\'stlarnikiga borish', price: 350 },
+    { emoji: '🍦', title: 'Muzqaymoq', price: 80 },
+    { emoji: '💰', title: '20 000 so\'m cho\'ntak puli', price: 1000 },
+    { emoji: '🎮', title: 'Yangi o\'yinchoq yoki kitob', price: 1500 }
+];
+
+async function renderParentGifts() {
+    const list = document.getElementById('parentGiftList');
+    const tpl = document.getElementById('parentGiftTemplates');
+    if (!list) return;
+    try {
+        const r = await shopCall({ type: 'reward_items_list' });
+        const items = (r && r.items) || [];
+        list.innerHTML = items.length
+            ? items.map(i => `<div class="flex items-center gap-2 p-2 rounded-xl bg-slate-900/80 border border-slate-700">
+                    <span class="text-lg">${escapeHtml(i.emoji)}</span>
+                    <span class="flex-1 min-w-0 text-[11px] text-white truncate">${escapeHtml(i.title)}</span>
+                    <span class="text-[11px] font-bold text-amber-300 shrink-0">${i.price} ball</span>
+                    <button onclick="deleteParentGift('${i.id}')" class="text-[11px] text-rose-300 px-1.5 shrink-0">✕</button>
+                </div>`).join('')
+            : '<div class="text-[10px] text-slate-500 p-2 rounded-xl bg-slate-900/60 border border-slate-800">Hali sovg\'a yo\'q — pastdan qo\'shing.</div>';
+        if (tpl) {
+            const have = new Set(items.map(i => i.title));
+            tpl.innerHTML = GIFT_TEMPLATES.filter(t => !have.has(t.title)).map((t, n) =>
+                `<button onclick="addGiftTemplate(${GIFT_TEMPLATES.indexOf(t)})" class="px-2 py-1 rounded-lg bg-slate-900/80 border border-slate-700 text-[10px] text-slate-200">${t.emoji} ${escapeHtml(t.title)} · ${t.price}</button>`
+            ).join('');
+        }
+    } catch (e) {
+        console.error('reward_items_list:', e);
+    }
+}
+
+async function saveParentGift(emoji, title, price) {
+    const r = await shopCall({ type: 'reward_item_save', emoji, title, price });
+    if (!r.ok) { shopAlert(r.error || "Saqlab bo'lmadi."); return false; }
+    await renderParentGifts();
+    return true;
+}
+
+async function addGiftTemplate(i) {
+    const t = GIFT_TEMPLATES[i];
+    if (t) await saveParentGift(t.emoji, t.title, t.price);
+}
+
+async function addParentGift() {
+    const btn = document.getElementById('giftAddBtn');
+    const emoji = (document.getElementById('giftEmoji')?.value || '🎁').trim();
+    const title = (document.getElementById('giftTitle')?.value || '').trim();
+    const price = parseInt(document.getElementById('giftPrice')?.value, 10);
+    if (btn) btn.disabled = true;
+    try {
+        if (await saveParentGift(emoji, title, price)) {
+            document.getElementById('giftTitle').value = '';
+            document.getElementById('giftPrice').value = '';
+        }
+    } finally {
+        if (btn) btn.disabled = false;
+    }
+}
+
+async function deleteParentGift(id) {
+    await shopCall({ type: 'reward_item_delete', id });
+    renderParentGifts();
 }
 
 /** Taklif holati. Havola oila kodidan yasaladi, shuning uchun o'zgarmaydi. */
@@ -4626,7 +5035,7 @@ function renderParentExtras() {
 
     const tiles = [
         { emoji: '🧠', name: 'Farzandingiz haqida', desc: 'Haftalik tahlil va suhbat savollari', fn: 'openWeeklyReport()' },
-        { emoji: '💰', name: 'Vaqt banki', desc: 'Ekran vaqti kursini belgilang', fn: "openSubpage('modal-time-bank')" },
+        { emoji: '💰', name: 'Ball tizimi', desc: "Ball kursi va sovg'alar ro'yxati", fn: 'openTimeBankRules()' },
         { emoji: '🗺️', name: 'Kun marshruti', desc: "Bugun qayerlarda bo'ldi", fn: "switchTab('tab-radar'); setTimeout(renderDayRoute, 500);" },
         { emoji: '🎁', name: "Do'stingizni taklif qiling", desc: 'Ikkalangizga ham bepul Pro', fn: 'shareReferralLink()' },
         { emoji: '📍', name: 'Xavfsiz hududlar', desc: 'Uy va maktabni belgilang', fn: 'openZonesModal()' },
@@ -4644,7 +5053,7 @@ function renderParentExtras() {
 
 /** Bola: "Qo'shimcha" bo'limiga kartalarni ko'chiramiz. */
 function mountChildExtras() {
-    ['leagueCard', 'proExchangeCard', 'childReferralCard', 'pomodoroCard']
+    ['leagueCard', 'childReferralCard', 'pomodoroCard']
         .forEach(id => moveNode(id, 'childExtrasHost'));
 
     const host = document.getElementById('childExtrasHost');

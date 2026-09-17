@@ -818,12 +818,14 @@ async function evaluateGeofences(
     // Bu mexanikaning eng ishonchli qismi — bola uni alday olmaydi, chunki
     // hisob mijozdan emas, haqiqiy joylashuvdan kelib chiqadi.
     if (type === "enter" && z.arrive_by && /^([01]\d|2[0-3]):[0-5]\d$/.test(z.arrive_by)) {
-      const now = new Date();
+      // Server UTC'da ishlaydi — "08:00 gacha" esa Toshkent soati. Ilgari
+      // getHours() UTC qaytarib, muddat amalda 13:00 gacha cho'zilardi.
       const [hh, mm] = String(z.arrive_by).split(":").map(Number);
-      const onTime = now.getHours() < hh || (now.getHours() === hh && now.getMinutes() <= mm);
+      const now = tashkentHourMinute();
+      const onTime = now.h < hh || (now.h === hh && now.m <= mm);
 
       // Kuniga bir marta: bir necha marta kirib-chiqish takroriy mukofot bermaydi.
-      const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+      const dayStart = tashkentDayStartISO();
       const { data: already } = await db
         .from("time_bank_entries")
         .select("id")
@@ -846,7 +848,7 @@ async function evaluateGeofences(
           fired.push({
             zone: z.name,
             type: "time_bank",
-            message: `${z.name}ga o'z vaqtida yetib keldi — vaqt bankiga +${awarded} daqiqa`,
+            message: `${z.name}ga o'z vaqtida yetib keldi — +${awarded} ball`,
           });
         }
       }
@@ -1497,8 +1499,8 @@ const TIME_BANK_DEFAULTS = {
   enabled: true,
   minutes_per_focus: 10,
   minutes_per_school_ontime: 20,
-  minutes_per_homework: 10,
-  daily_cap_minutes: 90,
+  minutes_per_homework: 15,
+  daily_cap_minutes: 60,
 };
 
 async function getTimeBankRules(familyCode: string, childId: string) {
@@ -1518,18 +1520,22 @@ async function timeBankBalance(familyCode: string, childId: string) {
   if (!db) return { balance: 0, earnedToday: 0 };
   const { data } = await db
     .from("time_bank_entries")
-    .select("minutes, created_at")
+    .select("minutes, reason, created_at")
     .eq("family_code", familyCode)
     .eq("child_id", childId)
-    .limit(2000);
+    .limit(5000);
 
-  const todayKey = new Date().toISOString().slice(0, 10);
+  // Kun Toshkent bo'yicha: UTC'da "bugun" soat 05:00 da boshlanardi.
+  const todayKey = tashkentDateKey();
   let balance = 0;
   let earnedToday = 0;
   for (const e of data || []) {
     const m = Number(e.minutes) || 0;
     balance += m;
-    if (m > 0 && String(e.created_at).slice(0, 10) === todayKey) earnedToday += m;
+    if (
+      m > 0 && EARN_REASONS.has(e.reason) &&
+      tashkentDateKey(new Date(e.created_at).getTime()) === todayKey
+    ) earnedToday += m;
   }
   return { balance, earnedToday };
 }
@@ -1636,8 +1642,8 @@ async function companionAddXp(familyCode: string, childId: string, xp: number) {
     .eq("child_id", childId)
     .limit(1);
 
-  const today = new Date().toISOString().slice(0, 10);
-  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  const today = tashkentDateKey();
+  const yesterday = tashkentDateKey(Date.now() - 86400000);
   const row = data && data[0];
 
   if (!row) {
@@ -1700,8 +1706,8 @@ async function companionState(familyCode: string, childId: string) {
   };
 
   // Bir kundan ko'p e'tiborsiz qolsa — bo'ri uxlab qoladi.
-  const today = new Date().toISOString().slice(0, 10);
-  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  const today = tashkentDateKey();
+  const yesterday = tashkentDateKey(Date.now() - 86400000);
   const last = row.last_active_date ? String(row.last_active_date).slice(0, 10) : null;
   const asleep = !last || (last !== today && last !== yesterday);
 
@@ -1712,6 +1718,8 @@ async function companionState(familyCode: string, childId: string) {
     bestStreak: Number(row.best_streak) || 0,
     asleep,
     ...companionStage(Number(row.xp) || 0),
+    // Do'kondan olingan va kiyilgan yorliq hamda bo'ri buyumi.
+    ...(await equippedItems(familyCode, childId)),
   };
 }
 
@@ -1812,66 +1820,778 @@ async function payReferralReward(familyCode: string): Promise<void> {
 }
 
 // ============================================================================
-// VAQT BANKI BALLARINI PRO'GA ALMASHTIRISH
+// BALL TIZIMI — to'plash qoidalari, do'kon va kolleksiya kartalari
 //
-// Bu yerda pul aralashadi, shuning uchun qoidalar boshqa joylardan qattiqroq:
+// Ilgari yig'ilgan daqiqalar Pro kunlariga almashtirilardi. Bu olib
+// tashlandi: Pro'ni ota-ona sotib oladi, bolaga "oilangga 7 kun Pro" degan
+// gap hech narsa bermaydi. Endi ball bola o'zi his qiladigan narsaga
+// sarflanadi — ota-ona va'da qilgan sovg'a, yorliq, bo'ri buyumi, o'yin,
+// AI savol yoki raqamlangan karta.
 //
-// 1) FAQAT SERVER TASDIQLAGAN daqiqalar hisobga olinadi — fokus seanslari
-//    (uzunligini server o'zi o'lchaydi) va hududga o'z vaqtida yetish
-//    (haqiqiy joylashuvdan). Ota-ona qo'lidan bergan bonus HISOBGA OLINMAYDI:
-//    aks holda ota-ona farzandiga 10 000 daqiqa yozib, o'ziga cheksiz bepul
-//    Pro olib bergan bo'lardi. Bu eng katta teshik edi va ataylab yopilgan.
+// Ball to'plash ham qiyinlashdi, chunki ilgari aldash oson edi:
+//  · Fokus taymeri o'zi ball bermaydi. Tugagach 3 ta savol, har biriga 15
+//    soniya — vaqtni SERVER o'lchaydi. Savolni qayta so'rash (sahifani
+//    yangilab, boshqa AI'dan javob qidirish) javobsiz deb hisoblanadi.
+//  · Ball beradigan fokus seansi kuniga 3 ta.
+//  · Uy vazifasini ota-ona botda tasdiqlaydi.
+//  · Maktab vaqti Toshkent soati bo'yicha (ilgari UTC edi va 08:00 lik
+//    muddat amalda 13:00 gacha cho'zilardi).
 //
-// 2) Bir daqiqa ikki marta sarflanmaydi: almashtirilgan daqiqalar manfiy
-//    yozuv sifatida bankka qaytariladi va keyingi hisobdan chiqib ketadi.
-//
-// 3) Oyiga chegara bor. Chegarasiz bo'lsa hech kim hech qachon to'lamasdi.
-//
-// 4) Ota-ona tasdiqlaydi. Bu ham to'siq, ham oiladagi suhbat sababi: bola
-//    "men buni ishlab topdim" deb aytadigan lahza.
+// Barcha sarflash SQL funksiyalari orqali (database/15_ball_dokoni.sql):
+// ular oila+bola bo'yicha qulf oladi, shuning uchun ikki parallel xarid
+// bitta ballni ikki marta sarflay olmaydi.
 // ============================================================================
 
-const PRO_EXCHANGE_MINUTES_PER_DAY = 100;
-const PRO_EXCHANGE_MAX_DAYS_PER_MONTH = 7;
+// O'zbekistonda yozgi vaqt yo'q — siljish doimiy.
+const TASHKENT_OFFSET_MS = 5 * 3600 * 1000;
 
-/** Almashtirishga yaroqli daqiqalar. */
-async function proExchangeBalance(familyCode: string, childId: string) {
-  if (!db) return { earned: 0, spent: 0, available: 0, daysThisMonth: 0 };
+function tashkentDateKey(t: number = Date.now()): string {
+  return new Date(t + TASHKENT_OFFSET_MS).toISOString().slice(0, 10);
+}
 
+function tashkentDayStartISO(t: number = Date.now()): string {
+  return new Date(tashkentDateKey(t) + "T00:00:00+05:00").toISOString();
+}
+
+function tashkentHourMinute(t: number = Date.now()): { h: number; m: number } {
+  const d = new Date(t + TASHKENT_OFFSET_MS);
+  return { h: d.getUTCHours(), m: d.getUTCMinutes() };
+}
+
+/** Ball ISHLAB TOPILGAN yozuvlar. Qaytim yoki sarflash kunlik hisobga kirmaydi. */
+const EARN_REASONS = new Set(["focus", "school_ontime", "homework", "parent_bonus"]);
+
+const FOCUS_AWARDS_PER_DAY = 3;
+const FOCUS_CHECK_QUESTIONS = 3;
+const FOCUS_CHECK_SECONDS = 15;
+// Tarmoq kechikishi uchun. Savolni AI'ga yozib javob olishga yetmaydi.
+const FOCUS_CHECK_GRACE_SECONDS = 3;
+const FOCUS_CHECK_PASS = 2;
+const HOMEWORK_PER_DAY = 2;
+const GIFT_PENDING_MAX = 3;
+const GIFT_ITEMS_MAX = 20;
+
+type ShopItem = {
+  key: string;
+  kind: "badge" | "companion" | "game" | "boost";
+  emoji: string;
+  title: string;
+  desc: string;
+  price: number;
+  consumable?: boolean;
+  gameId?: string;
+};
+
+// Narxlar kunlik daromadga qarab: halol, harakat qilgan bola kuniga
+// taxminan 50 ball yig'adi. Eng arzon buyum — 2 kun, eng qimmati — bir oy.
+const SHOP_ITEMS: ShopItem[] = [
+  { key: "badge_kitobxon", kind: "badge", emoji: "📚", title: "Kitobxon", desc: "Isming yonida ko'rinadi", price: 150 },
+  { key: "badge_mutafakkir", kind: "badge", emoji: "🧠", title: "Mutafakkir", desc: "Isming yonida ko'rinadi", price: 300 },
+  { key: "badge_chaqmoq", kind: "badge", emoji: "⚡", title: "Chaqmoq", desc: "Isming yonida ko'rinadi", price: 500 },
+  { key: "badge_sherdil", kind: "badge", emoji: "🦁", title: "Sherdil", desc: "Isming yonida ko'rinadi", price: 800 },
+  { key: "badge_sulton", kind: "badge", emoji: "👑", title: "Qalqon sultoni", desc: "Eng noyob yorliq", price: 1500 },
+
+  { key: "acc_sharf", kind: "companion", emoji: "🧣", title: "Sharf", desc: "Bo'ring kiyadi", price: 100 },
+  { key: "acc_shlyapa", kind: "companion", emoji: "🎩", title: "Shlyapa", desc: "Bo'ring kiyadi", price: 180 },
+  { key: "acc_kozoynak", kind: "companion", emoji: "🕶️", title: "Qora ko'zoynak", desc: "Bo'ring kiyadi", price: 250 },
+  { key: "acc_qalqon", kind: "companion", emoji: "🛡️", title: "Qalqon", desc: "Bo'ring ushlab yuradi", price: 400 },
+  { key: "acc_toj", kind: "companion", emoji: "👑", title: "Oltin toj", desc: "Bo'ring kiyadi", price: 900 },
+
+  { key: "game_race", kind: "game", gameId: "race", emoji: "🏎️", title: "Poyga", desc: "O'yinni butunlay ochadi", price: 200 },
+  { key: "game_g2048", kind: "game", gameId: "g2048", emoji: "🔢", title: "2048", desc: "O'yinni butunlay ochadi", price: 200 },
+  { key: "game_penalty", kind: "game", gameId: "penalty", emoji: "⚽", title: "Penalti", desc: "O'yinni butunlay ochadi", price: 250 },
+
+  { key: "ai_10", kind: "boost", emoji: "🤖", title: "+10 ta AI savol", desc: "Faqat bugun uchun", price: 40, consumable: true },
+];
+const SHOP_BY_KEY: Record<string, ShopItem> = Object.fromEntries(SHOP_ITEMS.map((i) => [i.key, i]));
+
+/** Sotib olinmaydigan, faqat ishlab topiladigan yorliqlar. */
+const EARNED_BADGES = [
+  { key: "streak7", emoji: "🔥", title: "7 kun ketma-ket", need: 7 },
+  { key: "streak30", emoji: "🌟", title: "30 kun ketma-ket", need: 30 },
+];
+
+const CARD_BOX_PRICE = 150;
+const CARD_RARITY: Record<string, { label: string; supply: number; chance: number }> = {
+  oddiy: { label: "Oddiy", supply: 1000, chance: 75 },
+  noyob: { label: "Noyob", supply: 300, chance: 21 },
+  afsonaviy: { label: "Afsonaviy", supply: 50, chance: 4 },
+};
+const CARDS = [
+  { key: "oqbori", rarity: "oddiy", emoji: "🐺", title: "Oqbo'ri" },
+  { key: "qorbori", rarity: "oddiy", emoji: "❄️", title: "Qorbo'ri" },
+  { key: "dasht", rarity: "oddiy", emoji: "🌾", title: "Dasht bo'risi" },
+  { key: "tog", rarity: "oddiy", emoji: "⛰️", title: "Tog' bo'risi" },
+  { key: "tungi", rarity: "oddiy", emoji: "🌙", title: "Tungi bo'ri" },
+  { key: "ormon", rarity: "oddiy", emoji: "🌲", title: "O'rmon bo'risi" },
+  { key: "olov", rarity: "noyob", emoji: "🔥", title: "Olov bo'ri" },
+  { key: "muz", rarity: "noyob", emoji: "🧊", title: "Muz bo'ri" },
+  { key: "chaqmoq", rarity: "noyob", emoji: "⚡", title: "Momaqaldiroq bo'ri" },
+  { key: "yulduz", rarity: "noyob", emoji: "⭐", title: "Yulduz bo'ri" },
+  { key: "oltin", rarity: "afsonaviy", emoji: "🏆", title: "Oltin bo'ri" },
+  { key: "registon", rarity: "afsonaviy", emoji: "🕌", title: "Registon qo'riqchisi" },
+];
+const CARD_BY_KEY: Record<string, any> = Object.fromEntries(CARDS.map((c) => [c.key, c]));
+
+function jsonRes(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+/** So'rovchi farzand bo'lsa — uning oilasi va id'si, aks holda null. */
+async function actorAsChild(actor: Actor): Promise<{ familyCode: string; childId: string } | null> {
+  if (actor.kind === "device") return { familyCode: actor.familyCode, childId: actor.childId };
+  if (!(await isPairedChild(actor.telegramId))) return null;
+  return { familyCode: await resolveActorFamily(actor), childId: "tg_" + actor.telegramId };
+}
+
+/** So'rovchi ota-ona bo'lsa — oila kodi. Farzand yoki qurilma bo'lsa null. */
+async function actorAsParent(actor: Actor): Promise<string | null> {
+  if (actor.kind !== "telegram") return null;
+  if (await isPairedChild(actor.telegramId)) return null;
+  return actor.familyCode;
+}
+
+async function childGrade(familyCode: string, childId: string): Promise<number> {
+  if (!db) return 6;
   const { data } = await db
-    .from("time_bank_entries")
-    .select("minutes, reason, created_at")
+    .from("child_pairings")
+    .select("grade")
     .eq("family_code", familyCode)
     .eq("child_id", childId)
-    .limit(5000);
+    .limit(1);
+  const g = Number(data && data[0] && data[0].grade);
+  return g >= 1 && g <= 11 ? g : 6;
+}
 
-  const monthAgo = Date.now() - 30 * 86400000;
-  let earned = 0;   // server tasdiqlagan daromad
-  let spent = 0;    // shu yo'l bilan allaqachon sarflangani
+/** Kutilayotgan sovg'a so'rovlari — ular uchun ball band qilingan. */
+async function reservedPoints(familyCode: string, childId: string): Promise<number> {
+  if (!db) return 0;
+  const { data } = await db
+    .from("reward_redemptions")
+    .select("price")
+    .eq("family_code", familyCode)
+    .eq("child_id", childId)
+    .eq("status", "pending")
+    .limit(50);
+  return (data || []).reduce((a: number, r: any) => a + (Number(r.price) || 0), 0);
+}
 
-  for (const e of data || []) {
-    const m = Number(e.minutes) || 0;
-    if (m > 0 && (e.reason === "focus" || e.reason === "school_ontime")) earned += m;
-    if (e.reason === "pro_exchange") spent += Math.abs(m);
+/** Bugun sotib olingan AI savollar. */
+async function aiBoostToday(familyCode: string, childId: string): Promise<number> {
+  if (!db) return 0;
+  const { data } = await db
+    .from("shop_purchases")
+    .select("id")
+    .eq("family_code", familyCode)
+    .eq("child_id", childId)
+    .eq("item_key", "ai_10")
+    .gte("created_at", tashkentDayStartISO())
+    .limit(100);
+  return (data || []).length * 10;
+}
+
+/** Kiyilgan yorliq va bo'ri buyumi — bo'ri kartasida ko'rsatish uchun. */
+async function equippedItems(familyCode: string, childId: string) {
+  if (!db) return { badge: null, accessory: null };
+  const { data } = await db
+    .from("shop_purchases")
+    .select("item_key")
+    .eq("family_code", familyCode)
+    .eq("child_id", childId)
+    .eq("equipped", true)
+    .limit(10);
+  let badge: any = null, accessory: any = null;
+  for (const r of data || []) {
+    const it = SHOP_BY_KEY[r.item_key];
+    if (!it) continue;
+    if (it.kind === "badge") badge = { emoji: it.emoji, title: it.title };
+    if (it.kind === "companion") accessory = { emoji: it.emoji, title: it.title };
+  }
+  return { badge, accessory };
+}
+
+/** Fokus tekshiruvi uchun 3 ta savol — bolaning sinfiga mos. */
+async function pickFocusCheckQuestions(familyCode: string, childId: string) {
+  const grade = await childGrade(familyCode, childId);
+  const category = Math.random() < 0.6 ? "maktab" : "fikrlash";
+  const all = (await buildQuizQuestions(category, grade)).filter(validQuizItem);
+  let pool = all.length >= FOCUS_CHECK_QUESTIONS ? all : QUIZ_FALLBACK.maktab.concat(QUIZ_FALLBACK.fikrlash);
+  pool = quizPick(pool, FOCUS_CHECK_QUESTIONS);
+  return pool.map((q: any) => ({ q: q.q, a: q.a, c: q.c, why: q.why || "" }));
+}
+
+/** Fokus tekshiruvini yakunlaydi va (o'tgan bo'lsa) ball yozadi. */
+async function finishFocusCheck(session: any, answers: any[], familyCode: string, childId: string) {
+  const correct = answers.filter((a) => a.correct).length;
+  const passed = correct >= FOCUS_CHECK_PASS;
+
+  const { data: today } = await db!
+    .from("focus_sessions")
+    .select("id")
+    .eq("family_code", familyCode)
+    .eq("child_id", childId)
+    .eq("check_passed", true)
+    .gt("awarded_minutes", 0)
+    .gte("completed_at", tashkentDayStartISO())
+    .limit(FOCUS_AWARDS_PER_DAY + 1);
+  const underLimit = (today || []).length < FOCUS_AWARDS_PER_DAY;
+
+  const rules = await getTimeBankRules(familyCode, childId);
+  let awarded = 0;
+  if (passed && underLimit && rules.enabled) {
+    // Mukofot seans uzunligiga mutanosib: kurs "25 daqiqalik seans uchun".
+    const scaled = Math.round(
+      (Number(rules.minutes_per_focus) * Number(session.planned_minutes)) / 25
+    );
+    awarded = await timeBankAward(
+      familyCode, childId, Math.max(1, scaled), "focus",
+      `${session.planned_minutes} daqiqalik fokus · ${correct}/${answers.length}`
+    );
   }
 
-  // Oylik chegara: shu oyda almashtirilgan kunlar.
-  const { data: reqs } = await db
-    .from("pro_exchange_requests")
-    .select("days, created_at")
-    .eq("family_code", familyCode)
-    .eq("status", "approved")
-    .gte("created_at", new Date(monthAgo).toISOString())
-    .limit(100);
+  await db!
+    .from("focus_sessions")
+    .update({
+      completed_at: new Date().toISOString(),
+      awarded_minutes: awarded,
+      check_answers: answers,
+      check_issued_at: null,
+      check_correct: correct,
+      check_passed: passed,
+    })
+    .eq("id", session.id);
 
-  const daysThisMonth = (reqs || []).reduce((a, r: any) => a + (Number(r.days) || 0), 0);
+  if (awarded > 0) {
+    await notifyFamilyParents(
+      familyCode,
+      `🎯 <b>Farzandingiz ${session.planned_minutes} daqiqa diqqat bilan ishladi.</b>\n\n` +
+        `Tekshiruv savollaridan <b>${correct} / ${answers.length}</b> tasiga to'g'ri javob berdi — ` +
+        `<b>+${awarded} ball</b>.`
+    );
+  }
 
+  const { balance, earnedToday } = await timeBankBalance(familyCode, childId);
   return {
-    earned,
-    spent,
-    available: Math.max(0, earned - spent),
-    daysThisMonth,
+    done: true,
+    passed,
+    correct,
+    total: answers.length,
+    awarded,
+    limitReached: passed && !underLimit,
+    capReached: passed && underLimit && rules.enabled && awarded === 0,
+    perDay: FOCUS_AWARDS_PER_DAY,
+    balance,
+    earnedToday,
+    dailyCap: rules.daily_cap_minutes,
+    companion: await companionState(familyCode, childId),
   };
+}
+
+/** Karta qutisi uchun nomzodlar tartibi: tushgan noyoblik, keyin pastrog'i. */
+function cardBoxCandidates(): any[] {
+  const roll = Math.random() * 100;
+  const rarity = roll < CARD_RARITY.afsonaviy.chance
+    ? "afsonaviy"
+    : roll < CARD_RARITY.afsonaviy.chance + CARD_RARITY.noyob.chance ? "noyob" : "oddiy";
+  const order = rarity === "afsonaviy"
+    ? ["afsonaviy", "noyob", "oddiy"]
+    : rarity === "noyob" ? ["noyob", "oddiy", "afsonaviy"] : ["oddiy", "noyob", "afsonaviy"];
+  const out: any[] = [];
+  for (const r of order) {
+    for (const c of quizPick(CARDS.filter((x) => x.rarity === r), 99)) {
+      out.push({ key: c.key, supply: CARD_RARITY[r].supply });
+    }
+  }
+  return out;
+}
+
+/**
+ * Ball tizimining Mini App so'rovlari. Mos kelmasa null — asosiy
+ * handler davom etadi.
+ */
+async function handleBallRoutes(payload: any, actor: Actor): Promise<Response | null> {
+  const t = String(payload?.type || "");
+  const mine = [
+    "focus_complete", "focus_check_question", "focus_check_answer",
+    "homework_claim", "shop_status", "shop_buy", "shop_equip", "shop_open_box",
+    "reward_request", "reward_items_list", "reward_item_save", "reward_item_delete",
+    "pro_exchange_status", "pro_exchange_request",
+  ];
+  if (!mine.includes(t)) return null;
+  if (!db) return jsonRes({ ok: false, error: "Baza ulanmagan" }, 500);
+
+  if (t === "pro_exchange_status" || t === "pro_exchange_request") {
+    return jsonRes({ ok: false, removed: true, error: "Ballar endi Ball do'konida sarflanadi." }, 410);
+  }
+
+  // ---------------------------------------------------------------- FOKUS
+  if (t === "focus_complete" || t === "focus_check_question" || t === "focus_check_answer") {
+    const kid = await actorAsChild(actor);
+    if (!kid) return unauthorized("Faqat farzand");
+    const { familyCode, childId } = kid;
+
+    const { data: rows } = await db
+      .from("focus_sessions")
+      .select("id, planned_minutes, started_at, completed_at, check_questions, check_answers, check_issued_at")
+      .eq("id", String(payload.sessionId || ""))
+      .eq("family_code", familyCode)
+      .eq("child_id", childId)
+      .limit(1);
+    const session = rows && rows[0];
+    if (!session) return jsonRes({ ok: false, error: "Seans topilmadi." }, 404);
+    if (session.completed_at) return jsonRes({ ok: false, error: "Bu seans allaqachon yakunlangan." }, 409);
+
+    const questions: any[] = session.check_questions || [];
+    const answers: any[] = Array.isArray(session.check_answers) ? session.check_answers : [];
+
+    if (t === "focus_complete") {
+      // Haqiqatan o'tirilganini SERVER tekshiradi (taymer sekundlari va
+      // tarmoq kechikishi uchun 10% bo'sh joy).
+      const elapsedMin = (Date.now() - new Date(session.started_at).getTime()) / 60000;
+      const required = Number(session.planned_minutes) * 0.9;
+      if (elapsedMin < required) {
+        return jsonRes({
+          ok: false, tooEarly: true, error: "Seans hali tugamadi.",
+          remainingMinutes: Math.max(1, Math.ceil(required - elapsedMin)),
+        }, 400);
+      }
+      if (questions.length) {
+        return jsonRes({ ok: true, check: { total: questions.length, answered: answers.length, seconds: FOCUS_CHECK_SECONDS } });
+      }
+      const qs = await pickFocusCheckQuestions(familyCode, childId);
+      await db
+        .from("focus_sessions")
+        .update({ check_questions: qs, check_answers: [], check_issued_at: null })
+        .eq("id", session.id);
+      return jsonRes({ ok: true, check: { total: qs.length, answered: 0, seconds: FOCUS_CHECK_SECONDS } });
+    }
+
+    if (!questions.length) return jsonRes({ ok: false, error: "Avval seansni yakunlang." }, 400);
+
+    if (t === "focus_check_question") {
+      // Berilgan savol javobsiz qayta so'ralsa — bu javob topishga urinish
+      // (sahifani yangilab, boshqa ilovaga o'tib). Noto'g'ri hisoblanadi.
+      if (session.check_issued_at) {
+        answers.push({ choice: -1, correct: false, reissued: true });
+        if (answers.length >= questions.length) {
+          return jsonRes({ ok: true, ...(await finishFocusCheck(session, answers, familyCode, childId)) });
+        }
+      }
+      const i = answers.length;
+      await db
+        .from("focus_sessions")
+        .update({ check_answers: answers, check_issued_at: new Date().toISOString() })
+        .eq("id", session.id);
+      return jsonRes({
+        ok: true, index: i, total: questions.length, seconds: FOCUS_CHECK_SECONDS,
+        skippedPrevious: !!session.check_issued_at,
+        question: { q: questions[i].q, a: questions[i].a },
+      });
+    }
+
+    // focus_check_answer
+    if (!session.check_issued_at) return jsonRes({ ok: false, error: "Savol berilmagan." }, 400);
+    const i = answers.length;
+    const q = questions[i];
+    const elapsedSec = (Date.now() - new Date(session.check_issued_at).getTime()) / 1000;
+    const choice = Number.isInteger(payload.choice) ? Number(payload.choice) : -1;
+    const timedOut = elapsedSec > FOCUS_CHECK_SECONDS + FOCUS_CHECK_GRACE_SECONDS;
+    const correct = !timedOut && choice === q.c;
+    answers.push({ choice, correct, ms: Math.round(elapsedSec * 1000), timedOut });
+
+    const feedback = { correct, timedOut, correctIndex: q.c, why: q.why || "" };
+    if (answers.length >= questions.length) {
+      return jsonRes({ ok: true, ...feedback, ...(await finishFocusCheck(session, answers, familyCode, childId)) });
+    }
+    await db
+      .from("focus_sessions")
+      .update({ check_answers: answers, check_issued_at: null })
+      .eq("id", session.id);
+    return jsonRes({ ok: true, ...feedback, done: false, index: i, total: questions.length });
+  }
+
+  // ---------------------------------------------------------- UY VAZIFASI
+  if (t === "homework_claim") {
+    const kid = await actorAsChild(actor);
+    if (!kid) return unauthorized("Faqat farzand");
+    const { familyCode, childId } = kid;
+
+    const { data: todays } = await db
+      .from("homework_items")
+      .select("id, status")
+      .eq("family_code", familyCode)
+      .eq("child_id", childId)
+      .gte("created_at", tashkentDayStartISO())
+      .limit(20);
+    const list = todays || [];
+    if (list.some((r: any) => r.status === "pending")) {
+      return jsonRes({ ok: false, error: "Oldingi xabaringni ota-onang hali ko'rmadi." }, 409);
+    }
+    if (list.filter((r: any) => r.status === "approved").length >= HOMEWORK_PER_DAY) {
+      return jsonRes({ ok: false, error: `Bugun ${HOMEWORK_PER_DAY} ta uy vazifasi tasdiqlandi — ertaga yana.` }, 429);
+    }
+
+    const note = String(payload.note || "").trim().slice(0, 120);
+    const subject = String(payload.subject || "Uy vazifasi").trim().slice(0, 40) || "Uy vazifasi";
+    const { data: ins } = await db
+      .from("homework_items")
+      .insert({
+        family_code: familyCode,
+        child_id: childId,
+        grade: await childGrade(familyCode, childId),
+        subject,
+        title: note,
+        status: "pending",
+      })
+      .select("id")
+      .limit(1);
+    const id = ins && ins[0] && ins[0].id;
+    if (!id) return jsonRes({ ok: false, error: "Saqlab bo'lmadi." }, 500);
+
+    const rules = await getTimeBankRules(familyCode, childId);
+    const nom = await participantName(familyCode, childId);
+    const delivered = await notifyFamilyParents(
+      familyCode,
+      `📚 <b>${nom}: "Uy vazifamni bajardim"</b>\n\n` +
+        `<b>Fan:</b> ${subject}` + (note ? `\n<b>Izoh:</b> ${note}` : "") +
+        `\n\nTekshirib ko'ring. Tasdiqlasangiz, <b>+${rules.minutes_per_homework} ball</b> yoziladi.`,
+      {
+        inline_keyboard: [[
+          { text: "✅ Tasdiqlayman", callback_data: "hw_ok_" + id },
+          { text: "❌ Bajarilmagan", callback_data: "hw_no_" + id },
+        ]],
+      }
+    );
+    return jsonRes({ ok: true, id, delivered });
+  }
+
+  // ------------------------------------------------------ OTA-ONA SOVG'ALARI
+  if (t === "reward_items_list") {
+    const fam = (await actorAsParent(actor)) || (await actorAsChild(actor))?.familyCode;
+    if (!fam) return unauthorized("Oila topilmadi");
+    const { data } = await db
+      .from("reward_items")
+      .select("id, emoji, title, price")
+      .eq("family_code", fam)
+      .eq("active", true)
+      .order("price", { ascending: true })
+      .limit(GIFT_ITEMS_MAX);
+    return jsonRes({ ok: true, items: data || [] });
+  }
+
+  if (t === "reward_item_save") {
+    const fam = await actorAsParent(actor);
+    if (!fam) return unauthorized("Faqat ota-ona");
+    const title = String(payload.title || "").trim().slice(0, 60);
+    const emoji = String(payload.emoji || "🎁").trim().slice(0, 8) || "🎁";
+    const price = Math.round(Number(payload.price));
+    if (title.length < 2) return jsonRes({ ok: false, error: "Sovg'a nomini yozing." }, 400);
+    if (!(price >= 10 && price <= 100000)) return jsonRes({ ok: false, error: "Narx 10 dan 100 000 gacha bo'lsin." }, 400);
+    const { data: cnt } = await db
+      .from("reward_items").select("id").eq("family_code", fam).eq("active", true).limit(GIFT_ITEMS_MAX + 1);
+    if ((cnt || []).length >= GIFT_ITEMS_MAX) {
+      return jsonRes({ ok: false, error: `Ko'pi bilan ${GIFT_ITEMS_MAX} ta sovg'a.` }, 400);
+    }
+    const { error } = await db.from("reward_items").insert({ family_code: fam, title, emoji, price });
+    if (error) return jsonRes({ ok: false, error: error.message }, 500);
+    return jsonRes({ ok: true });
+  }
+
+  if (t === "reward_item_delete") {
+    const fam = await actorAsParent(actor);
+    if (!fam) return unauthorized("Faqat ota-ona");
+    await db
+      .from("reward_items")
+      .update({ active: false })
+      .eq("id", String(payload.id || ""))
+      .eq("family_code", fam);
+    return jsonRes({ ok: true });
+  }
+
+  // ------------------------------------------------------------- DO'KON
+  if (t === "shop_status") {
+    let kid = await actorAsChild(actor);
+    if (!kid) {
+      const fam = await actorAsParent(actor);
+      const cid = String(payload.childId || "").trim();
+      if (!fam || !cid) return unauthorized("Farzand topilmadi");
+      kid = { familyCode: fam, childId: cid };
+    }
+    const { familyCode, childId } = kid;
+
+    const [{ balance }, reserved, purchasesRes, giftsRes, pendingRes, cardsRes, mintedRes, boost, companion] =
+      await Promise.all([
+        timeBankBalance(familyCode, childId),
+        reservedPoints(familyCode, childId),
+        db.from("shop_purchases").select("item_key, equipped")
+          .eq("family_code", familyCode).eq("child_id", childId).limit(500),
+        db.from("reward_items").select("id, emoji, title, price")
+          .eq("family_code", familyCode).eq("active", true)
+          .order("price", { ascending: true }).limit(GIFT_ITEMS_MAX),
+        db.from("reward_redemptions").select("id, item_id, emoji, title, price, created_at")
+          .eq("family_code", familyCode).eq("child_id", childId).eq("status", "pending").limit(10),
+        db.from("collectible_cards").select("card_key, serial, acquired_at")
+          .eq("family_code", familyCode).eq("child_id", childId)
+          .order("acquired_at", { ascending: false }).limit(500),
+        db.from("collectible_cards").select("card_key").limit(20000),
+        aiBoostToday(familyCode, childId),
+        companionState(familyCode, childId),
+      ]);
+
+    const owned = new Map<string, boolean>();
+    for (const p of purchasesRes.data || []) {
+      owned.set(p.item_key, owned.get(p.item_key) || !!p.equipped);
+    }
+    const minted: Record<string, number> = {};
+    for (const r of mintedRes.data || []) minted[r.card_key] = (minted[r.card_key] || 0) + 1;
+
+    const best = companion ? Number(companion.bestStreak) || 0 : 0;
+
+    return jsonRes({
+      ok: true,
+      balance,
+      reserved,
+      available: Math.max(0, balance - reserved),
+      items: SHOP_ITEMS.map((i) => ({
+        key: i.key, kind: i.kind, emoji: i.emoji, title: i.title, desc: i.desc,
+        price: i.price, consumable: !!i.consumable, gameId: i.gameId || null,
+        owned: !i.consumable && owned.has(i.key),
+        equipped: owned.get(i.key) === true,
+      })),
+      earnedBadges: EARNED_BADGES.map((b) => ({ ...b, earned: best >= b.need })),
+      gifts: giftsRes.data || [],
+      pendingGifts: pendingRes.data || [],
+      aiBoostToday: boost,
+      cardBox: {
+        price: CARD_BOX_PRICE,
+        rarities: CARD_RARITY,
+      },
+      cardCatalog: CARDS.map((c) => ({
+        ...c,
+        supply: CARD_RARITY[c.rarity].supply,
+        minted: minted[c.key] || 0,
+      })),
+      myCards: (cardsRes.data || []).map((c: any) => ({
+        ...c,
+        ...(CARD_BY_KEY[c.card_key] || {}),
+        supply: CARD_RARITY[(CARD_BY_KEY[c.card_key] || {}).rarity]?.supply || 0,
+      })),
+      companion,
+    });
+  }
+
+  // Quyidagilar faqat bolaning o'zi uchun: xarid — uning qarori.
+  const kid = await actorAsChild(actor);
+  if (!kid) return unauthorized("Faqat farzand");
+  const { familyCode, childId } = kid;
+
+  if (t === "shop_buy") {
+    const item = SHOP_BY_KEY[String(payload.itemKey || "")];
+    if (!item) return jsonRes({ ok: false, error: "Bunday buyum yo'q." }, 404);
+    const { data, error } = await db.rpc("qalqon_buy", {
+      p_family: familyCode, p_child: childId, p_item: item.key,
+      p_price: item.price, p_consumable: !!item.consumable,
+    });
+    if (error) return jsonRes({ ok: false, error: error.message }, 500);
+    if (data === "owned") return jsonRes({ ok: false, error: "Bu senda allaqachon bor." }, 409);
+    if (data === "no_balance") return jsonRes({ ok: false, noBalance: true, error: "Ball yetmaydi." }, 402);
+
+    // Yangi yorliq yoki bo'ri buyumi darhol kiyiladi — shu kutilgan narsa.
+    if (item.kind === "badge" || item.kind === "companion") {
+      const sameKind = SHOP_ITEMS.filter((i) => i.kind === item.kind).map((i) => i.key);
+      await db.from("shop_purchases").update({ equipped: false })
+        .eq("family_code", familyCode).eq("child_id", childId).in("item_key", sameKind);
+      await db.from("shop_purchases").update({ equipped: true })
+        .eq("family_code", familyCode).eq("child_id", childId).eq("item_key", item.key);
+    }
+    const { balance } = await timeBankBalance(familyCode, childId);
+    return jsonRes({ ok: true, item: { key: item.key, emoji: item.emoji, title: item.title }, balance });
+  }
+
+  if (t === "shop_equip") {
+    const item = SHOP_BY_KEY[String(payload.itemKey || "")];
+    if (!item || (item.kind !== "badge" && item.kind !== "companion")) {
+      return jsonRes({ ok: false, error: "Bu buyumni kiyib bo'lmaydi." }, 400);
+    }
+    const { data: mineRows } = await db.from("shop_purchases").select("id, equipped")
+      .eq("family_code", familyCode).eq("child_id", childId).eq("item_key", item.key).limit(1);
+    if (!mineRows || !mineRows[0]) return jsonRes({ ok: false, error: "Avval sotib ol." }, 403);
+    const wasOn = !!mineRows[0].equipped;
+    const sameKind = SHOP_ITEMS.filter((i) => i.kind === item.kind).map((i) => i.key);
+    await db.from("shop_purchases").update({ equipped: false })
+      .eq("family_code", familyCode).eq("child_id", childId).in("item_key", sameKind);
+    if (!wasOn) {
+      await db.from("shop_purchases").update({ equipped: true }).eq("id", mineRows[0].id);
+    }
+    return jsonRes({ ok: true, equipped: !wasOn });
+  }
+
+  if (t === "shop_open_box") {
+    const { data, error } = await db.rpc("qalqon_open_box", {
+      p_family: familyCode, p_child: childId, p_price: CARD_BOX_PRICE,
+      p_candidates: cardBoxCandidates(),
+    });
+    if (error) return jsonRes({ ok: false, error: error.message }, 500);
+    if (data?.status === "no_balance") return jsonRes({ ok: false, noBalance: true, error: "Ball yetmaydi." }, 402);
+    if (data?.status !== "ok") return jsonRes({ ok: false, error: "Barcha kartalar tugadi!" }, 410);
+    const c = CARD_BY_KEY[data.card_key];
+    const { balance } = await timeBankBalance(familyCode, childId);
+
+    // Afsonaviy karta — oilaviy voqea, ota-ona ham bilsin.
+    if (c.rarity === "afsonaviy") {
+      const nom = await participantName(familyCode, childId);
+      await notifyFamilyParents(
+        familyCode,
+        `🏆 <b>${nom} afsonaviy karta topdi!</b>\n\n${c.emoji} <b>${c.title}</b> — ` +
+          `#${String(data.serial).padStart(3, "0")} / ${CARD_RARITY.afsonaviy.supply}. ` +
+          `Butun ilovada atigi ${CARD_RARITY.afsonaviy.supply} ta.`
+      );
+    }
+    return jsonRes({
+      ok: true,
+      card: { ...c, serial: data.serial, supply: CARD_RARITY[c.rarity].supply, rarityLabel: CARD_RARITY[c.rarity].label },
+      balance,
+    });
+  }
+
+  if (t === "reward_request") {
+    const { data: items } = await db.from("reward_items").select("id, emoji, title, price")
+      .eq("id", String(payload.itemId || "")).eq("family_code", familyCode).eq("active", true).limit(1);
+    const item = items && items[0];
+    if (!item) return jsonRes({ ok: false, error: "Bu sovg'a endi yo'q." }, 404);
+
+    const { data: pend } = await db.from("reward_redemptions").select("id, item_id")
+      .eq("family_code", familyCode).eq("child_id", childId).eq("status", "pending").limit(10);
+    if ((pend || []).some((p: any) => p.item_id === item.id)) {
+      return jsonRes({ ok: false, error: "Bu sovg'ani allaqachon so'ragansan — javobni kut." }, 409);
+    }
+    if ((pend || []).length >= GIFT_PENDING_MAX) {
+      return jsonRes({ ok: false, error: `Bir vaqtda ko'pi bilan ${GIFT_PENDING_MAX} ta so'rov.` }, 429);
+    }
+    const { balance } = await timeBankBalance(familyCode, childId);
+    const reserved = await reservedPoints(familyCode, childId);
+    if (balance - reserved < item.price) {
+      return jsonRes({ ok: false, noBalance: true, error: `Ball yetmaydi: ${Math.max(0, balance - reserved)} bor, ${item.price} kerak.` }, 402);
+    }
+
+    const { data: ins } = await db.from("reward_redemptions").insert({
+      family_code: familyCode, child_id: childId, item_id: item.id,
+      emoji: item.emoji, title: item.title, price: item.price,
+    }).select("id").limit(1);
+    const rid = ins && ins[0] && ins[0].id;
+    if (!rid) return jsonRes({ ok: false, error: "Saqlab bo'lmadi." }, 500);
+
+    const nom = await participantName(familyCode, childId);
+    await notifyFamilyParents(
+      familyCode,
+      `🎁 <b>${nom} sovg'a so'rayapti</b>\n\n${item.emoji} <b>${item.title}</b> — ${item.price} ball\n` +
+        `Balansi: ${balance} ball\n\n` +
+        `<i>Tasdiqlasangiz, ball yechiladi va va'dani bajarish sizda bo'ladi.</i>`,
+      {
+        inline_keyboard: [[
+          { text: "✅ Tasdiqlayman", callback_data: "rw_ok_" + rid },
+          { text: "⏳ Hozir emas", callback_data: "rw_no_" + rid },
+        ]],
+      }
+    );
+    return jsonRes({ ok: true, id: rid });
+  }
+
+  return null;
+}
+
+/**
+ * Ota-onaning bot tugmalari: uy vazifasi va sovg'a tasdig'i.
+ * Tugma ma'lumotini qo'lda yasash qiyin emas — shuning uchun yozuv id'si
+ * ruxsat emas, bosgan odamning oilasi solishtiriladi.
+ */
+async function handleBallCallback(data: string, chatId: number): Promise<boolean> {
+  if (data.startsWith("pex_")) {
+    await sendMessage(chatId, "ℹ️ Ballarni Pro'ga almashtirish olib tashlandi — endi ballar Ball do'konida sarflanadi.");
+    return true;
+  }
+  const isHw = data.startsWith("hw_ok_") || data.startsWith("hw_no_");
+  const isRw = data.startsWith("rw_ok_") || data.startsWith("rw_no_");
+  if (!isHw && !isRw) return false;
+  if (!db) {
+    await sendMessage(chatId, "⚠️ Baza ulanmagan.");
+    return true;
+  }
+  const approve = data.startsWith("hw_ok_") || data.startsWith("rw_ok_");
+  const id = data.slice(6);
+  const myFamily = generateFamilyCode(chatId);
+  const table = isHw ? "homework_items" : "reward_redemptions";
+
+  const { data: rows } = await db.from(table).select("*").eq("id", id).limit(1);
+  const row = rows && rows[0];
+  if (!row || row.family_code !== myFamily) {
+    await sendMessage(chatId, "⛔️ Bu so'rov sizning oilangizga tegishli emas.");
+    return true;
+  }
+  if (row.status !== "pending") {
+    await sendMessage(chatId, "ℹ️ Bu so'rov allaqachon ko'rib chiqilgan.");
+    return true;
+  }
+
+  const nom = await participantName(row.family_code, row.child_id);
+  const childTg = String(row.child_id).startsWith("tg_") ? String(row.child_id).slice(3) : null;
+
+  // Avval holatni o'zgartiramiz (faqat pending bo'lsa): ikki marta bosish
+  // ikki marta ball bermaydi va ikki marta yechmaydi.
+  const { data: claimed } = await db.from(table)
+    .update({ status: approve ? "approved" : "rejected", decided_at: new Date().toISOString(), ...(isRw ? { decided_by: chatId } : {}) })
+    .eq("id", id).eq("status", "pending").select("id");
+  if (!claimed || !claimed[0]) {
+    await sendMessage(chatId, "ℹ️ Bu so'rov allaqachon ko'rib chiqilgan.");
+    return true;
+  }
+
+  if (isHw) {
+    if (!approve) {
+      await sendMessage(chatId, `❌ Belgilandi: ${nom}ning uy vazifasi tasdiqlanmadi.`);
+      if (childTg) await sendMessage(childTg, `📚 Ota-onang uy vazifangni hali bajarilgan deb hisoblamadi. Tugatib, qayta yubor 💪`);
+      return true;
+    }
+    const rules = await getTimeBankRules(row.family_code, row.child_id);
+    const awarded = await timeBankAward(row.family_code, row.child_id, Number(rules.minutes_per_homework), "homework", row.subject || "Uy vazifasi");
+    await db.from("homework_items").update({ done: true, done_at: new Date().toISOString(), awarded }).eq("id", id);
+    await sendMessage(
+      chatId,
+      awarded > 0
+        ? `✅ Tasdiqlandi. ${nom}ga <b>+${awarded} ball</b> yozildi.`
+        : `✅ Tasdiqlandi. Lekin ${nom} bugungi ball chegarasiga yetgan — ball yozilmadi.`
+    );
+    if (childTg) {
+      await sendMessage(childTg, awarded > 0
+        ? `🎉 <b>Ota-onang uy vazifangni tasdiqladi!</b>\n\n+${awarded} ball.`
+        : `🎉 <b>Ota-onang uy vazifangni tasdiqladi!</b>\n\nBugungi ball chegarasiga yetding, ertaga yana yig'asan.`);
+    }
+    return true;
+  }
+
+  // Sovg'a
+  if (!approve) {
+    await sendMessage(chatId, `⏳ Belgilandi: ${row.emoji || "🎁"} ${row.title} hozircha berilmaydi. Ball yechilmadi.`);
+    if (childTg) await sendMessage(childTg, `⏳ Ota-onang «${row.title}» sovg'asini hozircha qoldirdi. Ballaring joyida — keyinroq yana so'rashing mumkin.`);
+    return true;
+  }
+  const { data: spent, error } = await db.rpc("qalqon_spend", {
+    p_family: row.family_code, p_child: row.child_id, p_amount: Number(row.price),
+    p_reason: "gift", p_note: row.title,
+  });
+  if (error || spent !== true) {
+    await db.from("reward_redemptions").update({ status: "rejected" }).eq("id", id);
+    await sendMessage(chatId, `⚠️ ${nom}da endi ${row.price} ball yo'q — sovg'a berilmadi.`);
+    return true;
+  }
+  await sendMessage(chatId, `✅ Tasdiqlandi: ${row.emoji || "🎁"} <b>${row.title}</b>. ${nom}dan ${row.price} ball yechildi.\n\nEndi va'dani bajarish sizda 🙂`);
+  if (childTg) {
+    await sendMessage(childTg, `🎉 <b>Ota-onang sovg'angni tasdiqladi!</b>\n\n${row.emoji || "🎁"} <b>${row.title}</b>\n−${row.price} ball. Buni sen ishlab topding!`);
+  }
+  return true;
 }
 
 // ============================================================================
@@ -2803,152 +3523,10 @@ async function handleRequest(req: Request): Promise<Response> {
     // qaytarilmaydi. Voyaga yetmaganlarning ro'yxatini bir-biriga ko'rsatish
     // maxfiylik jihatidan ham, Play'ning bolalar siyosati jihatidan ham
     // yo'l qo'yib bo'lmaydigan narsa. Faqat o'z o'rning va umumiy son.
-    // 0.1p BALLARNI PRO'GA ALMASHTIRISH — holat va so'rov.
-    if (payload.type === "pro_exchange_status") {
-      if (!db) {
-        return new Response(JSON.stringify({ ok: false, error: "Baza ulanmagan" }), {
-          status: 500, headers: { "Content-Type": "application/json" },
-        });
-      }
-      const familyCode = await resolveActorFamily(actor!);
-      const childId =
-        actor!.kind === "device"
-          ? actor!.childId
-          : (await isPairedChild(actor!.telegramId))
-            ? "tg_" + actor!.telegramId
-            : String(payload.childId || "").trim();
-
-      if (!childId) {
-        return new Response(JSON.stringify({ ok: false, error: "childId majburiy" }), {
-          status: 400, headers: { "Content-Type": "application/json" },
-        });
-      }
-
-      const b = await proExchangeBalance(familyCode, childId);
-      const capLeft = Math.max(0, PRO_EXCHANGE_MAX_DAYS_PER_MONTH - b.daysThisMonth);
-      const affordable = Math.floor(b.available / PRO_EXCHANGE_MINUTES_PER_DAY);
-
-      const { data: pending } = await db
-        .from("pro_exchange_requests")
-        .select("id, days, minutes, created_at")
-        .eq("family_code", familyCode)
-        .eq("child_id", childId)
-        .eq("status", "pending")
-        .limit(1);
-
-      return new Response(
-        JSON.stringify({
-          ok: true,
-          minutesPerDay: PRO_EXCHANGE_MINUTES_PER_DAY,
-          monthlyCap: PRO_EXCHANGE_MAX_DAYS_PER_MONTH,
-          earned: b.earned,
-          available: b.available,
-          usedDaysThisMonth: b.daysThisMonth,
-          capLeft,
-          maxDays: Math.min(affordable, capLeft),
-          plan: await getPlan(familyCode),
-          pending: (pending && pending[0]) || null,
-        }),
-        { status: 200, headers: { "Content-Type": "application/json" } }
-      );
-    }
-
-    if (payload.type === "pro_exchange_request") {
-      if (!db) {
-        return new Response(JSON.stringify({ ok: false, error: "Baza ulanmagan" }), {
-          status: 500, headers: { "Content-Type": "application/json" },
-        });
-      }
-      // Faqat bolaning o'zi so'raydi: bu uning mehnati va uning qarori.
-      if (actor!.kind === "telegram" && !(await isPairedChild(actor!.telegramId))) {
-        return unauthorized("Faqat farzand so'rashi mumkin");
-      }
-
-      const familyCode = await resolveActorFamily(actor!);
-      const childId =
-        actor!.kind === "device" ? actor!.childId : "tg_" + actor!.telegramId;
-
-      const days = Math.max(1, Math.min(30, Number(payload.days) || 0));
-      const b = await proExchangeBalance(familyCode, childId);
-      const capLeft = Math.max(0, PRO_EXCHANGE_MAX_DAYS_PER_MONTH - b.daysThisMonth);
-      const minutes = days * PRO_EXCHANGE_MINUTES_PER_DAY;
-
-      if (days > capLeft) {
-        return new Response(
-          JSON.stringify({
-            ok: false,
-            error: `Bu oyda yana ${capLeft} kun almashtirish mumkin.`,
-          }),
-          { status: 400, headers: { "Content-Type": "application/json" } }
-        );
-      }
-      if (minutes > b.available) {
-        return new Response(
-          JSON.stringify({
-            ok: false,
-            error: `Yetarli daqiqa yo'q: ${b.available} bor, ${minutes} kerak.`,
-          }),
-          { status: 400, headers: { "Content-Type": "application/json" } }
-        );
-      }
-
-      // Ikkita ochiq so'rov bo'lmasin — aks holda ota-ona ikkalasini
-      // tasdiqlab, bir daqiqa ikki marta sarflanardi.
-      const { data: already } = await db
-        .from("pro_exchange_requests")
-        .select("id")
-        .eq("family_code", familyCode)
-        .eq("child_id", childId)
-        .eq("status", "pending")
-        .limit(1);
-      if (already && already[0]) {
-        return new Response(
-          JSON.stringify({ ok: false, error: "Oldingi so'rovingiz hali ko'rilmagan." }),
-          { status: 409, headers: { "Content-Type": "application/json" } }
-        );
-      }
-
-      const nom = await participantName(familyCode, childId);
-      const { data: ins } = await db
-        .from("pro_exchange_requests")
-        .insert({
-          family_code: familyCode,
-          child_id: childId,
-          child_name: nom,
-          days,
-          minutes,
-        })
-        .select("id")
-        .limit(1);
-
-      const reqId = ins && ins[0] && ins[0].id;
-      if (!reqId) {
-        return new Response(JSON.stringify({ ok: false, error: "Saqlab bo'lmadi." }), {
-          status: 500, headers: { "Content-Type": "application/json" },
-        });
-      }
-
-      await notifyFamilyParents(
-        familyCode,
-        `⭐️ <b>${nom} Pro so'rayapti.</b>\n\n` +
-          `U <b>${minutes} daqiqa</b> ni o'z mehnati bilan yig'di va uni ` +
-          `<b>${days} kun Pro</b> ga almashtirmoqchi.\n\n` +
-          `<i>Faqat fokus seanslari va maktabga o'z vaqtida yetish hisobga olingan — ` +
-          `siz bergan bonus daqiqalar bunga kirmaydi.</i>`,
-        {
-          inline_keyboard: [
-            [
-              { text: "✅ Tasdiqlash", callback_data: "pex_ok_" + reqId },
-              { text: "❌ Rad etish", callback_data: "pex_no_" + reqId },
-            ],
-          ],
-        }
-      );
-
-      return new Response(
-        JSON.stringify({ ok: true, requestId: reqId, days, minutes }),
-        { status: 200, headers: { "Content-Type": "application/json" } }
-      );
+    // 0.1p BALL TIZIMI: fokus tekshiruvi, uy vazifasi, do'kon, kartalar.
+    {
+      const ballRes = await handleBallRoutes(payload, actor!);
+      if (ballRes) return ballRes;
     }
 
     // ========================================================================
@@ -3319,6 +3897,9 @@ async function handleRequest(req: Request): Promise<Response> {
         .from("focus_sessions")
         .select("child_id, planned_minutes, completed_at")
         .not("completed_at", "is", null)
+        // Faqat tekshiruv savollaridan o'tgan seanslar — taymerni yoqib
+        // qo'yib ketilgani hisoblanmaydi.
+        .eq("check_passed", true)
         .gte("completed_at", weekStart)
         .limit(5000);
 
@@ -3389,6 +3970,9 @@ async function handleRequest(req: Request): Promise<Response> {
             .select("planned_minutes")
             .eq("family_code", fam).eq("child_id", cid)
             .not("completed_at", "is", null)
+            // Faqat tekshiruv savollaridan o'tgan seanslar — taymerni yoqib
+            // qo'yib ketilgani hisoblanmaydi.
+            .eq("check_passed", true)
             .gte("completed_at", duel.starts_at)
             .lte("completed_at", duel.ends_at)
             .limit(500);
@@ -3584,6 +4168,7 @@ async function handleRequest(req: Request): Promise<Response> {
         "join_attempts", "location_pings", "location_requests",
         "pro_exchange_requests", "quiz_answers", "quiz_rounds",
         "time_bank_entries", "time_bank_rules", "web_sessions", "families",
+        "reward_items", "reward_redemptions", "shop_purchases", "collectible_cards",
       ];
 
       const failed: string[] = [];
@@ -3682,6 +4267,7 @@ async function handleRequest(req: Request): Promise<Response> {
         "device_tokens", "geofence_alerts", "geofence_zones", "curfew_policies",
         "homework_items", "time_bank_entries", "time_bank_rules", "focus_sessions",
         "child_companion", "location_requests", "pro_exchange_requests",
+        "reward_redemptions", "shop_purchases", "collectible_cards",
       ]) {
         const { error } = await db
           .from(table)
@@ -3827,99 +4413,7 @@ async function handleRequest(req: Request): Promise<Response> {
       );
     }
 
-    // Fokus seansini tugatish va vaqt yozish.
-    if (payload.type === "focus_complete") {
-      if (!db) {
-        return new Response(JSON.stringify({ ok: false, error: "Baza ulanmagan" }), {
-          status: 500, headers: { "Content-Type": "application/json" },
-        });
-      }
-      const familyCode = await resolveActorFamily(actor!);
-      const childId =
-        actor!.kind === "device" ? actor!.childId : "tg_" + actor!.telegramId;
-
-      const { data: rows } = await db
-        .from("focus_sessions")
-        .select("id, planned_minutes, started_at, completed_at")
-        .eq("id", String(payload.sessionId || ""))
-        .eq("family_code", familyCode)
-        .eq("child_id", childId)
-        .limit(1);
-
-      const session = rows && rows[0];
-      if (!session) {
-        return new Response(JSON.stringify({ ok: false, error: "Seans topilmadi." }), {
-          status: 404, headers: { "Content-Type": "application/json" },
-        });
-      }
-      if (session.completed_at) {
-        return new Response(
-          JSON.stringify({ ok: false, error: "Bu seans allaqachon yakunlangan." }),
-          { status: 409, headers: { "Content-Type": "application/json" } }
-        );
-      }
-
-      // Haqiqatan o'tirilganini SERVER tekshiradi: mijoz "tugatdim" deb
-      // yuborishi yetarli emas. Kichik chetlanishga yo'l qo'yamiz (taymer
-      // sekundlari va tarmoq kechikishi uchun).
-      const elapsedMin = (Date.now() - new Date(session.started_at).getTime()) / 60000;
-      const required = Number(session.planned_minutes) * 0.9;
-      if (elapsedMin < required) {
-        return new Response(
-          JSON.stringify({
-            ok: false,
-            tooEarly: true,
-            error: "Seans hali tugamadi.",
-            remainingMinutes: Math.max(1, Math.ceil(required - elapsedMin)),
-          }),
-          { status: 400, headers: { "Content-Type": "application/json" } }
-        );
-      }
-
-      const rules = await getTimeBankRules(familyCode, childId);
-
-      // Mukofot seans UZUNLIGIGA mutanosib. Kurs "25 daqiqalik seans uchun"
-      // deb tushuniladi. Aks holda 5 daqiqalik seanslarni ketma-ket bosib,
-      // soatiga bir necha barobar ko'p yig'ib olish mumkin bo'lardi.
-      const scaled = Math.round(
-        (Number(rules.minutes_per_focus) * Number(session.planned_minutes)) / 25
-      );
-      const awarded = await timeBankAward(
-        familyCode,
-        childId,
-        Math.max(1, scaled),
-        "focus",
-        `${session.planned_minutes} daqiqalik fokus`
-      );
-
-      await db
-        .from("focus_sessions")
-        .update({ completed_at: new Date().toISOString(), awarded_minutes: awarded })
-        .eq("id", session.id);
-
-      const { balance, earnedToday } = await timeBankBalance(familyCode, childId);
-
-      if (awarded > 0) {
-        await notifyFamilyParents(
-          familyCode,
-          `🎯 <b>Farzandingiz ${session.planned_minutes} daqiqa diqqat bilan ishladi.</b>\n\n` +
-            `Vaqt bankiga <b>+${awarded} daqiqa</b> yozildi. Bugungi jami: ${earnedToday} daqiqa.`
-        );
-      }
-
-      return new Response(
-        JSON.stringify({
-          ok: true,
-          awarded,
-          balance,
-          earnedToday,
-          capReached: awarded === 0,
-          dailyCap: rules.daily_cap_minutes,
-          companion: await companionState(familyCode, childId),
-        }),
-        { status: 200, headers: { "Content-Type": "application/json" } }
-      );
-    }
+    // Fokus seansini tugatish — handleBallRoutes (3 ta tekshiruv savoli bilan).
 
     // Ota-ona kursni belgilaydi.
     if (payload.type === "time_bank_rules_save") {
@@ -3948,8 +4442,8 @@ async function handleRequest(req: Request): Promise<Response> {
           enabled: payload.enabled !== false,
           minutes_per_focus: clamp(payload.minutesPerFocus, 10, 60),
           minutes_per_school_ontime: clamp(payload.minutesPerSchoolOntime, 20, 60),
-          minutes_per_homework: clamp(payload.minutesPerHomework, 10, 60),
-          daily_cap_minutes: clamp(payload.dailyCapMinutes, 90, 480),
+          minutes_per_homework: clamp(payload.minutesPerHomework, 15, 60),
+          daily_cap_minutes: clamp(payload.dailyCapMinutes, 60, 480),
           updated_at: new Date().toISOString(),
         },
         { onConflict: "family_code,child_id" }
@@ -3975,15 +4469,21 @@ async function handleRequest(req: Request): Promise<Response> {
     if (payload.type === "ai_quota") {
       const who = actor!.kind === "telegram" ? actor!.telegramId : 0;
       let limit = AI_FREE_DAILY;
+      let boost = 0;
       if (actor!.kind === "telegram") {
         const fam = await resolveActorFamily(actor!);
         if (fam && (await getPlan(fam)) === "pro") limit = AI_PRO_DAILY;
+        // Ball do'konidan olingan qo'shimcha savollar (faqat bugun).
+        if (fam && (await isPairedChild(actor!.telegramId))) {
+          boost = await aiBoostToday(fam, "tg_" + actor!.telegramId);
+        }
       }
+      const baseLimit = limit;
+      limit += boost;
 
       let used = 0;
       if (db && who) {
-        const dayStart = new Date();
-        dayStart.setHours(0, 0, 0, 0);
+        const dayStart = new Date(tashkentDayStartISO());
         const { data } = await db
           .from("ai_chat_messages")
           .select("id")
@@ -4000,7 +4500,8 @@ async function handleRequest(req: Request): Promise<Response> {
           dailyLimit: limit,
           used,
           remaining: Math.max(0, limit - used),
-          plan: limit === AI_PRO_DAILY ? "pro" : "free",
+          plan: baseLimit === AI_PRO_DAILY ? "pro" : "free",
+          boost,
           freeDaily: AI_FREE_DAILY,
           proDaily: AI_PRO_DAILY,
         }),
@@ -4060,10 +4561,16 @@ async function handleRequest(req: Request): Promise<Response> {
       // mahsulotning eng ko'rinadigan ustunligi, shuning uchun foydalanuvchiga
       // qolgan soni ham qaytariladi — u buni ko'rib tursin.
       let dailyLimit = AI_FREE_DAILY;
+      let aiBoost = 0;
       if (actor!.kind === "telegram") {
         const fam = await resolveActorFamily(actor!);
         if (fam && (await getPlan(fam)) === "pro") dailyLimit = AI_PRO_DAILY;
+        if (fam && (await isPairedChild(actor!.telegramId))) {
+          aiBoost = await aiBoostToday(fam, "tg_" + actor!.telegramId);
+        }
       }
+      const baseDaily = dailyLimit;
+      dailyLimit += aiBoost;
 
       let usedToday = 0;
       if (db && who) {
@@ -4081,8 +4588,7 @@ async function handleRequest(req: Request): Promise<Response> {
           );
         }
 
-        const dayStart = new Date();
-        dayStart.setHours(0, 0, 0, 0);
+        const dayStart = new Date(tashkentDayStartISO());
         const { data: bugun } = await db
           .from("ai_chat_messages")
           .select("id")
@@ -4099,10 +4605,11 @@ async function handleRequest(req: Request): Promise<Response> {
               limitReached: true,
               dailyLimit,
               remaining: 0,
-              upgradeRequired: dailyLimit === AI_FREE_DAILY,
+              upgradeRequired: baseDaily === AI_FREE_DAILY,
               error:
                 `Bugungi ${dailyLimit} ta savol tugadi. Ertaga yana ochiladi.` +
-                (dailyLimit === AI_FREE_DAILY
+                (aiBoost === 0 ? " Ball do'konida +10 ta savol olish mumkin." : "") +
+                (baseDaily === AI_FREE_DAILY
                   ? ` Pro tarifda kuniga ${AI_PRO_DAILY} ta.`
                   : ""),
             }),
@@ -4248,7 +4755,7 @@ async function handleRequest(req: Request): Promise<Response> {
             // to'xtab qolgandek his qilardi.
             dailyLimit,
             remaining: Math.max(0, dailyLimit - usedToday - 1),
-            plan: dailyLimit === AI_PRO_DAILY ? "pro" : "free",
+            plan: baseDaily === AI_PRO_DAILY ? "pro" : "free",
             historyError,
             // Javob kesilib qolganini keyin ham ko'ra olishimiz uchun.
             finishReason: gJson?.candidates?.[0]?.finishReason || null,
@@ -5208,6 +5715,9 @@ async function handleRequest(req: Request): Promise<Response> {
         .eq("family_code", familyCode)
         .eq("child_id", childId)
         .not("completed_at", "is", null)
+        // Faqat tekshiruv savollaridan o'tgan seanslar — taymerni yoqib
+        // qo'yib ketilgani hisoblanmaydi.
+        .eq("check_passed", true)
         .gte("completed_at", ikkiHafta)
         .limit(500);
 
@@ -6261,110 +6771,8 @@ async function handleRequest(req: Request): Promise<Response> {
         }
       }
 
-      // BALLARNI PRO'GA ALMASHTIRISH — tasdiqlash yoki rad etish.
-      //
-      // Tugmani bosgan odam AYNAN shu oilaning ota-onasi ekani tekshiriladi.
-      // Callback ma'lumotini qo'lda yasash qiyin emas, shuning uchun so'rov
-      // id'sining o'zi ruxsat hisoblanmaydi — oila kodi solishtiriladi.
-      if (data.startsWith("pex_ok_") || data.startsWith("pex_no_")) {
-        const approve = data.startsWith("pex_ok_");
-        const reqId = data.replace(/^pex_(ok|no)_/, "");
-
-        if (!db) {
-          await sendMessage(chatId, "⚠️ Baza ulanmagan.");
-          return new Response(JSON.stringify({ ok: true }), { status: 200 });
-        }
-
-        const { data: rows } = await db
-          .from("pro_exchange_requests")
-          .select("id, family_code, child_id, child_name, days, minutes, status")
-          .eq("id", reqId)
-          .limit(1);
-
-        const reqRow = rows && rows[0];
-        if (!reqRow) {
-          await sendMessage(chatId, "⚠️ So'rov topilmadi.");
-          return new Response(JSON.stringify({ ok: true }), { status: 200 });
-        }
-
-        const { data: fam } = await db
-          .from("parent_registrations")
-          .select("parent_telegram_id")
-          .eq("family_code", reqRow.family_code)
-          .limit(1);
-
-        const ownerId = fam && fam[0] && fam[0].parent_telegram_id;
-        if (!ownerId || String(ownerId) !== String(chatId)) {
-          await sendMessage(chatId, "⛔️ Bu so'rov sizning oilangizga tegishli emas.");
-          return new Response(JSON.stringify({ ok: true }), { status: 200 });
-        }
-
-        if (reqRow.status !== "pending") {
-          await sendMessage(
-            chatId,
-            `ℹ️ Bu so'rov allaqachon ko'rib chiqilgan (${reqRow.status === "approved" ? "tasdiqlangan" : "rad etilgan"}).`
-          );
-          return new Response(JSON.stringify({ ok: true }), { status: 200 });
-        }
-
-        const childTgId = String(reqRow.child_id).startsWith("tg_")
-          ? String(reqRow.child_id).slice(3)
-          : null;
-
-        if (!approve) {
-          await db
-            .from("pro_exchange_requests")
-            .update({ status: "rejected", decided_at: new Date().toISOString(), decided_by: chatId })
-            .eq("id", reqRow.id);
-          await sendMessage(chatId, `❌ So'rov rad etildi. Daqiqalar ${reqRow.child_name || "farzandingiz"}da qoldi.`);
-          if (childTgId) {
-            await sendMessage(
-              childTgId,
-              `Ota-onang Pro so'rovingni hozircha tasdiqlamadi. Daqiqalaring joyida turibdi — keyinroq yana urinib ko'rasan.`
-            );
-          }
-          return new Response(JSON.stringify({ ok: true }), { status: 200 });
-        }
-
-        // Tasdiqlash. Avval holatni o'zgartiramiz: keyingi qadamda xato
-        // bo'lsa ham, bitta so'rov ikki marta to'lanmaydi.
-        const { error: updErr } = await db
-          .from("pro_exchange_requests")
-          .update({ status: "approved", decided_at: new Date().toISOString(), decided_by: chatId })
-          .eq("id", reqRow.id)
-          .eq("status", "pending");
-
-        if (updErr) {
-          await sendMessage(chatId, "⚠️ Saqlashda xato. Qayta urinib ko'ring.");
-          return new Response(JSON.stringify({ ok: true }), { status: 200 });
-        }
-
-        // Daqiqalarni bankdan yechamiz (manfiy yozuv) — shunda ular ikkinchi
-        // marta almashtirilmaydi va bolaning balansi ham to'g'ri qoladi.
-        await db.from("time_bank_entries").insert({
-          family_code: reqRow.family_code,
-          child_id: reqRow.child_id,
-          minutes: -Math.abs(reqRow.minutes),
-          reason: "pro_exchange",
-          note: `${reqRow.days} kun Pro`,
-        });
-
-        const until = await grantProDays(reqRow.family_code, reqRow.days);
-        const untilTxt = until ? new Date(until).toLocaleDateString("uz-UZ") : "";
-
-        await sendMessage(
-          chatId,
-          `✅ <b>Tasdiqlandi.</b>\n\n${reqRow.child_name || "Farzandingiz"} yiqqan ` +
-            `<b>${reqRow.minutes} daqiqa</b> <b>${reqRow.days} kun Pro</b> ga aylandi` +
-            (untilTxt ? ` (${untilTxt} gacha)` : "") + "."
-        );
-        if (childTgId) {
-          await sendMessage(
-            childTgId,
-            `🎉 <b>Ota-onang tasdiqladi!</b>\n\nSen yiqqan <b>${reqRow.minutes} daqiqa</b> ` +
-              `oilangga <b>${reqRow.days} kun Pro</b> olib keldi.\n\nBuni sen ishlab topding.`
-          );
-        }
+      // Uy vazifasi va sovg'a tasdig'i (eski Pro almashtirish tugmalari ham).
+      if (await handleBallCallback(data, chatId)) {
         return new Response(JSON.stringify({ ok: true }), { status: 200 });
       }
 

@@ -377,15 +377,23 @@
                     <div class="flex items-center gap-2">
                         <span class="text-xl">💰</span>
                         <div>
-                            <div class="text-xs font-bold text-amber-300">Vaqt Bankim</div>
-                            <div class="text-[10px] text-slate-400" id="timeBankToday">Bugun ishlab topilgani: 0 daqiqa</div>
+                            <div class="text-xs font-bold text-amber-300">Ballarim</div>
+                            <div class="text-[10px] text-slate-400" id="timeBankToday">Bugun: 0 ball</div>
                         </div>
                     </div>
-                    <div class="text-lg font-black text-amber-400 font-mono" id="timeBankBalance">0 daqiqa</div>
+                    <div class="text-lg font-black text-amber-400 font-mono" id="timeBankBalance">0 ball</div>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="openShop('gifts')" class="py-2 rounded-xl bg-amber-500/25 hover:bg-amber-500/35 border border-amber-500/50 text-amber-100 text-[11px] font-bold transition">
+                        🛍 Ball do'koni
+                    </button>
+                    <button onclick="claimHomework()" id="homeworkClaimBtn" class="py-2 rounded-xl bg-slate-900/70 hover:bg-slate-800 border border-slate-700 text-slate-100 text-[11px] font-bold transition">
+                        📚 Uy vazifam tayyor
+                    </button>
                 </div>
                 <div class="pt-2 border-t border-amber-500/20 space-y-1" id="timeBankHistory"></div>
                 <div class="text-[9px] text-slate-500 leading-tight">
-                    Diqqat bilan dars qilsang, maktabga o'z vaqtida yetsang — qo'shimcha ekran vaqti yutasan.
+                    Ball qanday yig'iladi: 🎯 fokus seansi + 3 ta savol (kuniga 3 marta) · 🏫 maktabga o'z vaqtida · 📚 ota-onang tasdiqlagan uy vazifasi.
                 </div>
             </div>
 
@@ -454,21 +462,6 @@
                 </button>
             </div>
 
-            <!-- ⭐️ BALLARNI PRO'GA ALMASHTIRISH -->
-            <div id="proExchangeCard" class="hidden p-3.5 rounded-2xl bg-gradient-to-br from-amber-500/15 to-yellow-500/8 border border-amber-500/35 space-y-2.5">
-                <div class="flex items-center gap-2">
-                    <span class="text-xl">⭐️</span>
-                    <div>
-                        <div class="text-xs font-bold text-amber-200">Mehnating — oilangga Pro</div>
-                        <div class="text-[10px] text-slate-400" id="proExchangeSub">Yiqqan daqiqalaringni Pro kunlariga almashtir</div>
-                    </div>
-                </div>
-                <div id="proExchangeBody" class="text-[11px] text-slate-300"></div>
-                <button onclick="requestProExchange()" id="proExchangeBtn" class="w-full py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-100 text-[11px] font-bold transition">
-                    ⭐️ Pro so'rash
-                </button>
-            </div>
-
             <!-- 🎮 O'YINLAR: ball bermaydi, faqat qiziqarli. Oflayn ishlaydi. -->
             <div id="gamesEntryCard" class="hidden p-3.5 rounded-2xl bg-gradient-to-br from-fuchsia-500/15 to-purple-500/8 border border-fuchsia-500/35 space-y-2.5">
                 <div class="flex items-center gap-2">
@@ -527,10 +520,14 @@
             <!-- 🐺 BO'RI HAMROH: bolaning odatlariga qarab o'sadi -->
             <div id="companionCard" class="hidden p-3.5 rounded-2xl bg-gradient-to-br from-indigo-500/15 to-violet-500/10 border border-indigo-500/40 space-y-2.5">
                 <div class="flex items-center gap-3">
-                    <div class="w-14 h-14 rounded-2xl bg-slate-950/70 border border-indigo-500/40 flex items-center justify-center text-3xl" id="companionEmoji">🥚</div>
+                    <div class="relative w-14 h-14 rounded-2xl bg-slate-950/70 border border-indigo-500/40 flex items-center justify-center text-3xl">
+                        <span id="companionEmoji">🥚</span>
+                        <span id="companionAccessory" class="hidden absolute -top-2 -right-2 text-xl drop-shadow"></span>
+                    </div>
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-1.5">
                             <span class="text-xs font-bold text-white" id="companionName">Qalqon</span>
+                            <span id="companionBadge" class="hidden text-[9px] px-1.5 py-0.5 rounded-lg bg-amber-500/25 text-amber-200 font-bold"></span>
                             <span class="text-[9px] px-1.5 py-0.5 rounded-lg bg-indigo-500/25 text-indigo-200 font-bold" id="companionLevel">1-daraja</span>
                         </div>
                         <div class="text-[10px] text-slate-400" id="companionTitle">Tuxumdagi bo'ri</div>
@@ -1683,8 +1680,8 @@
         </div>
 
         <div id="gamesIntro" class="text-[10px] text-slate-400 leading-relaxed p-2.5 rounded-xl bg-slate-900/60 border border-slate-800">
-            Bu o'yinlar ball ham, ekran vaqti ham bermaydi — shunchaki o'ynash uchun.
-            Bir marta ochilgandan keyin <b>internetsiz</b> ham ishlaydi.
+            Bu o'yinlar ball bermaydi — shunchaki o'ynash uchun. 🔒 belgili o'yinlar
+            <b>Ball do'koni</b>da bir marta ochiladi. Ochilgandan keyin <b>internetsiz</b> ham ishlaydi.
         </div>
 
         <div id="gamesGrid" class="space-y-2.5"></div>
@@ -1694,23 +1691,23 @@
     <div id="modal-time-bank" class="subpage-modal space-y-4">
         <div class="flex items-center justify-between pb-3 border-b border-slate-800">
             <button onclick="closeSubpage()" class="text-xs font-bold text-emerald-400">← Orqaga</button>
-            <h2 class="text-xs font-bold text-white">Vaqt Banki Kursi</h2>
+            <h2 class="text-xs font-bold text-white">Ball tizimi</h2>
             <span class="w-8"></span>
         </div>
 
         <div class="glass-card p-4 space-y-3.5">
             <div class="text-center space-y-1">
                 <span class="text-3xl">💰</span>
-                <h3 class="text-sm font-bold text-white">Farzandingiz ekran vaqtini ishlab topsin</h3>
+                <h3 class="text-sm font-bold text-white">Farzandingiz ball ishlab topsin</h3>
                 <p class="text-[11px] text-slate-300 leading-relaxed">
-                    Ekran vaqtini tortib olish o'rniga — uni mukofot qiling.
-                    Farzandingiz diqqat bilan dars qilsa, maktabga o'z vaqtida yetsa,
-                    qo'shimcha vaqt yutadi. Kursni siz belgilaysiz.
+                    Fokus seansidan keyin 3 ta savolga 15 soniyada javob beradi, maktabga
+                    o'z vaqtida yetadi, uy vazifasini siz tasdiqlaysiz. Ballarni esa
+                    siz belgilagan sovg'alarga sarflaydi.
                 </p>
             </div>
 
             <label class="flex items-center justify-between p-2.5 rounded-xl bg-slate-900/90 border border-slate-700 cursor-pointer">
-                <span class="text-[11px] font-bold text-slate-200">Vaqt banki yoqilgan</span>
+                <span class="text-[11px] font-bold text-slate-200">Ball tizimi yoqilgan</span>
                 <input type="checkbox" id="tbEnabled" checked class="w-4 h-4 rounded text-emerald-500 focus:ring-0 cursor-pointer">
             </label>
 
@@ -1722,16 +1719,16 @@
                     </label>
                     <div class="flex items-center gap-2">
                         <input type="number" id="tbFocus" min="0" max="60" value="10" class="w-20 bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white text-center focus:outline-none focus:border-amber-500">
-                        <span class="text-[11px] text-slate-400">daqiqa ekran vaqti</span>
+                        <span class="text-[11px] text-slate-400">ball</span>
                     </div>
-                    <p class="text-[9px] text-slate-500 mt-1">Qisqaroq seans uchun mutanosib kamroq beriladi.</p>
+                    <p class="text-[9px] text-slate-500 mt-1">3 savoldan kamida 2 tasiga to'g'ri javob bersa. Kuniga ko'pi bilan 3 ta seans.</p>
                 </div>
 
                 <div>
                     <label class="text-[11px] font-bold text-slate-300 block mb-1">🏫 Maktabga o'z vaqtida yetgani uchun</label>
                     <div class="flex items-center gap-2">
                         <input type="number" id="tbSchool" min="0" max="60" value="20" class="w-20 bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white text-center focus:outline-none focus:border-amber-500">
-                        <span class="text-[11px] text-slate-400">daqiqa (kuniga 1 marta)</span>
+                        <span class="text-[11px] text-slate-400">ball (kuniga 1 marta)</span>
                     </div>
                     <p class="text-[9px] text-slate-500 mt-1">Radar zonasidagi "kelish vaqti" bo'yicha avtomatik tekshiriladi.</p>
                 </div>
@@ -1739,29 +1736,91 @@
                 <div>
                     <label class="text-[11px] font-bold text-slate-300 block mb-1">📚 Bajarilgan uy vazifasi uchun</label>
                     <div class="flex items-center gap-2">
-                        <input type="number" id="tbHomework" min="0" max="60" value="10" class="w-20 bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white text-center focus:outline-none focus:border-amber-500">
-                        <span class="text-[11px] text-slate-400">daqiqa</span>
+                        <input type="number" id="tbHomework" min="0" max="60" value="15" class="w-20 bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white text-center focus:outline-none focus:border-amber-500">
+                        <span class="text-[11px] text-slate-400">ball</span>
                     </div>
+                    <p class="text-[9px] text-slate-500 mt-1">Farzandingiz "tayyor" deganda botga tugma keladi — siz tasdiqlaysiz.</p>
                 </div>
 
                 <div class="pt-2 border-t border-slate-800">
                     <label class="text-[11px] font-bold text-amber-300 block mb-1">⛔️ Kunlik chegara</label>
                     <div class="flex items-center gap-2">
-                        <input type="number" id="tbCap" min="0" max="480" value="90" class="w-20 bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white text-center focus:outline-none focus:border-amber-500">
-                        <span class="text-[11px] text-slate-400">daqiqadan ko'p ishlab topa olmaydi</span>
+                        <input type="number" id="tbCap" min="0" max="480" value="60" class="w-20 bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white text-center focus:outline-none focus:border-amber-500">
+                        <span class="text-[11px] text-slate-400">balldan ko'p ishlab topa olmaydi</span>
                     </div>
                 </div>
             </div>
 
             <div id="tbCurrentBalance" class="hidden p-2.5 rounded-xl bg-slate-900/80 border border-amber-500/30 text-center">
                 <div class="text-[10px] text-slate-400">Farzandingizning hozirgi balansi</div>
-                <div class="text-sm font-black text-amber-400" id="tbBalanceValue">0 daqiqa</div>
+                <div class="text-sm font-black text-amber-400" id="tbBalanceValue">0 ball</div>
             </div>
 
             <button onclick="saveTimeBankRules()" id="tbSaveBtn" class="w-full py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold text-xs rounded-xl shadow-lg shadow-amber-500/20 transition">
                 💾 Kursni Saqlash
             </button>
         </div>
+
+        <!-- 🎁 OTA-ONA SOVG'ALARI: ball shu yerga sarflanadi -->
+        <div class="glass-card p-4 space-y-3">
+            <div class="flex items-center gap-2">
+                <span class="text-2xl">🎁</span>
+                <div>
+                    <h3 class="text-xs font-bold text-white">Sovg'alar ro'yxati</h3>
+                    <p class="text-[10px] text-slate-400">Farzandingiz ballga shularni so'raydi. Har so'rovni botda tasdiqlaysiz.</p>
+                </div>
+            </div>
+            <div id="parentGiftList" class="space-y-1.5"></div>
+            <div class="text-[10px] text-slate-400">Tayyor g'oyalar (bosing — qo'shiladi):</div>
+            <div id="parentGiftTemplates" class="flex flex-wrap gap-1.5"></div>
+            <div class="grid grid-cols-[3.5rem_1fr_5rem] gap-1.5">
+                <input id="giftEmoji" maxlength="4" value="🎁" class="bg-slate-900/90 border border-slate-700 rounded-xl px-2 py-2 text-center text-sm text-white focus:outline-none focus:border-amber-500">
+                <input id="giftTitle" maxlength="60" placeholder="Masalan: Shanba kuni kino" class="min-w-0 bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500">
+                <input id="giftPrice" type="number" min="10" max="100000" placeholder="Ball" class="min-w-0 bg-slate-900/90 border border-slate-700 rounded-xl px-2 py-2 text-xs text-white text-center focus:outline-none focus:border-amber-500">
+            </div>
+            <button onclick="addParentGift()" id="giftAddBtn" class="w-full py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-100 text-[11px] font-bold transition">
+                ➕ Sovg'a qo'shish
+            </button>
+        </div>
+    </div>
+
+    <!-- 🛍 BALL DO'KONI (farzand) -->
+    <div id="modal-shop" class="subpage-modal space-y-3">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+            <button onclick="closeSubpage(); renderTimeBank();" class="text-xs font-bold text-amber-400">← Orqaga</button>
+            <h2 class="text-xs font-bold text-white">🛍 Ball do'koni</h2>
+            <span class="text-xs font-black text-amber-400 font-mono" id="shopBalance">0 ball</span>
+        </div>
+        <div class="grid grid-cols-5 gap-1" id="shopTabs">
+            <button data-tab="gifts" onclick="openShop('gifts')" class="shop-tab py-2 rounded-xl text-[10px] font-bold border border-slate-700 bg-slate-900/70 text-slate-300">🎁<br>Sovg'a</button>
+            <button data-tab="cards" onclick="openShop('cards')" class="shop-tab py-2 rounded-xl text-[10px] font-bold border border-slate-700 bg-slate-900/70 text-slate-300">🃏<br>Karta</button>
+            <button data-tab="badge" onclick="openShop('badge')" class="shop-tab py-2 rounded-xl text-[10px] font-bold border border-slate-700 bg-slate-900/70 text-slate-300">🏷<br>Yorliq</button>
+            <button data-tab="companion" onclick="openShop('companion')" class="shop-tab py-2 rounded-xl text-[10px] font-bold border border-slate-700 bg-slate-900/70 text-slate-300">🐺<br>Bo'ri</button>
+            <button data-tab="extra" onclick="openShop('extra')" class="shop-tab py-2 rounded-xl text-[10px] font-bold border border-slate-700 bg-slate-900/70 text-slate-300">⚡<br>Boshqa</button>
+        </div>
+        <div id="shopBody" class="space-y-2"></div>
+    </div>
+
+    <!-- 🎯 FOKUS TEKSHIRUVI: 3 ta savol, har biriga 15 soniya -->
+    <div id="focusCheckOverlay" class="hidden fixed inset-0 z-[9999] flex items-center justify-center px-4" style="background:#020617">
+        <div class="w-full max-w-md space-y-3">
+            <div class="flex items-center justify-between text-[11px] text-slate-400">
+                <span id="fcProgress">Savol 1 / 3</span>
+                <span class="font-mono font-black text-amber-300 text-sm" id="fcTimer">15</span>
+            </div>
+            <div class="h-1.5 rounded-full bg-slate-800 overflow-hidden">
+                <div id="fcBar" class="h-full bg-gradient-to-r from-amber-400 to-rose-500" style="width:100%"></div>
+            </div>
+            <div id="fcQuestion" class="text-sm font-bold text-white leading-snug min-h-[3rem]"></div>
+            <div id="fcOptions" class="grid gap-2"></div>
+            <div id="fcFeedback" class="text-[11px] text-slate-300 min-h-[2rem]"></div>
+            <div class="text-[9px] text-slate-500 text-center">Ilovadan chiqsang, savol javobsiz hisoblanadi.</div>
+        </div>
+    </div>
+
+    <!-- 🃏 KARTA / XARID NATIJASI -->
+    <div id="shopRevealOverlay" class="hidden fixed inset-0 z-[9999] flex items-center justify-center px-4" style="background:rgba(2,6,23,0.94)" onclick="closeShopReveal()">
+        <div id="shopRevealBody" class="w-full max-w-xs text-center space-y-3"></div>
     </div>
 
     <!-- 🎨 MODAL: FONLAR GALEREYASI -->
@@ -2194,7 +2253,7 @@
                     <span>🔗</span> <span>Farzand Havolasi</span>
                 </button>
                 <button onclick="openTimeBankRules(); toggleQuickMenu();" class="w-full text-left px-3 py-2 rounded-xl text-[11px] font-bold text-amber-300 hover:bg-slate-800 flex items-center gap-2">
-                    <span>💰</span> <span>Vaqt Banki Kursi</span>
+                    <span>💰</span> <span>Ball tizimi va sovg'alar</span>
                 </button>
                 <button onclick="openSubpage('modal-delete-account'); toggleQuickMenu();" class="w-full text-left px-3 py-2 rounded-xl text-[11px] font-bold text-rose-300 hover:bg-slate-800 flex items-center gap-2">
                     <span>🗑</span> <span>Hisobni O'chirish</span>
@@ -2572,8 +2631,8 @@
     <main id="child-tab-games" class="tab-content space-y-3 hidden">
         <h2 class="text-xs font-black text-white uppercase tracking-wider px-1">🎮 O'yinlar</h2>
         <div class="text-[10px] text-slate-400 leading-relaxed p-2.5 rounded-xl bg-slate-900/60 border border-slate-800">
-            Bu o'yinlar ball ham, ekran vaqti ham bermaydi — shunchaki o'ynash uchun.
-            Bir marta ochilgandan keyin <b>internetsiz</b> ham ishlaydi.
+            Bu o'yinlar ball bermaydi — shunchaki o'ynash uchun. 🔒 belgili o'yinlar
+            <b>Ball do'koni</b>da bir marta ochiladi. Ochilgandan keyin <b>internetsiz</b> ham ishlaydi.
         </div>
         <div id="childGamesHost"></div>
     </main>
@@ -2656,11 +2715,11 @@
     </nav>
 
     <!-- Custom JavaScript -->
-    <script src="app.js?v=6.8"></script>
+    <script src="app.js?v=6.9"></script>
     <!-- O'yinlar alohida faylda: app.js allaqachon katta, va o'yin kontenti
          (savollar, kartalar) o'sib boradi. Alohida fayl brauzerda alohida
          keshlanadi — o'yin qo'shilsa, butun ilova qayta yuklanmaydi. -->
-    <script src="games.js?v=7"></script>
+    <script src="games.js?v=8"></script>
     <script src="arcade.js?v=6"></script>
     <script src="advice.js?v=1"></script>
 </body>

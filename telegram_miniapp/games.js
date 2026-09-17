@@ -356,13 +356,17 @@ function renderGamesGrid() {
             penalty: gamesBest.penalty != null ? 'Eng yaxshi: ' + gamesBest.penalty + ' / 5' : ''
         };
         const best = bestMap[g.id] || '';
+        // Ba'zi o'yinlar Ball do'konida ochiladi (faqat bola uchun).
+        const lock = typeof gameLockInfo === 'function' ? gameLockInfo(g.id) : null;
         return `
         <div onclick="openGame('${g.id}')" class="p-3.5 rounded-2xl bg-slate-900/70 border border-slate-700 hover:border-indigo-500/60 transition cursor-pointer flex items-center gap-3">
             <div class="w-12 h-12 rounded-xl bg-slate-950/80 border border-slate-700 flex items-center justify-center text-2xl">${g.emoji}</div>
             <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-1.5">
                     <span class="text-xs font-bold text-white">${g.name}</span>
-                    <span class="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold">${g.tag}</span>
+                    ${lock
+                        ? `<span class="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold">🔒 ${lock.price} ball</span>`
+                        : `<span class="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold">${g.tag}</span>`}
                 </div>
                 <div class="text-[10px] text-slate-400 mt-0.5">${g.desc}</div>
                 ${best ? `<div class="text-[9px] text-amber-300 mt-0.5">${best}</div>` : ''}
@@ -373,6 +377,12 @@ function renderGamesGrid() {
 }
 
 function openGame(id) {
+    const lock = typeof gameLockInfo === 'function' ? gameLockInfo(id) : null;
+    if (lock) {
+        if (typeof closeSubpage === 'function') closeSubpage();
+        if (typeof openShop === 'function') openShop('extra');
+        return;
+    }
     const grid = document.getElementById('gamesGrid');
     const stage = document.getElementById('gameStage');
     const intro = document.getElementById('gamesIntro');
