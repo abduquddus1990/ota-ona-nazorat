@@ -2227,6 +2227,8 @@ async function saveTimeBankRules() {
     }
 }
 
+let timeBankInfo = null;
+
 /** Vaqt banki kartasini serverdagi haqiqiy balans bilan yangilaydi. */
 async function renderTimeBank() {
     const card = document.getElementById('timeBankCard');
@@ -2241,6 +2243,7 @@ async function renderTimeBank() {
         if (!d.ok) return;
 
         card.classList.remove('hidden');
+        timeBankInfo = d;
         const set = (id, text) => { const el = document.getElementById(id); if (el) el.innerText = text; };
         set('timeBankBalance', d.balance + ' ball');
         set('timeBankToday', `Bugun: ${d.earnedToday} / ${d.dailyCap} ball`);
@@ -3564,16 +3567,24 @@ function rememberOwnedGames(items) {
     try { localStorage.setItem('qalqon_games', JSON.stringify({ owned, locked })); } catch (e) {}
 }
 
+/** Ball evaziga ochiladigan o'yinlar. Server ro'yxati bo'lmasa — standart. */
+function paidGames(st) {
+    if (st === undefined) {
+        try { st = JSON.parse(localStorage.getItem('qalqon_games') || 'null'); } catch (e) { st = null; }
+    }
+    return (st && st.locked && st.locked.length) ? st.locked : [
+        { id: 'race', price: 200, key: 'game_race' },
+        { id: 'g2048', price: 200, key: 'game_g2048' },
+        { id: 'tower', price: 250, key: 'game_tower' }
+    ];
+}
+
 function gameLockInfo(gameId) {
     if (currentAppRole !== 'child') return null;
     let st = null;
     try { st = JSON.parse(localStorage.getItem('qalqon_games') || 'null'); } catch (e) {}
     // Holat hali kelmagan bo'lsa ham pullik o'yinlar qulf ko'rinadi.
-    const locked = (st && st.locked) || [
-        { id: 'race', price: 200, key: 'game_race' },
-        { id: 'g2048', price: 200, key: 'game_g2048' },
-        { id: 'penalty', price: 250, key: 'game_penalty' }
-    ];
+    const locked = paidGames(st);
     const owned = (st && st.owned) || [];
     const l = locked.find(x => x.id === gameId);
     if (!l || owned.includes(gameId)) return null;
@@ -3608,7 +3619,11 @@ async function openShop(tab) {
         await loadShop();
     } catch (e) {
         console.error('shop_status:', e);
-        if (body) body.innerHTML = '<div class="text-[11px] text-rose-300 p-3">Do\'kon yuklanmadi. Internetni tekshirib, qayta och.</div>';
+        // Faqat haqiqiy tarmoq xatosida "internet" deymiz; server sababini
+        // aytgan bo'lsa — o'sha sababni ko'rsatamiz.
+        const offline = !e || !e.message || /fetch|network/i.test(e.message);
+        if (body) body.innerHTML = '<div class="text-[11px] text-rose-300 p-3">' +
+            (offline ? "Do'kon yuklanmadi. Internetni tekshirib, qayta och." : escapeHtml(e.message)) + '</div>';
         return;
     }
     renderShop();
@@ -3824,6 +3839,73 @@ async function openCardBox() {
         shopAlert('Server javob bermadi.');
     } finally {
         if (btn) btn.disabled = false;
+    }
+}
+
+/**
+ * Qulfli o'yin bosilganda. Ilgari do'kon ochilardi va server javob
+ * bermasa bola "internetni tekshir" degan yozuvni ko'rardi — holbuki gap
+ * internetda emas, ball yetmasligida edi. Endi oyna serverga bog'liq emas:
+ * narx va ball to'plash yo'llari darhol ko'rinadi, balans kelsa qo'shiladi.
+ */
+function showGameLock(gameId) {
+    const stage = document.getElementById('gameStage');
+    const grid = document.getElementById('gamesGrid');
+    const intro = document.getElementById('gamesIntro');
+    const lock = gameLockInfo(gameId);
+    const g = (typeof GAMES !== 'undefined' ? GAMES : []).find(x => x.id === gameId) || { name: "O'yin", emoji: '🎮' };
+    if (!stage || !lock) return;
+    if (grid) grid.classList.add('hidden');
+    if (intro) intro.classList.add('hidden');
+    stage.classList.remove('hidden');
+
+    const r = (timeBankInfo && timeBankInfo.rules) || {};
+    const draw = () => {
+        const have = shopState ? shopState.available : null;
+        const enough = have != null && have >= lock.price;
+        stage.innerHTML = `<div id="gameLockCard" class="p-4 rounded-2xl bg-slate-900/80 border border-amber-500/40 space-y-3 text-center">
+            <div class="text-5xl">${g.emoji}</div>
+            <div class="text-sm font-black text-white">🔒 ${escapeHtml(g.name)}</div>
+            <div class="text-[11px] text-slate-300">Bu o'yin <b class="text-amber-300">${lock.price} ball</b> evaziga bir marta ochiladi — keyin doim sening.</div>
+            ${have == null ? '' : enough
+                ? `<div class="text-[11px] text-emerald-300">Senda ${have} ball bor — yetadi!</div>
+                   <button id="gameUnlockBtn" onclick="unlockGame('${gameId}')" class="w-full py-2.5 rounded-xl bg-amber-500/30 hover:bg-amber-500/40 border border-amber-400/60 text-amber-50 text-xs font-bold">🔓 Ochish — ${lock.price} ball</button>`
+                : `<div class="text-[11px] text-rose-300">Senda ${have} ball bor. Yana <b>${lock.price - have} ball</b> to'plash lozim.</div>`}
+            <div class="text-left p-3 rounded-xl bg-slate-950/60 border border-slate-800 space-y-1.5">
+                <div class="text-[11px] font-bold text-slate-200">Zarur ballarni qanday to'plash mumkin:</div>
+                <div class="text-[10px] text-slate-300">🎯 Fokus seansi + 3 savolga javob — <b>${r.minutes_per_focus ?? 10} ball</b> (kuniga 3 marta)</div>
+                <div class="text-[10px] text-slate-300">🏫 Maktabga o'z vaqtida yetish — <b>${r.minutes_per_school_ontime ?? 20} ball</b></div>
+                <div class="text-[10px] text-slate-300">📚 Uy vazifasi (ota-onang tasdiqlaydi) — <b>${r.minutes_per_homework ?? 15} ball</b></div>
+                <div class="text-[9px] text-slate-500">Bir kunda ko'pi bilan ${r.daily_cap_minutes ?? 60} ball.</div>
+            </div>
+            <button onclick="closeGame()" class="w-full py-2 rounded-xl bg-slate-800/80 border border-slate-700 text-slate-200 text-[11px] font-bold">← O'yinlarga qaytish</button>
+        </div>`;
+    };
+    draw();
+    // Balans bilinmasa — jim olib kelamiz; kelmasa ham oyna ishlayveradi.
+    loadShop().then(() => { if (document.getElementById('gameLockCard')) draw(); }).catch(() => {});
+}
+
+async function unlockGame(gameId) {
+    const lock = gameLockInfo(gameId);
+    const btn = document.getElementById('gameUnlockBtn');
+    if (!lock) return;
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Ochilmoqda...'; }
+    try {
+        const r = await shopCall({ type: 'shop_buy', itemKey: lock.key });
+        if (!r.ok && !/allaqachon/.test(r.error || '')) {
+            shopAlert(r.noBalance ? "Ball yetmaydi — zarur ballarni to'plash lozim." : (r.error || "Ochib bo'lmadi."));
+            if (btn) { btn.disabled = false; btn.textContent = `🔓 Ochish — ${lock.price} ball`; }
+            return;
+        }
+        await loadShop();
+        renderTimeBank();
+        closeGame();
+        openGame(gameId);
+    } catch (e) {
+        console.error('unlockGame:', e);
+        shopAlert('Server javob bermadi.');
+        if (btn) { btn.disabled = false; btn.textContent = `🔓 Ochish — ${lock.price} ball`; }
     }
 }
 

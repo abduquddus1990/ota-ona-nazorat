@@ -1899,7 +1899,7 @@ const SHOP_ITEMS: ShopItem[] = [
 
   { key: "game_race", kind: "game", gameId: "race", emoji: "🏎️", title: "Poyga", desc: "O'yinni butunlay ochadi", price: 200 },
   { key: "game_g2048", kind: "game", gameId: "g2048", emoji: "🔢", title: "2048", desc: "O'yinni butunlay ochadi", price: 200 },
-  { key: "game_penalty", kind: "game", gameId: "penalty", emoji: "⚽", title: "Penalti", desc: "O'yinni butunlay ochadi", price: 250 },
+  { key: "game_tower", kind: "game", gameId: "tower", emoji: "🏗️", title: "Qalqon Minorasi", desc: "O'yinni butunlay ochadi", price: 250 },
 
   { key: "ai_10", kind: "boost", emoji: "🤖", title: "+10 ta AI savol", desc: "Faqat bugun uchun", price: 40, consumable: true },
 ];
@@ -2317,7 +2317,7 @@ async function handleBallRoutes(payload: any, actor: Actor): Promise<Response | 
     if (!kid) {
       const fam = await actorAsParent(actor);
       const cid = String(payload.childId || "").trim();
-      if (!fam || !cid) return unauthorized("Farzand topilmadi");
+      if (!fam || !cid) return unauthorized("Do'kon faqat farzand panelida ishlaydi");
       kid = { familyCode: fam, childId: cid };
     }
     const { familyCode, childId } = kid;
@@ -7289,6 +7289,34 @@ async function handleRequest(req: Request): Promise<Response> {
           ? "🎙️ <b>Голосовое сообщение принято.</b>\n\nРекомендации по школьным предметам и цифровым привычкам синхронизированы."
           : "🎙️ <b>Ovozli xabar qabul qilindi.</b>\n\nFarzandingizning darsliklarni o'zlashtirishi va raqamli odatlarini yaxshilash bo'yicha tavsiyalar sinxronlashtirildi.";
         await sendMessage(chatId, voiceReply);
+        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      }
+
+      // Farzand yozgan boshqa matn. Ilgari u ham ota-onaga mo'ljallangan
+      // javobni olardi ("Farzandingizning baholari... Ota-Ona Paneli") —
+      // masalan "qayerda" deb yozgan bola o'zini ota-ona deb chalg'itardi.
+      if (await isPairedChild(chatId)) {
+        const aboutLocation = /(qayer|joylash|lokats|manzil|где)/i.test(text);
+        await sendMessage(
+          chatId,
+          aboutLocation
+            ? `📍 <b>Joylashuvingni ota-onangga yuborasanmi?</b>
+
+` +
+                `Pastdagi tugmani bos — joylashuving bir zumda ota-onangga boradi. ` +
+                `Bu doimiy kuzatuv emas, faqat shu daqiqadagi nuqta.`
+            : `🌟 <b>Salom!</b> Bu yerda yozishmalar o'qilmaydi — hamma narsa o'z panelingda.
+
+` +
+                `Pastdagi tugmani bos: AI do'st, ballaring, do'kon, o'yinlar va ota-onangga tezkor xabar o'sha yerda.`,
+          {
+            inline_keyboard: [[
+              aboutLocation
+                ? { text: "📍 Joylashuvni yuborish", web_app: { url: `${miniAppUrl()}&role=child&ask=loc` } }
+                : { text: "🌟 O'z panelimni ochish", web_app: { url: `${miniAppUrl()}&role=child&lang=${lang}` } },
+            ]],
+          }
+        );
         return new Response(JSON.stringify({ ok: true }), { status: 200 });
       }
 

@@ -345,7 +345,9 @@ const GAMES = [
 function renderGamesGrid() {
     const grid = document.getElementById('gamesGrid');
     if (!grid) return;
-    grid.innerHTML = GAMES.map(g => {
+    // Ball evaziga ochiladigan o'yinlar ro'yxat oxirida, alohida sarlavha bilan.
+    const paidIds = typeof paidGames === 'function' ? paidGames().map(x => x.id) : [];
+    const card = g => {
         const bestMap = {
             memory: gamesBest.memory != null ? 'Eng yaxshi: ' + gamesBest.memory + ' yurish' : '',
             wolf: gamesBest.wolf != null ? 'Yechilgan: ' + gamesBest.wolf + ' topshiriq' : '',
@@ -366,21 +368,27 @@ function renderGamesGrid() {
                     <span class="text-xs font-bold text-white">${g.name}</span>
                     ${lock
                         ? `<span class="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold">🔒 ${lock.price} ball</span>`
-                        : `<span class="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold">${g.tag}</span>`}
+                        : paidIds.includes(g.id) && currentAppRole === 'child'
+                            ? `<span class="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold">✅ Ochilgan</span>`
+                            : `<span class="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold">${g.tag}</span>`}
                 </div>
                 <div class="text-[10px] text-slate-400 mt-0.5">${g.desc}</div>
                 ${best ? `<div class="text-[9px] text-amber-300 mt-0.5">${best}</div>` : ''}
             </div>
             <span class="text-slate-500 text-lg">›</span>
         </div>`;
-    }).join('');
+    };
+    const free = GAMES.filter(g => !paidIds.includes(g.id));
+    const paid = GAMES.filter(g => paidIds.includes(g.id));
+    grid.innerHTML = free.map(card).join('') + (paid.length
+        ? `<div class="pt-2 text-[11px] font-bold text-amber-300">⭐ Ball evaziga ochiladigan o'yinlar</div>` + paid.map(card).join('')
+        : '');
 }
 
 function openGame(id) {
     const lock = typeof gameLockInfo === 'function' ? gameLockInfo(id) : null;
     if (lock) {
-        if (typeof closeSubpage === 'function') closeSubpage();
-        if (typeof openShop === 'function') openShop('extra');
+        if (typeof showGameLock === 'function') showGameLock(id);
         return;
     }
     const grid = document.getElementById('gamesGrid');
