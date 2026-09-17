@@ -66,6 +66,8 @@ async function upsertPairing(
     source: string;
     grade?: number | null;
     telegramUsername?: string | null;
+    schoolShift?: number | null;
+    schoolArriveBy?: string | null;
   }
 ): Promise<boolean> {
   if (!db || !familyCode || !childId) return false;
@@ -84,6 +86,8 @@ async function upsertPairing(
   // yubormaydi) ota-ona kiritgan sinf null bilan yuvilib ketardi.
   if (info.grade !== undefined && info.grade !== null) row.grade = info.grade;
   if (info.telegramUsername) row.telegram_username = info.telegramUsername;
+  if (info.schoolShift) row.school_shift = info.schoolShift;
+  if (info.schoolArriveBy) row.school_arrive_by = info.schoolArriveBy;
 
   const { error } = await db
     .from("child_pairings")
@@ -94,6 +98,29 @@ async function upsertPairing(
     return false;
   }
   return true;
+}
+
+/**
+ * O'qish smenasi: 1 yoki 2 va maktabga kelish vaqti "HH:MM".
+ * Vaqt berilmasa smenaning odatiy vaqti olinadi (08:00 / 13:00).
+ */
+function parseSchoolShift(shiftRaw: unknown, arriveRaw: unknown): { shift: number | null; arriveBy: string | null } {
+  const shift = Number(shiftRaw) === 2 ? 2 : Number(shiftRaw) === 1 ? 1 : null;
+  if (!shift) return { shift: null, arriveBy: null };
+  const t = String(arriveRaw || "").trim();
+  const ok = /^([01]\d|2[0-3]):[0-5]\d$/.test(t);
+  return { shift, arriveBy: ok ? t : shift === 2 ? "13:00" : "08:00" };
+}
+
+function isSchoolZoneName(name: string): boolean {
+  return /maktab|школ|litsey|лицей|gimnaz|гимназ/i.test(String(name || ""));
+}
+
+async function childSchoolArriveBy(familyCode: string, childId: string): Promise<string | null> {
+  if (!db) return null;
+  const { data } = await db.from("child_pairings").select("school_arrive_by")
+    .eq("family_code", familyCode).eq("child_id", childId).limit(1);
+  return (data && data[0] && data[0].school_arrive_by) || null;
 }
 
 /** "@Ali_V" / " ali_v " -> "ali_v". Taklif kaliti shundan quriladi. */
@@ -561,7 +588,8 @@ const PRO_LIVE_HOURS = 8;
 // ya'ni bir faol bola uchun oyiga bir necha AQSh senti. Chegarasiz qoldirsak,
 // bitta yozilgan skript bir kechada butun byudjetni yeb qo'yishi mumkin edi.
 const AI_FREE_DAILY = 30;
-const AI_PRO_DAILY = 200;
+// 200 ta amalda hech kim ishlatmaydigan va xarajatni oshiradigan son edi.
+const AI_PRO_DAILY = 60;
 
 /**
  * Doimiy bepul Pro beriladigan hisoblar.
@@ -3637,6 +3665,30 @@ async function handleRequest(req: Request): Promise<Response> {
     // soniya javob bermaydi — Mini App ochilishida bu buzilgandek ko'rinadi.
     // Bu funksiya esa doim issiq va allaqachon shu jadvalga service_role
     // bilan yozadi, shuning uchun o'qish ham shu yerda.
+    // Mavjud farzandning smenasini o'zgartirish. Maktab hududlari ham shu
+    // vaqtga o'tadi — aks holda ota-ona ikki joyni alohida tuzatishi kerak edi.
+    if (payload.type === "update_child_school") {
+      if (actor!.kind !== "telegram" || (await isPairedChild(actor!.telegramId))) return unauthorized("Faqat ota-ona");
+      if (!db) return jsonRes({ ok: false, error: "Baza ulanmagan" }, 500);
+      const childId = String(payload.childId || "").trim();
+      const school = parseSchoolShift(payload.schoolShift, payload.schoolArriveBy);
+      if (!childId || !school.shift) return jsonRes({ ok: false, error: "Smena va vaqtni tanlang." }, 400);
+      const { data: upd } = await db.from("child_pairings")
+        .update({ school_shift: school.shift, school_arrive_by: school.arriveBy })
+        .eq("family_code", actor!.familyCode).eq("child_id", childId).select("child_id");
+      if (!upd || !upd[0]) return jsonRes({ ok: false, error: "Farzand topilmadi." }, 404);
+      const { data: zones } = await db.from("geofence_zones").select("name")
+        .eq("family_code", actor!.familyCode).eq("child_id", childId).limit(20);
+      let zonesUpdated = 0;
+      for (const z of zones || []) {
+        if (!isSchoolZoneName(z.name)) continue;
+        await db.from("geofence_zones").update({ arrive_by: school.arriveBy })
+          .eq("family_code", actor!.familyCode).eq("child_id", childId).eq("name", z.name);
+        zonesUpdated++;
+      }
+      return jsonRes({ ok: true, schoolShift: school.shift, schoolArriveBy: school.arriveBy, zonesUpdated });
+    }
+
     if (payload.type === "list_children") {
       // O'QISH: faqat so'rovchining O'Z oilasi. Mijoz yuborgan kod
       // e'tiborga olinmaydi.
@@ -3651,7 +3703,7 @@ async function handleRequest(req: Request): Promise<Response> {
       const { data, error } = await db
         .from("child_pairings")
         .select(
-          "child_id, child_name, grade, telegram_username, device_label, source, paired_at, last_seen_at"
+          "child_id, child_name, grade, telegram_username, device_label, source, paired_at, last_seen_at, school_shift, school_arrive_by"
         )
         .eq("family_code", familyCode)
         .eq("is_active", true)
@@ -3696,6 +3748,7 @@ async function handleRequest(req: Request): Promise<Response> {
       const grade = Number.isFinite(gradeRaw) && gradeRaw > 0 ? gradeRaw : null;
       const uname = normalizeUsername(payload.childUsername) || null;
       const code = makeInviteCode();
+      const school = parseSchoolShift(payload.schoolShift, payload.schoolArriveBy);
 
       const { error } = await db.from("child_invites").insert({
         code,
@@ -3703,6 +3756,8 @@ async function handleRequest(req: Request): Promise<Response> {
         child_name: childName,
         child_grade: grade,
         child_username: uname,
+        school_shift: school.shift,
+        school_arrive_by: school.arriveBy,
         created_by_telegram_id: actor!.telegramId,
         expires_at: new Date(Date.now() + INVITE_TTL_HOURS * 3600 * 1000).toISOString(),
       });
@@ -3722,6 +3777,8 @@ async function handleRequest(req: Request): Promise<Response> {
         source: "parent_invite",
         grade,
         telegramUsername: uname,
+        schoolShift: school.shift,
+        schoolArriveBy: school.arriveBy,
       });
 
       // Havola ikkala yo'l uchun ham bir xil:
@@ -3789,7 +3846,7 @@ async function handleRequest(req: Request): Promise<Response> {
       const code = String(payload.code || "").trim().toUpperCase();
       const { data } = await db
         .from("child_invites")
-        .select("code, family_code, child_name, child_grade, child_username, expires_at, used_at")
+        .select("code, family_code, child_name, child_grade, child_username, school_shift, school_arrive_by, expires_at, used_at")
         .eq("code", code)
         .limit(1);
 
@@ -3838,6 +3895,8 @@ async function handleRequest(req: Request): Promise<Response> {
         grade: inv.child_grade,
         telegramUsername:
           actor!.kind === "telegram" ? actor!.username || null : inv.child_username,
+        schoolShift: inv.school_shift,
+        schoolArriveBy: inv.school_arrive_by,
       });
 
       // "Kutilmoqda" qatorini olib tashlaymiz, aks holda panelda bitta
@@ -5129,11 +5188,16 @@ async function handleRequest(req: Request): Promise<Response> {
       }
 
       // Ota-ona va farzand uchun ohang ham, vazifa ham boshqacha.
+      // Mini App rus tilida bo'lsa, AI ham ruscha javob beradi. Ilgari ko'rsatma
+      // "faqat o'zbek tilida" edi — ruscha yozgan bola o'zbekcha javob olardi.
+      const replyLang = payload.lang === "ru"
+        ? "Faqat RUS tilida javob ber (foydalanuvchi ilovani rus tilida ishlatadi)"
+        : "Faqat o'zbek tilida";
       const parentPrompt =
         `Sen "Qalqon" — O'zbekistondagi ota-onaga yordam beradigan maslahatchisan. ` +
         `Farzandi ${grade}-sinfda o'qiydi.\n\n` +
         `Qoidalar:\n` +
-        `- Faqat o'zbek tilida, hurmat bilan va amaliy javob ber (4-7 gap).\n` +
+        `- ${replyLang}, hurmat bilan va amaliy javob ber (4-7 gap).\n` +
         `- Mavzular: bolaning o'qishi, ekran vaqti, raqamli odatlar, xavfsizlik, motivatsiya.\n` +
         `- Aniq qadamlar taklif qil, umumiy gaplardan qoch.\n` +
         `- Jazolash emas, kelishuv va chegara qo'yish yo'lini tavsiya qil.\n` +
@@ -5148,7 +5212,7 @@ async function handleRequest(req: Request): Promise<Response> {
         (childName ? `Suhbatdoshingning ismi ${childName}. ` : "") +
         `Hozirgi fan: ${subject}.\n\n` +
         `Qoidalar:\n` +
-        `- Faqat o'zbek tilida, sodda va iliq javob ber.\n` +
+        `- ${replyLang}, sodda va iliq javob ber.\n` +
         `- Javobni qisqa tut (4-6 gap). Kerak bo'lsa qadamma-qadam tushuntir.\n` +
         `- TAYYOR JAVOBNI BERIB QO'YMA: avval yo'l ko'rsat, bola o'zi yechishga harakat qilsin. ` +
         `Agar u yechimni so'rasa yoki ikki marta urinib ko'rgan bo'lsa — to'liq tushuntir.\n` +
@@ -5161,7 +5225,7 @@ async function handleRequest(req: Request): Promise<Response> {
 
       const model = Deno.env.get("GEMINI_MODEL") || "gemini-3.6-flash";
       try {
-        const gRes = await fetch(
+        const callGemini = () => fetch(
           `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
           {
             method: "POST",
@@ -5186,6 +5250,13 @@ async function handleRequest(req: Request): Promise<Response> {
             }),
           }
         );
+        // Gemini "band" (503) yoki "juda ko'p so'rov" (429) desa — bir marta
+        // qayta urinamiz. Bu vaqtinchalik va bola uchun xato ko'rinmasligi kerak.
+        let gRes = await callGemini();
+        if ([429, 500, 503].includes(gRes.status)) {
+          await new Promise((r) => setTimeout(r, 1500));
+          gRes = await callGemini();
+        }
         const gJson = await gRes.json();
         // "O'ylash" bo'laklari javob emas — ular qo'shilsa, bolaga modelning
         // ichki mulohazasi ko'rinib qolardi.
@@ -5209,6 +5280,9 @@ async function handleRequest(req: Request): Promise<Response> {
               error: "AI hozir javob bera olmadi.",
               detail: String(upstream).slice(0, 200),
               model,
+              // Xato savol hisoblanmaydi — qolgan son o'zgarmaydi, lekin ko'rsatiladi.
+              dailyLimit,
+              remaining: Math.max(0, dailyLimit - usedToday),
             }),
             { status: 502, headers: { "Content-Type": "application/json" } }
           );
@@ -5961,7 +6035,7 @@ async function handleRequest(req: Request): Promise<Response> {
           center_lat: lat,
           center_lng: lng,
           radius_m: Number.isFinite(radius) && radius > 0 ? Math.round(radius) : 150,
-          arrive_by: payload.arriveBy || null,
+          arrive_by: payload.arriveBy || (isSchoolZoneName(name) ? await childSchoolArriveBy(actor!.familyCode, childId) : null),
           leave_after: payload.leaveAfter || null,
           updated_at: new Date().toISOString(),
         },

@@ -25,10 +25,15 @@ let onlineMatch = null;      // ochiq o'yin holati (serverdan)
 let onlinePoll = null;       // navbat kutilayotganda so'rov taymeri
 let onlineLoop = null;       // Poyga/Tetris kadr tsikli
 let onlineCleanup = [];
+// O'yin jarayonida (viktorina savollari, Poyga/Tetris) holat kuzatuvi ekranni
+// qayta chizmasligi kerak: aks holda savol ochilgan zahoti kutish oynasi
+// ustiga yozilib, bola savolni umuman ko'rmasdi.
+let onlineBusy = false;
 
 function onlineCall(body) { return shopCall(body); }
 
 function stopOnline() {
+    onlineBusy = false;
     if (onlinePoll) { clearInterval(onlinePoll); onlinePoll = null; }
     if (onlineLoop) { cancelAnimationFrame(onlineLoop); onlineLoop = null; }
     onlineCleanup.forEach(fn => { try { fn(); } catch (e) {} });
@@ -157,12 +162,13 @@ async function acceptPlayFromUrl() {
 function startMatchPolling() {
     if (onlinePoll) return;
     onlinePoll = setInterval(async () => {
-        if (!onlineMatch || document.hidden) return;
+        if (!onlineMatch || document.hidden || onlineBusy) return;
         try {
             const r = await onlineCall({ type: 'match_state', id: onlineMatch.id });
             if (!r.ok || !onlineMatch) return;
             const changed = JSON.stringify([r.match.status, r.match.turn, r.match.updatedAt]) !==
                 JSON.stringify([onlineMatch.status, onlineMatch.turn, onlineMatch.updatedAt]);
+            if (onlineBusy) return;
             onlineMatch = r.match;
             if (changed) renderMatch();
         } catch (e) {}
@@ -257,6 +263,8 @@ async function runQuizDuel() {
     const m = onlineMatch;
     const stage = document.getElementById('gameStage');
     if (!m || !stage) return;
+    onlineBusy = true;
+    if (onlinePoll) { clearInterval(onlinePoll); onlinePoll = null; }
     const sleep = ms => new Promise(r => setTimeout(r, ms));
     let total = 0;
     while (onlineMatch && onlineMatch.id === m.id) {
@@ -301,6 +309,7 @@ async function runQuizDuel() {
         await sleep(1500);
         if (a.done) { onlineMatch = a.match; break; }
     }
+    onlineBusy = false;
     renderMatch();
     renderOnlineHub();
 }
@@ -334,8 +343,11 @@ function renderGhostMatch(stage, m) {
 async function startGhostRun() {
     const m = onlineMatch;
     if (!m) return;
+    onlineBusy = true;
+    if (onlinePoll) { clearInterval(onlinePoll); onlinePoll = null; }
     const r = await onlineCall({ type: 'match_move', id: m.id, action: 'start' });
     if (!r.ok) {
+        onlineBusy = false;
         if (r.match) onlineMatch = r.match;
         if (!r.abandoned) shopAlert(r.error || "Boshlab bo'lmadi.");
         renderMatch();
@@ -360,6 +372,7 @@ async function finishGhostRun(m, log, score) {
             await new Promise(z => setTimeout(z, 2000));
         }
     }
+    onlineBusy = false;
     renderMatch();
     renderOnlineHub();
 }

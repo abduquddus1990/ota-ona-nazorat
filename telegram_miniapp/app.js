@@ -36,7 +36,29 @@
         } catch (e) {
             // Body JSON emas — o'zgartirmasdan yuboramiz.
         }
-        return nativeFetch(input, init);
+        // Qayta urinish — faqat O'QIYDIGAN so'rovlar uchun. Supabase shlyuzi
+        // ba'zan 502 qaytaradi (panel ochilganda o'nta so'rov birdan ketadi);
+        // bu javobda CORS sarlavhasi bo'lmagani uchun brauzer uni "Failed to
+        // fetch" qiladi va karta bo'sh qolardi. Xarid, yurish kabi yozuvchi
+        // so'rovlar qayta yuborilmaydi: server birinchisini bajargan bo'lsa,
+        // ball ikki marta yechilardi.
+        let type = '';
+        try {
+            const url = (typeof input === 'string') ? input : (input && input.url) || '';
+            if (url.indexOf(BOT_FN) === 0 && init && typeof init.body === 'string') type = JSON.parse(init.body).type || '';
+        } catch (e) {}
+        const readOnly = /(_status$|_list$|^list_|_state$|^my_|^check_|^ai_quota$|history|^family_matches$|^quiz_open_rounds$|^quiz_round_questions$|^weekly)/.test(type);
+        if (!readOnly) return nativeFetch(input, init);
+        const attempt = (n) => nativeFetch(input, init).then(resp => {
+            if ([502, 503, 504].includes(resp.status) && n < 2) {
+                return new Promise(r => setTimeout(r, 700 * (n + 1))).then(() => attempt(n + 1));
+            }
+            return resp;
+        }, err => {
+            if (n >= 2) throw err;
+            return new Promise(r => setTimeout(r, 700 * (n + 1))).then(() => attempt(n + 1));
+        });
+        return attempt(0);
     };
 })();
 
@@ -681,6 +703,8 @@ function buildChildRecord(serverChild, existing) {
     base.name = serverChild.child_name || base.name;
     base.name_ru = base.name;
     if (serverChild.grade) base.grade = serverChild.grade;
+    base.schoolShift = serverChild.school_shift || null;
+    base.schoolArriveBy = serverChild.school_arrive_by || null;
     if (serverChild.telegram_username) base.username = '@' + serverChild.telegram_username;
     else if (serverChild.device_label) base.username = serverChild.device_label;
     // Ota-ona qo'shgan, lekin farzand hali rozilik bermagan yozuv.
@@ -1168,6 +1192,8 @@ async function handleAddNewChildSubmit() {
     const nameInput = document.getElementById('newChildNameInput');
     const gradeSelect = document.getElementById('newChildGradeInput');
     const usernameInput = document.getElementById('newChildUsernameInput');
+    const shiftSelect = document.getElementById('newChildShiftInput');
+    const [schoolShift, schoolArriveBy] = String((shiftSelect && shiftSelect.value) || '1|08:00').split('|');
     const resultBox = document.getElementById('addChildResultBox');
     const submitBtn = document.getElementById('addChildSubmitBtn');
     const isRuAdd = (currentLang === 'ru');
@@ -1195,7 +1221,9 @@ async function handleAddNewChildSubmit() {
                 type: 'create_child_invite',
                 childName: name,
                 childGrade: grade,
-                childUsername: username || null
+                childUsername: username || null,
+                schoolShift: Number(schoolShift),
+                schoolArriveBy
             })
         });
         const data = await resp.json();
@@ -1862,6 +1890,27 @@ async function handleChildImageSelected(event) {
 // AI do'st endi o'z serverimizda (ota-ona-bot: ai_tutor_chat). Ilgari u
 // Render'dagi alohida xizmatga borardi, u esa initData'ni boshqa bot tokeni
 // bilan tekshirgani uchun HAR BIR so'rovni "initData yaroqsiz" deb rad etardi.
+/**
+ * Har AI javobidan keyin qolgan savollar soni. Ilgari bu faqat tepadagi
+ * kichik chiziqda, 2,5 soniyadan keyin alohida so'rov bilan yangilanardi —
+ * bola chegaraga kutilmaganda urilardi. Endi server javobining o'zidagi son
+ * darhol chat ichida ham, tepadagi chiziqda ham ko'rinadi.
+ */
+function aiRemainingNote(data) {
+    if (!data || typeof data.remaining !== 'number' || typeof data.dailyLimit !== 'number') return '';
+    const isRu = (currentLang === 'ru');
+    const low = data.remaining <= 5;
+    const txt = isRu
+        ? `💬 Сегодня осталось вопросов: ${data.remaining} из ${data.dailyLimit}`
+        : `💬 Bugun yana ${data.remaining} ta savol qoldi (${data.dailyLimit} tadan)`;
+    const bar = document.getElementById('aiQuotaText');
+    if (bar) {
+        bar.textContent = isRu ? `${data.remaining} / ${data.dailyLimit} осталось` : `${data.remaining} / ${data.dailyLimit} qoldi`;
+        bar.className = 'font-bold ' + (data.remaining <= 3 ? 'text-amber-300' : 'text-emerald-300');
+    }
+    return `<div style="margin-top:6px;font-size:10px;opacity:.8;color:${low ? '#fcd34d' : '#94a3b8'}">${txt}</div>`;
+}
+
 async function callRealTextBackendForChild(message) {
     const child = childrenDatabase[currentChildKey];
     const isRu = (currentLang === 'ru');
@@ -1874,6 +1923,7 @@ async function callRealTextBackendForChild(message) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 type: 'ai_tutor_chat',
+                lang: currentLang,
                 message: message,
                 grade: realChildProfile?.grade || child?.grade || 5,
                 subject: getTutorSubject(),
@@ -1882,10 +1932,10 @@ async function callRealTextBackendForChild(message) {
         });
         const data = await resp.json();
         if (data.ok && data.answer) {
-            appendChildAiMessage(safeAiHtml(data.answer));
+            appendChildAiMessage(safeAiHtml(data.answer) + aiRemainingNote(data));
         } else {
             appendChildAiMessage(safeAiHtml(data.error ||
-                (isRu ? 'Ошибка. Попробуйте ещё раз.' : 'Xatolik. Qayta urinib ko\'ring.')));
+                (isRu ? 'Ошибка. Попробуйте ещё раз.' : 'Xatolik. Qayta urinib ko\'ring.')) + aiRemainingNote(data));
         }
     } catch (e) {
         console.error('Child text backend error:', e);
@@ -1907,6 +1957,7 @@ async function callRealVisionBackendForChild(query, imageBase64) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 type: 'ai_tutor_chat',
+                lang: currentLang,
                 message: query || '',
                 image: imageBase64,
                 grade: realChildProfile?.grade || child?.grade || 5,
@@ -1916,10 +1967,10 @@ async function callRealVisionBackendForChild(query, imageBase64) {
         });
         const data = await resp.json();
         if (data.ok && data.answer) {
-            appendChildAiMessage(safeAiHtml(data.answer));
+            appendChildAiMessage(safeAiHtml(data.answer) + aiRemainingNote(data));
         } else {
             appendChildAiMessage(safeAiHtml(data.error ||
-                (isRu ? 'Ошибка анализа. Попробуйте ещё раз.' : 'Tahlilda xatolik yuz berdi. Qayta urinib ko\'ring.')));
+                (isRu ? 'Ошибка анализа. Попробуйте ещё раз.' : 'Tahlilda xatolik yuz berdi. Qayta urinib ko\'ring.')) + aiRemainingNote(data));
         }
     } catch (e) {
         console.error('Child vision backend error:', e);
@@ -1928,9 +1979,6 @@ async function callRealVisionBackendForChild(query, imageBase64) {
 }
 
 function handleChildAiSend() {
-    // Har savoldan keyin qolgan sonni yangilaymiz — bola chegaraga
-    // kutilmaganda urilmasin.
-    setTimeout(renderAiQuota, 2500);
     const input = document.getElementById('childAiInput');
     const text = input ? input.value.trim() : "";
     const isRu = (currentLang === 'ru');
@@ -2881,6 +2929,7 @@ function setLanguage(lang) {
     renderActiveChild();
     renderSchoolCurriculum();
     closeSubpage();
+    if (typeof qalqonApplyRu === 'function') qalqonApplyRu();
 }
 
 // ============================================================================
@@ -3163,6 +3212,7 @@ async function callRealTextBackend(message) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 type: 'ai_tutor_chat',
+                lang: currentLang,
                 audience: 'parent',
                 message: message || '',
                 grade: child?.grade || 5,
@@ -3171,9 +3221,9 @@ async function callRealTextBackend(message) {
         });
         const data = await resp.json();
         if (data.ok && data.answer) {
-            appendAIMessage(safeAiHtml(data.answer));
+            appendAIMessage(safeAiHtml(data.answer) + aiRemainingNote(data));
         } else {
-            appendAIMessage(safeAiHtml(data.error || (isRu ? 'Ошибка анализа.' : 'Tahlilda xatolik.')));
+            appendAIMessage(safeAiHtml(data.error || (isRu ? 'Ошибка анализа.' : 'Tahlilda xatolik.')) + aiRemainingNote(data));
         }
     } catch (e) {
         console.error('Text backend error:', e);
@@ -3194,6 +3244,7 @@ async function callRealVisionBackend(query, imageBase64) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 type: 'ai_tutor_chat',
+                lang: currentLang,
                 audience: 'parent',
                 message: query || '',
                 image: imageBase64,
@@ -3203,9 +3254,9 @@ async function callRealVisionBackend(query, imageBase64) {
         });
         const data = await resp.json();
         if (data.ok && data.answer) {
-            appendAIMessage(safeAiHtml(data.answer));
+            appendAIMessage(safeAiHtml(data.answer) + aiRemainingNote(data));
         } else {
-            appendAIMessage(isRu ? 'Извините, произошла ошибка при анализе. Попробуйте ещё раз.' : 'Kechirasiz, tahlil qilishda xatolik yuz berdi. Qayta urinib ko\'ring.');
+            appendAIMessage(safeAiHtml(data.error || (isRu ? 'Извините, произошла ошибка при анализе. Попробуйте ещё раз.' : 'Kechirasiz, tahlil qilishda xatolik yuz berdi. Qayta urinib ko\'ring.')) + aiRemainingNote(data));
         }
     } catch (e) {
         console.error('Vision backend error:', e);
@@ -4896,9 +4947,18 @@ function onZoneRadiusChange() {
 function setZoneName(name) {
     const el = document.getElementById('zoneName');
     if (el) el.value = name;
-    // Maktabga odatda kelish vaqti qo'yiladi — uni oldindan taklif qilamiz.
+    // Maktabga kelish vaqti farzandning SMENASIDAN olinadi. Ilgari hammaga
+    // 08:00 qo'yilardi — ikkinchi smenadagi bola hech qachon ball olmasdi.
     const t = document.getElementById('zoneArriveBy');
-    if (t && name === 'Maktab' && !t.value) t.value = '08:00';
+    if (t && name === 'Maktab' && !t.value) {
+        const child = childrenDatabase[currentChildKey] || {};
+        t.value = child.schoolArriveBy || '08:00';
+    }
+}
+
+function setZoneArrive(time) {
+    const t = document.getElementById('zoneArriveBy');
+    if (t) t.value = time;
 }
 
 async function zoneUseChildLocation() {
@@ -5033,6 +5093,19 @@ async function saveZone() {
             msg.innerHTML = '<span class="text-amber-300">' + escapeHtml(d.error || 'Saqlanmadi') + '</span>';
         } else {
             msg.innerHTML = '<span class="text-emerald-300">✅ «' + escapeHtml(name) + '» saqlandi.</span>';
+            // Maktab vaqti o'zgarsa — farzandning smenasi ham shunga o'tadi
+            // (11:00 dan keyingi vaqt — 2-smena).
+            if (/maktab|школ|litsey|лицей|gimnaz|гимназ/i.test(name) && arriveBy) {
+                const shift = Number(arriveBy.slice(0, 2)) >= 11 ? 2 : 1;
+                fetch(QALQON_BOT_FN, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ type: 'update_child_school', childId: currentChildKey, schoolShift: shift, schoolArriveBy: arriveBy })
+                }).then(r => r.json()).then(r => {
+                    const c = childrenDatabase[currentChildKey];
+                    if (r.ok && c) { c.schoolShift = r.schoolShift; c.schoolArriveBy = r.schoolArriveBy; }
+                }).catch(() => {});
+            }
             document.getElementById('zoneName').value = '';
             document.getElementById('zoneArriveBy').value = '';
             loadZoneList();
