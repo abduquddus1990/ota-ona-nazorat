@@ -380,9 +380,11 @@ function renderGamesGrid() {
     };
     const free = GAMES.filter(g => !paidIds.includes(g.id));
     const paid = GAMES.filter(g => paidIds.includes(g.id));
-    grid.innerHTML = free.map(card).join('') + (paid.length
+    // Tepada — do'st bilan online o'yinlar (faqat bola uchun, online.js).
+    grid.innerHTML = '<div id="onlineHub"></div>' + free.map(card).join('') + (paid.length
         ? `<div class="pt-2 text-[11px] font-bold text-amber-300">⭐ Ball evaziga ochiladigan o'yinlar</div>` + paid.map(card).join('')
         : '');
+    if (typeof renderOnlineHub === 'function') renderOnlineHub();
 }
 
 function openGame(id) {
@@ -415,6 +417,7 @@ function openGame(id) {
 
 function closeGame() {
     stopWolfGame();
+    if (typeof stopOnline === 'function') stopOnline();
     // Arkada o'yinlari o'z tsikli va klaviatura tinglovchilarini qoldirib
     // ketmasligi kerak: aks holda bola boshqa bo'limga o'tganda ham o'yin
     // fon rejimida ishlab, batareyani yeb turardi.

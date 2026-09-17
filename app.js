@@ -1400,6 +1400,8 @@ function checkChildConsentStatus() {
             const noteCard = document.getElementById('dailyNoteCard');
             if (noteCard) noteCard.classList.remove('hidden');
             acceptDuelFromUrl().then(renderDuel);
+            // Do'st yuborgan online o'yin havolasi (?play=KOD).
+            if (typeof acceptPlayFromUrl === 'function') acceptPlayFromUrl();
 
             const locCard = document.getElementById('childLocationCard');
             if (locCard) locCard.classList.remove('hidden');
@@ -5122,7 +5124,8 @@ function renderParentExtras() {
         { emoji: '🎁', name: "Do'stingizni taklif qiling", desc: 'Ikkalangizga ham bepul Pro', fn: 'shareReferralLink()' },
         { emoji: '📍', name: 'Xavfsiz hududlar', desc: 'Uy va maktabni belgilang', fn: 'openZonesModal()' },
         { emoji: '🔔', name: 'Bildirishnomalar', desc: 'Nima va qachon keladi', fn: 'openNotificationsModal()' },
-        { emoji: '🧩', name: 'Oilaviy Viktorina', desc: 'Farzandingiz bilan bellashing', fn: "switchTab('tab-games'); setTimeout(() => openGame('quiz'), 300);" }
+        { emoji: '🧩', name: 'Oilaviy Viktorina', desc: 'Farzandingiz bilan bellashing', fn: "switchTab('tab-games'); setTimeout(() => openGame('quiz'), 300);" },
+        { emoji: '🎮', name: "Farzand o'yinlari", desc: "Kim bilan online o'ynagan", fn: 'openFamilyMatches()' }
     ];
 
     grid.innerHTML = tiles.map(t =>

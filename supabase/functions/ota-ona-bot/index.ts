@@ -6,6 +6,8 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+// Online o'yinlar mantig'i — Mini App bilan AYNAN bir xil fayl (sim.js).
+import "./sim.js";
 
 const BOT_TOKEN = Deno.env.get("BOT_TOKEN") || "";
 if (!BOT_TOKEN) {
@@ -2595,6 +2597,478 @@ async function handleBallCallback(data: string, chatId: number): Promise<boolean
 }
 
 // ============================================================================
+// DO'ST BILAN ONLINE O'YINLAR (database/16_online_oyinlar.sql)
+//
+// Raqib faqat taklif havolasi orqali keladi, chat yo'q, haqiqiy ism o'rniga
+// bo'ri ismi. Natija va yurishlarni SERVER hisoblaydi: Poyga/Tetrisda
+// bosishlar yozuvi sim.js orqali qayta o'ynatiladi, viktorinada vaqtni
+// server o'lchaydi, Dengiz jangida raqib kemalari mijozga yuborilmaydi.
+// ============================================================================
+
+const Sim = (globalThis as any).QalqonSim;
+
+const MATCH_GAMES: Record<string, { title: string; emoji: string; kind: "async" | "turn" }> = {
+  quiz: { title: "Viktorina dueli", emoji: "🧩", kind: "async" },
+  race: { title: "Poyga", emoji: "🏎️", kind: "async" },
+  tetris: { title: "Tetris", emoji: "🧱", kind: "async" },
+  connect4: { title: "To'rtta qator", emoji: "🔴", kind: "turn" },
+  battleship: { title: "Dengiz jangi", emoji: "🚢", kind: "turn" },
+};
+const MATCH_OPEN_HOURS = 48;
+const MATCH_IDLE_HOURS = 72;
+const MATCH_OPEN_MAX = 5;
+const MATCH_CREATE_PER_DAY = 20;
+const QUIZ_DUEL_SECONDS = 15;
+const QUIZ_DUEL_GRACE = 3;
+const MATCH_NOTIFY_GAP_MS = 3 * 60 * 1000;
+
+function matchLink(code: string) {
+  return `https://t.me/qalqon_aiBot?start=play_${code}`;
+}
+
+async function matchNick(fam: string, cid: string): Promise<string> {
+  const { data } = await db!
+    .from("child_companion").select("name")
+    .eq("family_code", fam).eq("child_id", cid).limit(1);
+  return (data && data[0]?.name) || defaultCompanionName(cid);
+}
+
+function randomCode(len = 6) {
+  const alphabet = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+  return Array.from(crypto.getRandomValues(new Uint8Array(len))).map((b) => alphabet[b % alphabet.length]).join("");
+}
+
+function randomSeed() {
+  return crypto.getRandomValues(new Uint32Array(1))[0] || 1;
+}
+
+/** Bolaga tugmali xabar: "navbat senda", "do'sting qo'shildi" va h.k. */
+async function notifyMatchChild(m: any, role: "p1" | "p2", text: string, force = false) {
+  const cid = String(role === "p1" ? m.p1_child : m.p2_child || "");
+  if (!cid.startsWith("tg_")) return;
+  const st = m.state || {};
+  st.notified = st.notified || {};
+  const last = Number(st.notified[role] || 0);
+  if (!force && Date.now() - last < MATCH_NOTIFY_GAP_MS) return;
+  st.notified[role] = Date.now();
+  m.state = st;
+  const g = MATCH_GAMES[m.game];
+  await sendMessage(cid.slice(3), text, {
+    inline_keyboard: [[{ text: `${g.emoji} O'yinni ochish`, web_app: { url: `${miniAppUrl()}&role=child&play=${m.code}` } }]],
+  });
+}
+
+async function saveMatch(m: any, fields: Record<string, unknown>) {
+  const upd = { ...fields, state: m.state, updated_at: new Date().toISOString() };
+  await db!.from("game_matches").update(upd).eq("id", m.id);
+  Object.assign(m, upd);
+}
+
+/** Uzoq kutib qolgan o'yinlarni yakunlaydi (o'qish paytida, alohida cron'siz). */
+async function settleMatch(m: any): Promise<any> {
+  const age = Date.now() - new Date(m.updated_at).getTime();
+  const g = MATCH_GAMES[m.game];
+  if (m.status === "open" && Date.now() - new Date(m.created_at).getTime() > MATCH_OPEN_HOURS * 3600e3) {
+    await saveMatch(m, { status: "expired", finished_at: new Date().toISOString() });
+  } else if (m.status === "active" && age > MATCH_IDLE_HOURS * 3600e3) {
+    let winner: string | null = null;
+    if (g.kind === "turn") winner = m.turn === "p1" ? "p2" : "p1";
+    else {
+      const r = (m.state && m.state.res) || {};
+      winner = r.p1 && !r.p2 ? "p1" : r.p2 && !r.p1 ? "p2" : null;
+    }
+    await saveMatch(m, { status: winner ? "finished" : "expired", winner, finished_at: new Date().toISOString() });
+  }
+  return m;
+}
+
+/** Ikkala natija bo'lsa — g'olib aniqlanadi. */
+async function finishAsyncIfReady(m: any) {
+  const r = m.state.res || {};
+  if (!r.p1 || !r.p2 || m.status === "finished") return;
+  const a = Number(r.p1.score) || 0, b = Number(r.p2.score) || 0;
+  const winner = a > b ? "p1" : b > a ? "p2" : "draw";
+  const g = MATCH_GAMES[m.game];
+  await saveMatch(m, { status: "finished", winner, finished_at: new Date().toISOString() });
+  for (const role of ["p1", "p2"] as const) {
+    const mine = role === "p1" ? a : b, theirs = role === "p1" ? b : a;
+    const rival = role === "p1" ? m.p2_name : m.p1_name;
+    const verdict = winner === "draw" ? "🤝 Durang!" : winner === role ? "🏆 Sen yutding!" : "💪 Bu safar do'sting yutdi.";
+    await notifyMatchChild(m, role, `${g.emoji} <b>${g.title}: natija tayyor</b>\n\n${verdict}\nSen: <b>${mine}</b> · ${rival || "Do'sting"}: <b>${theirs}</b>`, true);
+  }
+  await saveMatch(m, {});
+}
+
+/** So'rovchi uchun o'yin holati — maxfiy qismlarsiz. */
+function matchView(m: any, me: "p1" | "p2") {
+  const rival = me === "p1" ? "p2" : "p1";
+  const g = MATCH_GAMES[m.game];
+  const st = m.state || {};
+  const base: any = {
+    id: m.id, code: m.code, game: m.game, title: g.title, emoji: g.emoji, kind: g.kind,
+    status: m.status, winner: m.winner, me, turn: m.turn,
+    myTurn: m.status === "active" && m.turn === me,
+    myName: me === "p1" ? m.p1_name : m.p2_name,
+    rivalName: (rival === "p1" ? m.p1_name : m.p2_name) || null,
+    link: matchLink(m.code), updatedAt: m.updated_at, createdAt: m.created_at,
+  };
+  const res = st.res || {};
+  if (m.game === "quiz") {
+    const my = (st.q || {})[me] || { answers: [] };
+    base.total = (st.questions || []).length;
+    base.answered = (my.answers || []).length;
+    base.myResult = res[me] || null;
+    // Raqib natijasi faqat o'zim tugatgandan keyin — oldindan bilish qiziqni o'ldiradi.
+    base.rivalDone = !!res[rival];
+    base.rivalResult = res[me] ? (res[rival] || null) : null;
+  }
+  if (m.game === "race" || m.game === "tetris") {
+    base.seed = m.seed;
+    base.myResult = res[me] ? { score: res[me].score, ticks: res[me].ticks } : null;
+    base.myStarted = !!(st.started || {})[me];
+    base.rivalResult = res[rival] ? { score: res[rival].score, ticks: res[rival].ticks } : null;
+    // Arvoh: raqibning bosishlar yozuvi (Poyga) yoki hisob chizig'i (Tetris).
+    if (res[rival]) base.ghost = m.game === "race" ? { log: res[rival].log || [], ticks: res[rival].ticks } : { timeline: res[rival].timeline || [], ticks: res[rival].ticks };
+  }
+  if (m.game === "connect4") {
+    base.board = st.board;
+    base.myMark = me === "p1" ? "1" : "2";
+    base.last = st.last || null;
+    base.line = st.line || null;
+  }
+  if (m.game === "battleship") {
+    const fleets = st.fleets || {};
+    const shots = st.shots || {};
+    const rivalFleet: any[] = fleets[rival] || [];
+    const myShots: any[] = shots[me] || [];
+    const hitSet = new Set(myShots.filter((s: any) => s[2]).map((s: any) => s[0] * 8 + s[1]));
+    base.myFleet = fleets[me] || null;
+    base.myShots = myShots;
+    base.rivalShots = shots[rival] || [];
+    base.sunkRival = rivalFleet.filter((ship: any[]) => ship.every(([r, c]) => hitSet.has(r * 8 + c)));
+    base.rivalShipsLeft = rivalFleet.length - base.sunkRival.length;
+    if (m.status === "finished") base.rivalFleet = rivalFleet;
+  }
+  return base;
+}
+
+async function handleMatchRoutes(payload: any, actor: Actor): Promise<Response | null> {
+  const t = String(payload?.type || "");
+  if (!t.startsWith("match_") && t !== "family_matches") return null;
+  if (!db) return jsonRes({ ok: false, error: "Baza ulanmagan" }, 500);
+
+  // Ota-ona: farzandi kim bilan, qaysi o'yinni o'ynagan.
+  if (t === "family_matches") {
+    const fam = await actorAsParent(actor);
+    if (!fam) return unauthorized("Faqat ota-ona");
+    const since = new Date(Date.now() - 30 * 86400e3).toISOString();
+    const { data } = await db.from("game_matches").select("*")
+      .or(`p1_family.eq.${fam},p2_family.eq.${fam}`)
+      .gte("created_at", since).order("created_at", { ascending: false }).limit(50);
+    const { data: kids } = await db.from("child_pairings").select("child_id, child_name").eq("family_code", fam).limit(20);
+    const nameOf = (cid: string) => (kids || []).find((k: any) => k.child_id === cid)?.child_name || "Farzand";
+    return jsonRes({
+      ok: true,
+      matches: (data || []).map((m: any) => {
+        const me = m.p1_family === fam ? "p1" : "p2";
+        const g = MATCH_GAMES[m.game] || { title: m.game, emoji: "🎮" };
+        return {
+          game: g.title, emoji: g.emoji, status: m.status, createdAt: m.created_at,
+          child: nameOf(me === "p1" ? m.p1_child : m.p2_child),
+          rival: (me === "p1" ? m.p2_name : m.p1_name) || null,
+          result: m.status !== "finished" ? null : m.winner === "draw" ? "draw" : m.winner === me ? "won" : "lost",
+        };
+      }),
+    });
+  }
+
+  const kid = await actorAsChild(actor);
+  if (!kid) return unauthorized("Online o'yinlar faqat farzand panelida");
+  const { familyCode, childId } = kid;
+
+  if (t === "match_list") {
+    const { data } = await db.from("game_matches").select("*")
+      .or(`p1_child.eq.${childId},p2_child.eq.${childId}`)
+      .order("updated_at", { ascending: false }).limit(20);
+    const out = [];
+    for (const m of data || []) {
+      await settleMatch(m);
+      if (["cancelled"].includes(m.status)) continue;
+      const me = m.p1_child === childId ? "p1" : "p2";
+      const v = matchView(m, me);
+      out.push({
+        id: v.id, code: v.code, game: v.game, title: v.title, emoji: v.emoji, status: v.status,
+        winner: v.winner, me, myTurn: v.myTurn, rivalName: v.rivalName, updatedAt: v.updatedAt,
+        needsMe: v.myTurn || (m.status !== "finished" && MATCH_GAMES[m.game].kind === "async" && !((m.state.res || {})[me])),
+      });
+    }
+    return jsonRes({ ok: true, matches: out });
+  }
+
+  if (t === "match_create") {
+    const game = String(payload.game || "");
+    const g = MATCH_GAMES[game];
+    if (!g) return jsonRes({ ok: false, error: "Bunday o'yin yo'q." }, 400);
+
+    const { data: mine } = await db.from("game_matches").select("id, status, created_at")
+      .eq("p1_child", childId).gte("created_at", tashkentDayStartISO()).limit(MATCH_CREATE_PER_DAY + 1);
+    if ((mine || []).length >= MATCH_CREATE_PER_DAY) {
+      return jsonRes({ ok: false, error: `Bugun ${MATCH_CREATE_PER_DAY} ta o'yin ochding — ertaga yana.` }, 429);
+    }
+    const { data: open } = await db.from("game_matches").select("id")
+      .eq("p1_child", childId).eq("status", "open").limit(MATCH_OPEN_MAX + 1);
+    if ((open || []).length >= MATCH_OPEN_MAX) {
+      return jsonRes({ ok: false, error: `Do'stlaring qo'shilmagan ${MATCH_OPEN_MAX} ta o'yin bor. Avval ularni yakunla yoki bekor qil.` }, 429);
+    }
+
+    const seed = randomSeed();
+    const state: any = { res: {}, notified: {} };
+    let turn: string | null = null;
+    if (game === "quiz") {
+      const grade = await childGrade(familyCode, childId);
+      const cat = Math.random() < 0.5 ? "maktab" : Math.random() < 0.5 ? "fikrlash" : "ozbekiston";
+      const qs = (await buildQuizQuestions(cat, grade)).filter(validQuizItem);
+      const pool = qs.length >= 6 ? qs : QUIZ_FALLBACK.maktab.concat(QUIZ_FALLBACK.fikrlash);
+      state.questions = quizPick(pool, 8).map((q: any) => ({ q: q.q, a: q.a, c: q.c, why: q.why || "" }));
+      state.category = cat;
+      state.q = { p1: { answers: [] }, p2: { answers: [] } };
+    }
+    if (game === "connect4") { state.board = Sim.c4Empty(); turn = "p1"; }
+    if (game === "battleship") { state.fleets = { p1: Sim.bsFleet(randomSeed()) }; state.shots = { p1: [], p2: [] }; turn = "p1"; }
+    if (game === "race" || game === "tetris") state.started = {};
+
+    const code = randomCode();
+    const { data: created, error } = await db.from("game_matches").insert({
+      code, game, seed, turn, state,
+      p1_family: familyCode, p1_child: childId, p1_name: await matchNick(familyCode, childId),
+    }).select("*").limit(1);
+    if (error || !created || !created[0]) return jsonRes({ ok: false, error: error?.message || "Saqlab bo'lmadi." }, 500);
+    return jsonRes({ ok: true, match: matchView(created[0], "p1") });
+  }
+
+  // Quyidagilar aniq o'yinga tegishli.
+  const byCode = String(payload.code || "").trim().toUpperCase();
+  const byId = String(payload.id || "").trim();
+  let q: any = db.from("game_matches").select("*").limit(1);
+  q = byId ? q.eq("id", byId) : q.eq("code", byCode);
+  const { data: found } = await q;
+  const m = found && found[0];
+  if (!m) return jsonRes({ ok: false, error: "O'yin topilmadi." }, 404);
+  await settleMatch(m);
+  const g = MATCH_GAMES[m.game];
+
+  if (t === "match_join") {
+    if (m.p1_child === childId || m.p2_child === childId) {
+      return jsonRes({ ok: true, match: matchView(m, m.p1_child === childId ? "p1" : "p2") });
+    }
+    if (m.status !== "open") {
+      return jsonRes({ ok: false, error: m.status === "expired" ? "Bu taklifning muddati o'tgan." : "Bu o'yinga boshqa do'st qo'shilib bo'lgan." }, 409);
+    }
+    // Faqat ochiq qatorni egallaymiz — ikki kishi bir vaqtda bossa, bittasi o'tadi.
+    if (m.game === "battleship") m.state.fleets.p2 = Sim.bsFleet(randomSeed());
+    const nick = await matchNick(familyCode, childId);
+    const { data: claimed } = await db.from("game_matches").update({
+      p2_family: familyCode, p2_child: childId, p2_name: nick, status: "active",
+      state: m.state, updated_at: new Date().toISOString(),
+    }).eq("id", m.id).eq("status", "open").select("*");
+    if (!claimed || !claimed[0]) return jsonRes({ ok: false, error: "Bu o'yinga boshqa do'st qo'shilib bo'lgan." }, 409);
+    const mm = claimed[0];
+    await notifyMatchChild(mm, "p1",
+      `${g.emoji} <b>${nick} "${g.title}" o'yiningga qo'shildi!</b>` +
+        (g.kind === "turn" ? (mm.turn === "p1" ? "\n\nBirinchi yurish seniki." : "") : "\n\nNatijalaringizni solishtiramiz."), true);
+    await saveMatch(mm, {});
+    return jsonRes({ ok: true, match: matchView(mm, "p2") });
+  }
+
+  const me: "p1" | "p2" | null = m.p1_child === childId ? "p1" : m.p2_child === childId ? "p2" : null;
+  if (!me) return jsonRes({ ok: false, error: "Bu o'yin seniki emas." }, 403);
+  const rival = me === "p1" ? "p2" : "p1";
+
+  if (t === "match_state") return jsonRes({ ok: true, match: matchView(m, me) });
+
+  if (t === "match_cancel") {
+    if (m.status === "open" && me === "p1") {
+      await saveMatch(m, { status: "cancelled", finished_at: new Date().toISOString() });
+      return jsonRes({ ok: true, match: matchView(m, me) });
+    }
+    if (m.status === "active" && g.kind === "turn") {
+      await saveMatch(m, { status: "finished", winner: rival, finished_at: new Date().toISOString() });
+      await notifyMatchChild(m, rival, `${g.emoji} <b>${g.title}:</b> do'sting taslim bo'ldi — 🏆 sen yutding!`, true);
+      await saveMatch(m, {});
+      return jsonRes({ ok: true, match: matchView(m, me) });
+    }
+    return jsonRes({ ok: false, error: "Bu o'yinni endi bekor qilib bo'lmaydi." }, 409);
+  }
+
+  if (t !== "match_move") return jsonRes({ ok: false, error: "Noma'lum amal." }, 400);
+  if (m.status === "finished" || m.status === "expired" || m.status === "cancelled") {
+    return jsonRes({ ok: false, error: "O'yin tugagan.", match: matchView(m, me) }, 409);
+  }
+  const st = m.state;
+  st.res = st.res || {};
+
+  // ------------------------------------------------ Poyga / Tetris (arvoh)
+  if (m.game === "race" || m.game === "tetris") {
+    const action = String(payload.action || "");
+    if (st.res[me]) return jsonRes({ ok: false, error: "Sen allaqachon o'ynading.", match: matchView(m, me) }, 409);
+    st.started = st.started || {};
+    if (action === "start") {
+      // Bitta urinish: qayta boshlash = mashq qilib olish. Shuning uchun
+      // ikkinchi "start" oldingi urinishni 0 bilan yopadi.
+      if (st.started[me]) {
+        st.res[me] = { score: 0, ticks: 0, log: [], timeline: [], abandoned: true };
+        await saveMatch(m, {});
+        await finishAsyncIfReady(m);
+        return jsonRes({ ok: false, abandoned: true, error: "Urinish oldin boshlangan edi va tugatilmagan — natija 0.", match: matchView(m, me) }, 409);
+      }
+      st.started[me] = new Date().toISOString();
+      await saveMatch(m, {});
+      return jsonRes({ ok: true, match: matchView(m, me) });
+    }
+    if (action !== "finish") return jsonRes({ ok: false, error: "Noma'lum amal." }, 400);
+    if (!st.started[me]) return jsonRes({ ok: false, error: "Avval o'yinni boshla." }, 400);
+    const log = Array.isArray(payload.log) ? payload.log.slice(0, Sim.MAX_LOG) : [];
+    for (let i = 1; i < log.length; i++) {
+      if (!Array.isArray(log[i]) || Number(log[i][0]) < Number(log[i - 1][0])) {
+        return jsonRes({ ok: false, error: "Yozuv buzilgan." }, 400);
+      }
+    }
+    const sim = m.game === "race" ? Sim.raceSimulate(Number(m.seed), log) : Sim.tetSimulate(Number(m.seed), log);
+    const claimed = Number(payload.score);
+    st.res[me] = {
+      score: sim.score, ticks: sim.ticks, log: m.game === "race" ? log : [],
+      timeline: sim.timeline || [], claimed: Number.isFinite(claimed) ? claimed : null,
+      at: new Date().toISOString(),
+    };
+    await saveMatch(m, {});
+    if (m.status === "active" && !st.res[rival]) {
+      await notifyMatchChild(m, rival, `${g.emoji} <b>${m[me + "_name"] || "Do'sting"} ${g.title}da ${sim.score} ochko to'pladi.</b>\n\nEndi navbat senda — arvohini quvib o't!`);
+      await saveMatch(m, {});
+    }
+    await finishAsyncIfReady(m);
+    return jsonRes({ ok: true, result: { score: sim.score, ticks: sim.ticks }, mismatch: Number.isFinite(claimed) && claimed !== sim.score, match: matchView(m, me) });
+  }
+
+  // ---------------------------------------------------------- Viktorina
+  if (m.game === "quiz") {
+    const action = String(payload.action || "");
+    const qs: any[] = st.questions || [];
+    st.q = st.q || { p1: { answers: [] }, p2: { answers: [] } };
+    const my = st.q[me] = st.q[me] || { answers: [] };
+    if (st.res[me]) return jsonRes({ ok: false, error: "Sen allaqachon javob berding.", match: matchView(m, me) }, 409);
+
+    const finishMine = async () => {
+      const correct = my.answers.filter((a: any) => a.correct).length;
+      const score = my.answers.reduce((s: number, a: any) => s + (Number(a.points) || 0), 0);
+      st.res[me] = { score, correct, total: qs.length, at: new Date().toISOString() };
+      await saveMatch(m, {});
+      if (m.status === "active" && !st.res[rival]) {
+        await notifyMatchChild(m, rival, `🧩 <b>${m[me + "_name"] || "Do'sting"} viktorinani tugatdi.</b>\n\nEndi navbat senda!`);
+        await saveMatch(m, {});
+      }
+      await finishAsyncIfReady(m);
+    };
+
+    if (action === "next") {
+      if (my.issued) {
+        my.answers.push({ choice: -1, correct: false, points: 0, reissued: true });
+        my.issued = null;
+        if (my.answers.length >= qs.length) {
+          await finishMine();
+          return jsonRes({ ok: true, done: true, match: matchView(m, me) });
+        }
+      }
+      const i = my.answers.length;
+      if (i >= qs.length) {
+        await finishMine();
+        return jsonRes({ ok: true, done: true, match: matchView(m, me) });
+      }
+      my.issued = new Date().toISOString();
+      await saveMatch(m, {});
+      return jsonRes({ ok: true, index: i, total: qs.length, seconds: QUIZ_DUEL_SECONDS, question: { q: qs[i].q, a: qs[i].a } });
+    }
+    if (action === "answer") {
+      if (!my.issued) return jsonRes({ ok: false, error: "Savol berilmagan." }, 400);
+      const i = my.answers.length;
+      const sec = (Date.now() - new Date(my.issued).getTime()) / 1000;
+      const choice = Number.isInteger(payload.choice) ? Number(payload.choice) : -1;
+      const timedOut = sec > QUIZ_DUEL_SECONDS + QUIZ_DUEL_GRACE;
+      const correct = !timedOut && choice === qs[i].c;
+      // To'g'ri javob 100 ochko, tezlik uchun +50 gacha.
+      const points = correct ? 100 + Math.max(0, Math.round(50 * (QUIZ_DUEL_SECONDS - Math.min(sec, QUIZ_DUEL_SECONDS)) / QUIZ_DUEL_SECONDS)) : 0;
+      my.answers.push({ choice, correct, points, ms: Math.round(sec * 1000), timedOut });
+      my.issued = null;
+      const feedback = { correct, timedOut, correctIndex: qs[i].c, why: qs[i].why || "", points };
+      if (my.answers.length >= qs.length) {
+        await finishMine();
+        return jsonRes({ ok: true, ...feedback, done: true, match: matchView(m, me) });
+      }
+      await saveMatch(m, {});
+      return jsonRes({ ok: true, ...feedback, done: false });
+    }
+    return jsonRes({ ok: false, error: "Noma'lum amal." }, 400);
+  }
+
+  // --------------------------------------------- navbatli o'yinlar umumiy
+  if (m.status !== "active") return jsonRes({ ok: false, error: "Do'sting hali qo'shilmagan." }, 409);
+  if (m.turn !== me) return jsonRes({ ok: false, error: "Hozir do'stingning navbati.", match: matchView(m, me) }, 409);
+
+  if (m.game === "connect4") {
+    const col = Number(payload.col);
+    const mark = me === "p1" ? "1" : "2";
+    const drop = Sim.c4Drop(st.board, col, mark);
+    if (drop.row < 0) return jsonRes({ ok: false, error: "Bu ustun to'la." }, 400);
+    st.board = drop.board;
+    st.last = [drop.row, col];
+    const r = Sim.c4Result(st.board);
+    if (r.winner) {
+      st.line = r.line;
+      const winner = r.winner === "draw" ? "draw" : r.winner === "1" ? "p1" : "p2";
+      await saveMatch(m, { status: "finished", winner, turn: null, finished_at: new Date().toISOString() });
+      await notifyMatchChild(m, rival, winner === "draw" ? "🔴 <b>To'rtta qator:</b> 🤝 durang!" : `🔴 <b>To'rtta qator:</b> ${m[me + "_name"]} to'rttani qatorga qo'ydi. Bu safar u yutdi 💪`, true);
+      await saveMatch(m, {});
+    } else {
+      await saveMatch(m, { turn: rival });
+      await notifyMatchChild(m, rival, `🔴 <b>To'rtta qator:</b> ${m[me + "_name"] || "Do'sting"} yurdi — navbat senda!`);
+      await saveMatch(m, {});
+    }
+    return jsonRes({ ok: true, match: matchView(m, me) });
+  }
+
+  if (m.game === "battleship") {
+    const r = Number(payload.r), c = Number(payload.c);
+    const N = Sim.BS.N;
+    if (!(Number.isInteger(r) && Number.isInteger(c) && r >= 0 && r < N && c >= 0 && c < N)) {
+      return jsonRes({ ok: false, error: "Noto'g'ri katak." }, 400);
+    }
+    const shots: any[] = st.shots[me] = st.shots[me] || [];
+    if (shots.some((s: any) => s[0] === r && s[1] === c)) return jsonRes({ ok: false, error: "Bu katakka otgansan." }, 400);
+    const fleet: any[] = st.fleets[rival] || [];
+    const hit = fleet.some((ship: any[]) => ship.some(([a, b]) => a === r && b === c));
+    shots.push([r, c, hit]);
+    const hitSet = new Set(shots.filter((s: any) => s[2]).map((s: any) => s[0] * N + s[1]));
+    const ship = fleet.find((sh: any[]) => sh.some(([a, b]) => a === r && b === c));
+    const sunk = !!ship && ship.every(([a, b]: number[]) => hitSet.has(a * N + b));
+    const allSunk = fleet.every((sh: any[]) => sh.every(([a, b]) => hitSet.has(a * N + b)));
+    if (allSunk) {
+      await saveMatch(m, { status: "finished", winner: me, turn: null, finished_at: new Date().toISOString() });
+      await notifyMatchChild(m, rival, `🚢 <b>Dengiz jangi:</b> ${m[me + "_name"]} oxirgi kemangni cho'ktirdi. Revansh? 💪`, true);
+      await saveMatch(m, {});
+    } else if (hit) {
+      // Tekkizsa — yana o'zi otadi (klassik qoida).
+      await saveMatch(m, {});
+    } else {
+      await saveMatch(m, { turn: rival });
+      await notifyMatchChild(m, rival, `🚢 <b>Dengiz jangi:</b> ${m[me + "_name"] || "Do'sting"} o'tkazib yubordi — navbat senda!`);
+      await saveMatch(m, {});
+    }
+    return jsonRes({ ok: true, shot: { r, c, hit, sunk }, match: matchView(m, me) });
+  }
+
+  return jsonRes({ ok: false, error: "Noma'lum o'yin." }, 400);
+}
+
+// ============================================================================
 // VIKTORINA SAVOLLARI
 //
 // Savollarni Gemini bolaning SINFIGA qarab yozadi — shuning uchun kontent
@@ -3527,6 +4001,8 @@ async function handleRequest(req: Request): Promise<Response> {
     {
       const ballRes = await handleBallRoutes(payload, actor!);
       if (ballRes) return ballRes;
+      const matchRes = await handleMatchRoutes(payload, actor!);
+      if (matchRes) return matchRes;
     }
 
     // ========================================================================
@@ -4180,6 +4656,14 @@ async function handleRequest(req: Request): Promise<Response> {
         }
       }
 
+      // Online o'yinlar ikki oilaga tegishli (p1/p2) — oila qaysi tomonda
+      // bo'lmasin, o'yin butunlay o'chadi: aks holda do'stning ro'yxatida
+      // o'chirilgan bolaning bo'ri ismi qolib ketardi.
+      for (const col of ["p1_family", "p2_family"]) {
+        const { error } = await db.from("game_matches").delete().eq(col, familyCode);
+        if (error) console.error("delete_account: game_matches o'chmadi:", error.message);
+      }
+
       // Faqat child_id bo'yicha saqlanadigan jadvallar.
       for (const table of ["geo_zones", "location_events"]) {
         for (const childId of childIds) {
@@ -4275,6 +4759,11 @@ async function handleRequest(req: Request): Promise<Response> {
           .eq("family_code", familyCode)
           .eq("child_id", childId);
         if (error) console.error(`leave_family: ${table} o'chmadi:`, error.message);
+      }
+
+      for (const col of ["p1_child", "p2_child"]) {
+        const { error } = await db.from("game_matches").delete().eq(col, childId);
+        if (error) console.error("leave_family: game_matches o'chmadi:", error.message);
       }
 
       // Viktorina javoblarida ustun nomi boshqacha (participant_id), shuning
@@ -7017,6 +7506,32 @@ async function handleRequest(req: Request): Promise<Response> {
         // Fokus jangi havolasi: ?start=duel_<kod>. Mini App'da ochiladi,
         // qabul qilish o'sha yerda bajariladi (bola kim ekanini imzolangan
         // identitet hal qiladi).
+        // Do'st bilan online o'yin: ?start=play_<kod>. Qo'shilish Mini App'da,
+        // imzolangan identitet bilan bajariladi.
+        const playMatch = text.match(/play_([A-Z0-9]{4,10})/i);
+        if (playMatch) {
+          const playCode = playMatch[1].toUpperCase();
+          const kidHere = await isPairedChild(chatId);
+          let title = "o'yin";
+          let emoji = "🎮";
+          if (db) {
+            const { data: pm } = await db.from("game_matches").select("game, p1_name").eq("code", playCode).limit(1);
+            const gm = pm && pm[0] && MATCH_GAMES[pm[0].game];
+            if (gm) { title = gm.title; emoji = gm.emoji; }
+          }
+          await sendMessage(
+            chatId,
+            kidHere
+              ? `${emoji} <b>Do'sting seni "${title}" o'yiniga chaqiryapti!</b>\n\nPastdagi tugmani bosib qo'shil.`
+              : `${emoji} <b>Bu — Qalqon AI'dagi do'stlar o'yiniga taklif.</b>\n\n` +
+                  `O'ynash uchun avval ota-onang seni Qalqon AI'ga ulashi kerak. Ota-onangga ayt: botni ochib, «Farzandni ulash» ni bossin.`,
+            kidHere
+              ? { inline_keyboard: [[{ text: `${emoji} Qo'shilish`, web_app: { url: `${miniAppUrl()}&role=child&play=${playCode}` } }]] }
+              : undefined
+          );
+          return new Response(JSON.stringify({ ok: true }), { status: 200 });
+        }
+
         const duelMatch = text.match(/duel_([A-Z0-9]{4,10})/i);
         if (duelMatch) {
           const duelCode = duelMatch[1].toUpperCase();
