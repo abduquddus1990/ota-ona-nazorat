@@ -1308,6 +1308,9 @@ const RU_DICT = {
  "Oila chati faqat oila a'zolari uchun": "Семейный чат только для членов семьи",
  "📷 Daftaringni suratga olib qo'shasanmi? Ota-onang tekshirishi osonlashadi.": "📷 Сфотографируешь тетрадь? Родителям будет легче проверить.",
  "✅ Ota-onangga yuborildi. Ular tekshirib tasdiqlasa, ball tushadi. Oila chatida ham ko'rinadi.": "✅ Отправлено родителям. Если они проверят и подтвердят — баллы начислятся. Видно и в семейном чате.",
+ "Qaysi mashqlar? (masalan: 39-40). Bilmasang, bo'sh qoldir.": "Какие упражнения? (например: 39-40). Не знаешь — оставь пустым.",
+ "AI xizmatining bugungi chegarasi tugadi. Ertaga yana ochiladi.": "Дневной лимит ИИ-сервиса исчерпан. Завтра откроется снова.",
+ "AI hozir band. Bir daqiqadan keyin qayta urinib ko'ring.": "ИИ сейчас занят. Попробуйте через минуту.",
  "Qaysi fan? (masalan: Matematika)": "Какой предмет? (например: Математика)"
 };
 

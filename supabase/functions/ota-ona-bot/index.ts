@@ -2044,7 +2044,59 @@ async function equippedItems(familyCode: string, childId: string) {
 }
 
 /** Fokus tekshiruvi uchun 3 ta savol — bolaning sinfiga mos. */
+/**
+ * Bugungi uy vazifasida mashq raqamlari bo'lsa — savollar AYNAN o'sha mashq
+ * matnidan tuziladi. Bu fokus tekshiruvining zaif joyi edi: savollar bola
+ * o'qigan narsaga umuman bog'liq emasdi.
+ */
+async function homeworkExerciseQuestions(familyCode: string, childId: string) {
+  if (!db) return null;
+  const { data } = await db.from("homework_items")
+    .select("subject, exercises, grade, created_at")
+    .eq("family_code", familyCode).eq("child_id", childId)
+    .not("exercises", "is", null)
+    .gte("created_at", tashkentDayStartISO())
+    .order("created_at", { ascending: false }).limit(1);
+  const hw = data && data[0];
+  if (!hw) return null;
+  const rows = await textbookExercises(Number(hw.grade) || await childGrade(familyCode, childId), hw.subject, parseExerciseNumbers(hw.exercises));
+  if (!rows.length) return null;
+
+  const apiKey = Deno.env.get("GEMINI_API_KEY") || "";
+  if (!apiKey) return null;
+  const model = Deno.env.get("GEMINI_MODEL") || "gemini-3.6-flash";
+  const material = rows.map((r: any) => `${r.number}-mashq (${r.topic || ""}, ${r.page}-bet):\n${r.body}`).join("\n\n");
+  const prompt =
+    `Quyida ${hw.grade}-sinf "${hw.subject}" darsligidagi mashq(lar) matni bor. ` +
+    `Bola shu mashqni uyda bajardim deydi. AYNAN SHU MATNGA tayanib ${FOCUS_CHECK_QUESTIONS} ta tekshiruv savoli yoz.\n\n` +
+    `MATN:\n${material}\n\n` +
+    `Qoidalar:\n` +
+    `- Savollar mashqni haqiqatan o'qib, bajargan bola javob bera oladigan bo'lsin ` +
+    `(matndagi so'zlar, topshiriq nima ekani, misollar, qoidaning qo'llanishi).\n` +
+    `- Matnda javobi yo'q savol yozma.\n` +
+    `- Faqat JSON massiv qaytar: [{"q":"savol","a":["v1","v2","v3","v4"],"c":to'g'ri indeks 0-3,"why":"bir jumla izoh"}]\n` +
+    `- Hammasi o'zbek tilida, ${hw.grade}-sinf darajasida. LaTeX yozma.`;
+  try {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+      { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { temperature: 0.4, maxOutputTokens: 4096 } }) },
+    );
+    const j = await res.json();
+    const txt = (j?.candidates?.[0]?.content?.parts || []).filter((p: any) => p?.text && p.thought !== true).map((p: any) => p.text).join("");
+    const arr = JSON.parse((txt.match(/\[[\s\S]*\]/) || ["[]"])[0]);
+    const good = arr.filter(validQuizItem).slice(0, FOCUS_CHECK_QUESTIONS);
+    if (good.length < FOCUS_CHECK_QUESTIONS) return null;
+    return good.map((q: any) => ({ q: q.q, a: q.a, c: q.c, why: q.why || "", from: "homework" }));
+  } catch (e) {
+    console.error("homeworkExerciseQuestions:", e);
+    return null;
+  }
+}
+
 async function pickFocusCheckQuestions(familyCode: string, childId: string) {
+  const fromHw = await homeworkExerciseQuestions(familyCode, childId);
+  if (fromHw) return fromHw;
   const grade = await childGrade(familyCode, childId);
   const category = Math.random() < 0.6 ? "maktab" : "fikrlash";
   const all = (await buildQuizQuestions(category, grade)).filter(validQuizItem);
@@ -2269,14 +2321,19 @@ async function handleBallRoutes(payload: any, actor: Actor): Promise<Response | 
     // Daftar surati (ixtiyoriy) — oila chatiga karta bilan birga tushadi.
     const hwPhoto = typeof payload.photo === "string" && /^data:image\/(jpeg|png|webp);base64,/.test(payload.photo) &&
       payload.photo.length <= CHAT_PHOTO_MAX ? payload.photo : null;
+    // Mashq raqamlari ("39-40") — fokus savollari shu mashqlardan tuziladi.
+    const hwNumbers = parseExerciseNumbers(payload.exercises);
+    const hwGrade = await childGrade(familyCode, childId);
+    const hwFound = await textbookExercises(hwGrade, subject, hwNumbers);
     const { data: ins } = await db
       .from("homework_items")
       .insert({
         family_code: familyCode,
         child_id: childId,
-        grade: await childGrade(familyCode, childId),
+        grade: hwGrade,
         subject,
         title: note,
+        exercises: hwNumbers.join(",") || null,
         status: "pending",
       })
       .select("id")
@@ -2287,8 +2344,9 @@ async function handleBallRoutes(payload: any, actor: Actor): Promise<Response | 
     const rules = await getTimeBankRules(familyCode, childId);
     const nom = await participantName(familyCode, childId);
     await postChatEvent(familyCode, { id: childId, role: "child", name: nom },
-      { type: "homework", refId: id, status: "pending", subject, note, points: rules.minutes_per_homework },
-      `📚 Uy vazifam tayyor: ${subject}${note ? " — " + note : ""}`, hwPhoto);
+      { type: "homework", refId: id, status: "pending", subject, note, points: rules.minutes_per_homework,
+        exercises: hwNumbers.join(","), matched: hwFound.map((e: any) => e.number) },
+      `📚 Uy vazifam tayyor: ${subject}${hwNumbers.length ? " — " + hwNumbers.join(", ") + "-mashq" : ""}${note ? " — " + note : ""}`, hwPhoto);
     const delivered = await notifyFamilyParents(
       familyCode,
       `📚 <b>${nom}: "Uy vazifamni bajardim"</b>\n\n` +
@@ -2302,7 +2360,12 @@ async function handleBallRoutes(payload: any, actor: Actor): Promise<Response | 
         ]],
       }
     );
-    return jsonRes({ ok: true, id, delivered });
+    return jsonRes({
+      ok: true, id, delivered,
+      // Mijoz "39-mashq darslikdan topildi" deb ko'rsatishi uchun.
+      exercises: hwNumbers,
+      matched: hwFound.map((e: any) => ({ number: e.number, topic: e.topic, page: e.page })),
+    });
   }
 
   // ------------------------------------------------------ OTA-ONA SOVG'ALARI
@@ -2647,6 +2710,58 @@ async function handleBallCallback(
   return true;
 }
 
+
+
+// ============================================================================
+// DARSLIK MASHQLARI (database/19_darslik_mashqlari.sql)
+//
+// Ilgari fokus tekshiruvidagi savollar bola bugun nima o'qigani bilan
+// bog'liq emas edi, AI esa "39-mashq" deganda mashq matnini bilmasdan javob
+// to'qib chiqarardi. Endi ikkalasi ham darslikdagi HAQIQIY matnga tayanadi.
+// Darslik bazada bo'lmasa, AI buni ochiq aytadi va o'ylab topmaydi.
+// ============================================================================
+
+/** "39-40, 42" -> [39,40,42]. Bemaʼni raqamlar tashlanadi. */
+function parseExerciseNumbers(raw: unknown): number[] {
+  const out = new Set<number>();
+  for (const part of String(raw || "").split(/[,;\s]+/)) {
+    const range = part.match(/^(\d{1,3})\s*[-–—]\s*(\d{1,3})$/);
+    if (range) {
+      const a = Number(range[1]), b = Number(range[2]);
+      if (b >= a && b - a <= 20) for (let i = a; i <= b; i++) out.add(i);
+      continue;
+    }
+    const one = part.match(/^(\d{1,3})$/);
+    if (one) out.add(Number(one[1]));
+  }
+  return [...out].filter((n) => n >= 1 && n <= 999).slice(0, 10);
+}
+
+/** Fan nomini bazadagi yozuvga solishtirish uchun soddalashtiradi. */
+function normalizeSubject(raw: unknown): string {
+  return String(raw || "").toLowerCase().replace(/[`'’ʻ]/g, "'").replace(/\s+/g, " ").trim();
+}
+
+async function textbookExercises(grade: number, subject: unknown, numbers: number[]) {
+  if (!db || !numbers.length) return [];
+  const { data } = await db.from("textbook_exercises")
+    .select("subject, number, page, topic, body")
+    .eq("grade", grade).in("number", numbers).limit(20);
+  const want = normalizeSubject(subject);
+  const rows = (data || []).filter((r: any) => !want || normalizeSubject(r.subject) === want ||
+    normalizeSubject(r.subject).includes(want) || want.includes(normalizeSubject(r.subject)));
+  return rows.sort((a: any, b: any) => a.number - b.number);
+}
+
+/** Shu sinf/fan uchun darslik bazada bormi va nechta mashq bor. */
+async function textbookCoverage(grade: number, subject: unknown) {
+  if (!db) return null;
+  const { data } = await db.from("textbook_exercises").select("subject, number").eq("grade", grade).limit(1000);
+  const want = normalizeSubject(subject);
+  const rows = (data || []).filter((r: any) => !want || normalizeSubject(r.subject) === want);
+  if (!rows.length) return null;
+  return { count: rows.length, max: Math.max(...rows.map((r: any) => r.number)) };
+}
 
 // ============================================================================
 // OILAVIY CHAT (database/18_oila_chati.sql)
@@ -5252,6 +5367,23 @@ async function handleRequest(req: Request): Promise<Response> {
     // "initData yaroqsiz" deb rad etilardi va AI do'st hech kimga ishlamasdi.
     // Endi u shu yerda: bitta backend, bitta ishlaydigan autentifikatsiya.
     // AI chegarasi — savol berishdan OLDIN ko'rsatish uchun.
+    // Mini App: shu sinf/fan uchun darslik bormi va mashq matni topiladimi.
+    if (payload.type === "textbook_lookup") {
+      const kidInfo = await actorAsChild(actor!);
+      const fam = kidInfo ? kidInfo.familyCode : await actorAsParent(actor!);
+      if (!fam) return unauthorized("Oila topilmadi");
+      const grade = kidInfo ? await childGrade(kidInfo.familyCode, kidInfo.childId) : Math.max(1, Math.min(11, Number(payload.grade) || 7));
+      const numbers = parseExerciseNumbers(payload.exercises);
+      const rows = await textbookExercises(grade, payload.subject, numbers);
+      return jsonRes({
+        ok: true,
+        grade,
+        coverage: await textbookCoverage(grade, payload.subject),
+        found: rows.map((r: any) => ({ number: r.number, page: r.page, topic: r.topic, preview: String(r.body).slice(0, 160) })),
+        missing: numbers.filter((n) => !rows.some((r: any) => r.number === n)),
+      });
+    }
+
     if (payload.type === "ai_quota") {
       const who = actor!.kind === "telegram" ? actor!.telegramId : 0;
       let limit = AI_FREE_DAILY;
@@ -5459,7 +5591,24 @@ async function handleRequest(req: Request): Promise<Response> {
         `so'ralsa — javob berma, muloyimlik bilan ota-ona yoki o'qituvchi bilan gaplashishni taklif qil.\n` +
         `- Agar bola xavf ostida ekanini bildirsa, darhol ota-onasiga yoki ishonchli kattaga aytishni maslahat ber.`;
 
-      const systemPrompt = payload.audience === "parent" ? parentPrompt : childPrompt;
+      let systemPrompt = payload.audience === "parent" ? parentPrompt : childPrompt;
+
+      // "39-mashq" so'ralsa — darslikdagi HAQIQIY matnni beramiz. Bazada
+      // bo'lmasa, modelga buni aytamiz: to'qib chiqarishdan ko'ra "bilmayman"
+      // deyish yaxshiroq.
+      const askedNumbers = [...String(question).matchAll(/(\d{1,3})\s*[-–—]?\s*mashq/gi)].map((m) => Number(m[1])).slice(0, 5);
+      if (askedNumbers.length && payload.audience !== "parent") {
+        const found = await textbookExercises(grade, payload.subject, askedNumbers);
+        const cover = await textbookCoverage(grade, payload.subject);
+        if (found.length) {
+          systemPrompt += `\n\nDARSLIKDAN OLINGAN HAQIQIY MATN (faqat shunga tayan, o'zingdan qo'shma):\n` +
+            found.map((e: any) => `${e.number}-mashq (${e.topic || ""}, ${e.page}-bet):\n${e.body}`).join("\n\n");
+        } else {
+          systemPrompt += `\n\nMUHIM: bolaning so'ragan mashq(lar)i bizdagi darslik matnida topilmadi` +
+            (cover ? ` (bizda ${grade}-sinf "${payload.subject}" darsligining ${cover.count} ta mashqi bor, oxirgisi ${cover.max}-mashq).` : ".") +
+            ` Mashq matnini O'YLAB TOPMA. Bolaga mashq matnini yozib yuborishini yoki suratga olib yuborishini so'ra.`;
+        }
+      }
 
       const model = Deno.env.get("GEMINI_MODEL") || "gemini-3.6-flash";
       try {
@@ -5512,10 +5661,16 @@ async function handleRequest(req: Request): Promise<Response> {
             gJson?.promptFeedback?.blockReason ||
             "noma'lum sabab";
           console.error("Gemini javobi bo'sh:", JSON.stringify(gJson).slice(0, 500));
+          // Sabablar turlicha: model band (503) yoki kalitning kunlik
+          // chegarasi tugagan (429). Ikkalasi bir xil xabar bo'lsa, nima
+          // qilish kerakligi noma'lum bo'lib qolardi.
+          const quotaOut = /quota|rate limit|RESOURCE_EXHAUSTED/i.test(String(upstream));
           return new Response(
             JSON.stringify({
               ok: false,
-              error: "AI hozir javob bera olmadi.",
+              error: quotaOut
+                ? "AI xizmatining bugungi chegarasi tugadi. Ertaga yana ochiladi."
+                : "AI hozir band. Bir daqiqadan keyin qayta urinib ko'ring.",
               detail: String(upstream).slice(0, 200),
               model,
               // Xato savol hisoblanmaydi — qolgan son o'zgarmaydi, lekin ko'rsatiladi.

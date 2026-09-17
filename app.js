@@ -3983,6 +3983,8 @@ function requestGift(id) {
 async function claimHomework() {
     const subject = prompt("Qaysi fan? (masalan: Matematika)") ;
     if (subject === null) return;
+    // Mashq raqamlari — fokus savollari AYNAN shu mashqlardan tuziladi.
+    const exercises = prompt("Qaysi mashqlar? (masalan: 39-40). Bilmasang, bo'sh qoldir.") || '';
     const note = prompt("Nima qilding? Qisqa yoz (ixtiyoriy)") || '';
     // Daftar surati — ota-ona tekshirishi uchun eng ishonchli dalil. Oila chatiga tushadi.
     const withPhoto = await new Promise(res => {
@@ -3993,9 +3995,14 @@ async function claimHomework() {
     const btn = document.getElementById('homeworkClaimBtn');
     if (btn) { btn.disabled = true; btn.textContent = '⏳ Yuborilmoqda...'; }
     try {
-        const r = await shopCall({ type: 'homework_claim', subject: subject.trim(), note: note.trim(), photo: photo || undefined });
+        const r = await shopCall({ type: 'homework_claim', subject: subject.trim(), note: note.trim(), exercises: exercises.trim(), photo: photo || undefined });
+        // Mashq darslikdan topilsa — fokus savollari aynan shundan bo'ladi.
+        const matched = (r.matched || []).map(m => m.number + '-mashq').join(', ');
         shopAlert(r.ok
-            ? "✅ Ota-onangga yuborildi. Ular tekshirib tasdiqlasa, ball tushadi. Oila chatida ham ko'rinadi."
+            ? ("✅ Ota-onangga yuborildi. Ular tekshirib tasdiqlasa, ball tushadi. Oila chatida ham ko'rinadi."
+                + (matched ? `
+
+📖 Darslikdan topildi: ${matched}. Fokus seansidan keyingi savollar shu mashqlardan bo'ladi.` : ''))
             : (r.error || "Yuborib bo'lmadi."));
     } catch (e) {
         console.error('homework_claim:', e);
