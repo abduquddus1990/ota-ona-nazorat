@@ -935,7 +935,16 @@ async function requestChildLocation() {
         if (data.location) {
             const addr = document.getElementById('radarAddress');
             if (addr) {
-                const coords = data.location.lat.toFixed(5) + ', ' + data.location.lng.toFixed(5);
+                // Vaqtsiz nuqta aldaydi: 3 soat oldingi joy ham "hozirgi"
+                // bo'lib ko'rinardi. Shuning uchun har doim qachon olingani.
+                const at = new Date(data.location.recorded_at);
+                const agoMin = Math.max(0, Math.floor((Date.now() - at) / 60000));
+                const ago = agoMin < 2 ? 'hozirgina'
+                    : agoMin < 60 ? agoMin + ' daqiqa oldin'
+                    : agoMin < 2880 ? Math.floor(agoMin / 60) + ' soat oldin'
+                    : Math.floor(agoMin / 1440) + ' kun oldin';
+                const coords = data.location.lat.toFixed(5) + ', ' + data.location.lng.toFixed(5) +
+                    ' · 🕒 ' + at.toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' }) + ' (' + ago + ')';
                 // Jonli ulashish yoqilgan bo'lsa — buni aniq ko'rsatamiz,
                 // chunki "jonli" bilan "oxirgi ma'lum joy" bir narsa emas.
                 if (data.liveUntil) {
@@ -954,10 +963,13 @@ async function requestChildLocation() {
             }
         } else {
             alert("Farzanddan hali joylashuv kelmagan.\n\n" +
-                  "Eng tez yo'l: farzandingiz botni ochib /joylashuv deb yozsin — " +
-                  "u yerda jonli joylashuvni yoqish ko'rsatmasi bor. Hech qanday ilova " +
-                  "o'rnatish shart emas, iPhone'da ham ishlaydi.\n\n" +
-                  "Bepul tarifda jonli kuzatuv 2 soat, Pro tarifda 8 soat davom etadi.");
+                  (data.asked
+                    ? "Farzandingizga so'rov yuborildi — u tugmani bosishi bilan joylashuvi va vaqti botga keladi.\n\n"
+                    : "") +
+                  "Bundan keyin farzandingiz botdagi o'z panelini har ochganda joylashuvi avtomatik saqlanadi.");
+        }
+        if (data.location && data.asked && tg && tg.showAlert) {
+            tg.showAlert("📨 Farzandingizga so'rov yuborildi. Hozir ko'rinib turgani — so'nggi ma'lum joy; yangisi kelganda bot xabar beradi.");
         }
     } catch (e) {
         console.error('requestChildLocation error:', e);

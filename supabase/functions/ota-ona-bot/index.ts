@@ -1039,6 +1039,201 @@ async function lastKnownLocation(
   return { lat: row.lat, lng: row.lng, recordedAt: row.recorded_at };
 }
 
+// ============================================================================
+// "FARZANDIM QAYERDA?" — ota-ona botda so'raganda.
+//
+// Bola Mini App'ni har ochganda nuqta jimgina saqlanadi (child_report_location,
+// reason=auto). Lekin ilgari ota-ona uni faqat panelni ochib ko'ra olardi —
+// botning o'zida "qayerda?" deb so'rashning yo'li yo'q edi. Endi bitta tugma
+// so'nggi joyni ham, u QACHON olinganini ham aytadi: "3 soat oldingi joy"
+// bilan "hozirgi joy" ota-ona uchun mutlaqo boshqa-boshqa xabar.
+// ============================================================================
+
+/** Server UTC'da ishlaydi — ota-onaga esa Toshkent vaqti kerak. */
+function tashkentVaqt(iso: string): string {
+  return new Date(iso).toLocaleString("ru-RU", {
+    timeZone: "Asia/Tashkent",
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+/** "hozirgina", "12 daqiqa oldin", "3 soat oldin", "2 kun oldin". */
+function qanchaOldin(iso: string, lang: string = "uz"): string {
+  const min = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 60000));
+  if (lang === "ru") {
+    if (min < 2) return "только что";
+    if (min < 60) return `${min} мин назад`;
+    if (min < 48 * 60) return `${Math.floor(min / 60)} ч назад`;
+    return `${Math.floor(min / 1440)} дн назад`;
+  }
+  if (min < 2) return "hozirgina";
+  if (min < 60) return `${min} daqiqa oldin`;
+  if (min < 48 * 60) return `${Math.floor(min / 60)} soat oldin`;
+  return `${Math.floor(min / 1440)} kun oldin`;
+}
+
+/** Bu nuqta shunchalik yangiki, bolani qayta bezovta qilishning hojati yo'q. */
+const FRESH_LOCATION_MIN = 15;
+
+/**
+ * Oiladagi har bir farzandning so'nggi joyi va vaqti — bot xabari sifatida.
+ * Kvota yemaydi: bu bazada allaqachon bor nuqtani ko'rsatish, bolaga yangi
+ * so'rov emas. Yangi nuqta kerak bo'lsa, xabardagi tugma request_location
+ * bilan bir xil kvota yo'lidan o'tadi.
+ */
+async function buildWhereReport(
+  familyCode: string,
+  lang: string = "uz"
+): Promise<{ text: string; keyboard: any }> {
+  const ru = lang === "ru";
+  const panelBtn = [{
+    text: ru ? "📱 Открыть карту в панели" : "📱 Panelda xaritani ochish",
+    web_app: { url: `${miniAppUrl()}&lang=${lang}` },
+  }];
+
+  if (!db) {
+    return { text: ru ? "⚠️ База недоступна." : "⚠️ Baza ulanmagan.", keyboard: undefined };
+  }
+
+  const { data: kids } = await db
+    .from("child_pairings")
+    .select("child_id, child_name, live_until")
+    .eq("family_code", familyCode)
+    .eq("is_active", true)
+    .not("child_id", "like", "invite\\_%")
+    .order("paired_at", { ascending: true })
+    .limit(10);
+
+  if (!kids || kids.length === 0) {
+    return {
+      text: ru
+        ? "👶 <b>Ребёнок ещё не подключён.</b>\n\nСначала подключите ребёнка — после этого здесь будет видно, где он был в последний раз."
+        : "👶 <b>Hali farzand ulanmagan.</b>\n\nAvval farzandingizni ulang — shundan keyin bu yerda uning so'nggi joyi va vaqti ko'rinadi.",
+      keyboard: { inline_keyboard: [[{ text: ru ? "👶 Подключить ребёнка" : "👶 Farzandni ulash", callback_data: `action_pair_${familyCode}` }]] },
+    };
+  }
+
+  const lines: string[] = [ru ? "📍 <b>Где мой ребёнок</b>" : "📍 <b>Farzandim qayerda</b>"];
+  const rows: any[] = [];
+
+  for (const k of kids) {
+    const nom = k.child_name || (ru ? "Ребёнок" : "Farzand");
+    const loc = await lastKnownLocation(familyCode, k.child_id);
+    const live = !!k.live_until && new Date(k.live_until).getTime() > Date.now();
+
+    if (!loc) {
+      lines.push(
+        `\n👦 <b>${nom}</b>\n` +
+          (ru
+            ? "❔ Местоположение ещё не приходило. Оно сохранится, когда ребёнок откроет своё приложение в боте."
+            : "❔ Hali joylashuv kelmagan. Farzand botdagi o'z panelini ochganda avtomatik saqlanadi.")
+      );
+    } else {
+      const eski = Date.now() - new Date(loc.recordedAt).getTime() > FRESH_LOCATION_MIN * 60000;
+      lines.push(
+        `\n👦 <b>${nom}</b>` + (live ? (ru ? " · 🟢 в эфире" : " · 🟢 jonli") : "") +
+          `\n🗺 <a href="https://maps.google.com/?q=${loc.lat},${loc.lng}">${ru ? "Открыть на карте" : "Xaritada ochish"}</a>` +
+          `\n🕒 ${tashkentVaqt(loc.recordedAt)} <i>(${qanchaOldin(loc.recordedAt, lang)})</i>` +
+          (eski && !live
+            ? (ru ? "\n<i>Это последнее известное место, не текущее.</i>" : "\n<i>Bu hozirgi emas, so'nggi ma'lum joy.</i>")
+            : "")
+      );
+    }
+
+    // Yangi nuqtani so'rash — faqat Telegram orqali ulangan bolaga (unga
+    // tugmali xabar boradi) va jonli translyatsiya o'chiq bo'lsa.
+    const fresh = loc && Date.now() - new Date(loc.recordedAt).getTime() <= FRESH_LOCATION_MIN * 60000;
+    if (String(k.child_id).startsWith("tg_") && !live && !fresh) {
+      rows.push([{
+        text: ru ? `📨 Спросить ${nom}, где сейчас` : `📨 ${nom}dan hozirgi joyini so'rash`,
+        callback_data: `askloc_${k.child_id}`,
+      }]);
+    }
+  }
+
+  rows.push(panelBtn);
+  return { text: lines.join("\n"), keyboard: { inline_keyboard: rows } };
+}
+
+/**
+ * Bolaga "joylashuvingni yubor" xabarini yuboradi — kvota bilan.
+ * Mini App (request_location) va bot tugmasi (askloc_) AYNAN shu yo'ldan
+ * o'tadi: aks holda ikki joyda ikki xil limit paydo bo'lardi.
+ */
+async function askChildForLocation(
+  familyCode: string,
+  childId: string,
+  requestedByTelegramId: number | null
+): Promise<{
+  status: number;
+  ok: boolean;
+  error?: string;
+  quota?: Awaited<ReturnType<typeof evaluateLocationQuota>>;
+  live: boolean;
+  liveUntil: string | null;
+  asked: boolean;
+}> {
+  const base = { live: false, liveUntil: null as string | null, asked: false };
+  if (!db) return { ...base, status: 500, ok: false, error: "Baza ulanmagan" };
+
+  // Bu farzand haqiqatan shu oilaga tegishlimi. Callback ma'lumotini qo'lda
+  // yasash qiyin emas — shuning uchun childId'ning o'zi ruxsat emas.
+  const { data: own } = await db
+    .from("child_pairings")
+    .select("child_id, live_until")
+    .eq("family_code", familyCode)
+    .eq("child_id", childId)
+    .eq("is_active", true)
+    .limit(1);
+  if (!own || !own[0]) {
+    return { ...base, status: 403, ok: false, error: "Bu farzand sizning oilangizga ulanmagan" };
+  }
+
+  // Jonli translyatsiya YONIQ bo'lsa, so'rov kvotani yemaydi va bolaga xabar
+  // bormaydi: joylashuv allaqachon o'zi oqib turibdi. Har ekran yangilashda
+  // bezovta qilsak, bola jonli ulashishni butunlay o'chirib qo'yardi.
+  const liveUntil =
+    own[0].live_until && new Date(own[0].live_until).getTime() > Date.now()
+      ? own[0].live_until
+      : null;
+  if (liveUntil) {
+    return {
+      status: 200, ok: true, live: true, liveUntil, asked: false,
+      quota: { allowed: true, plan: await getPlan(familyCode), remaining: -1, resetInHours: 0, reason: "", upgradeRequired: false },
+    };
+  }
+
+  const q = await evaluateLocationQuota(familyCode, childId);
+  if (!q.allowed) return { ...base, status: 402, ok: false, error: q.reason, quota: q };
+
+  await db.from("location_requests").insert({
+    family_code: familyCode,
+    child_id: childId,
+    requested_by_telegram_id: requestedByTelegramId,
+    plan_at_request: q.plan,
+  });
+
+  const askTgId = childId.startsWith("tg_") ? childId.slice(3) : null;
+  if (askTgId) {
+    await sendMessage(
+      askTgId,
+      `📍 <b>Ota-onang qayerdaligingni so'rayapti.</b>\n\n` +
+        `Pastdagi tugmani bosing — joylashuving bir zumda yuboriladi. ` +
+        `Doimiy kuzatuv emas, faqat shu daqiqadagi nuqta.`,
+      {
+        inline_keyboard: [[{
+          text: "📍 Joylashuvni yuborish",
+          web_app: { url: `${miniAppUrl()}&role=child&ask=loc` },
+        }]],
+      }
+    );
+  }
+  return { ...base, status: 200, ok: true, quota: q, asked: !!askTgId };
+}
+
 async function notifyAdmins(
   htmlText: string,
   replyMarkup?: any
@@ -1196,6 +1391,7 @@ function getStartKeyboard(userId: string | number, lang: string = "uz", isChild:
     return {
       inline_keyboard: [
         [{ text: "📱 Открыть панель (Mini App)", web_app: { url: `${miniAppUrl()}&lang=ru` } }],
+        [{ text: "📍 Где мой ребёнок?", callback_data: "action_where" }],
         [{ text: "👶 Подключить ребёнка", callback_data: `action_pair_${code}` }],
         [{ text: "🌐 Til / Язык (UZ/RU)", callback_data: "action_lang" }],
       ],
@@ -1204,6 +1400,7 @@ function getStartKeyboard(userId: string | number, lang: string = "uz", isChild:
   return {
     inline_keyboard: [
       [{ text: "📱 Ota-ona paneli (Mini App)", web_app: { url: `${miniAppUrl()}&lang=uz` } }],
+      [{ text: "📍 Farzandim qayerda?", callback_data: "action_where" }],
       [{ text: "👶 Farzandni ulash", callback_data: `action_pair_${code}` }],
       [{ text: "🌐 Til / Язык (UZ/RU)", callback_data: "action_lang" }],
     ],
@@ -2142,7 +2339,7 @@ async function handleRequest(req: Request): Promise<Response> {
         line("👦 <b>Farzand:</b>", payload.childName) +
         line("🎓 <b>Sinf:</b>", row.child_grade) +
         `\n🔑 <b>Oila Kodi:</b> <code>${familyCode}</code>` +
-        `\n📅 <b>Vaqt:</b> ${new Date().toLocaleString("uz-UZ")}` +
+        `\n📅 <b>Vaqt:</b> ${tashkentVaqt(new Date().toISOString())}` +
         `\n\nRuxsat berasizmi?`;
 
       // Tugma endi username emas, oila kodini olib yuradi — tasdiqlash
@@ -4635,14 +4832,7 @@ async function handleRequest(req: Request): Promise<Response> {
     // 2 ta so'rov. Tekshiruv mijozda emas, serverda - aks holda Mini App
     // kodini o'zgartirgan odam limitni aylanib o'tardi.
     if (payload.type === "request_location") {
-      if (!db) {
-        return new Response(JSON.stringify({ ok: false, error: "Baza ulanmagan" }), {
-          status: 500,
-          headers: { "Content-Type": "application/json" },
-        });
-      }
-
-      const familyCode = actor!.kind === "telegram" ? actor!.familyCode : actor!.familyCode;
+      const familyCode = actor!.familyCode;
       const childId = String(payload.childId || "").trim();
       if (!childId) {
         return new Response(
@@ -4651,98 +4841,29 @@ async function handleRequest(req: Request): Promise<Response> {
         );
       }
 
-      // Bu farzand haqiqatan shu oilaga tegishlimi.
-      const { data: own } = await db
-        .from("child_pairings")
-        .select("child_id")
-        .eq("family_code", familyCode)
-        .eq("child_id", childId)
-        .eq("is_active", true)
-        .limit(1);
-
-      if (!own || !own[0]) {
-        return new Response(
-          JSON.stringify({ ok: false, error: "Bu farzand sizning oilangizga ulanmagan" }),
-          { status: 403, headers: { "Content-Type": "application/json" } }
-        );
-      }
-
-      // Jonli translyatsiya YONIQ bo'lsa, so'rov kvotani yemaydi.
-      // Sababi oddiy: bu holatda joylashuv allaqachon o'zi oqib turibdi,
-      // ota-ona esa faqat ekranni yangilayapti. Buning uchun bepul
-      // limitdan yechib olish — hech narsa bermay pul olishdek gap.
-      const { data: liveNow } = await db
-        .from("child_pairings")
-        .select("live_until")
-        .eq("family_code", familyCode)
-        .eq("child_id", childId)
-        .limit(1);
-      const jonliYoniq = !!(
-        liveNow && liveNow[0] && liveNow[0].live_until &&
-        new Date(liveNow[0].live_until).getTime() > Date.now()
+      const r = await askChildForLocation(
+        familyCode,
+        childId,
+        actor!.kind === "telegram" ? actor!.telegramId : null
       );
+      const q = r.quota;
 
-      const q = jonliYoniq
-        ? { allowed: true, plan: await getPlan(familyCode), remaining: -1, resetInHours: 0, reason: "", upgradeRequired: false }
-        : await evaluateLocationQuota(familyCode, childId);
-
-      if (!q.allowed) {
+      if (!r.ok) {
         return new Response(
           JSON.stringify({
             ok: false,
-            upgradeRequired: q.upgradeRequired,
-            plan: q.plan,
+            upgradeRequired: !!q?.upgradeRequired,
+            plan: q?.plan,
             remaining: 0,
-            resetInHours: q.resetInHours,
-            error: q.reason,
+            resetInHours: q?.resetInHours || 0,
+            error: r.error,
           }),
-          { status: 402, headers: { "Content-Type": "application/json" } }
+          { status: r.status, headers: { "Content-Type": "application/json" } }
         );
       }
 
-      // So'rovni yozamiz - kvota keyingi safar shundan hisoblanadi.
-      // Jonli translyatsiya paytida yozmaymiz: u kvotaga kirmasligi kerak.
-      if (!jonliYoniq) {
-        await db.from("location_requests").insert({
-          family_code: familyCode,
-          child_id: childId,
-          requested_by_telegram_id: actor!.kind === "telegram" ? actor!.telegramId : null,
-          plan_at_request: q.plan,
-        });
-      }
-
-      // So'rov BOLAGA ham yetib boradi. Ilgari bu tugma faqat bazadagi eski
-      // nuqtani qaytarardi — ya'ni ota-ona "so'radim" deb o'ylardi-yu, bola
-      // hech narsa ko'rmasdi. Endi bu topshiriq: bolaning telefoniga bitta
-      // tugmali xabar boradi, u bossa aniq joylashuv keladi.
-      const askTgId = String(childId).startsWith("tg_")
-        ? String(childId).slice(3)
-        : null;
-      // Jonli translyatsiya yoniq bo'lsa, bolani bezovta qilmaymiz: uning
-      // joylashuvi allaqachon ko'rinib turibdi. Har ekran yangilaganda
-      // xabar yuborsak, bola bir kunda o'nlab bildirishnoma olardi va
-      // jonli ulashishni butunlay o'chirib qo'yardi.
-      if (askTgId && !jonliYoniq) {
-        await sendMessage(
-          askTgId,
-          `📍 <b>Ota-onang qayerdaligingni so'rayapti.</b>\n\n` +
-            `Pastdagi tugmani bosing — joylashuving bir zumda yuboriladi. ` +
-            `Doimiy kuzatuv emas, faqat shu daqiqadagi nuqta.`,
-          {
-            inline_keyboard: [
-              [
-                {
-                  text: "📍 Joylashuvni yuborish",
-                  web_app: { url: `${miniAppUrl()}&role=child&ask=loc` },
-                },
-              ],
-            ],
-          }
-        );
-      }
-
-      // Eng so'nggi ma'lum joylashuv (qurilma yuborgan).
-      const { data: pings } = await db
+      // Eng so'nggi ma'lum joylashuv (qurilma yoki Mini App yuborgan).
+      const { data: pings } = await db!
         .from("location_pings")
         .select("lat, lng, accuracy_m, recorded_at")
         .eq("family_code", familyCode)
@@ -4750,28 +4871,16 @@ async function handleRequest(req: Request): Promise<Response> {
         .order("recorded_at", { ascending: false })
         .limit(1);
 
-      // Jonli joylashuv yoqilganmi — panel buni "jonli" deb ko'rsatishi uchun.
-      const { data: liveRow } = await db
-        .from("child_pairings")
-        .select("live_until")
-        .eq("family_code", familyCode)
-        .eq("child_id", childId)
-        .limit(1);
-      const liveUntil =
-        liveRow && liveRow[0] && liveRow[0].live_until &&
-        new Date(liveRow[0].live_until).getTime() > Date.now()
-          ? liveRow[0].live_until
-          : null;
-
       return new Response(
         JSON.stringify({
           ok: true,
-          plan: q.plan,
+          plan: q!.plan,
           // Pro uchun -1 (cheklovsiz), bepul uchun bu so'rovdan keyin qolgani.
-          remaining: q.remaining > 0 ? q.remaining - 1 : q.remaining,
-          resetInHours: q.resetInHours,
+          remaining: q!.remaining > 0 ? q!.remaining - 1 : q!.remaining,
+          resetInHours: q!.resetInHours,
           location: pings && pings[0] ? pings[0] : null,
-          liveUntil,
+          liveUntil: r.liveUntil,
+          asked: r.asked,
         }),
         { status: 200, headers: { "Content-Type": "application/json" } }
       );
@@ -5539,7 +5648,7 @@ async function handleRequest(req: Request): Promise<Response> {
           familyCode,
           "\u{1F4CD} <b>" + f.message + "</b>\n\n" +
             '<a href="https://maps.google.com/?q=' + lat + "," + lng + '">Xaritada ko\'rish</a>' +
-            "\n🕒 " + new Date().toLocaleString("uz-UZ")
+            "\n🕒 " + tashkentVaqt(new Date().toISOString())
         );
       }
 
@@ -5559,7 +5668,7 @@ async function handleRequest(req: Request): Promise<Response> {
             ? `🏫 <b>${nom}: "Yetib keldim"</b>`
             : `📍 <b>${nom} joylashuvini yubordi</b>`) +
             `\n\n<a href="https://maps.google.com/?q=${lat},${lng}">Xaritada ko'rish</a>` +
-            `\n🕒 ${new Date().toLocaleString("uz-UZ")}`
+            `\n🕒 ${tashkentVaqt(new Date().toISOString())}`
         );
       }
 
@@ -5601,7 +5710,7 @@ async function handleRequest(req: Request): Promise<Response> {
           actor!.familyCode,
           "\u{1F4CD} <b>" + f.message + "</b>\n\n" +
             '<a href="https://maps.google.com/?q=' + lat + "," + lng + '">Xaritada ko\'rish</a>' +
-            "\n🕒 " + new Date().toLocaleString("uz-UZ")
+            "\n🕒 " + tashkentVaqt(new Date().toISOString())
         );
       }
 
@@ -5833,7 +5942,7 @@ async function handleRequest(req: Request): Promise<Response> {
           ? actor!.familyCode
           : String(payload.familyCode || "").replace(/\D/g, "");
 
-      const alertMsg = `🎉 <b>FARZAND ULANDI!</b>\n\n👦 <b>Farzand:</b> ${childName}\n🔑 <b>Oila Kodi:</b> <code>${shownCode}</code>\n📅 <b>Vaqt:</b> ${new Date().toLocaleString("uz-UZ")}`;
+      const alertMsg = `🎉 <b>FARZAND ULANDI!</b>\n\n👦 <b>Farzand:</b> ${childName}\n🔑 <b>Oila Kodi:</b> <code>${shownCode}</code>\n📅 <b>Vaqt:</b> ${tashkentVaqt(new Date().toISOString())}`;
 
       await notifyAdmins(alertMsg);
       return new Response(JSON.stringify({ ok: true }), { status: 200 });
@@ -5929,12 +6038,12 @@ async function handleRequest(req: Request): Promise<Response> {
       const loc = await lastKnownLocation(familyCode, childId);
       const locLine = loc
         ? `\n📍 <b>So'nggi joyi:</b> <a href="https://maps.google.com/?q=${loc.lat},${loc.lng}">xaritada ochish</a>` +
-          `\n🕒 <i>${new Date(loc.recordedAt).toLocaleString("uz-UZ")} holatiga ko'ra</i>`
+          `\n🕒 <i>${tashkentVaqt(loc.recordedAt)} holatiga ko'ra</i>`
         : `\n📍 <i>Joylashuv hali kelmagan (Android ilova o'rnatilganini tekshiring).</i>`;
 
       const alertMsg = isSos
-        ? `🆘 <b>SHOSHILINCH! FARZANDINGIZ YORDAM SO'RAMOQDA</b>\n\n👦 <b>Farzand:</b> ${childName}\n💬 <b>Xabar:</b> <b>${statusText}</b>${locLine}\n\n📅 ${new Date().toLocaleString("uz-UZ")}`
-        : `📍 <b>Farzandingizdan xabar</b>\n\n👦 <b>${childName}:</b> <b>${statusText}</b>${locLine}\n\n📅 ${new Date().toLocaleString("uz-UZ")}`;
+        ? `🆘 <b>SHOSHILINCH! FARZANDINGIZ YORDAM SO'RAMOQDA</b>\n\n👦 <b>Farzand:</b> ${childName}\n💬 <b>Xabar:</b> <b>${statusText}</b>${locLine}\n\n📅 ${tashkentVaqt(new Date().toISOString())}`
+        : `📍 <b>Farzandingizdan xabar</b>\n\n👦 <b>${childName}:</b> <b>${statusText}</b>${locLine}\n\n📅 ${tashkentVaqt(new Date().toISOString())}`;
 
       const delivered = await notifyFamilyParents(familyCode, alertMsg);
 
@@ -6109,7 +6218,7 @@ async function handleRequest(req: Request): Promise<Response> {
             row.family_code,
             "\u{1F4CD} <b>" + f.message + "</b>\n\n" +
               '<a href="https://maps.google.com/?q=' + loc.latitude + "," + loc.longitude + '">Xaritada ko\'rish</a>' +
-              "\n🕒 " + new Date().toLocaleString("uz-UZ")
+              "\n🕒 " + tashkentVaqt(new Date().toISOString())
           );
         }
 
@@ -6280,6 +6389,40 @@ async function handleRequest(req: Request): Promise<Response> {
             ? `❌ <b>Rad etildi:</b> <code>${targetCode}</code> so'rovi rad etildi.`
             : `⚠️ <b>Bazaga yozilmadi:</b> <code>${targetCode}</code> uchun so'rov topilmadi.`
         );
+        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      }
+
+      // "Farzandim qayerda?" — so'nggi joy va vaqti.
+      if (data === "action_where") {
+        const r = await buildWhereReport(generateFamilyCode(chatId), lang);
+        await sendMessage(chatId, r.text, r.keyboard);
+        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      }
+
+      // Hisobotdagi "hozirgi joyini so'rash" tugmasi. Oila kodi tugmadan
+      // emas, bosgan odamning o'z ID'sidan olinadi — begona bolani so'rab
+      // bo'lmaydi (askChildForLocation egalikni ham tekshiradi).
+      if (data.startsWith("askloc_")) {
+        const childId = data.slice("askloc_".length);
+        const r = await askChildForLocation(generateFamilyCode(chatId), childId, chatId);
+        let javob: string;
+        if (r.ok && r.live) {
+          javob = "🟢 <b>Jonli joylashuv yoqilgan</b> — farzandingiz joyi o'zi yangilanib turibdi. Bezovta qilmadim.";
+        } else if (r.ok && r.asked) {
+          const qoldi = r.quota && r.quota.plan !== "pro"
+            ? `\n\n<i>Bepul tarifda ${FREE_WINDOW_HOURS} soatda yana ${Math.max(0, r.quota.remaining - 1)} ta so'rov qoldi.</i>`
+            : "";
+          javob =
+            "📨 <b>Farzandingizga so'rov yuborildi.</b>\n\n" +
+            "U tugmani bosishi bilan joylashuvi va vaqti shu yerga keladi." + qoldi;
+        } else if (r.ok) {
+          javob = "ℹ️ Bu farzand Telegram orqali emas, ilova orqali ulangan — joylashuvi ilovadan o'zi keladi.";
+        } else if (r.status === 402) {
+          javob = `💎 <b>${r.error}</b>\n\nHozircha yuqoridagi so'nggi ma'lum joy ko'rinib turadi.`;
+        } else {
+          javob = `⚠️ ${r.error || "So'rovni yuborib bo'lmadi."}`;
+        }
+        await sendMessage(chatId, javob);
         return new Response(JSON.stringify({ ok: true }), { status: 200 });
       }
 
@@ -6561,6 +6704,20 @@ async function handleRequest(req: Request): Promise<Response> {
       // Muhim: bot jonli joylashuvni TUGMA orqali so'ray olmaydi — Telegram
       // buni faqat foydalanuvchining o'zi qo'lda yoqishiga ruxsat beradi.
       // Shuning uchun bu yerda aniq qadamlar yoziladi.
+      // Ota-ona "qayerda?" deb so'raydi — buyruq bilan ham, oddiy so'z bilan
+      // ham. Bola yozsa bu yerga tushmaydi: uning oilasi o'z ID'sidan emas.
+      if (
+        text.startsWith("/qayerda") ||
+        (!text.startsWith("/") && text.length <= 40 &&
+          /(qayerda|lokatsiya|joylashuv|где)/i.test(text))
+      ) {
+        if (!(await isPairedChild(chatId)) && (await hasRegistration(chatId))) {
+          const r = await buildWhereReport(generateFamilyCode(chatId), lang);
+          await sendMessage(chatId, r.text, r.keyboard);
+          return new Response(JSON.stringify({ ok: true }), { status: 200 });
+        }
+      }
+
       if (text.startsWith("/joylashuv")) {
         const isChildHere = await isPairedChild(chatId);
         if (isChildHere) {
