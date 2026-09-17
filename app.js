@@ -3984,12 +3984,18 @@ async function claimHomework() {
     const subject = prompt("Qaysi fan? (masalan: Matematika)") ;
     if (subject === null) return;
     const note = prompt("Nima qilding? Qisqa yoz (ixtiyoriy)") || '';
+    // Daftar surati — ota-ona tekshirishi uchun eng ishonchli dalil. Oila chatiga tushadi.
+    const withPhoto = await new Promise(res => {
+        const q = "📷 Daftaringni suratga olib qo'shasanmi? Ota-onang tekshirishi osonlashadi.";
+        if (tg && tg.showConfirm) tg.showConfirm(q, ok => res(!!ok)); else res(confirm(q));
+    });
+    const photo = withPhoto && typeof pickImage === 'function' ? await pickImage() : null;
     const btn = document.getElementById('homeworkClaimBtn');
     if (btn) { btn.disabled = true; btn.textContent = '⏳ Yuborilmoqda...'; }
     try {
-        const r = await shopCall({ type: 'homework_claim', subject: subject.trim(), note: note.trim() });
+        const r = await shopCall({ type: 'homework_claim', subject: subject.trim(), note: note.trim(), photo: photo || undefined });
         shopAlert(r.ok
-            ? "✅ Ota-onangga yuborildi. Ular tekshirib tasdiqlasa, ball tushadi."
+            ? "✅ Ota-onangga yuborildi. Ular tekshirib tasdiqlasa, ball tushadi. Oila chatida ham ko'rinadi."
             : (r.error || "Yuborib bo'lmadi."));
     } catch (e) {
         console.error('homework_claim:', e);
@@ -5198,7 +5204,8 @@ function renderParentExtras() {
         { emoji: '📍', name: 'Xavfsiz hududlar', desc: 'Uy va maktabni belgilang', fn: 'openZonesModal()' },
         { emoji: '🔔', name: 'Bildirishnomalar', desc: 'Nima va qachon keladi', fn: 'openNotificationsModal()' },
         { emoji: '🧩', name: 'Oilaviy Viktorina', desc: 'Farzandingiz bilan bellashing', fn: "switchTab('tab-games'); setTimeout(() => openGame('quiz'), 300);" },
-        { emoji: '🎮', name: "Farzand o'yinlari", desc: "Kim bilan online o'ynagan", fn: 'openFamilyMatches()' }
+        { emoji: '🎮', name: "Farzand o'yinlari", desc: "Kim bilan online o'ynagan", fn: 'openFamilyMatches()' },
+        { emoji: '💬', name: 'Oila chati', desc: "Uy vazifasi, sovg'alar, xabarlar", fn: 'openFamilyChat()' }
     ];
 
     grid.innerHTML = tiles.map(t =>

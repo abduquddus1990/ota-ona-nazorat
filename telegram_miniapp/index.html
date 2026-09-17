@@ -367,6 +367,14 @@
                     </div>
                 </button>
             </div>
+            <button onclick="openFamilyChat()" class="w-full p-2.5 rounded-xl bg-indigo-500/15 hover:bg-indigo-500/25 border border-indigo-500/40 text-left transition flex items-center gap-2">
+                <span class="text-lg">💬</span>
+                <div>
+                    <div class="text-[11px] font-bold text-indigo-100">Oila chati</div>
+                    <div class="text-[9px] text-indigo-300/80">Faqat oilang ko'radi</div>
+                </div>
+                <span class="chat-unread-badge hidden ml-auto min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center">0</span>
+            </button>
         </section>
 
         <!-- ⏱️ BO'LIMOSTI 2: POMODORO DARS TAYMERI & KO'Z MASHQI -->
@@ -995,6 +1003,11 @@
                 <span>✨</span><span>Qo'shimcha imkoniyatlar</span>
             </h3>
             <div class="grid grid-cols-2 gap-2">
+                <button onclick="openFamilyChat()" class="p-3 rounded-2xl bg-slate-900/70 border border-slate-700 hover:border-indigo-500/60 transition text-left">
+                    <div class="flex items-center"><span class="text-xl">💬</span><span class="chat-unread-badge hidden ml-auto min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center">0</span></div>
+                    <div class="text-[11px] font-bold text-white mt-1">Oila chati</div>
+                    <div class="text-[9px] text-slate-400">Uy vazifasi, sovg'alar, xabarlar</div>
+                </button>
                 <button onclick="openSubpage('modal-games'); renderGamesGrid();" class="p-3 rounded-2xl bg-slate-900/70 border border-slate-700 hover:border-fuchsia-500/60 transition text-left">
                     <div class="text-xl">🧩</div>
                     <div class="text-[11px] font-bold text-white mt-1">Oilaviy Viktorina</div>
@@ -1694,6 +1707,26 @@
 
         <div id="gamesGrid" class="space-y-2.5"></div>
         <div id="gameStage" class="hidden"></div>
+    </div>
+
+    <!-- 💬 OILAVIY CHAT -->
+    <style>
+        /* Chat: xabarlar o'rtada aylanadi, yozish maydoni doim pastda turadi. */
+        #modal-family-chat.active { display: flex; flex-direction: column; overflow: hidden; padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px)); }
+    </style>
+    <div id="modal-family-chat" class="subpage-modal">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+            <button onclick="closeSubpage(); refreshChatBadge();" class="text-xs font-bold text-emerald-400">← Orqaga</button>
+            <h2 class="text-xs font-bold text-white">💬 Oila chati</h2>
+            <span class="w-8"></span>
+        </div>
+        <div class="text-[9px] text-slate-500 text-center py-1">Bu suhbatni faqat oilangiz ko'radi.</div>
+        <div id="familyChatThread" class="flex-1 overflow-y-auto space-y-2 py-2 px-0.5"></div>
+        <div class="flex items-center gap-1.5 pt-2 pb-3 border-t border-slate-800">
+            <button onclick="sendChatPhoto()" class="w-10 h-10 shrink-0 rounded-xl bg-slate-800 border border-slate-700 text-lg" title="Surat">📷</button>
+            <input id="familyChatInput" maxlength="1000" placeholder="Xabar yozing..." onkeydown="if(event.key==='Enter'){event.preventDefault();sendChatMessage();}" class="flex-1 min-w-0 bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-indigo-500">
+            <button id="familyChatSend" onclick="sendChatMessage()" class="w-10 h-10 shrink-0 rounded-xl bg-indigo-500 text-white text-lg">➤</button>
+        </div>
     </div>
 
     <!-- 🎮 OTA-ONA: farzandning online o'yinlari -->
@@ -2750,7 +2783,7 @@
     </nav>
 
     <!-- Custom JavaScript -->
-    <script src="app.js?v=7.4"></script>
+    <script src="app.js?v=7.5"></script>
     <!-- O'yinlar alohida faylda: app.js allaqachon katta, va o'yin kontenti
          (savollar, kartalar) o'sib boradi. Alohida fayl brauzerda alohida
          keshlanadi — o'yin qo'shilsa, butun ilova qayta yuklanmaydi. -->
@@ -2759,8 +2792,9 @@
     <!-- Do'st bilan online o'yinlar: sim.js serverdagi nusxa bilan AYNAN bir xil bo'lishi shart. -->
     <script src="sim.js?v=1"></script>
     <script src="online.js?v=2"></script>
+    <script src="chat.js?v=1"></script>
     <script src="advice.js?v=1"></script>
     <!-- Rus tili: sahifadagi barcha matnni lug'at bo'yicha o'giradi (keyin paydo bo'ladiganini ham). -->
-    <script src="i18n_ru.js?v=2"></script>
+    <script src="i18n_ru.js?v=3"></script>
 </body>
 </html>

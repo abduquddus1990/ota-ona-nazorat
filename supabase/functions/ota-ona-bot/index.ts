@@ -2266,6 +2266,9 @@ async function handleBallRoutes(payload: any, actor: Actor): Promise<Response | 
 
     const note = String(payload.note || "").trim().slice(0, 120);
     const subject = String(payload.subject || "Uy vazifasi").trim().slice(0, 40) || "Uy vazifasi";
+    // Daftar surati (ixtiyoriy) — oila chatiga karta bilan birga tushadi.
+    const hwPhoto = typeof payload.photo === "string" && /^data:image\/(jpeg|png|webp);base64,/.test(payload.photo) &&
+      payload.photo.length <= CHAT_PHOTO_MAX ? payload.photo : null;
     const { data: ins } = await db
       .from("homework_items")
       .insert({
@@ -2283,10 +2286,14 @@ async function handleBallRoutes(payload: any, actor: Actor): Promise<Response | 
 
     const rules = await getTimeBankRules(familyCode, childId);
     const nom = await participantName(familyCode, childId);
+    await postChatEvent(familyCode, { id: childId, role: "child", name: nom },
+      { type: "homework", refId: id, status: "pending", subject, note, points: rules.minutes_per_homework },
+      `📚 Uy vazifam tayyor: ${subject}${note ? " — " + note : ""}`, hwPhoto);
     const delivered = await notifyFamilyParents(
       familyCode,
       `📚 <b>${nom}: "Uy vazifamni bajardim"</b>\n\n` +
         `<b>Fan:</b> ${subject}` + (note ? `\n<b>Izoh:</b> ${note}` : "") +
+        (hwPhoto ? `\n📷 Daftar surati oila chatida.` : "") +
         `\n\nTekshirib ko'ring. Tasdiqlasangiz, <b>+${rules.minutes_per_homework} ball</b> yoziladi.`,
       {
         inline_keyboard: [[
@@ -2515,6 +2522,9 @@ async function handleBallRoutes(payload: any, actor: Actor): Promise<Response | 
     if (!rid) return jsonRes({ ok: false, error: "Saqlab bo'lmadi." }, 500);
 
     const nom = await participantName(familyCode, childId);
+    await postChatEvent(familyCode, { id: childId, role: "child", name: nom },
+      { type: "gift", refId: rid, status: "pending", emoji: item.emoji, title: item.title, price: item.price },
+      `🎁 Sovg'a so'rayman: ${item.emoji} ${item.title} — ${item.price} ball`);
     await notifyFamilyParents(
       familyCode,
       `🎁 <b>${nom} sovg'a so'rayapti</b>\n\n${item.emoji} <b>${item.title}</b> — ${item.price} ball\n` +
@@ -2538,16 +2548,26 @@ async function handleBallRoutes(payload: any, actor: Actor): Promise<Response | 
  * Tugma ma'lumotini qo'lda yasash qiyin emas — shuning uchun yozuv id'si
  * ruxsat emas, bosgan odamning oilasi solishtiriladi.
  */
-async function handleBallCallback(data: string, chatId: number): Promise<boolean> {
+async function handleBallCallback(
+  data: string,
+  chatId: number,
+  // Mini App chatidan chaqirilganda ota-onaga bot xabari yuborilmaydi —
+  // javob matni shu massivga yig'ilib, ekranda ko'rsatiladi.
+  opts: { collect?: string[] } = {},
+): Promise<boolean> {
+  const tellParent = async (text: string) => {
+    if (opts.collect) opts.collect.push(text);
+    else await tellParent(text);
+  };
   if (data.startsWith("pex_")) {
-    await sendMessage(chatId, "ℹ️ Ballarni Pro'ga almashtirish olib tashlandi — endi ballar Ball do'konida sarflanadi.");
+    await tellParent("ℹ️ Ballarni Pro'ga almashtirish olib tashlandi — endi ballar Ball do'konida sarflanadi.");
     return true;
   }
   const isHw = data.startsWith("hw_ok_") || data.startsWith("hw_no_");
   const isRw = data.startsWith("rw_ok_") || data.startsWith("rw_no_");
   if (!isHw && !isRw) return false;
   if (!db) {
-    await sendMessage(chatId, "⚠️ Baza ulanmagan.");
+    await tellParent("⚠️ Baza ulanmagan.");
     return true;
   }
   const approve = data.startsWith("hw_ok_") || data.startsWith("rw_ok_");
@@ -2558,11 +2578,11 @@ async function handleBallCallback(data: string, chatId: number): Promise<boolean
   const { data: rows } = await db.from(table).select("*").eq("id", id).limit(1);
   const row = rows && rows[0];
   if (!row || row.family_code !== myFamily) {
-    await sendMessage(chatId, "⛔️ Bu so'rov sizning oilangizga tegishli emas.");
+    await tellParent("⛔️ Bu so'rov sizning oilangizga tegishli emas.");
     return true;
   }
   if (row.status !== "pending") {
-    await sendMessage(chatId, "ℹ️ Bu so'rov allaqachon ko'rib chiqilgan.");
+    await tellParent("ℹ️ Bu so'rov allaqachon ko'rib chiqilgan.");
     return true;
   }
 
@@ -2575,21 +2595,23 @@ async function handleBallCallback(data: string, chatId: number): Promise<boolean
     .update({ status: approve ? "approved" : "rejected", decided_at: new Date().toISOString(), ...(isRw ? { decided_by: chatId } : {}) })
     .eq("id", id).eq("status", "pending").select("id");
   if (!claimed || !claimed[0]) {
-    await sendMessage(chatId, "ℹ️ Bu so'rov allaqachon ko'rib chiqilgan.");
+    await tellParent("ℹ️ Bu so'rov allaqachon ko'rib chiqilgan.");
     return true;
   }
 
+  await updateChatEvent(row.family_code, isHw ? "homework" : "gift", id, { status: approve ? "approved" : "rejected" });
+
   if (isHw) {
     if (!approve) {
-      await sendMessage(chatId, `❌ Belgilandi: ${nom}ning uy vazifasi tasdiqlanmadi.`);
+      await tellParent(`❌ Belgilandi: ${nom}ning uy vazifasi tasdiqlanmadi.`);
       if (childTg) await sendMessage(childTg, `📚 Ota-onang uy vazifangni hali bajarilgan deb hisoblamadi. Tugatib, qayta yubor 💪`);
       return true;
     }
     const rules = await getTimeBankRules(row.family_code, row.child_id);
     const awarded = await timeBankAward(row.family_code, row.child_id, Number(rules.minutes_per_homework), "homework", row.subject || "Uy vazifasi");
     await db.from("homework_items").update({ done: true, done_at: new Date().toISOString(), awarded }).eq("id", id);
-    await sendMessage(
-      chatId,
+    await updateChatEvent(row.family_code, "homework", id, { status: "approved", awarded });
+    await tellParent(
       awarded > 0
         ? `✅ Tasdiqlandi. ${nom}ga <b>+${awarded} ball</b> yozildi.`
         : `✅ Tasdiqlandi. Lekin ${nom} bugungi ball chegarasiga yetgan — ball yozilmadi.`
@@ -2604,7 +2626,7 @@ async function handleBallCallback(data: string, chatId: number): Promise<boolean
 
   // Sovg'a
   if (!approve) {
-    await sendMessage(chatId, `⏳ Belgilandi: ${row.emoji || "🎁"} ${row.title} hozircha berilmaydi. Ball yechilmadi.`);
+    await tellParent(`⏳ Belgilandi: ${row.emoji || "🎁"} ${row.title} hozircha berilmaydi. Ball yechilmadi.`);
     if (childTg) await sendMessage(childTg, `⏳ Ota-onang «${row.title}» sovg'asini hozircha qoldirdi. Ballaring joyida — keyinroq yana so'rashing mumkin.`);
     return true;
   }
@@ -2614,14 +2636,224 @@ async function handleBallCallback(data: string, chatId: number): Promise<boolean
   });
   if (error || spent !== true) {
     await db.from("reward_redemptions").update({ status: "rejected" }).eq("id", id);
-    await sendMessage(chatId, `⚠️ ${nom}da endi ${row.price} ball yo'q — sovg'a berilmadi.`);
+    await updateChatEvent(row.family_code, "gift", id, { status: "rejected", reason: "no_balance" });
+    await tellParent(`⚠️ ${nom}da endi ${row.price} ball yo'q — sovg'a berilmadi.`);
     return true;
   }
-  await sendMessage(chatId, `✅ Tasdiqlandi: ${row.emoji || "🎁"} <b>${row.title}</b>. ${nom}dan ${row.price} ball yechildi.\n\nEndi va'dani bajarish sizda 🙂`);
+  await tellParent(`✅ Tasdiqlandi: ${row.emoji || "🎁"} <b>${row.title}</b>. ${nom}dan ${row.price} ball yechildi.\n\nEndi va'dani bajarish sizda 🙂`);
   if (childTg) {
     await sendMessage(childTg, `🎉 <b>Ota-onang sovg'angni tasdiqladi!</b>\n\n${row.emoji || "🎁"} <b>${row.title}</b>\n−${row.price} ball. Buni sen ishlab topding!`);
   }
   return true;
+}
+
+
+// ============================================================================
+// OILAVIY CHAT (database/18_oila_chati.sql)
+//
+// A'zolik mijozdan emas, serverdan: ota-ona — o'z oila kodi, farzand —
+// child_pairings dagi haqiqiy juftligi. Ilova voqealari (uy vazifasi, sovg'a,
+// "Maktabdaman", joylashuv, SOS) ham shu suhbatga tushadi va ota-ona uy
+// vazifasi bilan sovg'ani chatning o'zida tasdiqlaydi.
+// ============================================================================
+
+const CHAT_TEXT_MAX = 1000;
+// Siqilgan JPEG data URL. Mijoz 1024px / 60% sifatga tushiradi (~150 KB).
+const CHAT_PHOTO_MAX = 600_000;
+const CHAT_PAGE = 60;
+// Shu vaqt ichida chatni o'qigan a'zoga bot orqali xabar yuborilmaydi —
+// u baribir ekranda ko'rib turibdi.
+const CHAT_ACTIVE_MS = 2 * 60 * 1000;
+
+type ChatMember = { familyCode: string; memberId: string; role: "parent" | "child"; name: string; telegramId: number | null };
+
+async function chatMember(actor: Actor): Promise<ChatMember | null> {
+  if (!db) return null;
+  const kid = await actorAsChild(actor);
+  if (kid) {
+    const { data } = await db.from("child_pairings").select("child_name")
+      .eq("family_code", kid.familyCode).eq("child_id", kid.childId).limit(1);
+    return {
+      familyCode: kid.familyCode, memberId: kid.childId, role: "child",
+      name: (data && data[0]?.child_name) || "Farzand",
+      telegramId: kid.childId.startsWith("tg_") ? Number(kid.childId.slice(3)) : null,
+    };
+  }
+  const fam = await actorAsParent(actor);
+  if (!fam || actor.kind !== "telegram") return null;
+  const { data } = await db.from("parent_registrations").select("parent_name, parent_telegram_id, mother_name")
+    .eq("family_code", fam).limit(1);
+  const reg = data && data[0];
+  // Faqat shu oilaning RO'YXATDAN O'TGAN ota-onasi. Ilgari ulanmagan istalgan
+  // Telegram foydalanuvchisi o'z ID'sidan hisoblangan (mavjud bo'lmagan)
+  // oila kodi bilan chatga "ota-ona" bo'lib yoza olardi.
+  if (!reg || Number(reg.parent_telegram_id) !== Number(actor.telegramId)) return null;
+  const isMain = true;
+  return {
+    familyCode: fam, memberId: "parent_" + actor.telegramId, role: "parent",
+    name: (isMain ? reg?.parent_name : reg?.mother_name) || "Ota-ona",
+    telegramId: actor.telegramId,
+  };
+}
+
+/** Ilova voqeasini chatga yozadi. Xato bo'lsa asosiy amal buzilmasligi uchun jim. */
+async function postChatEvent(
+  familyCode: string,
+  author: { id: string; role: "parent" | "child"; name: string },
+  event: Record<string, unknown>,
+  body: string,
+  photo?: string | null,
+) {
+  if (!db || !familyCode) return;
+  try {
+    await db.from("family_messages").insert({
+      family_code: familyCode, author_id: author.id, author_role: author.role,
+      author_name: author.name, body: body.slice(0, CHAT_TEXT_MAX), photo: photo || null, event,
+    });
+  } catch (e) {
+    console.error("postChatEvent:", e);
+  }
+}
+
+/** Voqea holatini yangilaydi (masalan, uy vazifasi tasdiqlandi). */
+async function updateChatEvent(familyCode: string, type: string, refId: string, patch: Record<string, unknown>) {
+  if (!db) return;
+  try {
+    const { data } = await db.from("family_messages").select("id, event")
+      .eq("family_code", familyCode).order("created_at", { ascending: false }).limit(200);
+    const row = (data || []).find((m: any) => m.event && m.event.type === type && m.event.refId === refId);
+    if (!row) return;
+    await db.from("family_messages")
+      .update({ event: { ...row.event, ...patch }, updated_at: new Date().toISOString() })
+      .eq("id", row.id);
+  } catch (e) {
+    console.error("updateChatEvent:", e);
+  }
+}
+
+/** Chat xabari haqida bot orqali xabar — faqat hozir chatda bo'lmagan a'zolarga. */
+async function notifyChatMembers(familyCode: string, author: ChatMember, preview: string) {
+  if (!db) return;
+  const { data: reads } = await db.from("family_chat_reads").select("member_id, last_read_at")
+    .eq("family_code", familyCode).limit(50);
+  const active = new Set((reads || [])
+    .filter((r: any) => Date.now() - new Date(r.last_read_at).getTime() < CHAT_ACTIVE_MS)
+    .map((r: any) => r.member_id));
+  const text = `💬 <b>${author.name}</b> (oila chati):\n${preview}`;
+
+  const { data: reg } = await db.from("parent_registrations").select("parent_telegram_id")
+    .eq("family_code", familyCode).limit(1);
+  const parentTg = reg && reg[0]?.parent_telegram_id;
+  if (parentTg && author.memberId !== "parent_" + parentTg && !active.has("parent_" + parentTg)) {
+    await sendMessage(parentTg, text, {
+      inline_keyboard: [[{ text: "💬 Chatni ochish", web_app: { url: `${miniAppUrl()}&chat=1` } }]],
+    });
+  }
+  const { data: kids } = await db.from("child_pairings").select("child_id")
+    .eq("family_code", familyCode).eq("is_active", true).like("child_id", "tg\\_%").limit(10);
+  for (const k of kids || []) {
+    if (k.child_id === author.memberId || active.has(k.child_id)) continue;
+    await sendMessage(String(k.child_id).slice(3), text, {
+      inline_keyboard: [[{ text: "💬 Chatni ochish", web_app: { url: `${miniAppUrl()}&role=child&chat=1` } }]],
+    });
+  }
+}
+
+function chatRow(m: any) {
+  return {
+    id: m.id, authorId: m.author_id, role: m.author_role, name: m.author_name,
+    body: m.body, hasPhoto: !!m.photo, event: m.event, createdAt: m.created_at, updatedAt: m.updated_at,
+  };
+}
+
+async function handleChatRoutes(payload: any, actor: Actor): Promise<Response | null> {
+  const t = String(payload?.type || "");
+  if (!t.startsWith("chat_")) return null;
+  if (!db) return jsonRes({ ok: false, error: "Baza ulanmagan" }, 500);
+  const me = await chatMember(actor);
+  if (!me) return unauthorized("Oila chati faqat oila a'zolari uchun");
+
+  if (t === "chat_unread") {
+    const { data: r } = await db.from("family_chat_reads").select("last_read_at")
+      .eq("family_code", me.familyCode).eq("member_id", me.memberId).limit(1);
+    let q = db.from("family_messages").select("id").eq("family_code", me.familyCode).neq("author_id", me.memberId).limit(100);
+    if (r && r[0]) q = q.gt("created_at", r[0].last_read_at);
+    const { data } = await q;
+    return jsonRes({ ok: true, unread: (data || []).length });
+  }
+
+  if (t === "chat_list") {
+    // after — shu vaqtdan keyin YARATILGAN yoki YANGILANGAN xabarlar (so'rov
+    // takrorlanganda faqat yangilar keladi, suratlar esa umuman kelmaydi).
+    const after = String(payload.after || "");
+    let q = db.from("family_messages")
+      .select("id, author_id, author_role, author_name, body, photo, event, created_at, updated_at")
+      .eq("family_code", me.familyCode);
+    if (after) q = q.gt("updated_at", after).order("updated_at", { ascending: true }).limit(CHAT_PAGE);
+    else q = q.order("created_at", { ascending: false }).limit(CHAT_PAGE);
+    const { data, error } = await q;
+    if (error) return jsonRes({ ok: false, error: error.message }, 500);
+    const rows = (data || []).map(chatRow);
+    if (!after) rows.reverse();
+    return jsonRes({ ok: true, me: { id: me.memberId, role: me.role, name: me.name }, messages: rows, serverTime: new Date().toISOString() });
+  }
+
+  if (t === "chat_photo") {
+    const { data } = await db.from("family_messages").select("photo")
+      .eq("family_code", me.familyCode).eq("id", String(payload.id || "")).limit(1);
+    if (!data || !data[0] || !data[0].photo) return jsonRes({ ok: false, error: "Surat topilmadi." }, 404);
+    return jsonRes({ ok: true, photo: data[0].photo });
+  }
+
+  if (t === "chat_read") {
+    await db.from("family_chat_reads").upsert(
+      { family_code: me.familyCode, member_id: me.memberId, last_read_at: new Date().toISOString() },
+      { onConflict: "family_code,member_id" },
+    );
+    return jsonRes({ ok: true });
+  }
+
+  if (t === "chat_send") {
+    const body = String(payload.text || "").trim().slice(0, CHAT_TEXT_MAX);
+    const photo = typeof payload.photo === "string" ? payload.photo : "";
+    if (photo && (!/^data:image\/(jpeg|png|webp);base64,/.test(photo) || photo.length > CHAT_PHOTO_MAX)) {
+      return jsonRes({ ok: false, error: "Surat juda katta yoki noto'g'ri formatda." }, 400);
+    }
+    if (!body && !photo) return jsonRes({ ok: false, error: "Xabar bo'sh." }, 400);
+    // Suiiste'molga qarshi: daqiqasiga 20 tadan ko'p emas.
+    const { data: recent } = await db.from("family_messages").select("id")
+      .eq("family_code", me.familyCode).eq("author_id", me.memberId)
+      .gte("created_at", new Date(Date.now() - 60_000).toISOString()).limit(21);
+    if ((recent || []).length >= 20) return jsonRes({ ok: false, error: "Juda tez yozyapsiz — biroz kuting." }, 429);
+
+    const { data: ins, error } = await db.from("family_messages").insert({
+      family_code: me.familyCode, author_id: me.memberId, author_role: me.role,
+      author_name: me.name, body: body || null, photo: photo || null,
+    }).select("id, author_id, author_role, author_name, body, photo, event, created_at, updated_at").limit(1);
+    if (error || !ins || !ins[0]) return jsonRes({ ok: false, error: error?.message || "Yuborilmadi." }, 500);
+    await db.from("family_chat_reads").upsert(
+      { family_code: me.familyCode, member_id: me.memberId, last_read_at: new Date().toISOString() },
+      { onConflict: "family_code,member_id" },
+    );
+    await notifyChatMembers(me.familyCode, me, body ? body.slice(0, 200) : "📷 Surat");
+    return jsonRes({ ok: true, message: chatRow(ins[0]) });
+  }
+
+  // Ota-ona chatdagi karta tugmasi bilan tasdiqlaydi — bot tugmasi bilan AYNI yo'l.
+  if (t === "chat_decide") {
+    if (me.role !== "parent" || !me.telegramId) return unauthorized("Faqat ota-ona");
+    const kind = String(payload.kind || "");
+    const id = String(payload.id || "");
+    const approve = payload.approve === true;
+    const prefix = kind === "homework" ? (approve ? "hw_ok_" : "hw_no_") : kind === "gift" ? (approve ? "rw_ok_" : "rw_no_") : "";
+    if (!prefix || !id) return jsonRes({ ok: false, error: "Noma'lum amal." }, 400);
+    const said: string[] = [];
+    await handleBallCallback(prefix + id, me.telegramId, { collect: said });
+    const plain = said.map((x) => x.replace(/<[^>]+>/g, "")).join("\n");
+    return jsonRes({ ok: !/tegishli emas|topilmadi|Baza ulanmagan/.test(plain), message: plain });
+  }
+
+  return jsonRes({ ok: false, error: "Noma'lum amal." }, 400);
 }
 
 // ============================================================================
@@ -4062,6 +4294,8 @@ async function handleRequest(req: Request): Promise<Response> {
       if (ballRes) return ballRes;
       const matchRes = await handleMatchRoutes(payload, actor!);
       if (matchRes) return matchRes;
+      const chatRes = await handleChatRoutes(payload, actor!);
+      if (chatRes) return chatRes;
     }
 
     // ========================================================================
@@ -4704,6 +4938,7 @@ async function handleRequest(req: Request): Promise<Response> {
         "pro_exchange_requests", "quiz_answers", "quiz_rounds",
         "time_bank_entries", "time_bank_rules", "web_sessions", "families",
         "reward_items", "reward_redemptions", "shop_purchases", "collectible_cards",
+        "family_messages", "family_chat_reads",
       ];
 
       const failed: string[] = [];
@@ -4824,6 +5059,9 @@ async function handleRequest(req: Request): Promise<Response> {
         const { error } = await db.from("game_matches").delete().eq(col, childId);
         if (error) console.error("leave_family: game_matches o'chmadi:", error.message);
       }
+      // Oila chatidagi shu farzandning xabarlari ham ketadi.
+      await db.from("family_messages").delete().eq("family_code", familyCode).eq("author_id", childId);
+      await db.from("family_chat_reads").delete().eq("family_code", familyCode).eq("member_id", childId);
 
       // Viktorina javoblarida ustun nomi boshqacha (participant_id), shuning
       // uchun yuqoridagi tsikl uni ushlamaydi.
@@ -6727,6 +6965,12 @@ async function handleRequest(req: Request): Promise<Response> {
 
       // "Yetib keldim" va "Qayerdasan?" javobi ota-onaga alohida boradi:
       // bular bolaning o'z tashabbusi, ya'ni kuzatuv emas, xabar berish.
+      if (reason === "arrived" || reason === "asked" || reason === "manual") {
+        const { data: kidRow } = await db.from("child_pairings").select("child_name")
+          .eq("family_code", familyCode).eq("child_id", childId).limit(1);
+        await postChatEvent(familyCode, { id: childId, role: "child", name: (kidRow && kidRow[0]?.child_name) || "Farzand" },
+          { type: "location", reason, lat, lng }, reason === "arrived" ? "🏫 Yetib keldim" : "📍 Joylashuvim");
+      }
       if (reason === "arrived" || reason === "asked") {
         const { data: kid } = await db
           .from("child_pairings")
@@ -7100,7 +7344,6 @@ async function handleRequest(req: Request): Promise<Response> {
     // ILOVA ADMINIGA ketardi — ota-ona uni umuman olmasdi. Endi to'g'ri
     // manzilga: farzandning o'z ota-onasiga, so'nggi ma'lum joyi bilan.
     if (payload.type === "child_status_alert") {
-      const childName = payload.childName || "Farzand";
       const statusText = payload.statusText || "Xabar keldi";
       // Oila kodi mijozdan emas — lekin farzand uchun uni formuladan emas,
       // child_pairings dagi HAQIQIY juftlikdan olamiz (qarang: resolveActorFamily).
@@ -7108,6 +7351,11 @@ async function handleRequest(req: Request): Promise<Response> {
       const isSos = payload.sos === true || /sos/i.test(String(statusText));
 
       const childId = actor!.kind === "telegram" ? "tg_" + actor!.telegramId : actor!.childId;
+      // Ism ham mijozdan emas: Mini App uni demo yozuvdan yuborardi va ota-ona
+      // "Aliyor Valijonov: Maktabga yetib keldi" degan begona ismni ko'rardi.
+      const { data: kidName } = await db!.from("child_pairings").select("child_name")
+        .eq("family_code", familyCode).eq("child_id", childId).limit(1);
+      const childName = (kidName && kidName[0]?.child_name) || payload.childName || "Farzand";
       const loc = await lastKnownLocation(familyCode, childId);
       const locLine = loc
         ? `\n📍 <b>So'nggi joyi:</b> <a href="https://maps.google.com/?q=${loc.lat},${loc.lng}">xaritada ochish</a>` +
@@ -7119,6 +7367,9 @@ async function handleRequest(req: Request): Promise<Response> {
         : `📍 <b>Farzandingizdan xabar</b>\n\n👦 <b>${childName}:</b> <b>${statusText}</b>${locLine}\n\n📅 ${tashkentVaqt(new Date().toISOString())}`;
 
       const delivered = await notifyFamilyParents(familyCode, alertMsg);
+      await postChatEvent(familyCode, { id: childId, role: "child", name: childName },
+        { type: isSos ? "sos" : "status", statusType: payload.statusType || null, text: statusText, loc: loc ? { lat: loc.lat, lng: loc.lng, at: loc.recordedAt } : null },
+        isSos ? `🆘 ${statusText}` : `📣 ${statusText}`);
 
       // SOS yetib bormasa (ota-ona hali botga yozmagan bo'lsa) — zaxira sifatida
       // adminga xabar beramiz, bu shoshilinch holat.
