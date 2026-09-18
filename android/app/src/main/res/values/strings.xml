@@ -2,7 +2,7 @@
     <string name="app_name">Qalqon AI</string>
     <string name="pairing_subtitle">Farzand Xavfsizligi &amp; Ota-Ona Nazorati</string>
     <string name="family_code_title">Qurilma Kodini Kiriting / Введите код устройства:</string>
-    <string name="family_code_hint">Ota-onangiz Mini App\'da "Android Kodi Olish" tugmasi bilan bergan 8 belgili kod (15 daqiqa amal qiladi)</string>
+    <string name="family_code_hint">Ota-onangiz Mini App'da "Android Kodi Olish" tugmasi bilan bergan 8 belgili kod (15 daqiqa amal qiladi)</string>
     <string name="family_code_example_hint">________</string>
     <string name="btn_pair_label">Ulash / Подключить</string>
     <string name="permissions_title">Kerakli Ruxsatlar / Необходимые разрешения:</string>
