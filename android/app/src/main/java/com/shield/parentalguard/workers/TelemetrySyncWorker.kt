@@ -8,11 +8,9 @@ import android.location.LocationManager
 import android.os.BatteryManager
 import android.os.Build
 import android.os.Process
-import android.util.Log
 import androidx.core.content.ContextCompat
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import com.shield.parentalguard.network.CurfewPolicyStore
 import com.shield.parentalguard.network.DeviceCredentials
 import com.shield.parentalguard.network.EncryptedNetworkClient
 import com.shield.parentalguard.network.PairingApi
@@ -62,10 +60,6 @@ class TelemetrySyncWorker(
             if (location != null) {
                 reportLocationToRadar(location, token)
             }
-
-            // Komendant soat qoidasini serverdan yangilab olamiz. Qoida
-            // serverda turadi — bola uni o'z telefonidan o'zgartira olmaydi.
-            refreshCurfewPolicy(token)
 
             val rawTelemetry = JSONObject().apply {
                 put("timestamp", System.currentTimeMillis())
@@ -129,37 +123,6 @@ class TelemetrySyncWorker(
             EncryptedNetworkClient.client.newCall(request).execute().use { /* best-effort */ }
         } catch (_: Exception) {
             // Radar so'rovi muvaffaqiyatsiz bo'lsa ham asosiy telemetriya davom etadi.
-        }
-    }
-
-    /**
-     * Komendant soat qoidasini serverdan olib, qurilmada saqlaydi.
-     * Accessibility xizmati keyin shu keshdan o'qiydi va tarmoqqa umuman
-     * chiqmaydi (qarang: CurfewPolicyStore).
-     */
-    private fun refreshCurfewPolicy(token: String) {
-        try {
-            val body = JSONObject()
-                .put("type", "get_curfew_policy")
-                .put("deviceToken", token)
-                .toString()
-                .toRequestBody("application/json; charset=utf-8".toMediaType())
-
-            val request = Request.Builder()
-                .url(PairingApi.OTA_ONA_BOT_URL)
-                .post(body)
-                .header("Content-Type", "application/json")
-                .build()
-
-            EncryptedNetworkClient.client.newCall(request).execute().use { resp ->
-                if (!resp.isSuccessful) return
-                val json = JSONObject(resp.body?.string() ?: return)
-                if (!json.optBoolean("ok", false)) return
-                CurfewPolicyStore.save(applicationContext, json.optJSONObject("policy"))
-            }
-        } catch (e: Exception) {
-            // Qoida yangilanmasa, oxirgi ma'lum qoida kuchda qoladi.
-            Log.w("CurfewPolicy", "Qoida yangilanmadi: ${e.message}")
         }
     }
 

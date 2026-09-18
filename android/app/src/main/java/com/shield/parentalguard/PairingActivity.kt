@@ -45,7 +45,6 @@ class PairingActivity : Activity() {
     private lateinit var tvStatusText: TextView
     private lateinit var btnGrantLocation: Button
     private lateinit var btnGrantUsage: Button
-    private lateinit var btnGrantAccessibility: Button
 
     private val ioExecutor = Executors.newSingleThreadExecutor()
 
@@ -77,7 +76,6 @@ class PairingActivity : Activity() {
         tvStatusText = findViewById(R.id.tvStatusText)
         btnGrantLocation = findViewById(R.id.btnGrantLocation)
         btnGrantUsage = findViewById(R.id.btnGrantUsage)
-        btnGrantAccessibility = findViewById(R.id.btnGrantAccessibility)
 
         btnPair.setOnClickListener {
             val code = normalizePairCode(etPairingCode.text?.toString())
@@ -92,7 +90,6 @@ class PairingActivity : Activity() {
 
         btnGrantLocation.setOnClickListener { requestLocationPermission() }
         btnGrantUsage.setOnClickListener { requestUsageStatsPermission() }
-        btnGrantAccessibility.setOnClickListener { requestAccessibilityPermission() }
     }
 
     /** Accept a pairCode from shield://pair?code=XXXXXXXX or extras. */
@@ -223,9 +220,9 @@ class PairingActivity : Activity() {
      * Joylashuv ruxsati — OSHKOR QILISH ekrani bilan birga.
      *
      * Bu ekran ikkita talabga birdan javob beradi:
-     *  1) Google Play "prominent disclosure": fon rejimidagi joylashuv va
-     *     Accessibility API ishlatilishidan OLDIN nima yig'ilishi va nima
-     *     uchun ekani ochiq aytilishi va rozilik olinishi shart.
+     *  1) Google Play "prominent disclosure": fon rejimidagi joylashuv
+     *     so'ralishidan OLDIN nima yig'ilishi va nima uchun ekani ochiq
+     *     aytilishi va rozilik olinishi shart.
      *  2) Stalkerware siyosati: kuzatilayotgan odam — ya'ni farzand — buni
      *     bilishi shart. Yashirin kuzatuv bizning tamoyilimizga ham zid.
      */
@@ -329,10 +326,6 @@ class PairingActivity : Activity() {
 
     private fun requestUsageStatsPermission() {
         startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
-    }
-
-    private fun requestAccessibilityPermission() {
-        startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
     }
 
     private fun startGuardService() {

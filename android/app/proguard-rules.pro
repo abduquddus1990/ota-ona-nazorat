@@ -16,11 +16,10 @@
 # telemetriya jimgina to'xtab qoladi.
 -keep class * extends androidx.work.ListenableWorker { *; }
 
-# Accessibility va foreground xizmatlar tizim tomonidan manifestdagi
-# nom bo'yicha ishga tushiriladi — ularni ham saqlaymiz.
+# Foreground xizmat va receiver tizim tomonidan manifestdagi nom bo'yicha
+# ishga tushiriladi — ularni ham saqlaymiz.
 -keep class * extends android.app.Service { *; }
 -keep class * extends android.content.BroadcastReceiver { *; }
--keep class * extends android.accessibilityservice.AccessibilityService { *; }
 
 # Kotlin coroutines ichki sinflari.
 -dontwarn kotlinx.coroutines.**
