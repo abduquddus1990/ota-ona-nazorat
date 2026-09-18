@@ -17,10 +17,20 @@
             const url = (typeof input === 'string') ? input : (input && input.url) || '';
             if (url.indexOf(BOT_FN) === 0 && init && typeof init.body === 'string') {
                 const payload = JSON.parse(init.body);
-                if (payload && typeof payload === 'object' && !payload.initData && !payload.sessionToken) {
+                if (payload && typeof payload === 'object' && !payload.initData && !payload.sessionToken && !payload.deviceToken) {
                     const initData =
                         (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) || '';
-                    if (initData) {
+                    // Android ilova ichida Telegram imzosi yo'q: ilova o'z
+                    // hisob ma'lumotini QalqonNative orqali beradi (URL'ga
+                    // qo'yilsa, u tarixda va loglarda qolib ketardi).
+                    const native = window.QalqonNative;
+                    const nativeSession = native && native.sessionToken ? native.sessionToken() : '';
+                    const nativeDevice = native && native.deviceToken ? native.deviceToken() : '';
+                    if (nativeSession) {
+                        payload.sessionToken = nativeSession;
+                    } else if (nativeDevice) {
+                        payload.deviceToken = nativeDevice;
+                    } else if (initData) {
                         payload.initData = initData;
                     } else {
                         // Telegramdan tashqarida (oddiy brauzer) initData yo'q —
@@ -1466,6 +1476,20 @@ const urlRole = urlParams.get('role');
 const urlCode = urlParams.get('code') || urlParams.get('start');
 
 let currentLang = urlParams.get('lang') || localStorage.getItem('app_lang') || 'uz';
+
+// Android ilova ichidamizmi va u qaysi rolda kirgan.
+const qalqonNativeRole = (() => {
+    try { return (window.QalqonNative && window.QalqonNative.role && window.QalqonNative.role()) || ''; } catch (e) { return ''; }
+})();
+const isNativeApp = !!qalqonNativeRole;
+
+// Ilova ichida Telegramga tegishli ko'rsatmalar ortiqcha: joylashuvni
+// ilovaning o'zi fonda yuboradi, ulashish oynalari esa tashqarida ochiladi.
+if (isNativeApp) {
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('[data-tg-only]').forEach(el => el.classList.add('hidden'));
+    });
+}
 let currentTheme = localStorage.getItem('app_theme') || 'default';
 let userPlan = localStorage.getItem('user_plan') || 'pro';
 let activeSchoolPeriod = 'weekly';

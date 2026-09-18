@@ -175,6 +175,10 @@ class PairingActivity : Activity() {
             .putBoolean("is_paired", true)
             .apply()
         clearPairError()
+        // Ulangach farzand darhol o'z paneliga tushadi: ilovada o'yin, ball,
+        // do'kon va chat bor — bola uni ochishi uchun sabab shu.
+        startActivity(android.content.Intent(this, com.shield.parentalguard.ui.AppWebActivity::class.java))
+        finish()
         Toast.makeText(
             this,
             "Qurilma ulandi! / Устройство подключено!",

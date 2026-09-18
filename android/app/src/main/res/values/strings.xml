@@ -8,4 +8,21 @@
     <string name="permissions_title">Kerakli Ruxsatlar / Необходимые разрешения:</string>
     <string name="device_protected">Qurilma himoyalangan va ulangan!\nУстройство защищено и подключено!</string>
     <string name="bot_username">@qalqon_aibot</string>
+    <string name="login_subtitle">Ota-ona va farzand uchun bitta ilova</string>
+    <string name="login_telegram">Telegram bilan kirish</string>
+    <string name="login_password_toggle">Login va parol bilan kirish</string>
+    <string name="login_username_hint">Telegram username (masalan: jasur_a)</string>
+    <string name="login_password_hint">Parol</string>
+    <string name="login_password_submit">Kirish</string>
+    <string name="login_child_hint">Farzandmisan? Ota-onang bergan kodni kirit.</string>
+    <string name="login_child">Kod bilan kirish (farzand)</string>
+    <string name="login_opening_telegram">Telegram ochilmoqda...</string>
+    <string name="login_waiting_confirm">Telegramda "Ha, bu men" tugmasini bosing — ilova o'zi ochiladi.</string>
+    <string name="login_rejected">Kirish tasdiqlanmadi. Qaytadan urinib ko'ring.</string>
+    <string name="login_timeout">Vaqt tugadi. "Telegram bilan kirish" ni qaytadan bosing.</string>
+    <string name="login_checking">Tekshirilmoqda...</string>
+    <string name="login_bad_password">Login yoki parol noto'g'ri.</string>
+    <string name="login_fill_both">Login va parolni kiriting.</string>
+    <string name="login_server_error">Server javob bermadi. Internetni tekshiring.</string>
+    <string name="login_no_telegram">Telegram o'rnatilmagan. Login va parol bilan kiring.</string>
 </resources>

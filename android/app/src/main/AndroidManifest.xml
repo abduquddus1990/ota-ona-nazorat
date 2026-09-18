@@ -46,8 +46,9 @@
         android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
 
         <!-- Asosiy Juftlash va Ruxsatlar Oynasi (Pairing Activity) -->
+        <!-- Kirish ekrani — ilova shu yerdan boshlanadi. -->
         <activity
-            android:name=".PairingActivity"
+            android:name=".ui.LoginActivity"
             android:exported="true"
             android:launchMode="singleTop"
             android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
@@ -55,6 +56,23 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+        </activity>
+
+        <!-- Asosiy ekran: Mini App bilan bir xil interfeys. -->
+        <activity
+            android:name=".ui.AppWebActivity"
+            android:exported="false"
+            android:launchMode="singleTop"
+            android:theme="@android:style/Theme.DeviceDefault.NoActionBar" />
+
+        <activity
+            android:name=".PairingActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
+            <!-- Ilova endi kirish ekranidan boshlanadi, shuning uchun bu
+                 yerda LAUNCHER yo'q: aks holda telefonda ikkita belgi
+                 paydo bo'lardi. -->
             <!-- Custom scheme: shield://pair?code=XXXXXXXX (8-char device pairCode) -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
