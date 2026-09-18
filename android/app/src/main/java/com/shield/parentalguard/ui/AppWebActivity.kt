@@ -170,7 +170,11 @@ class AppWebActivity : AppCompatActivity() {
         fun deviceToken(): String = DeviceCredentials.readDeviceToken(this@AppWebActivity) ?: ""
 
         @JavascriptInterface
-        fun appVersion(): String = com.shield.parentalguard.BuildConfig.VERSION_NAME
+        fun appVersion(): String = try {
+            packageManager.getPackageInfo(packageName, 0).versionName ?: ""
+        } catch (_: Exception) {
+            ""
+        }
 
         /** Telegramdagi ulashish oynalari ilovadan tashqarida ochiladi. */
         @JavascriptInterface
