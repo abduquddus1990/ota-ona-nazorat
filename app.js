@@ -750,6 +750,30 @@ function webSessionToken() {
     try { return localStorage.getItem('web_session_token'); } catch (e) { return null; }
 }
 
+/**
+ * Android ilovasi o'z hisob ma'lumotini QalqonNative orqali beradi: ota-onada
+ * seans tokeni, farzandda qurilma tokeni. Bu ham xuddi Telegram initData yoki
+ * brauzer seansi kabi to'liq identitet — aks holda ilova ichidagi sahifa o'zini
+ * "kirmagan" deb hisoblab, panel ma'lumotlarini umuman yuklamasdi (ota-ona
+ * demo farzandni, farzand esa 0 ballni ko'rardi).
+ */
+function nativeAppIdentity() {
+    try {
+        const n = window.QalqonNative;
+        if (!n) return null;
+        const session = n.sessionToken ? n.sessionToken() : '';
+        const device = n.deviceToken ? n.deviceToken() : '';
+        if (!session && !device) return null;
+        return { session: session, device: device };
+    } catch (e) {
+        return null;
+    }
+}
+
+function hasAnyIdentity() {
+    return hasTelegramIdentity() || !!webSessionToken() || !!nativeAppIdentity();
+}
+
 function showWebLogin(show) {
     const overlay = document.getElementById('webLoginOverlay');
     if (overlay) overlay.classList.toggle('hidden', !show);
@@ -758,6 +782,9 @@ function showWebLogin(show) {
 /** Kirish oynasi kerakmi: Telegram identifikatori ham, seans ham bo'lmasa. */
 function checkWebLoginNeeded() {
     const wantsLogin = new URLSearchParams(window.location.search).get('mode') === 'login';
+    // Ilova ichida kirish oynasi ilovaning O'ZIDA (LoginActivity), sahifada
+    // emas: bu yerda uni ko'rsatish init oqimini to'xtatib qo'yardi.
+    if (nativeAppIdentity()) return false;
     if (hasTelegramIdentity() && !wantsLogin) return false;
     if (!hasTelegramIdentity() && !webSessionToken()) { showWebLogin(true); return true; }
     if (wantsLogin && !hasTelegramIdentity()) { showWebLogin(true); return true; }
@@ -1281,12 +1308,35 @@ async function handleAddNewChildSubmit() {
 // device_tokens'dagi uzoq muddatli tokenga almashtirib tanitadi (07_device_tokens.sql).
 // Oila kodi formula bilan chiqadi va sir emas — shu sabab radar/telemetriya
 // endpointlari (report_location) faqat shu tokenni qabul qiladi.
+/** Mavjud farzandlar ro'yxatini "Qaysi farzand?" ro'yxatiga to'ldiradi. */
+function fillAndroidChildPicker() {
+    const picker = document.getElementById('androidChildPicker');
+    if (!picker) return;
+    const prev = picker.value;
+    picker.innerHTML = '<option value="">➕ Yangi farzand</option>' +
+        Object.values(childrenDatabase || {}).map(c =>
+            '<option value="' + c.id + '">' + (c.name || c.id) + '</option>'
+        ).join('');
+    if (prev && [...picker.options].some(o => o.value === prev)) picker.value = prev;
+    onAndroidChildPickerChange();
+}
+
+function onAndroidChildPickerChange() {
+    const picker = document.getElementById('androidChildPicker');
+    const nameBox = document.getElementById('androidChildNameBox');
+    // Mavjud farzand tanlansa, ism maydoni kerak emas — u serverdagi
+    // yozuvdan olinadi va ustidan yozilmaydi.
+    if (nameBox) nameBox.classList.toggle('hidden', !!(picker && picker.value));
+}
+
 async function handleCreateDeviceCode() {
     const nameInput = document.getElementById('androidChildNameInput');
+    const picker = document.getElementById('androidChildPicker');
     const resultBox = document.getElementById('androidPairResultBox');
     const submitBtn = document.getElementById('androidPairSubmitBtn');
     const isRuAdd = (currentLang === 'ru');
 
+    const pickedChildId = picker ? picker.value : '';
     const name = nameInput ? nameInput.value.trim() : "";
 
     if (submitBtn) { submitBtn.disabled = true; submitBtn.innerText = '⏳ Yuborilmoqda...'; }
@@ -1297,7 +1347,8 @@ async function handleCreateDeviceCode() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 type: 'create_device_pair_code',
-                childName: name || null
+                childId: pickedChildId || null,
+                childName: pickedChildId ? null : (name || null)
             })
         });
         const data = await resp.json();
@@ -4490,6 +4541,9 @@ function openSubpage(subpageId) {
     document.querySelectorAll('.subpage-modal').forEach(m => m.classList.remove('active'));
     const modal = document.getElementById(subpageId);
     if (modal) modal.classList.add('active');
+    // Android kodi ro'yxati har safar yangi ochilganda yangilanadi — shu
+    // orasida yangi farzand qo'shilgan bo'lishi mumkin.
+    if (subpageId === 'modal-add-child') fillAndroidChildPicker();
 }
 
 function closeSubpage() {
@@ -4575,10 +4629,10 @@ let realChildProfile = null;
 async function fetchAndApplyRole() {
     // Hech qanday identifikator bo'lmasa (Telegramsiz va seanssiz) so'rov
     // yubormaymiz — u baribir 401 qaytaradi va kirish oynasi ochiladi.
-    if (!hasTelegramIdentity() && !webSessionToken()) return;
+    if (!hasAnyIdentity()) return;
     const uname = (typeof tg !== 'undefined' && tg?.initDataUnsafe?.user?.username) || null;
     const tid = (typeof tg !== 'undefined' && tg?.initDataUnsafe?.user?.id) || null;
-    if (!uname && !tid && !webSessionToken()) return;
+    if (!uname && !tid && !webSessionToken() && !nativeAppIdentity()) return;
     try {
         const resp = await fetch(QALQON_BOT_FN, {
             method: 'POST',
@@ -4724,21 +4778,26 @@ document.addEventListener('DOMContentLoaded', async () => {
     // (syncFamilyFromServer ichida) — server javob bermasa (oflayn),
     // eski mahalliy belgiga qaytamiz, aks holda hech narsa ko'rsatilmay
     // qolardi.
-    syncFamilyFromServer()
-        .then((ok) => { if (!ok) checkParentOnboarding(); })
-        .then(() => syncChildrenFromServer())
-        .then(() => {
-            refreshPlanStatus();
-            loadGeofences();
-            // Taklif kartasi va radar holati — ikkalasi ham oila kodi
-            // serverdan kelgandan KEYIN. checkParentOnboarding ichida
-            // chaqirilgan edi, u esa faqat server javob bermaganda ishlaydi,
-            // ya'ni normal holatda bu ikkisi hech qachon ko'rinmasdi.
-            if (currentAppRole === 'parent') {
+    // my_family, plan_status, list_geofences — hammasi FAQAT ota-onaga
+    // tegishli (serverda "Faqat ota-ona" bilan rad etiladi). Farzand
+    // (Telegram yoki Android qurilma) uchun bu chaqiruvlar hech qachon
+    // muvaffaqiyatli bo'lmaydi va konsolda foydasiz 401 xatolar qoldiradi —
+    // shuning uchun faqat ota-ona rolida yuboriladi.
+    if (currentAppRole === 'parent') {
+        syncFamilyFromServer()
+            .then((ok) => { if (!ok) checkParentOnboarding(); })
+            .then(() => syncChildrenFromServer())
+            .then(() => {
+                refreshPlanStatus();
+                loadGeofences();
+                // Taklif kartasi va radar holati — ikkalasi ham oila kodi
+                // serverdan kelgandan KEYIN. checkParentOnboarding ichida
+                // chaqirilgan edi, u esa faqat server javob bermaganda ishlaydi,
+                // ya'ni normal holatda bu ikkisi hech qachon ko'rinmasdi.
                 renderReferral();
                 renderRadarStatus();
-            }
-        });
+            });
+    }
 });
 
 function openUsernameGuideModal() {

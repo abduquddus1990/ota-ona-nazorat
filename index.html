@@ -2399,6 +2399,13 @@
 
             <div class="space-y-2.5 pt-1 text-xs">
                 <div>
+                    <label class="text-[11px] font-bold text-slate-300 block mb-1">Qaysi farzand?</label>
+                    <select id="androidChildPicker" onchange="onAndroidChildPickerChange()" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                        <option value="">➕ Yangi farzand</option>
+                    </select>
+                </div>
+
+                <div id="androidChildNameBox">
                     <label class="text-[11px] font-bold text-slate-300 block mb-1">Farzand Ismi (ixtiyoriy)</label>
                     <input type="text" id="androidChildNameInput" placeholder="Masalan: Jasur Alimov" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
                 </div>
@@ -2783,7 +2790,7 @@
     </nav>
 
     <!-- Custom JavaScript -->
-    <script src="app.js?v=7.7"></script>
+    <script src="app.js?v=7.9"></script>
     <!-- O'yinlar alohida faylda: app.js allaqachon katta, va o'yin kontenti
          (savollar, kartalar) o'sib boradi. Alohida fayl brauzerda alohida
          keshlanadi — o'yin qo'shilsa, butun ilova qayta yuklanmaydi. -->
