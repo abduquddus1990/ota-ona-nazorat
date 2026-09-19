@@ -1019,6 +1019,10 @@ async function notifyFamilyParents(
   }
   try {
     await sendMessage(chatId, htmlText, replyMarkup);
+    // Ilova o'rnatgan ota-onaga push ham boradi: bot xabari Telegram
+    // ochilmasa ko'rinmay qolishi mumkin, SOS esa kutib turmaydi.
+    const lines = plainText(htmlText).split("\n");
+    await sendPush(familyCode, ["parent_" + chatId], lines[0].slice(0, 80) || "Qalqon AI", lines.slice(1).join(" ").trim() || lines[0]);
     return true;
   } catch (e) {
     console.error("notifyFamilyParents yuborilmadi:", e);
@@ -2712,6 +2716,192 @@ async function handleBallCallback(
 
 
 
+
+// ============================================================================
+// ANDROID ILOVAGA KIRISH VA PUSH (database/20_ilova_kirish_push.sql)
+//
+// Kirish: ilova "Telegram bilan kirish" tugmasini bosganda bitta so'rov
+// ochadi va botni ochadi. Bot ota-onaga tasdiqlash tugmasini ko'rsatadi,
+// ota-ona bosgach ilova seansni o'zi olib ketadi. Username yozish bilan
+// kirish yo'q: username — oddiy matn, uni istalgan odam yozadi.
+//
+// Push: bot xabari telefonda Telegram bo'lmasa yetib bormaydi. Shuning
+// uchun muhim xabarlar (SOS, joylashuv, chat) push orqali ham yuboriladi.
+// FCM kaliti sozlanmagan bo'lsa, hammasi avvalgidek bot orqali ishlayveradi.
+// ============================================================================
+
+const APP_LOGIN_TTL_MIN = 10;
+
+function randomHex(bytes = 32) {
+  return Array.from(crypto.getRandomValues(new Uint8Array(bytes)))
+    .map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/** Shu Telegram hisobi qaysi oilaning ro'yxatdan o'tgan ota-onasi. */
+async function registeredParentFamily(telegramId: number): Promise<string | null> {
+  if (!db) return null;
+  const { data } = await db.from("parent_registrations").select("family_code")
+    .eq("parent_telegram_id", telegramId).limit(1);
+  return (data && data[0] && data[0].family_code) || null;
+}
+
+/* ------------------------------------------------------------------ PUSH */
+
+let fcmToken: { value: string; exp: number } | null = null;
+
+/** Servis hisobi kalitidan FCM uchun kirish tokeni (1 soat saqlanadi). */
+async function fcmAccessToken(sa: any): Promise<string | null> {
+  if (fcmToken && fcmToken.exp > Date.now() + 60_000) return fcmToken.value;
+  try {
+    const now = Math.floor(Date.now() / 1000);
+    const header = { alg: "RS256", typ: "JWT" };
+    const claim = {
+      iss: sa.client_email,
+      scope: "https://www.googleapis.com/auth/firebase.messaging",
+      aud: "https://oauth2.googleapis.com/token",
+      iat: now,
+      exp: now + 3600,
+    };
+    const b64 = (o: unknown) => btoa(JSON.stringify(o)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+    const body = `${b64(header)}.${b64(claim)}`;
+    const pem = String(sa.private_key).replace(/-----[A-Z ]+-----/g, "").replace(/\s+/g, "");
+    const der = Uint8Array.from(atob(pem), (c) => c.charCodeAt(0));
+    const key = await crypto.subtle.importKey("pkcs8", der.buffer as ArrayBuffer,
+      { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" }, false, ["sign"]);
+    const sig = new Uint8Array(await crypto.subtle.sign("RSASSA-PKCS1-v1_5", key, new TextEncoder().encode(body)));
+    const jwt = body + "." + btoa(String.fromCharCode(...sig)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+    const res = await fetch("https://oauth2.googleapis.com/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${jwt}`,
+    });
+    const j = await res.json();
+    if (!j.access_token) {
+      console.error("FCM token olinmadi:", JSON.stringify(j).slice(0, 200));
+      return null;
+    }
+    fcmToken = { value: j.access_token, exp: Date.now() + (Number(j.expires_in) || 3600) * 1000 };
+    return fcmToken.value;
+  } catch (e) {
+    console.error("fcmAccessToken:", e);
+    return null;
+  }
+}
+
+/**
+ * Oiladagi bir nechta a'zoga push yuboradi. Kalit yo'q bo'lsa jim qaytadi —
+ * bu holda bot xabari yagona yo'l bo'lib qolaveradi.
+ */
+async function sendPush(familyCode: string, subjectIds: string[], title: string, body: string, data: Record<string, string> = {}) {
+  if (!db || !subjectIds.length) return 0;
+  const raw = Deno.env.get("FCM_SERVICE_ACCOUNT") || "";
+  if (!raw) return 0;
+  let sa: any;
+  try { sa = JSON.parse(raw); } catch { console.error("FCM_SERVICE_ACCOUNT JSON emas"); return 0; }
+  const access = await fcmAccessToken(sa);
+  if (!access) return 0;
+
+  const { data: rows } = await db.from("push_tokens").select("id, token, subject_id")
+    .eq("family_code", familyCode).in("subject_id", subjectIds).limit(20);
+  let sent = 0;
+  for (const r of rows || []) {
+    try {
+      const res = await fetch(`https://fcm.googleapis.com/v1/projects/${sa.project_id}/messages:send`, {
+        method: "POST",
+        headers: { Authorization: "Bearer " + access, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: {
+            token: r.token,
+            notification: { title, body: body.slice(0, 300) },
+            data: { ...data, family: familyCode },
+            android: { priority: "HIGH", notification: { channel_id: "qalqon", sound: "default" } },
+          },
+        }),
+      });
+      if (res.ok) sent++;
+      else if ([404, 400].includes(res.status)) {
+        // Token eskirgan — saqlab turishning ma'nosi yo'q.
+        await db.from("push_tokens").delete().eq("id", r.id);
+      }
+    } catch (e) {
+      console.error("sendPush:", e);
+    }
+  }
+  return sent;
+}
+
+/** Bot xabaridagi HTML'ni push matniga aylantiradi. */
+function plainText(html: string): string {
+  return String(html).replace(/<[^>]+>/g, "").replace(/\n{2,}/g, "\n").trim();
+}
+
+async function handleAppRoutes(payload: any, actor: Actor | null): Promise<Response | null> {
+  const t = String(payload?.type || "");
+  if (!["app_login_start", "app_login_poll", "push_register", "push_unregister"].includes(t)) return null;
+  if (!db) return jsonRes({ ok: false, error: "Baza ulanmagan" }, 500);
+
+  // Kirish so'rovi — hali hech qanday hisob ma'lumoti yo'q.
+  if (t === "app_login_start") {
+    const token = randomHex(32);
+    const code = randomCode(8);
+    const { error } = await db.from("app_login_requests").insert({
+      token_hash: await sha256Hex(token),
+      code,
+      device_label: String(payload.deviceLabel || "").slice(0, 60) || null,
+      expires_at: new Date(Date.now() + APP_LOGIN_TTL_MIN * 60000).toISOString(),
+    });
+    if (error) return jsonRes({ ok: false, error: error.message }, 500);
+    return jsonRes({
+      ok: true, token,
+      link: `https://t.me/qalqon_aiBot?start=app_${code}`,
+      expiresInSec: APP_LOGIN_TTL_MIN * 60,
+    });
+  }
+
+  if (t === "app_login_poll") {
+    const token = String(payload.token || "");
+    if (!token) return jsonRes({ ok: false, error: "token majburiy" }, 400);
+    const { data } = await db.from("app_login_requests")
+      .select("id, status, session_token, family_code, expires_at, taken_at")
+      .eq("token_hash", await sha256Hex(token)).limit(1);
+    const row = data && data[0];
+    if (!row) return jsonRes({ ok: true, status: "expired" });
+    if (new Date(row.expires_at).getTime() < Date.now() && row.status === "pending") {
+      return jsonRes({ ok: true, status: "expired" });
+    }
+    if (row.status === "rejected") return jsonRes({ ok: true, status: "rejected" });
+    // Seans bir marta olinadi: ikkinchi so'rov "kutilmoqda" desa, ilova
+    // nima bo'lganini tushunmay qolardi.
+    if (row.taken_at) return jsonRes({ ok: true, status: "used" });
+    if (row.status !== "approved" || !row.session_token) return jsonRes({ ok: true, status: "pending" });
+    // Seans bir marta beriladi va bazadan darhol o'chiriladi.
+    await db.from("app_login_requests")
+      .update({ session_token: null, taken_at: new Date().toISOString() }).eq("id", row.id);
+    return jsonRes({ ok: true, status: "approved", role: "parent", sessionToken: row.session_token, familyCode: row.family_code });
+  }
+
+  // Push manzilini saqlash — ota-ona ham, farzand ham.
+  if (!actor) return unauthorized("Avval kiring");
+  const kid = await actorAsChild(actor);
+  const fam = kid ? kid.familyCode : await actorAsParent(actor);
+  if (!fam) return unauthorized("Oila topilmadi");
+  const subjectId = kid ? kid.childId : "parent_" + (actor.kind === "telegram" ? actor.telegramId : "");
+  const token = String(payload.token || "").trim();
+  if (!token || token.length < 20) return jsonRes({ ok: false, error: "push tokeni noto'g'ri" }, 400);
+
+  if (t === "push_unregister") {
+    await db.from("push_tokens").delete().eq("token", token);
+    return jsonRes({ ok: true });
+  }
+  const { error } = await db.from("push_tokens").upsert({
+    family_code: fam, subject_id: subjectId, role: kid ? "child" : "parent",
+    token, platform: String(payload.platform || "android").slice(0, 20),
+    updated_at: new Date().toISOString(),
+  }, { onConflict: "token" });
+  if (error) return jsonRes({ ok: false, error: error.message }, 500);
+  return jsonRes({ ok: true, subjectId });
+}
+
 // ============================================================================
 // DARSLIK MASHQLARI (database/19_darslik_mashqlari.sql)
 //
@@ -2863,6 +3053,7 @@ async function notifyChatMembers(familyCode: string, author: ChatMember, preview
     await sendMessage(parentTg, text, {
       inline_keyboard: [[{ text: "💬 Chatni ochish", web_app: { url: `${miniAppUrl()}&chat=1` } }]],
     });
+    await sendPush(familyCode, ["parent_" + parentTg], `💬 ${author.name}`, preview, { open: "chat" });
   }
   const { data: kids } = await db.from("child_pairings").select("child_id")
     .eq("family_code", familyCode).eq("is_active", true).like("child_id", "tg\\_%").limit(10);
@@ -2872,6 +3063,12 @@ async function notifyChatMembers(familyCode: string, author: ChatMember, preview
       inline_keyboard: [[{ text: "💬 Chatni ochish", web_app: { url: `${miniAppUrl()}&role=child&chat=1` } }]],
     });
   }
+  // Telegramsiz (faqat ilovadagi) farzandlarga ham yetib borishi uchun.
+  const { data: allKids } = await db.from("child_pairings").select("child_id")
+    .eq("family_code", familyCode).eq("is_active", true).limit(10);
+  const targets = (allKids || []).map((k: any) => String(k.child_id))
+    .filter((id: string) => id !== author.memberId && !active.has(id) && !id.startsWith("invite_"));
+  if (targets.length) await sendPush(familyCode, targets, `💬 ${author.name}`, preview, { open: "chat" });
 }
 
 function chatRow(m: any) {
@@ -3749,6 +3946,7 @@ async function handleRequest(req: Request): Promise<Response> {
     // istalgan oilaga bola qo'shish va ro'yxatini o'qish mumkin edi.
     // Telegram webhook update'larida "type" bo'lmaydi — ular Telegram
     // serveridan keladi va quyida alohida ishlanadi.
+    // app_login_start / app_login_poll — ilova hali kirmagan.
     // device_pair — qurilmada hali hech qanday hisob ma'lumoti yo'q.
     // cron_daily_digest — ichki chaqiruv, o'zi maxfiy sarlavha bilan himoyalangan.
     // web_login / web_logout — brauzerda Telegram imzosi yo'q; web_login o'zi
@@ -3756,6 +3954,7 @@ async function handleRequest(req: Request): Promise<Response> {
     const NO_ACTOR_TYPES = [
       "device_pair", "cron_daily_digest", "cron_live_reminder",
       "cron_evening_check", "web_login", "web_logout",
+      "app_login_start", "app_login_poll",
     ];
     let actor: Actor | null = null;
     if (typeof payload?.type === "string" && !NO_ACTOR_TYPES.includes(payload.type)) {
@@ -4403,6 +4602,12 @@ async function handleRequest(req: Request): Promise<Response> {
     // qaytarilmaydi. Voyaga yetmaganlarning ro'yxatini bir-biriga ko'rsatish
     // maxfiylik jihatidan ham, Play'ning bolalar siyosati jihatidan ham
     // yo'l qo'yib bo'lmaydigan narsa. Faqat o'z o'rning va umumiy son.
+    // 0.1q ILOVAGA KIRISH VA PUSH (kirish so'rovi hisobsiz ham ishlaydi).
+    {
+      const appRes = await handleAppRoutes(payload, actor);
+      if (appRes) return appRes;
+    }
+
     // 0.1p BALL TIZIMI: fokus tekshiruvi, uy vazifasi, do'kon, kartalar.
     {
       const ballRes = await handleBallRoutes(payload, actor!);
@@ -7240,9 +7445,28 @@ async function handleRequest(req: Request): Promise<Response> {
     // Rol payload'dan emas, imzolangan identitetdan aniqlanadi.
     if (payload.type === "check_role") {
       if (actor!.kind === "device") {
-        return new Response(JSON.stringify({ ok: true, role: "child" }), {
-          status: 200, headers: { "Content-Type": "application/json" },
-        });
+        // Ilova ichidagi sahifa ismni va oila kodini shu javobdan oladi.
+        // Ilgari faqat rol qaytardi, shuning uchun Android'dagi farzand
+        // panelida ism bo'sh, oila kodi esa noma'lum qolardi.
+        let childName: string | null = null;
+        if (db) {
+          const { data: pr } = await db
+            .from("child_pairings")
+            .select("child_name")
+            .eq("child_id", actor!.childId)
+            .limit(1);
+          childName = (pr && pr[0] && pr[0].child_name) || null;
+        }
+        return new Response(
+          JSON.stringify({
+            ok: true,
+            role: "child",
+            familyCode: actor!.familyCode,
+            childId: actor!.childId,
+            childName,
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        );
       }
       if (!db) {
         return new Response(JSON.stringify({ ok: true, role: "parent" }), {
@@ -7299,9 +7523,33 @@ async function handleRequest(req: Request): Promise<Response> {
       const bytes = crypto.getRandomValues(new Uint8Array(8));
       const code = Array.from(bytes).map((b) => alphabet[b % alphabet.length]).join("");
 
+      // Ota-ona qaysi farzandning telefoni ulanayotganini ko'rsatsa, telefon
+      // O'SHA yozuvga bog'lanadi. Aks holda har bir telefon yangi farzand
+      // yaratardi: panelda bitta bola ikki marta ko'rinar, ballari,
+      // joylashuvi va uy vazifasi ikkiga bo'linib ketardi.
+      let boundChildId: string | null = null;
+      const wantedChildId = String(payload.childId || "").trim();
+      if (wantedChildId) {
+        const { data: own } = await db
+          .from("child_pairings")
+          .select("child_id, child_name")
+          .eq("family_code", actor!.familyCode)
+          .eq("child_id", wantedChildId)
+          .limit(1);
+        if (!own || !own[0]) {
+          return new Response(
+            JSON.stringify({ ok: false, error: "Bu farzand sizning oilangizda topilmadi" }),
+            { status: 403, headers: { "Content-Type": "application/json" } }
+          );
+        }
+        boundChildId = own[0].child_id;
+        if (!payload.childName) payload.childName = own[0].child_name;
+      }
+
       const { error } = await db.from("device_pair_codes").insert({
         code,
         family_code: actor!.familyCode,
+        child_id: boundChildId,
         child_name: payload.childName || null,
         created_by_telegram_id: actor!.telegramId,
         // Qisqa muddat: kod uzoq yashasa, uni taxmin qilishga vaqt qoladi.
@@ -7347,7 +7595,7 @@ async function handleRequest(req: Request): Promise<Response> {
 
       const { data } = await db
         .from("device_pair_codes")
-        .select("code, family_code, child_name, expires_at, used_at")
+        .select("code, family_code, child_id, child_name, expires_at, used_at")
         .eq("code", code)
         .limit(1);
 
@@ -7372,7 +7620,11 @@ async function handleRequest(req: Request): Promise<Response> {
 
       const tokenBytes = crypto.getRandomValues(new Uint8Array(32));
       const token = toHex(tokenBytes);
-      const childId = `android_${row.family_code}_${deviceModel}`.replace(/\s+/g, "_");
+      // Kod bir farzandga bog'langan bo'lsa — telefon o'sha yozuvga ulanadi;
+      // bog'lanmagan bo'lsa (masalan, faqat Android ishlatadigan farzand)
+      // yangi yozuv ochiladi.
+      const childId = row.child_id ||
+        `android_${row.family_code}_${deviceModel}`.replace(/\s+/g, "_");
 
       // Tokenning O'ZI saqlanmaydi — faqat hash'i.
       const { error: tokErr } = await db.from("device_tokens").insert({
@@ -7392,7 +7644,9 @@ async function handleRequest(req: Request): Promise<Response> {
       }
 
       await upsertPairing(row.family_code, childId, {
-        childName: row.child_name || deviceModel,
+        // Mavjud farzandga bog'langanda ismini telefon modeliga
+        // almashtirmaymiz.
+        childName: row.child_name || (row.child_id ? undefined : deviceModel),
         deviceLabel: deviceModel,
         source: "android_parental_guard",
       });
@@ -7740,6 +7994,43 @@ async function handleRequest(req: Request): Promise<Response> {
         }
       }
 
+      // Ilovaga kirishni tasdiqlash.
+      if (data.startsWith("applogin_ok_") || data.startsWith("applogin_no_")) {
+        const approve = data.startsWith("applogin_ok_");
+        const appCode = data.slice("applogin_ok_".length).toUpperCase();
+        if (!db) return new Response(JSON.stringify({ ok: true }), { status: 200 });
+        const fam = await registeredParentFamily(chatId);
+        const { data: rows } = await db.from("app_login_requests")
+          .select("id, status, expires_at").eq("code", appCode).limit(1);
+        const req = rows && rows[0];
+        if (!req || !fam || new Date(req.expires_at).getTime() < Date.now() || req.status !== "pending") {
+          await sendMessage(chatId, "⌛️ Bu so'rov eskirgan. Ilovada qaytadan urinib ko'ring.");
+          return new Response(JSON.stringify({ ok: true }), { status: 200 });
+        }
+        if (!approve) {
+          await db.from("app_login_requests").update({ status: "rejected" }).eq("id", req.id).eq("status", "pending");
+          await sendMessage(chatId, "✅ Rad etildi. Ilova kira olmaydi.");
+          return new Response(JSON.stringify({ ok: true }), { status: 200 });
+        }
+        const sessionToken = randomHex(32);
+        await db.from("web_sessions").insert({
+          token_hash: await sha256Hex(sessionToken),
+          family_code: fam,
+          telegram_id: chatId,
+          user_agent: "android-app",
+          expires_at: new Date(Date.now() + WEB_SESSION_DAYS * 86400000).toISOString(),
+        });
+        const { data: claimed } = await db.from("app_login_requests")
+          .update({ status: "approved", approved_by: chatId, family_code: fam, session_token: sessionToken })
+          .eq("id", req.id).eq("status", "pending").select("id");
+        if (!claimed || !claimed[0]) {
+          await sendMessage(chatId, "⌛️ Bu so'rov allaqachon ishlatilgan.");
+          return new Response(JSON.stringify({ ok: true }), { status: 200 });
+        }
+        await sendMessage(chatId, "✅ <b>Kirish tasdiqlandi.</b>\n\nIlovaga qayting — u o'zi ochiladi.");
+        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      }
+
       // Uy vazifasi va sovg'a tasdig'i (eski Pro almashtirish tugmalari ham).
       if (await handleBallCallback(data, chatId)) {
         return new Response(JSON.stringify({ ok: true }), { status: 200 });
@@ -7986,6 +8277,38 @@ async function handleRequest(req: Request): Promise<Response> {
         // Fokus jangi havolasi: ?start=duel_<kod>. Mini App'da ochiladi,
         // qabul qilish o'sha yerda bajariladi (bola kim ekanini imzolangan
         // identitet hal qiladi).
+        // Android ilovaga kirish: ?start=app_<kod>. Kodni ilova yaratgan,
+        // bu yerda faqat ota-ona TASDIQLAYDI — shundan keyin ilova seansni
+        // o'zi olib ketadi.
+        const appMatch = text.match(/app_([A-Z0-9]{6,10})/i);
+        if (appMatch && db) {
+          const appCode = appMatch[1].toUpperCase();
+          const { data: reqRows } = await db.from("app_login_requests")
+            .select("id, status, device_label, expires_at").eq("code", appCode).limit(1);
+          const req = reqRows && reqRows[0];
+          const famOfParent = await registeredParentFamily(chatId);
+          if (!req || new Date(req.expires_at).getTime() < Date.now() || req.status !== "pending") {
+            await sendMessage(chatId, "⌛️ <b>Bu kirish so'rovi eskirgan.</b>\n\nIlovada «Telegram bilan kirish» tugmasini qaytadan bosing.");
+          } else if (await isPairedChild(chatId)) {
+            await sendMessage(chatId, "ℹ️ <b>Bu tugma ota-onalar uchun.</b>\n\nSen ilovaga ota-onang bergan bir martalik kod bilan kirasan.");
+          } else if (!famOfParent) {
+            await sendMessage(chatId, "⚠️ <b>Avval ro'yxatdan o'ting.</b>\n\nBotda «Ro'yxatdan o'tish» ni bosing, keyin ilovaga kiring.");
+          } else {
+            await sendMessage(
+              chatId,
+              `📱 <b>Ilovaga kirishni tasdiqlaysizmi?</b>\n\n` +
+                (req.device_label ? `<b>Qurilma:</b> ${req.device_label}\n` : "") +
+                `<b>Oila kodi:</b> <code>${famOfParent}</code>\n\n` +
+                `<i>Bu so'rovni siz boshlamagan bo'lsangiz — «Yo'q» ni bosing.</i>`,
+              { inline_keyboard: [[
+                { text: "✅ Ha, bu men", callback_data: "applogin_ok_" + appCode },
+                { text: "❌ Yo'q", callback_data: "applogin_no_" + appCode },
+              ]] },
+            );
+          }
+          return new Response(JSON.stringify({ ok: true }), { status: 200 });
+        }
+
         // Do'st bilan online o'yin: ?start=play_<kod>. Qo'shilish Mini App'da,
         // imzolangan identitet bilan bajariladi.
         const playMatch = text.match(/play_([A-Z0-9]{4,10})/i);
