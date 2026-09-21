@@ -22,6 +22,10 @@ ENV/
 *.jks
 *.keystore
 android/keystore.properties
+# Debug keystore SIR EMAS (parollari standart "android") — CI har safar
+# tasodifiy debug kalit yaratmasligi uchun ataylab commit qilinadi, aks
+# holda har yangi APK eskisi USTIGA emas, faqat uni O'CHIRIB o'rnatiladi.
+!android/qalqon-debug.keystore
 
 # Node / Web
 node_modules/
