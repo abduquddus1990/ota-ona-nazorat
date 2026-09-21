@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        AppCompatActivity'ning o'zi AppCompat mavzusini talab qiladi — manifestda
+        tizim mavzusi (Theme.DeviceDefault) berilgani ilovani ochilgan zahoti
+        yiqitardi:
+        "You need to use a Theme.AppCompat theme (or descendant) with this
+        activity" (IllegalStateException, LoginActivity.onCreate -> setContentView).
+        Xato hech qanday oyna ko'rsatmasdan sodir bo'lgani uchun tashqaridan
+        "ilova umuman ochilmayapti" bo'lib ko'rinardi.
+    -->
+    <style name="Theme.ParentalGuard" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="android:windowBackground">@android:color/black</item>
+    </style>
+</resources>
