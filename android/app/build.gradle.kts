@@ -36,6 +36,23 @@ android {
     }
 
     signingConfigs {
+        // AGP "debug" nomli signingConfig'ni o'zi ham avtomatik yaratadi,
+        // lekin agar ~/.android/debug.keystore mavjud bo'lmasa (har bir CI
+        // ishga tushishi — tozalangan, yangi mashina), UNI TASODIFIY YANGI
+        // KALIT bilan yaratib oladi. Natijada har safar boshqacha imzo bilan
+        // yig'ilgan APK chiqadi va telefonda eskisi USTIDAN yangilanmaydi —
+        // avval albatta o'chirish kerak bo'ladi (aks holda "signatures do
+        // not match" xatosi bilan o'rnatilmaydi). "debug" konfiguratsiyasini
+        // shu yerda repo'dagi DOIMIY kalitga qayta yo'naltiramiz, shunda u
+        // avtomatik yaratilishning o'rnini bosadi va CI har doim bir xil
+        // imzo chiqaradi — parollar standart ("android"), chunki bu kalit
+        // sir emas, faqat yig'ish barqarorligi uchun.
+        getByName("debug") {
+            storeFile = rootProject.file("qalqon-debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
         if (hasReleaseKeystore) {
             create("release") {
                 // rootProject.file() — chunki keystore.properties ham,
