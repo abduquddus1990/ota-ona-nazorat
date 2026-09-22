@@ -30,79 +30,151 @@
             android:textColor="#94a3b8"
             android:textSize="13sp" />
 
+        <!--
+            ENG SODDA yo'l — birinchi va eng ko'zga tashlanadigan: botda
+            bitta tugma bosiladi, chiqqan kodni shu yerga kiritadi. Parol
+            eslab qolish yoki ilovalar orasida almashish shart emas.
+        -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:text="@string/login_code_hint"
+            android:textColor="#cbd5e1"
+            android:textSize="13sp" />
+
         <Button
-            android:id="@+id/btnTelegramLogin"
+            android:id="@+id/btnOpenBot"
+            android:layout_width="match_parent"
+            android:layout_height="44dp"
+            android:layout_marginTop="10dp"
+            android:backgroundTint="#1e293b"
+            android:text="@string/login_open_bot"
+            android:textAllCaps="false"
+            android:textColor="#7dd3fc"
+            android:textSize="13sp" />
+
+        <EditText
+            android:id="@+id/etParentCode"
             android:layout_width="match_parent"
             android:layout_height="52dp"
+            android:layout_marginTop="12dp"
+            android:background="#111c33"
+            android:gravity="center"
+            android:hint="@string/login_code_field_hint"
+            android:inputType="textCapCharacters"
+            android:letterSpacing="0.2"
+            android:maxLength="8"
+            android:padding="12dp"
+            android:textColor="#e2e8f0"
+            android:textColorHint="#64748b"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <Button
+            android:id="@+id/btnCodeSubmit"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginTop="10dp"
             android:backgroundTint="#2563eb"
-            android:text="@string/login_telegram"
+            android:text="@string/login_code_submit"
             android:textAllCaps="false"
             android:textColor="#ffffff"
             android:textSize="15sp" />
-
-        <Button
-            android:id="@+id/btnPasswordLogin"
-            android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:layout_marginTop="12dp"
-            android:backgroundTint="#1e293b"
-            android:text="@string/login_password_toggle"
-            android:textAllCaps="false"
-            android:textColor="#cbd5e1"
-            android:textSize="14sp" />
-
-        <LinearLayout
-            android:id="@+id/passwordBox"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:orientation="vertical"
-            android:visibility="gone">
-
-            <EditText
-                android:id="@+id/etLogin"
-                android:layout_width="match_parent"
-                android:layout_height="48dp"
-                android:autofillHints="username"
-                android:background="#111c33"
-                android:hint="@string/login_username_hint"
-                android:inputType="text"
-                android:padding="12dp"
-                android:textColor="#e2e8f0"
-                android:textColorHint="#64748b" />
-
-            <EditText
-                android:id="@+id/etPassword"
-                android:layout_width="match_parent"
-                android:layout_height="48dp"
-                android:layout_marginTop="8dp"
-                android:autofillHints="password"
-                android:background="#111c33"
-                android:hint="@string/login_password_hint"
-                android:inputType="textPassword"
-                android:padding="12dp"
-                android:textColor="#e2e8f0"
-                android:textColorHint="#64748b" />
-
-            <Button
-                android:id="@+id/btnPasswordSubmit"
-                android:layout_width="match_parent"
-                android:layout_height="48dp"
-                android:layout_marginTop="8dp"
-                android:backgroundTint="#0ea5e9"
-                android:text="@string/login_password_submit"
-                android:textAllCaps="false"
-                android:textColor="#ffffff" />
-        </LinearLayout>
 
         <TextView
             android:id="@+id/tvLoginStatus"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
+            android:layout_marginTop="14dp"
             android:gravity="center"
             android:textColor="#fbbf24"
             android:textSize="12sp" />
+
+        <!-- Kam ishlatiladigan yo'llar — yig'ilgan holda, kerak bo'lsa ochiladi. -->
+        <TextView
+            android:id="@+id/btnOtherWaysToggle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:gravity="center"
+            android:text="@string/login_other_ways_toggle"
+            android:textColor="#64748b"
+            android:textSize="12sp" />
+
+        <LinearLayout
+            android:id="@+id/otherWaysBox"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <Button
+                android:id="@+id/btnTelegramLogin"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:backgroundTint="#1e293b"
+                android:text="@string/login_telegram"
+                android:textAllCaps="false"
+                android:textColor="#cbd5e1"
+                android:textSize="14sp" />
+
+            <Button
+                android:id="@+id/btnPasswordLogin"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginTop="10dp"
+                android:backgroundTint="#1e293b"
+                android:text="@string/login_password_toggle"
+                android:textAllCaps="false"
+                android:textColor="#cbd5e1"
+                android:textSize="14sp" />
+
+            <LinearLayout
+                android:id="@+id/passwordBox"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <EditText
+                    android:id="@+id/etLogin"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:autofillHints="username"
+                    android:background="#111c33"
+                    android:hint="@string/login_username_hint"
+                    android:inputType="text"
+                    android:padding="12dp"
+                    android:textColor="#e2e8f0"
+                    android:textColorHint="#64748b" />
+
+                <EditText
+                    android:id="@+id/etPassword"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:layout_marginTop="8dp"
+                    android:autofillHints="password"
+                    android:background="#111c33"
+                    android:hint="@string/login_password_hint"
+                    android:inputType="textPassword"
+                    android:padding="12dp"
+                    android:textColor="#e2e8f0"
+                    android:textColorHint="#64748b" />
+
+                <Button
+                    android:id="@+id/btnPasswordSubmit"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:layout_marginTop="8dp"
+                    android:backgroundTint="#0ea5e9"
+                    android:text="@string/login_password_submit"
+                    android:textAllCaps="false"
+                    android:textColor="#ffffff" />
+            </LinearLayout>
+        </LinearLayout>
 
         <View
             android:layout_width="match_parent"

@@ -9,6 +9,13 @@
     <string name="device_protected">Qurilma himoyalangan va ulangan!\nУстройство защищено и подключено!</string>
     <string name="bot_username">@qalqon_aibot</string>
     <string name="login_subtitle">Ota-ona va farzand uchun bitta ilova</string>
+    <string name="login_code_hint">Botda \"📲 Android ilova kodi\" tugmasini bosing, chiqqan kodni shu yerga kiriting:</string>
+    <string name="login_code_field_hint">8 xonali kod</string>
+    <string name="login_code_submit">Kirish</string>
+    <string name="login_open_bot">Botni ochish</string>
+    <string name="login_code_bad">Kod noto\'g\'ri, muddati o\'tgan yoki allaqachon ishlatilgan.</string>
+    <string name="login_code_fill">Kodni kiriting.</string>
+    <string name="login_other_ways_toggle">Boshqa usul bilan kirish</string>
     <string name="login_telegram">Telegram bilan kirish</string>
     <string name="login_password_toggle">Login va parol bilan kirish</string>
     <string name="login_username_hint">Telegram username (masalan: jasur_a)</string>

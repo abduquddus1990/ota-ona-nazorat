@@ -77,6 +77,18 @@ object AppAuthApi {
         Session(j.getString("sessionToken"), j.optString("familyCode"))
     }
 
+    /**
+     * ENG SODDA kirish: ota-ona botda "📲 Android ilova kodi" tugmasini
+     * bosadi, chiqqan 8 xonali kodni shu yerga kiritadi — device_pair bilan
+     * bir xil naqsh (parent_pair_codes), faqat qurilma tokeni o'rniga
+     * brauzer seansi qaytadi.
+     */
+    fun loginWithCode(code: String): Result<Session> = runCatching {
+        val j = post(JSONObject().put("type", "parent_pair").put("code", code.trim().uppercase()))
+        if (!j.optBoolean("ok")) error(j.optString("error", "code_failed"))
+        Session(j.getString("sessionToken"), j.optString("familyCode"))
+    }
+
     /* ------------------------------------------------------------ saqlash */
 
     private const val PREFS = "shield_guard_prefs"
