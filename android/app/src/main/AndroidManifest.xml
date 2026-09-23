@@ -65,6 +65,16 @@
             android:launchMode="singleTop"
             android:theme="@style/Theme.ParentalGuard" />
 
+        <!-- "Poyga" o'yinining NATIVE sinov ekrani — hozircha faqat ichki
+             ko'rib chiqish uchun, hali asosiy menyuga ulanmagan
+             (games/NativeRaceActivity.kt'dagi izohga qarang). -->
+        <activity
+            android:name=".games.NativeRaceActivity"
+            android:exported="false"
+            android:launchMode="singleTop"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.ParentalGuard" />
+
         <activity
             android:name=".PairingActivity"
             android:exported="true"

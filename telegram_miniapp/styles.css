@@ -1,20 +1,28 @@
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap');
 
 /* ==========================================================================
    THEME PALETTES (10 PINTEREST-INSPIRED AESTHETIC THEMES)
    ========================================================================== */
 :root {
-    --bg-primary: #090d16;
+    /* Qalqon AI rasmiy brend dizayni (Stitch AI'dan, 2026-09) — "Katta
+       Bo'ri" (Himoyachi Posbon) va "Kichik Bo'ri" (Sarguzashtchi Bola)
+       arxetiplariga asoslangan. Standart mavzu shu rangларда: chuqur
+       ko'k-qora fon + porlayotgan Shield Cyan/Kinetic Amber urg'ular.
+       To'liq hujjat: assets/mascot/ va oldingi Stitch eksporti. */
+    --bg-primary: #0a0e17;
     --bg-surface: #111827;
     --bg-card: rgba(17, 24, 39, 0.88);
-    --border-subtle: rgba(255, 255, 255, 0.08);
-    --border-active: rgba(16, 185, 129, 0.4);
-    --accent-primary: #10b981;
-    --accent-hover: #059669;
-    --text-primary: #f8fafc;
+    --border-subtle: rgba(125, 249, 255, 0.08);
+    --border-active: rgba(0, 240, 255, 0.4);
+    --accent-primary: #00dbe9;
+    --accent-hover: #04a9af;
+    --accent-secondary: #ffb020;
+    --text-primary: #f1f5f9;
     --text-secondary: #94a3b8;
     --text-muted: #64748b;
-    --wallpaper-gradient: radial-gradient(circle at 50% 0%, rgba(16, 185, 129, 0.15), transparent 70%);
+    --wallpaper-gradient: radial-gradient(circle at 50% 0%, rgba(0, 240, 255, 0.15), transparent 70%);
+    --font-brand: 'Outfit', 'Plus Jakarta Sans', sans-serif;
 }
 
 /* Theme 1: Aurora Borealis */
@@ -129,7 +137,7 @@ body[data-theme="sky"] {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: var(--font-brand), -apple-system, BlinkMacSystemFont, sans-serif;
     -webkit-tap-highlight-color: transparent;
 }
 
