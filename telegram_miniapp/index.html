@@ -8,16 +8,40 @@
     <title>Qalqon AI — Ota-Ona Nazorati & Farzand Xavfsizligi</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <!--
+        Qalqon AI brend dizayni (Stitch AI, 2026-09): mavjud slate/cyan/amber
+        Tailwind ranglarini rasmiy palitraga qayta belgilaydi. Butun ilova
+        (app.js chiqargan minglab bg-slate-900, border-cyan-500 kabi
+        klasslar) shu orqali BITTA joydan qayta ranglanadi — har bir
+        ekranni alohida qayta yozish shart emas. Faqat DESIGN.md'da
+        nomlangan xonalar o'zgartirilgan; qolganlari Tailwind standarti
+        (masalan slate-400/700 — bu ikkisi tasodifan aynan Stitch
+        palitrasiga to'g'ri kelib qoladi, shuning uchun tegilmagan).
+    -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Outfit', 'Plus Jakarta Sans', 'sans-serif'] },
+                    colors: {
+                        slate: { 950: '#0a0e17', 900: '#111827', 800: '#1c2742' },
+                        cyan: { 300: '#7df9ff', 400: '#59d8de', 500: '#00dbe9', 600: '#04a9af' },
+                        amber: { 300: '#fde68a', 400: '#ffb020' },
+                    },
+                },
+            },
+        };
+    </script>
     <!-- Material Symbols & Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Geist:wght@500&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@400;600;700;800&family=Geist:wght@500&display=swap" rel="stylesheet"/>
     <!-- Telegram WebApp SDK -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <!-- Leaflet OpenStreetMap CSS & JS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <!-- Custom Stitch Styles -->
-    <link rel="stylesheet" href="styles.css?v=6.3">
+    <link rel="stylesheet" href="styles.css?v=6.4">
 </head>
 <body class="p-3 max-w-md mx-auto relative antialiased text-slate-200">
     <!-- ==================================================================== -->
