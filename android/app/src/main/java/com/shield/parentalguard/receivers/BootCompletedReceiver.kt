@@ -19,6 +19,16 @@ class BootCompletedReceiver : BroadcastReceiver() {
             action == Intent.ACTION_MY_PACKAGE_REPLACED ||
             action == "android.intent.action.QUICKBOOT_POWERON"
         ) {
+            // Hali juftlashmagan (yoki ota-ona sifatida kirgan, farzand
+            // sifatida ulanmagan) qurilmada ruxsat ham yo'q — servisni
+            // ishga tushirishga urinish shu yerning o'zida to'xtatiladi.
+            // Ilgari bu tekshiruv yo'q edi: MY_PACKAGE_REPLACED HAR BIR
+            // yangilanishda keladi, ya'ni ilova hali sinovdan o'tayotgan
+            // (hech qachon juftlashmagan) qurilmada har safar yangilanish
+            // bilan birga darhol yiqilib qolardi.
+            val prefs = context.getSharedPreferences("shield_guard_prefs", Context.MODE_PRIVATE)
+            if (!prefs.getBoolean("is_paired", false)) return
+
             val serviceIntent = Intent(context, PersistentGuardService::class.java)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 context.startForegroundService(serviceIntent)
