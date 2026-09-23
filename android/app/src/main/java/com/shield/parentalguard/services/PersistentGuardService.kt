@@ -1,15 +1,18 @@
 package com.shield.parentalguard.services
 
+import android.Manifest
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 
 /**
  * Shaffof va O'ldirilmas Foreground Servis.
@@ -28,6 +31,25 @@ class PersistentGuardService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // "location" turidagi FGS joylashuv ruxsati YO'Q holda ishga
+        // tushirilsa, tizim buni jim rad etmaydi — SecurityException bilan
+        // ilovaning o'zini yiqitadi. Bu amalda sodir bo'lgan: BootCompletedReceiver
+        // MY_PACKAGE_REPLACED (har bir yangilanishda!) va BOOT_COMPLETED'da
+        // servisni SO'RALMAGAN holda ham ishga tushirar edi — hali hech qachon
+        // juftlashmagan yoki ruxsat bermagan qurilmada ilova yangilanishning
+        // o'zidayoq yiqilib qolardi. Shu yerda ikkinchi himoya qatlami: ruxsat
+        // yo'q bo'lsa, xizmat shunchaki jimgina to'xtaydi.
+        val hasLocation = ContextCompat.checkSelfPermission(
+            this, Manifest.permission.ACCESS_COARSE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED ||
+            ContextCompat.checkSelfPermission(
+                this, Manifest.permission.ACCESS_FINE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+        if (!hasLocation) {
+            stopSelf()
+            return START_NOT_STICKY
+        }
+
         val notification = buildNotification()
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
