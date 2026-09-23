@@ -41,6 +41,7 @@ class LoginActivity : AppCompatActivity() {
     private lateinit var btnCodeSubmit: Button
     private lateinit var otherWaysToggle: TextView
     private lateinit var otherWaysBox: View
+    private lateinit var btnRegister: Button
 
     /** Telegramdan qaytgach, tasdiqlashni shu token bo'yicha so'raymiz. */
     private var pendingToken: String? = null
@@ -66,14 +67,21 @@ class LoginActivity : AppCompatActivity() {
         btnCodeSubmit = findViewById(R.id.btnCodeSubmit)
         otherWaysToggle = findViewById(R.id.btnOtherWaysToggle)
         otherWaysBox = findViewById(R.id.otherWaysBox)
+        btnRegister = findViewById(R.id.btnRegister)
 
-        btnOpenBot.setOnClickListener {
+        val openBot = {
             try {
                 startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://t.me/qalqon_aiBot")))
             } catch (_: Exception) {
                 Toast.makeText(this, R.string.login_no_telegram, Toast.LENGTH_LONG).show()
             }
         }
+        btnOpenBot.setOnClickListener { openBot() }
+        // Oila hali ro'yxatdan o'tmagan bo'lsa, bot o'zi tanib, ro'yg'atdan
+        // o'tish formasini (Mini App) taklif qiladi — allaqachon ro'yxatdan
+        // o'tgan bo'lsa, bot to'g'ridan-to'g'ri asosiy menyuni ko'rsatadi.
+        // Ikkala holatda ham ochish nuqtasi bitta: botning o'zi.
+        btnRegister.setOnClickListener { openBot() }
         btnCodeSubmit.setOnClickListener { submitParentCode() }
         otherWaysToggle.setOnClickListener {
             otherWaysBox.visibility = if (otherWaysBox.visibility == View.VISIBLE) View.GONE else View.VISIBLE
