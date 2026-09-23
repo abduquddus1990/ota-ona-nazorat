@@ -16,6 +16,8 @@
     <string name="login_code_bad">Kod noto\'g\'ri, muddati o\'tgan yoki allaqachon ishlatilgan.</string>
     <string name="login_code_fill">Kodni kiriting.</string>
     <string name="login_other_ways_toggle">Boshqa usul bilan kirish</string>
+    <string name="login_register_hint">Hali oilangiz ro\'yxatdan o\'tmaganmi?</string>
+    <string name="login_register">🆕 Ro\'yxatdan o\'tish (Telegram orqali)</string>
     <string name="login_telegram">Telegram bilan kirish</string>
     <string name="login_password_toggle">Login va parol bilan kirish</string>
     <string name="login_username_hint">Telegram username (masalan: jasur_a)</string>
