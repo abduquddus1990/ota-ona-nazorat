@@ -1429,6 +1429,7 @@ function getStartKeyboard(userId: string | number, lang: string = "uz", isChild:
         [{ text: "📱 Открыть панель (Mini App)", web_app: { url: `${miniAppUrl()}&lang=ru` } }],
         [{ text: "📍 Где мой ребёнок?", callback_data: "action_where" }],
         [{ text: "👶 Подключить ребёнка", callback_data: `action_pair_${code}` }],
+        [{ text: "📲 Код для Android-приложения", callback_data: "action_app_code" }],
         [{ text: "🌐 Til / Язык (UZ/RU)", callback_data: "action_lang" }],
       ],
     };
@@ -1438,6 +1439,7 @@ function getStartKeyboard(userId: string | number, lang: string = "uz", isChild:
       [{ text: "📱 Ota-ona paneli (Mini App)", web_app: { url: `${miniAppUrl()}&lang=uz` } }],
       [{ text: "📍 Farzandim qayerda?", callback_data: "action_where" }],
       [{ text: "👶 Farzandni ulash", callback_data: `action_pair_${code}` }],
+      [{ text: "📲 Android ilova kodi", callback_data: "action_app_code" }],
       [{ text: "🌐 Til / Язык (UZ/RU)", callback_data: "action_lang" }],
     ],
   };
@@ -3952,7 +3954,7 @@ async function handleRequest(req: Request): Promise<Response> {
     // web_login / web_logout — brauzerda Telegram imzosi yo'q; web_login o'zi
     //   login/parolni tekshiradi va urinishlar soni cheklangan.
     const NO_ACTOR_TYPES = [
-      "device_pair", "cron_daily_digest", "cron_live_reminder",
+      "device_pair", "parent_pair", "cron_daily_digest", "cron_live_reminder",
       "cron_evening_check", "web_login", "web_logout",
       "app_login_start", "app_login_poll",
     ];
@@ -7658,6 +7660,76 @@ async function handleRequest(req: Request): Promise<Response> {
       );
     }
 
+    // 0.0e Ota-ona Android ilovaga ENG SODDA yo'l bilan kiradi: botda
+    // "📲 Android ilova kodi" tugmasini bosadi (action_app_code), chiqqan
+    // 8 xonali kodni shu yerda web_sessions'ga almashtiradi — device_pair
+    // bilan bir xil naqsh, faqat qurilma tokeni o'rniga brauzer seansi
+    // beriladi. Parol ham, ilovalar orasida almashish ham kerak emas.
+    if (payload.type === "parent_pair") {
+      const code = String(payload.code || "").trim().toUpperCase();
+      const actorKey = `parentpair:${clientKey(req)}`;
+
+      if (!db) {
+        return new Response(JSON.stringify({ ok: false, error: "Baza ulanmagan" }), {
+          status: 500,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      if (await joinRateLimited(actorKey)) {
+        return new Response(
+          JSON.stringify({ ok: false, error: "Juda ko'p urinish. Keyinroq qayta urinib ko'ring." }),
+          { status: 429, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      const { data } = await db
+        .from("parent_pair_codes")
+        .select("code, family_code, parent_telegram_id, expires_at, used_at")
+        .eq("code", code)
+        .limit(1);
+
+      const row = data && data[0];
+      const valid =
+        row && !row.used_at && new Date(row.expires_at).getTime() > Date.now();
+
+      await recordJoinAttempt(actorKey, row ? row.family_code : "", !!valid);
+
+      if (!valid) {
+        return new Response(
+          JSON.stringify({ ok: false, error: "Kod yaroqsiz, muddati o'tgan yoki ishlatilgan" }),
+          { status: 403, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      // Kodni darhol kuydiramiz — ikkinchi qurilma o'sha kod bilan kirmasin.
+      await db
+        .from("parent_pair_codes")
+        .update({ used_at: new Date().toISOString() })
+        .eq("code", code);
+
+      const token = toHex(crypto.getRandomValues(new Uint8Array(32)));
+      const expiresAt = new Date(Date.now() + WEB_SESSION_DAYS * 86400000).toISOString();
+      const { error: sErr } = await db.from("web_sessions").insert({
+        token_hash: await sha256Hex(token),
+        family_code: row.family_code,
+        telegram_id: row.parent_telegram_id,
+        user_agent: "android-app",
+        expires_at: expiresAt,
+      });
+      if (sErr) {
+        console.error("web_sessions insert failed (parent_pair):", sErr.message);
+        return new Response(JSON.stringify({ ok: false, error: sErr.message }), {
+          status: 500, headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      // Token faqat SHU javobda ko'rinadi.
+      return new Response(
+        JSON.stringify({ ok: true, sessionToken: token, familyCode: row.family_code }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
     // 0.1 Farzand ulanganida adminga xabar. FAQAT xabar — bazaga yozish
     // child_consent'da, u yerda ruxsat tekshiriladi. Ilgari bu handler ham
     // yozardi, lekin u paytda hech qanday tekshiruv yo'q edi.
@@ -8064,6 +8136,43 @@ async function handleRequest(req: Request): Promise<Response> {
       if (data === "action_where") {
         const r = await buildWhereReport(generateFamilyCode(chatId), lang);
         await sendMessage(chatId, r.text, r.keyboard);
+        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      }
+
+      // Android ilovaga ENG SODDA kirish: farzand device_pair_codes bilan
+      // qanday ulansa, ota-ona ham xuddi shunday — bitta bosishda kod
+      // chiqadi, uni ilovada kiritadi. Parol yo'q, ilovalar orasida
+      // almashish yo'q (Telegram-orqali kirish shu bilan solishtirganda
+      // ko'proq bosqichli va deep-link ochilishiga bog'liq edi).
+      if (data === "action_app_code" && db) {
+        const famOfParent = await registeredParentFamily(chatId);
+        if (!famOfParent) {
+          await sendMessage(
+            chatId,
+            lang === "ru"
+              ? "⚠️ Сначала зарегистрируйтесь через «Открыть панель»."
+              : "⚠️ Avval «Ota-ona paneli» orqali ro'yxatdan o'ting."
+          );
+          return new Response(JSON.stringify({ ok: true }), { status: 200 });
+        }
+        const appCode = randomCode(8);
+        const { error } = await db.from("parent_pair_codes").insert({
+          code: appCode,
+          family_code: famOfParent,
+          parent_telegram_id: chatId,
+          expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+        });
+        if (error) {
+          console.error("parent_pair_codes insert failed:", error.message);
+          await sendMessage(chatId, lang === "ru" ? "⚠️ Ошибка сервера." : "⚠️ Server xatosi.");
+          return new Response(JSON.stringify({ ok: true }), { status: 200 });
+        }
+        const msg = lang === "ru"
+          ? `📲 <b>Код для входа в приложение:</b>\n\n<code>${appCode}</code>\n\n` +
+            `Откройте Android-приложение и введите этот код в поле входа. Код действует 15 минут и работает один раз.`
+          : `📲 <b>Ilovaga kirish kodi:</b>\n\n<code>${appCode}</code>\n\n` +
+            `Android ilovani oching va shu kodni kirish maydoniga kiriting. Kod 15 daqiqa amal qiladi va bir marta ishlatiladi.`;
+        await sendMessage(chatId, msg);
         return new Response(JSON.stringify({ ok: true }), { status: 200 });
       }
 

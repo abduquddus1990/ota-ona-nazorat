@@ -36,6 +36,11 @@ class LoginActivity : AppCompatActivity() {
     private lateinit var etPassword: EditText
     private lateinit var btnPasswordSubmit: Button
     private lateinit var tvStatus: TextView
+    private lateinit var btnOpenBot: Button
+    private lateinit var etParentCode: EditText
+    private lateinit var btnCodeSubmit: Button
+    private lateinit var otherWaysToggle: TextView
+    private lateinit var otherWaysBox: View
 
     /** Telegramdan qaytgach, tasdiqlashni shu token bo'yicha so'raymiz. */
     private var pendingToken: String? = null
@@ -56,7 +61,23 @@ class LoginActivity : AppCompatActivity() {
         etPassword = findViewById(R.id.etPassword)
         btnPasswordSubmit = findViewById(R.id.btnPasswordSubmit)
         tvStatus = findViewById(R.id.tvLoginStatus)
+        btnOpenBot = findViewById(R.id.btnOpenBot)
+        etParentCode = findViewById(R.id.etParentCode)
+        btnCodeSubmit = findViewById(R.id.btnCodeSubmit)
+        otherWaysToggle = findViewById(R.id.btnOtherWaysToggle)
+        otherWaysBox = findViewById(R.id.otherWaysBox)
 
+        btnOpenBot.setOnClickListener {
+            try {
+                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://t.me/qalqon_aiBot")))
+            } catch (_: Exception) {
+                Toast.makeText(this, R.string.login_no_telegram, Toast.LENGTH_LONG).show()
+            }
+        }
+        btnCodeSubmit.setOnClickListener { submitParentCode() }
+        otherWaysToggle.setOnClickListener {
+            otherWaysBox.visibility = if (otherWaysBox.visibility == View.VISIBLE) View.GONE else View.VISIBLE
+        }
         btnTelegram.setOnClickListener { startTelegramLogin() }
         btnPassword.setOnClickListener {
             passwordBox.visibility = if (passwordBox.visibility == View.VISIBLE) View.GONE else View.VISIBLE
@@ -64,6 +85,24 @@ class LoginActivity : AppCompatActivity() {
         btnPasswordSubmit.setOnClickListener { submitPassword() }
         btnChild.setOnClickListener {
             startActivity(Intent(this, PairingActivity::class.java))
+        }
+    }
+
+    private fun submitParentCode() {
+        val code = etParentCode.text.toString().trim()
+        if (code.length != 8) {
+            tvStatus.text = getString(R.string.login_code_fill)
+            return
+        }
+        setBusy(true, getString(R.string.login_checking))
+        lifecycleScope.launch {
+            val result = withContext(Dispatchers.IO) { AppAuthApi.loginWithCode(code) }
+            result.onSuccess {
+                AppAuthApi.saveSession(this@LoginActivity, it)
+                openApp()
+            }.onFailure {
+                setBusy(false, getString(R.string.login_code_bad))
+            }
         }
     }
 
@@ -149,6 +188,7 @@ class LoginActivity : AppCompatActivity() {
         tvStatus.text = message
         btnTelegram.isEnabled = !busy
         btnPasswordSubmit.isEnabled = !busy
+        btnCodeSubmit.isEnabled = !busy
     }
 
     private fun openApp() {
