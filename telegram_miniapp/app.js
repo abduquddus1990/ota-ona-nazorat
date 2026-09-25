@@ -675,24 +675,26 @@ function saveChildrenDatabase() {
 let childrenDatabase = loadChildrenDatabase();
 let currentChildKey = Object.keys(childrenDatabase)[0] || "CH-101";
 
+// XATO TUZATILDI: bu yerda elementning ID'si "childSelect" deb yozilgan
+// edi, lekin index.html'dagi haqiqiy dropdown "childSelector" (oxirida
+// "or" bilan). ID mos kelmagani uchun bu funksiya HECH QACHON hech narsa
+// qilmasdi (select == null, darhol return) — demo farzandlar (Aliyor,
+// Madina, Temur) index.html'ga qattiq yozilgan bo'lib, ular ustidan HECH
+// QACHON haqiqiy farzandlar bilan almashtirilmasdi, nechta real farzand
+// qo'shilishidan qat'iy nazar.
 function renderChildSelectDropdown() {
-    const select = document.getElementById('childSelect');
+    const select = document.getElementById('childSelector');
     if (!select) return;
     select.innerHTML = Object.keys(childrenDatabase).map(k => {
         const c = childrenDatabase[k];
         const isSelected = (k === currentChildKey) ? 'selected' : '';
-        return `<option value="${k}" ${isSelected}>👦 ${c.name} (${c.grade}-sinf [ID: ${k}])</option>`;
+        return `<option value="${k}" ${isSelected}>👦 ${c.name} (${c.grade}-sinf)</option>`;
     }).join('');
 }
-
-function switchChild(childKey) {
-    if (childrenDatabase[childKey]) {
-        currentChildKey = childKey;
-        renderActiveChild();
-        renderSchoolCurriculum();
-        updateMapCoordinates();
-    }
-}
+// switchChild(childKey) — pastda (~3145-qatorda) qayta e'lon qilingan;
+// JavaScript'da bir xil nomli ikkinchi "function" e'loni birinchisini
+// butunlay almashtiradi, shuning uchun bu yerdagi eski nusxa hech qachon
+// ishlamas edi — chalkashlikni oldini olish uchun olib tashlandi.
 
 // Ota-ona paneli farzandlar ro'yxatini serverdan oladi. Ilgari ro'yxat
 // faqat localStorage'dagi demo ma'lumotdan iborat edi — shuning uchun
@@ -2820,139 +2822,14 @@ async function handleChildLeaveFamily() {
 // ============================================================================
 // 5. AUTHENTICATION (KIRISH VA REGISTRATSIYA)
 // ============================================================================
-function switchAuthTab(tab) {
-    const isRegister = (tab === 'register');
-    const tabReg = document.getElementById('tabBtnRegister');
-    const tabLog = document.getElementById('tabBtnLogin');
-    if (tabReg) {
-        tabReg.className = isRegister 
-            ? "flex-1 py-1.5 rounded-lg text-xs font-bold text-white bg-emerald-500 shadow transition" 
-            : "flex-1 py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition";
-    }
-    if (tabLog) {
-        tabLog.className = !isRegister 
-            ? "flex-1 py-1.5 rounded-lg text-xs font-bold text-white bg-sky-500 shadow transition" 
-            : "flex-1 py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition";
-    }
-    
-    const formReg = document.getElementById('formRegister');
-    const formLog = document.getElementById('formLogin');
-    if (formReg) formReg.classList.toggle('hidden', !isRegister);
-    if (formLog) formLog.classList.toggle('hidden', isRegister);
-    
-    const authErr = document.getElementById('authErrorMsg');
-    const loginErr = document.getElementById('loginErrorMsg');
-    if (authErr) authErr.classList.add('hidden');
-    if (loginErr) loginErr.classList.add('hidden');
-}
-
-function handleParentRegister() {
-    const usernameInput = document.getElementById('regUsername');
-    const passwordInput = document.getElementById('regPassword');
-    const confirmInput = document.getElementById('regConfirmPassword');
-    const errorBox = document.getElementById('authErrorMsg');
-
-    const username = usernameInput ? usernameInput.value.trim() : "";
-    const password = passwordInput ? passwordInput.value.trim() : "";
-    const confirmPassword = confirmInput ? confirmInput.value.trim() : "";
-
-    if (!username || !password || !confirmPassword) {
-        if (errorBox) {
-            errorBox.innerText = (currentLang === 'ru') 
-                ? "⚠️ Заполните все поля!" 
-                : "⚠️ Barcha maydonlarni to'ldiring!";
-            errorBox.classList.remove('hidden');
-        }
-        return;
-    }
-
-    if (password !== confirmPassword) {
-        if (errorBox) {
-            errorBox.innerText = (currentLang === 'ru') 
-                ? "⚠️ Пароли не совпадают! Введите одинаковые пароли." 
-                : "⚠️ Parollar mos kelmadi! Iltimos, bir xil parol kiriting.";
-            errorBox.classList.remove('hidden');
-        }
-        return;
-    }
-
-    if (password.length < 4) {
-        if (errorBox) {
-            errorBox.innerText = (currentLang === 'ru') 
-                ? "⚠️ Пароль должен содержать минимум 4 символа!" 
-                : "⚠️ Parol kamida 4 ta belgidan iborat bo'lishi kerak!";
-            errorBox.classList.remove('hidden');
-        }
-        return;
-    }
-
-    if (errorBox) errorBox.classList.add('hidden');
-
-    const formattedUsername = username.startsWith('@') ? username : `@${username}`;
-    currentAuthUser = {
-        username: formattedUsername,
-        password: password,
-        status: 'approved',
-        registeredAt: new Date().toISOString()
-    };
-    authStatus = 'approved';
-    localStorage.setItem('auth_user', JSON.stringify(currentAuthUser));
-    localStorage.setItem('auth_status', authStatus);
-
-    // Supabase orqali bildirishnoma yuborish
-    try {
-        fetch('https://wfrclcwjeeqeqchmdhzw.supabase.co/functions/v1/ota-ona-bot', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                type: 'parent_registration_request',
-                username: formattedUsername,
-                familyCode: familyCode,
-                timestamp: new Date().toISOString()
-            })
-        }).catch(err => console.log('Notification sent'));
-    } catch(e) {}
-
-    updateAuthUI();
-    closeSubpage();
-    const successMsg = (currentLang === 'ru') 
-        ? "🎉 Регистрация успешно завершена! Доступ ко всем функциям активирован."
-        : "🎉 Ro'yxatdan o'tish muvaffaqiyatli yakunlandi! Barcha bo'limlar to'liq faollashtirildi.";
-    alert(successMsg);
-}
-
-function handleParentLogin() {
-    const usernameInput = document.getElementById('loginUsername');
-    const passwordInput = document.getElementById('loginPassword');
-    const errorBox = document.getElementById('loginErrorMsg');
-
-    const username = usernameInput ? usernameInput.value.trim() : "";
-    const password = passwordInput ? passwordInput.value.trim() : "";
-
-    if (!username || !password) {
-        if (errorBox) {
-            errorBox.innerText = (currentLang === 'ru') ? "⚠️ Введите логин и пароль!" : "⚠️ Username va parolni kiriting!";
-            errorBox.classList.remove('hidden');
-        }
-        return;
-    }
-
-    const formattedUsername = username.startsWith('@') ? username : `@${username}`;
-    currentAuthUser = {
-        username: formattedUsername,
-        password: password,
-        status: 'approved'
-    };
-    authStatus = 'approved';
-    localStorage.setItem('auth_user', JSON.stringify(currentAuthUser));
-    localStorage.setItem('auth_status', authStatus);
-
-    if (errorBox) errorBox.classList.add('hidden');
-    closeSubpage();
-    updateAuthUI();
-    alert(currentLang === 'ru' ? "✅ Успешный вход в аккаунт!" : "✅ Tizimga muvaffaqiyatli kirdingiz!");
-}
-
+// switchAuthTab / handleParentRegister / handleParentLogin OLIB TASHLANDI
+// (2026-09): bular ilovaning ENG BOSHIDAGI, hali haqiqiy server autentifikatsiyasi
+// (Telegram initData, web_sessions, parent_registrations) yozilmagan davridan qolgan
+// SOF localStorage "teatri" edi — hech qanday haqiqiy tekshiruv qilmasdan
+// authStatus='approved' deb o'zini aldardi va ustiga chalasoat parent_registration_request
+// so'rovi yuborardi (bola ismi, sinfi kabi majburiy maydonlarsiz). Haqiqiy ro'yxatdan
+// o'tish endi butunlay boshqacha: modal-parent-onboarding (Telegram identitetiga
+// asoslangan, admin tasdig'i bilan) va checkWebLoginNeeded/handleWebLogin (web_login).
 function updateAuthUI() {
     const banner = document.getElementById('authStatusBanner');
     const bannerIcon = document.getElementById('authBannerIcon');
