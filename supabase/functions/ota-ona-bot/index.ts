@@ -4146,66 +4146,13 @@ async function handleRequest(req: Request): Promise<Response> {
       );
     }
 
-    // 0.0a Ota-ona Mini App'dagi "Farzand qo'shish" formasidan.
-    //
-    // Bu bosqichda farzandning Telegram ID'si hali yo'q (u havolani hali
-    // ochmagan), shuning uchun yozuv uning username'i bo'yicha
-    // "invite_<username>" kaliti bilan saqlanadi. Farzand rozilik berganda
-    // child_consent haqiqiy "tg_<id>" yozuvini yaratadi va reconcileInvite()
-    // taklifni o'chiradi — shunday qilib bitta farzand ikki marta
-    // ko'rinmaydi. Taklif yozuvi source = "parent_invite" bilan belgilanadi,
-    // shuning uchun panel uni "kutilmoqda" holatida ko'rsata oladi.
-    if (payload.type === "add_child_request") {
-      // Oila kodi mijozdan OLINMAYDI — imzolangan Telegram identitetidan
-      // chiqariladi, aks holda birov boshqa oila nomidan yozib ketardi.
-      const familyCode = actor!.kind === "telegram" ? actor!.familyCode : "";
-      if (!familyCode) return unauthorized("Faqat Mini App orqali");
-      const childName = String(payload.childName || "").trim();
-      const uname = normalizeUsername(payload.childUsername);
-      const gradeNum = Number(payload.childGrade);
-      const grade = Number.isFinite(gradeNum) && gradeNum > 0 ? gradeNum : null;
-
-      if (!familyCode || !childName || !uname) {
-        return new Response(
-          JSON.stringify({
-            ok: false,
-            error: "familyCode, childName va childUsername majburiy",
-          }),
-          { status: 400, headers: { "Content-Type": "application/json" } }
-        );
-      }
-
-      const saved = await upsertPairing(familyCode, `invite_${uname}`, {
-        childName,
-        deviceLabel: `@${uname}`,
-        source: "parent_invite",
-        grade,
-        telegramUsername: uname,
-      });
-
-      // Yozilmagan bo'lsa "ok" demaymiz: Mini App buni muvaffaqiyat deb
-      // ko'rsatib, ota-onani farzand qo'shildi deb aldardi.
-      if (!saved) {
-        return new Response(
-          JSON.stringify({ ok: false, error: "Bazaga yozib bo'lmadi" }),
-          { status: 500, headers: { "Content-Type": "application/json" } }
-        );
-      }
-
-      await notifyAdmins(
-        `➕ <b>OTA-ONA FARZAND QO'SHDI</b>\n\n👦 <b>Farzand:</b> ${childName}\n🔗 <b>Username:</b> @${uname}\n🎓 <b>Sinf:</b> ${grade ?? "—"}\n🔑 <b>Oila Kodi:</b> <code>${familyCode}</code>`
-      );
-
-      return new Response(
-        JSON.stringify({
-          ok: true,
-          childId: `invite_${uname}`,
-          pairLink: `https://t.me/qalqon_aibot?start=pair_${familyCode}`,
-        }),
-        { status: 200, headers: { "Content-Type": "application/json" } }
-      );
-    }
-
+    // 0.0a ESKI "Farzand qo'shish" yo'li (add_child_request) OLIB TASHLANDI
+    // (2026-09): hech qanday mijoz (Mini App ham, Android ilova ham) endi buni
+    // chaqirmaydi — app.js create_child_invite'ga o'tgan (bir martalik, tasodifiy
+    // 8 xonali kod bilan). Bu eski yo'l esa javobida OILA KODINI o'zini ochiq
+    // qaytarardi ("pairLink": ".../start=pair_<oila_kodi>"), garchi u kod endi
+    // hech qachon chaqirilmasa ham, xavfsizlik nuqtai nazaridan qoldirishga
+    // hojat yo'q edi.
     // 0.0b Ota-ona panelidagi farzandlar ro'yxati.
     //
     // Nega backend'ning /api/v1/parent/children endpointi emas: u Render'ning
