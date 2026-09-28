@@ -7476,15 +7476,36 @@ async function handleRequest(req: Request): Promise<Response> {
         });
       }
 
-      await db.from("device_telemetry").insert({
-        family_code: actor!.familyCode,
-        child_id: actor!.childId,
-        app_package_name: String(payload.appPackageName || "unknown"),
-        category: String(payload.category || "General"),
-        screen_time_seconds: Number(payload.screenTimeSeconds) || 0,
-        encrypted_payload: encryptedPayload,
-        iv,
-      });
+      // Yangi mijoz oynadagi BARCHA ilovalarni yuboradi (apps: [{package,
+      // seconds}]) — ilgari faqat eng ko'p ishlatilgani yuborilib, qolgani
+      // yo'qolardi. Eski mijozlar hali ham bitta maydon bilan yuboradi,
+      // shuning uchun ikkalasi ham qabul qilinadi.
+      const rawApps = Array.isArray(payload.apps) ? payload.apps.slice(0, 20) : [];
+      const rows = rawApps
+        .map((a: any) => ({
+          family_code: actor!.familyCode,
+          child_id: actor!.childId,
+          app_package_name: String(a?.package || "unknown").slice(0, 200),
+          category: String(payload.category || "General"),
+          screen_time_seconds: Math.max(0, Math.min(Number(a?.seconds) || 0, 24 * 3600)),
+          encrypted_payload: encryptedPayload,
+          iv,
+        }))
+        .filter((r: any) => r.screen_time_seconds > 0);
+
+      if (rows.length === 0) {
+        rows.push({
+          family_code: actor!.familyCode,
+          child_id: actor!.childId,
+          app_package_name: String(payload.appPackageName || "unknown").slice(0, 200),
+          category: String(payload.category || "General"),
+          screen_time_seconds: Math.max(0, Math.min(Number(payload.screenTimeSeconds) || 0, 24 * 3600)),
+          encrypted_payload: encryptedPayload,
+          iv,
+        });
+      }
+
+      await db.from("device_telemetry").insert(rows);
 
       return new Response(JSON.stringify({ ok: true }), {
         status: 200, headers: { "Content-Type": "application/json" },
