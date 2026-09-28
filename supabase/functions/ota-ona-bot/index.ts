@@ -1429,7 +1429,7 @@ function getStartKeyboard(userId: string | number, lang: string = "uz", isChild:
         [{ text: "📱 Открыть панель (Mini App)", web_app: { url: `${miniAppUrl()}&lang=ru` } }],
         [{ text: "📍 Где мой ребёнок?", callback_data: "action_where" }],
         [{ text: "👶 Подключить ребёнка", callback_data: `action_pair_${code}` }],
-        [{ text: "📲 Код для Android-приложения", callback_data: "action_app_code" }],
+        [{ text: "📲 Код для входа В МОЙ телефон", callback_data: "action_app_code" }],
         [{ text: "🌐 Til / Язык (UZ/RU)", callback_data: "action_lang" }],
       ],
     };
@@ -1439,7 +1439,7 @@ function getStartKeyboard(userId: string | number, lang: string = "uz", isChild:
       [{ text: "📱 Ota-ona paneli (Mini App)", web_app: { url: `${miniAppUrl()}&lang=uz` } }],
       [{ text: "📍 Farzandim qayerda?", callback_data: "action_where" }],
       [{ text: "👶 Farzandni ulash", callback_data: `action_pair_${code}` }],
-      [{ text: "📲 Android ilova kodi", callback_data: "action_app_code" }],
+      [{ text: "📲 O'ZIM uchun ilova kodi", callback_data: "action_app_code" }],
       [{ text: "🌐 Til / Язык (UZ/RU)", callback_data: "action_lang" }],
     ],
   };
@@ -7612,6 +7612,13 @@ async function handleRequest(req: Request): Promise<Response> {
     // 8 xonali kodni shu yerda web_sessions'ga almashtiradi — device_pair
     // bilan bir xil naqsh, faqat qurilma tokeni o'rniga brauzer seansi
     // beriladi. Parol ham, ilovalar orasida almashish ham kerak emas.
+    // Kodning TURI mijozdan emas, kodning O'ZIDAN aniqlanadi: avval ota-ona
+    // kodlari, topilmasa farzand qurilma kodlari qaraladi. Sabab — ikkala kod
+    // ham bir xil alifbodan, bir xil 8 ta belgi: na odam, na ilova ularni
+    // ko'rib farqlay oladi. Ilgari ilovada ikkita alohida maydon bor edi va
+    // ota-ona farzand telefoniga xato kodni kiritsa, u telefon OTA-ONA seansini
+    // olib, boshqa farzandlarning joylashuvini ko'ra olardi (amalda shunday
+    // bo'lgan). Endi qaysi kod berilsa, qurilma o'sha rolda ochiladi.
     if (payload.type === "parent_pair") {
       const code = String(payload.code || "").trim().toUpperCase();
       const actorKey = `parentpair:${clientKey(req)}`;
@@ -7639,14 +7646,71 @@ async function handleRequest(req: Request): Promise<Response> {
       const valid =
         row && !row.used_at && new Date(row.expires_at).getTime() > Date.now();
 
-      await recordJoinAttempt(actorKey, row ? row.family_code : "", !!valid);
-
+      // Ota-ona kodi emas ekan — bu FARZAND qurilma kodi bo'lishi mumkin.
+      // Shu holda device_pair bilan bir xil natija qaytaramiz, faqat rol
+      // "child" bo'ladi va qurilma tokeni beriladi.
       if (!valid) {
+        const { data: devRows } = await db
+          .from("device_pair_codes")
+          .select("code, family_code, child_id, child_name, expires_at, used_at")
+          .eq("code", code)
+          .limit(1);
+        const dev = devRows && devRows[0];
+        const devValid =
+          dev && !dev.used_at && new Date(dev.expires_at).getTime() > Date.now();
+
+        await recordJoinAttempt(actorKey, dev ? dev.family_code : "", !!devValid);
+
+        if (devValid) {
+          const deviceModel = String(payload.deviceModel || "android").trim();
+          await db
+            .from("device_pair_codes")
+            .update({ used_at: new Date().toISOString() })
+            .eq("code", code);
+
+          const devToken = toHex(crypto.getRandomValues(new Uint8Array(32)));
+          const childId = dev.child_id ||
+            `android_${dev.family_code}_${deviceModel}`.replace(/\s+/g, "_");
+
+          const { error: devErr } = await db.from("device_tokens").insert({
+            token_hash: await sha256Hex(devToken),
+            family_code: dev.family_code,
+            child_id: childId,
+            device_label: dev.child_name || deviceModel,
+            device_model: deviceModel,
+          });
+          if (devErr) {
+            console.error("device_tokens insert failed (parent_pair):", devErr.message);
+            return new Response(JSON.stringify({ ok: false, error: devErr.message }), {
+              status: 500, headers: { "Content-Type": "application/json" },
+            });
+          }
+
+          await upsertPairing(dev.family_code, childId, {
+            childName: dev.child_name || (dev.child_id ? undefined : deviceModel),
+            deviceLabel: deviceModel,
+            source: "android_parental_guard",
+          });
+
+          return new Response(
+            JSON.stringify({
+              ok: true,
+              role: "child",
+              deviceToken: devToken,
+              childId,
+              familyCode: dev.family_code,
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          );
+        }
+
         return new Response(
           JSON.stringify({ ok: false, error: "Kod yaroqsiz, muddati o'tgan yoki ishlatilgan" }),
           { status: 403, headers: { "Content-Type": "application/json" } }
         );
       }
+
+      await recordJoinAttempt(actorKey, row.family_code, true);
 
       // Kodni darhol kuydiramiz — ikkinchi qurilma o'sha kod bilan kirmasin.
       await db
@@ -7672,7 +7736,7 @@ async function handleRequest(req: Request): Promise<Response> {
 
       // Token faqat SHU javobda ko'rinadi.
       return new Response(
-        JSON.stringify({ ok: true, sessionToken: token, familyCode: row.family_code }),
+        JSON.stringify({ ok: true, role: "parent", sessionToken: token, familyCode: row.family_code }),
         { status: 200, headers: { "Content-Type": "application/json" } }
       );
     }
@@ -8115,10 +8179,12 @@ async function handleRequest(req: Request): Promise<Response> {
           return new Response(JSON.stringify({ ok: true }), { status: 200 });
         }
         const msg = lang === "ru"
-          ? `📲 <b>Код для входа в приложение:</b>\n\n<code>${appCode}</code>\n\n` +
-            `Откройте Android-приложение и введите этот код в поле входа. Код действует 15 минут и работает один раз.`
-          : `📲 <b>Ilovaga kirish kodi:</b>\n\n<code>${appCode}</code>\n\n` +
-            `Android ilovani oching va shu kodni kirish maydoniga kiriting. Kod 15 daqiqa amal qiladi va bir marta ishlatiladi.`;
+          ? `📲 <b>Код для входа в приложение — ТОЛЬКО для ВАШЕГО телефона:</b>\n\n<code>${appCode}</code>\n\n` +
+            `Откройте Android-приложение на СВОЁМ телефоне и введите этот код. Код действует 15 минут и работает один раз.\n\n` +
+            `⚠️ <b>Не отправляйте этот код ребёнку</b> — с ним ребёнок попадёт в родительскую панель, а не в свою. Для ребёнка код выдаётся отдельно, кнопкой «Добавить ребёнка» в панели.`
+          : `📲 <b>Ilovaga kirish kodi — FAQAT SIZNING telefoningiz uchun:</b>\n\n<code>${appCode}</code>\n\n` +
+            `Android ilovani O'ZINGIZNING telefoningizda oching va shu kodni kiriting. Kod 15 daqiqa amal qiladi va bir marta ishlatiladi.\n\n` +
+            `⚠️ <b>Bu kodni farzandingizga bermang</b> — u bilan farzand ota-ona paneliga kirib qoladi, o'zining paneliga emas. Farzand uchun kod alohida, panelning «Yangi farzand qo'shish» tugmasi orqali olinadi.`;
         await sendMessage(chatId, msg);
         return new Response(JSON.stringify({ ok: true }), { status: 200 });
       }

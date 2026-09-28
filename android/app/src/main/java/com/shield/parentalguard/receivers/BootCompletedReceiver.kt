@@ -3,8 +3,7 @@ package com.shield.parentalguard.receivers
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.os.Build
-import com.shield.parentalguard.services.PersistentGuardService
+import com.shield.parentalguard.ParentalGuardApp
 
 /**
  * Qurilma o'chib yonganda yoki ilova yangilanganda himoya xizmatini qayta ishga tushirish.
@@ -29,12 +28,10 @@ class BootCompletedReceiver : BroadcastReceiver() {
             val prefs = context.getSharedPreferences("shield_guard_prefs", Context.MODE_PRIVATE)
             if (!prefs.getBoolean("is_paired", false)) return
 
-            val serviceIntent = Intent(context, PersistentGuardService::class.java)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(serviceIntent)
-            } else {
-                context.startService(serviceIntent)
-            }
+            // Ruxsat tekshiruvi ham shu yerda: startForegroundService()
+            // chaqirilgach, tizim startForeground() ni talab qiladi va
+            // bajarilmasa ilovani yiqitadi (ParentalGuardApp'dagi izohga qara).
+            ParentalGuardApp.startMonitoring(context)
         }
     }
 }
