@@ -1428,6 +1428,7 @@ function getStartKeyboard(userId: string | number, lang: string = "uz", isChild:
       inline_keyboard: [
         [{ text: "📱 Открыть панель (Mini App)", web_app: { url: `${miniAppUrl()}&lang=ru` } }],
         [{ text: "📍 Где мой ребёнок?", callback_data: "action_where" }],
+        [{ text: "📊 Время по приложениям", callback_data: "action_reels" }],
         [{ text: "👶 Подключить ребёнка", callback_data: `action_pair_${code}` }],
         [{ text: "📲 Код для входа В МОЙ телефон", callback_data: "action_app_code" }],
         [{ text: "🌐 Til / Язык (UZ/RU)", callback_data: "action_lang" }],
@@ -1438,6 +1439,7 @@ function getStartKeyboard(userId: string | number, lang: string = "uz", isChild:
     inline_keyboard: [
       [{ text: "📱 Ota-ona paneli (Mini App)", web_app: { url: `${miniAppUrl()}&lang=uz` } }],
       [{ text: "📍 Farzandim qayerda?", callback_data: "action_where" }],
+      [{ text: "📊 Ilovalar bo'yicha vaqt", callback_data: "action_reels" }],
       [{ text: "👶 Farzandni ulash", callback_data: `action_pair_${code}` }],
       [{ text: "📲 O'ZIM uchun ilova kodi", callback_data: "action_app_code" }],
       [{ text: "🌐 Til / Язык (UZ/RU)", callback_data: "action_lang" }],
@@ -3902,11 +3904,113 @@ function getPairingText(userId: string | number, lang: string = "uz", isApproved
   return `🔗 <b>FARZANDNI ULASH YO'RIQNOMASI:</b>\n\n1. Panelni oching (pastdagi tugma) → <b>«Yangi farzand qo'shish»</b>.\n2. Farzandning ismini kiriting — tizim unga <b>alohida, bir martalik kod</b> va havola beradi.\n3. O'sha havolani farzandingizga yuboring: u ochadi, 4 qoidaga rozilik beradi va kodni kiritadi.\n\n📱 <b>Android ilova</b> alohida ulanadi: shu panelda <b>«Android kodi olish»</b> tugmasini bosing — kod 15 daqiqa amal qiladi.\n\n⚠️ Oila kodingizni hech kimga yubormang — u ulanish uchun mo'ljallanmagan.`;
 }
 
-function getReelsAnalysisText(lang: string = "uz"): string {
-  if (lang === "ru") {
-    return `🎬 <b>АНАЛИЗ ПРОСМОТРЕННЫХ REELS И ВИДЕО:</b>\n\n📊 <b>Распределение по темам:</b>\n• 💻 <b>Образование и IT (Python, Робототехника, Языки):</b> 45% (Полезно)\n• 🔬 <b>Научные эксперименты и Логика:</b> 25% (Положительно)\n• 🎮 <b>Развлечения и Игры:</b> 30% (В норме)\n\n💡 <b>Рекомендация:</b> Чтобы алгоритм чаще рекомендовал обучающие видео, подпишитесь на полезные каналы по школьным предметам.`;
+// Ma'lum ilovalarni chiroyli ism/emoji bilan ko'rsatish uchun — topilmasa
+// paket nomining o'zi ko'rsatiladi. To'liq ro'yxat emas, eng ko'p
+// uchraydiganlari — yangi ilova qo'shish oson (bitta qator).
+const KNOWN_APPS: Record<string, string> = {
+  "com.google.android.youtube": "▶️ YouTube",
+  "com.zhiliaoapp.musically": "🎵 TikTok",
+  "com.ss.android.ugc.trill": "🎵 TikTok",
+  "com.instagram.android": "📸 Instagram",
+  "com.facebook.katana": "📘 Facebook",
+  "com.snapchat.android": "👻 Snapchat",
+  "com.whatsapp": "💬 WhatsApp",
+  "org.telegram.messenger": "✈️ Telegram",
+  "com.google.android.apps.classroom": "🎓 Google Classroom",
+  "com.duolingo": "🦉 Duolingo",
+  "com.android.chrome": "🌐 Chrome",
+  "com.discord": "🎮 Discord",
+  "com.roblox.client": "🎮 Roblox",
+  "com.mojang.minecraftpe": "🎮 Minecraft",
+  "com.supercell.clashofclans": "🎮 Clash of Clans",
+  "com.dts.freefireth": "🎮 Free Fire",
+};
+
+function friendlyAppName(pkg: string): string {
+  return KNOWN_APPS[pkg] || pkg;
+}
+
+// Bu — eski, HECH QACHON HAQIQIY MA'LUMOT KO'RSATMAGAN "Reels tahlili"
+// funksiyasining o'rnini bosadi (u qattiq yozilgan 45%/25%/30% foizlarini
+// har doim bir xil ko'rsatardi, farzand nima ko'rgani yoki qaysi ilovani
+// ochganidan qat'iy nazar). Bu funksiya esa device_telemetry jadvalidagi —
+// Android ilova WorkManager orqali har 15 daqiqada yuboradigan — HAQIQIY
+// ma'lumotdan foydalanadi.
+//
+// Video MAZMUNINI (nima ko'rilgani) bilib bo'lmaydi — Android bunga yo'l
+// qo'ymaydi, buning uchun Accessibility kerak bo'lardi, u esa Play'ning
+// stalkerware siyosatiga tushadi va bizning "ekran mazmuni o'qilmaydi"
+// va'damizga zid (android-va-mini-app-yo'nalishi qaroriga qarang). Shu
+// sabab bu yerda faqat QAYSI ILOVADA QANCHA VAQT — halol va real.
+async function getAppUsageReportText(familyCode: string, lang: string = "uz"): Promise<string> {
+  const ru = lang === "ru";
+  if (!db) return ru ? "⚠️ База недоступна." : "⚠️ Baza ulanmagan.";
+
+  const { data: kids } = await db
+    .from("child_pairings")
+    .select("child_id, child_name")
+    .eq("family_code", familyCode)
+    .eq("is_active", true)
+    .not("child_id", "like", "invite\\_%")
+    .limit(10);
+
+  if (!kids || kids.length === 0) {
+    return ru ? "👶 Ещё нет подключённого ребёнка." : "👶 Hali farzand ulanmagan.";
   }
-  return `🎬 <b>KO'RILAYOTGAN REELS VA VIDEO KONTENT TAHLILI:</b>\n\n📊 <b>Mavzular taqsimoti:</b>\n• 💻 <b>Ta'limiy & IT (Python, Robototexnika, Chet tili):</b> 45% (Foydali va rivojlantiruvchi)\n• 🔬 <b>Ilmiy tajribalar & Mantiqiy jumboqlar:</b> 25% (Ijobiy tendensiya)\n• 🎮 <b>Ko'ngilochar va o'yin strimlari:</b> 30% (Me'yorida)\n\n💡 <b>Tavsiya:</b> Algoritm ko'proq ta'limiy videolarni tavsiya qilishi uchun fanlar bo'yicha foydalanuvchi kanallariga obuna bo'lishni yo'lga qo'ying.`;
+
+  const since = new Date(Date.now() - 7 * 86400000).toISOString();
+  const lines: string[] = [
+    ru ? "📊 <b>Время по приложениям (7 дней)</b>" : "📊 <b>Ilovalar bo'yicha vaqt (so'nggi 7 kun)</b>",
+  ];
+  let anyData = false;
+
+  for (const k of kids) {
+    const { data } = await db
+      .from("device_telemetry")
+      .select("app_package_name, screen_time_seconds")
+      .eq("family_code", familyCode)
+      .eq("child_id", k.child_id)
+      .gte("created_at", since)
+      .limit(2000);
+
+    const totals: Record<string, number> = {};
+    (data || []).forEach((r: any) => {
+      totals[r.app_package_name] = (totals[r.app_package_name] || 0) + (Number(r.screen_time_seconds) || 0);
+    });
+    const top = Object.entries(totals).sort((a, b) => b[1] - a[1]).slice(0, 6);
+
+    const nom = k.child_name || (ru ? "Ребёнок" : "Farzand");
+    if (top.length === 0) {
+      lines.push(
+        `\n👦 <b>${nom}</b>\n` +
+          (ru
+            ? "❔ Данных пока нет (нужно Android-приложение на телефоне ребёнка)."
+            : "❔ Hali ma'lumot yo'q (farzand telefonida Android ilova kerak).")
+      );
+      continue;
+    }
+    anyData = true;
+    const rows = top
+      .map(([pkg, sec]) => {
+        const mins = Math.round(sec / 60);
+        const h = Math.floor(mins / 60);
+        const m = mins % 60;
+        const vaqt = h > 0 ? `${h}${ru ? "ч" : "s"} ${m}${ru ? "мин" : "d"}` : `${m}${ru ? "мин" : "d"}`;
+        return `  ${friendlyAppName(pkg)} — ${vaqt}`;
+      })
+      .join("\n");
+    lines.push(`\n👦 <b>${nom}</b>\n${rows}`);
+  }
+
+  if (!anyData) {
+    lines.push(
+      ru
+        ? "\n💡 Данные появятся, как только Android-приложение начнёт синхронизироваться (каждые 15 минут)."
+        : "\n💡 Ma'lumot Android ilova sinxronlashni boshlashi bilan (har 15 daqiqada) paydo bo'ladi."
+    );
+  }
+
+  return lines.join("\n");
 }
 
 function getFeedbackText(lang: string = "uz"): string {
@@ -8223,7 +8327,7 @@ async function handleRequest(req: Request): Promise<Response> {
       if (data.startsWith("action_pair")) {
         await sendMessage(chatId, getPairingText(chatId, lang, isApproved));
       } else if (data === "action_reels") {
-        await sendMessage(chatId, getReelsAnalysisText(lang));
+        await sendMessage(chatId, await getAppUsageReportText(generateFamilyCode(chatId), lang));
       } else if (data === "action_feedback") {
         await sendMessage(chatId, getFeedbackText(lang));
       } else if (data === "action_lang") {
@@ -8670,7 +8774,7 @@ async function handleRequest(req: Request): Promise<Response> {
       }
 
       if (text.startsWith("/reels")) {
-        await sendMessage(chatId, getReelsAnalysisText(lang));
+        await sendMessage(chatId, await getAppUsageReportText(generateFamilyCode(chatId), lang));
         return new Response(JSON.stringify({ ok: true }), { status: 200 });
       }
 
