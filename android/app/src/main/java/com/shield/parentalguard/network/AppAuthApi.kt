@@ -30,6 +30,18 @@ object AppAuthApi {
 
     data class LoginRequest(val token: String, val link: String)
     data class Session(val sessionToken: String, val familyCode: String)
+    data class DeviceCredential(val deviceToken: String, val childId: String, val familyCode: String)
+
+    /**
+     * Bitta kod maydoni ikki xil odam uchun ishlaydi: ota-ona ham, farzand
+     * ham xuddi shu joyga kodini kiritadi (Server kodning TURINI o'zi
+     * aniqlaydi — index.ts'dagi parent_pair'ga qarang). Natija shu ikkisidan
+     * biri bo'ladi, hech qachon ikkalasi ham emas.
+     */
+    sealed class CodeLoginResult {
+        data class AsParent(val session: Session) : CodeLoginResult()
+        data class AsChild(val credential: DeviceCredential) : CodeLoginResult()
+    }
 
     private fun post(body: JSONObject): JSONObject {
         val req = Request.Builder()
@@ -79,14 +91,22 @@ object AppAuthApi {
 
     /**
      * ENG SODDA kirish: ota-ona botda "📲 Android ilova kodi" tugmasini
-     * bosadi, chiqqan 8 xonali kodni shu yerga kiritadi — device_pair bilan
-     * bir xil naqsh (parent_pair_codes), faqat qurilma tokeni o'rniga
-     * brauzer seansi qaytadi.
+     * bosadi, chiqqan 8 xonali kodni shu yerga kiritadi. Farzand ham AYNAN
+     * shu maydonga ota-onasi bergan qurilma kodini kiritadi — ikkalasi ham
+     * bir xil ko'rinishdagi 8 ta belgi bo'lgani uchun (na odam, na ilova
+     * ularni ko'zdan farqlay olmaydi), qaysi turdaligini SERVER aniqlaydi
+     * va javobda "role" maydoni bilan aytadi.
      */
-    fun loginWithCode(code: String): Result<Session> = runCatching {
+    fun loginWithCode(code: String): Result<CodeLoginResult> = runCatching {
         val j = post(JSONObject().put("type", "parent_pair").put("code", code.trim().uppercase()))
         if (!j.optBoolean("ok")) error(j.optString("error", "code_failed"))
-        Session(j.getString("sessionToken"), j.optString("familyCode"))
+        if (j.optString("role") == "child") {
+            CodeLoginResult.AsChild(
+                DeviceCredential(j.getString("deviceToken"), j.getString("childId"), j.optString("familyCode"))
+            )
+        } else {
+            CodeLoginResult.AsParent(Session(j.getString("sessionToken"), j.optString("familyCode")))
+        }
     }
 
     /* ------------------------------------------------------------ saqlash */

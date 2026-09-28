@@ -1,18 +1,16 @@
 package com.shield.parentalguard.services
 
-import android.Manifest
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
-import androidx.core.content.ContextCompat
+import com.shield.parentalguard.ParentalGuardApp
 
 /**
  * Shaffof va O'ldirilmas Foreground Servis.
@@ -31,35 +29,42 @@ class PersistentGuardService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        // "location" turidagi FGS joylashuv ruxsati YO'Q holda ishga
-        // tushirilsa, tizim buni jim rad etmaydi — SecurityException bilan
-        // ilovaning o'zini yiqitadi. Bu amalda sodir bo'lgan: BootCompletedReceiver
-        // MY_PACKAGE_REPLACED (har bir yangilanishda!) va BOOT_COMPLETED'da
-        // servisni SO'RALMAGAN holda ham ishga tushirar edi — hali hech qachon
-        // juftlashmagan yoki ruxsat bermagan qurilmada ilova yangilanishning
-        // o'zidayoq yiqilib qolardi. Shu yerda ikkinchi himoya qatlami: ruxsat
-        // yo'q bo'lsa, xizmat shunchaki jimgina to'xtaydi.
-        val hasLocation = ContextCompat.checkSelfPermission(
-            this, Manifest.permission.ACCESS_COARSE_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED ||
-            ContextCompat.checkSelfPermission(
-                this, Manifest.permission.ACCESS_FINE_LOCATION
-            ) == PackageManager.PERMISSION_GRANTED
-        if (!hasLocation) {
-            stopSelf()
-            return START_NOT_STICKY
+        // Bu xizmat ikkita halokat orasida turadi:
+        //  1) "location" turidagi FGS joylashuv ruxsatisiz ishga tushirilsa,
+        //     tizim SecurityException bilan ilovani yiqitadi;
+        //  2) startForegroundService() chaqirilgandan keyin ~5 soniya ichida
+        //     startForeground() chaqirilmasa — ForegroundServiceDidNotStartInTime
+        //     bilan yiqitadi.
+        // Ilgari (1) dan qochish uchun ruxsat yo'qligida shunchaki stopSelf()
+        // qilinardi va bu to'g'ridan-to'g'ri (2) ga olib kelardi: juftlashgan,
+        // lekin hali ruxsat bermagan farzand telefonida ilova HAR ochilganda
+        // yiqilardi. Shuning uchun startForeground() DOIM chaqiriladi, lekin
+        // try/catch ichida — rad etilsa, yiqilish o'rniga jimgina to'xtaymiz.
+        //
+        // Chaqiruvchilar (ParentalGuardApp.startMonitoring, BootCompletedReceiver)
+        // endi ruxsatsiz bu xizmatni umuman ishga tushirmaydi; bu yer — oxirgi
+        // himoya qatlami.
+        val notification = buildNotification()
+        val started = try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                startForeground(
+                    NOTIFICATION_ID,
+                    notification,
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
+                )
+            } else {
+                startForeground(NOTIFICATION_ID, notification)
+            }
+            true
+        } catch (_: Exception) {
+            // Ruxsat yo'q (SecurityException) yoki tizim boshqa sababga ko'ra
+            // rad etdi — jimgina to'xtaymiz, ilovani yiqitmaymiz.
+            false
         }
 
-        val notification = buildNotification()
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            startForeground(
-                NOTIFICATION_ID,
-                notification,
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
-            )
-        } else {
-            startForeground(NOTIFICATION_ID, notification)
+        if (!started || !ParentalGuardApp.hasLocationPermission(this)) {
+            stopSelf()
+            return START_NOT_STICKY
         }
 
         // START_STICKY: Tizim xotira yetishmovchiligida o'ldirsa ham, xotira bo'shaganda qayta ishga tushiradi

@@ -13,6 +13,7 @@ import androidx.lifecycle.lifecycleScope
 import com.shield.parentalguard.PairingActivity
 import com.shield.parentalguard.R
 import com.shield.parentalguard.network.AppAuthApi
+import com.shield.parentalguard.network.DeviceCredentials
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -96,6 +97,16 @@ class LoginActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Bitta maydon, ikkita mumkin natija: bu kod ota-onaniki bo'lsa seans,
+     * farzandniki bo'lsa qurilma tokeni qaytadi (server aniqlaydi — qarang
+     * AppAuthApi.loginWithCode). Farzand holatida to'g'ridan-to'g'ri
+     * AppWebActivity'ga o'tmaymiz: PairingActivity joylashuv va foydalanish
+     * ruxsatlarini so'raydigan ekranni ko'rsatishi kerak, aks holda kuzatuv
+     * xizmati ruxsatsiz ishga tushishga urinib, ilovani yiqitardi (bu
+     * amalda sodir bo'lgan — ParentalGuardApp/PersistentGuardService'dagi
+     * izohlarga qarang).
+     */
     private fun submitParentCode() {
         val code = etParentCode.text.toString().trim()
         if (code.length != 8) {
@@ -105,9 +116,23 @@ class LoginActivity : AppCompatActivity() {
         setBusy(true, getString(R.string.login_checking))
         lifecycleScope.launch {
             val result = withContext(Dispatchers.IO) { AppAuthApi.loginWithCode(code) }
-            result.onSuccess {
-                AppAuthApi.saveSession(this@LoginActivity, it)
-                openApp()
+            result.onSuccess { outcome ->
+                when (outcome) {
+                    is AppAuthApi.CodeLoginResult.AsParent -> {
+                        AppAuthApi.saveSession(this@LoginActivity, outcome.session)
+                        openApp()
+                    }
+                    is AppAuthApi.CodeLoginResult.AsChild -> {
+                        DeviceCredentials.saveDeviceToken(
+                            this@LoginActivity,
+                            outcome.credential.deviceToken,
+                            outcome.credential.familyCode,
+                            outcome.credential.childId
+                        )
+                        startActivity(Intent(this@LoginActivity, PairingActivity::class.java))
+                        finish()
+                    }
+                }
             }.onFailure {
                 setBusy(false, getString(R.string.login_code_bad))
             }
