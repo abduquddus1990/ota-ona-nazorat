@@ -45,6 +45,7 @@ class PairingActivity : Activity() {
     private lateinit var tvStatusText: TextView
     private lateinit var btnGrantLocation: Button
     private lateinit var btnGrantUsage: Button
+    private lateinit var btnBatteryOpt: Button
 
     private val ioExecutor = Executors.newSingleThreadExecutor()
 
@@ -76,6 +77,7 @@ class PairingActivity : Activity() {
         tvStatusText = findViewById(R.id.tvStatusText)
         btnGrantLocation = findViewById(R.id.btnGrantLocation)
         btnGrantUsage = findViewById(R.id.btnGrantUsage)
+        btnBatteryOpt = findViewById(R.id.btnBatteryOpt)
 
         btnPair.setOnClickListener {
             val code = normalizePairCode(etPairingCode.text?.toString())
@@ -90,6 +92,7 @@ class PairingActivity : Activity() {
 
         btnGrantLocation.setOnClickListener { requestLocationPermission() }
         btnGrantUsage.setOnClickListener { requestUsageStatsPermission() }
+        btnBatteryOpt.setOnClickListener { requestBatteryOptimizationOff() }
     }
 
     /** Accept a pairCode from shield://pair?code=XXXXXXXX or extras. */
@@ -211,6 +214,14 @@ class PairingActivity : Activity() {
             "2. Foydalanish ruxsati / Доступ к использованию"
         }
 
+        val batteryFree = isBatteryOptimizationDisabled()
+        btnBatteryOpt.isEnabled = !batteryFree
+        btnBatteryOpt.text = if (batteryFree) {
+            "Batareya cheklovi yo'q / Батарея не ограничивает"
+        } else {
+            "3. Batareyani cheklamaslik / Отключить экономию батареи"
+        }
+
         if (hasLocation && hasUsage) {
             layoutPermissions.visibility = View.GONE
             layoutStatus.visibility = View.VISIBLE
@@ -330,6 +341,58 @@ class PairingActivity : Activity() {
 
     private fun requestUsageStatsPermission() {
         startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
+    }
+
+    /**
+     * Batareya optimizatsiyasi o'chirilganmi.
+     *
+     * Bu — ruxsat emas, tizim sozlamasi. Yoqilgan holatda Android (Samsung
+     * ayniqsa qattiq) ilovani "uxlatib" qo'yadi va WorkManager'ning 15
+     * daqiqalik sinxronizatsiyasi soatlab kechikadi yoki umuman
+     * bajarilmaydi — ya'ni radar eskirgan joyni ko'rsatib turaveradi.
+     */
+    private fun isBatteryOptimizationDisabled(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return true
+        val pm = getSystemService(Context.POWER_SERVICE) as? android.os.PowerManager ?: return true
+        return pm.isIgnoringBatteryOptimizations(packageName)
+    }
+
+    /**
+     * ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS (to'g'ridan-to'g'ri
+     * dialog) ATAYLAB ishlatilmayapti: u REQUEST_IGNORE_BATTERY_OPTIMIZATIONS
+     * ruxsatini talab qiladi, u esa Google Play'da alohida asoslash so'raydigan
+     * cheklangan ruxsatlardan. Bu loyihada nozik deklaratsiyalar soni ataylab
+     * minimal saqlanadi (Accessibility shu sabab butunlay olib tashlangan),
+     * shuning uchun bu yerda oddiy sozlamalar ekrani ochiladi — hech qanday
+     * qo'shimcha ruxsatsiz.
+     */
+    private fun requestBatteryOptimizationOff() {
+        AlertDialog.Builder(this)
+            .setTitle("Batareya ilovani uxlatib qo'ymasin")
+            .setMessage(
+                "Android batareyani tejash uchun ilovani fon rejimida to'xtatib qo'yishi mumkin. " +
+                    "Bu sodir bo'lsa, ota-onang xaritada eski joyni ko'rib turadi.\n\n" +
+                    "Ochiladigan ro'yxatdan \"Qalqon AI\" ni toping va \"Cheklanmagan\" " +
+                    "(Не ограничено / Unrestricted) ni tanlang."
+            )
+            .setPositiveButton("Sozlamani ochish") { _, _ ->
+                try {
+                    startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+                } catch (_: Exception) {
+                    // Ba'zi qurilmalarda bu ekran yo'q — ilova sozlamalariga tushamiz.
+                    try {
+                        startActivity(
+                            Intent(
+                                Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                Uri.parse("package:" + packageName)
+                            )
+                        )
+                    } catch (_: Exception) {
+                    }
+                }
+            }
+            .setNegativeButton("Keyinroq", null)
+            .show()
     }
 
     private fun startGuardService() {
