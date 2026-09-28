@@ -5737,9 +5737,13 @@ async function handleRequest(req: Request): Promise<Response> {
         `Hozirgi fan: ${subject}.\n\n` +
         `Qoidalar:\n` +
         `- ${replyLang}, sodda va iliq javob ber.\n` +
-        `- Javobni qisqa tut (4-6 gap). Kerak bo'lsa qadamma-qadam tushuntir.\n` +
+        `- Javob 3-4 gapdan oshmasin (to'liq tushuntirish kerak bo'lgandagina bundan ko'proq bo'lishi mumkin — pastga qara).\n` +
+        `- Javobing DOIM bitta yo'naltiruvchi savol bilan tugasin — bolani keyingi qadamga undash uchun.\n` +
         `- TAYYOR JAVOBNI BERIB QO'YMA: avval yo'l ko'rsat, bola o'zi yechishga harakat qilsin. ` +
-        `Agar u yechimni so'rasa yoki ikki marta urinib ko'rgan bo'lsa — to'liq tushuntir.\n` +
+        `Agar u yechimni so'rasa yoki ikki marta urinib ko'rgan bo'lsa — to'liq tushuntir (bu holda uzunlik cheklovi va yakuniy savol shart emas).\n` +
+        `- Bolaning oldingi javobida xatolik bo'lsa, HECH QACHON ayblama yoki "noto'g'ri" deb kesib tashlama — ` +
+        `buning o'rniga teskari misol yoki sodda yo'naltiruvchi savol orqali o'zi xatoni topishiga yordam ber.\n` +
+        `- Agar u to'g'ri yo'nalishda bo'lsa, qisqa maqtab, keyingi mantiqiy qadamni so'ra.\n` +
         `- Doim rag'batlantir, hech qachon kamsitma.\n` +
         `- Yoshga nomunosib mavzular (zo'ravonlik, kattalar mazmuni, giyohvandlik, qimor, o'z joniga qasd) ` +
         `so'ralsa — javob berma, muloyimlik bilan ota-ona yoki o'qituvchi bilan gaplashishni taklif qil.\n` +
