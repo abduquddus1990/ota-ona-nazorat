@@ -3524,6 +3524,41 @@ function getTelegramLocation() {
 }
 
 /**
+ * Brauzerdan joylashuv — VAQT BELGISI bilan.
+ *
+ * Telegram'ning LocationManager'i keshdagi nuqtani qaytarishi mumkin va
+ * uning qachon o'lchanganini AYTMAYDI. Shuning uchun avval brauzerning o'z
+ * geolokatsiyasini so'raymiz: u `maximumAge: 0` bilan yangi o'lchov beradi
+ * va `timestamp` qaytaradi, ya'ni nuqtaning haqiqiy yoshini bilamiz.
+ * Ruxsat berilmasa yoki ishlamasa — Telegram yo'liga qaytamiz.
+ */
+function getBrowserLocation() {
+    return new Promise((resolve) => {
+        if (!navigator.geolocation) { resolve(null); return; }
+        let done = false;
+        try {
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    done = true;
+                    resolve({
+                        latitude: pos.coords.latitude,
+                        longitude: pos.coords.longitude,
+                        horizontal_accuracy: pos.coords.accuracy || null,
+                        recordedAt: pos.timestamp || Date.now(),
+                    });
+                },
+                () => { done = true; resolve(null); },
+                { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
+            );
+        } catch (e) {
+            resolve(null);
+            return;
+        }
+        setTimeout(() => { if (!done) resolve(null); }, 13000);
+    });
+}
+
+/**
  * Joylashuvni serverga yuboradi.
  * reason: 'auto' (panel ochilganda, jim), 'manual', 'arrived', 'asked'.
  */
@@ -3545,7 +3580,8 @@ async function sendMyLocation(reason) {
     }
 
     say('📍 Joylashuv aniqlanmoqda...');
-    const loc = await getTelegramLocation();
+    // Avval brauzer (vaqt belgisi bor, kesh ishlatmaydi), bo'lmasa Telegram.
+    const loc = (await getBrowserLocation()) || (await getTelegramLocation());
 
     if (!loc) {
         if (!silent) {
@@ -3567,6 +3603,9 @@ async function sendMyLocation(reason) {
                 lat: loc.latitude,
                 lng: loc.longitude,
                 accuracyM: loc.horizontal_accuracy || null,
+                // Brauzer yo'li haqiqiy o'lchov vaqtini beradi; Telegram
+                // yo'li bermaydi — u holda server "hozir" deb hisoblaydi.
+                recordedAt: loc.recordedAt || null,
                 reason: reason || 'manual'
             })
         });

@@ -171,6 +171,10 @@ class TelemetrySyncWorker(
                 put("lat", location.latitude)
                 put("lng", location.longitude)
                 if (location.hasAccuracy()) put("accuracyM", location.accuracy)
+                // Nuqta AYNAN QACHON o'lchangani. Usiz server yuklash
+                // vaqtini yozardi va ota-ona eski nuqtani "hozirgi" deb
+                // ko'rardi.
+                put("recordedAt", location.time)
             }.toString().toRequestBody("application/json; charset=utf-8".toMediaType())
 
             val request = Request.Builder()
@@ -301,11 +305,66 @@ class TelemetrySyncWorker(
         val lm = applicationContext.getSystemService(Context.LOCATION_SERVICE) as? LocationManager
             ?: return null
 
-        val candidates = listOfNotNull(
+        // Avval KESHDAGI eng yangi nuqtani olamiz.
+        val cached = listOfNotNull(
             runCatching { lm.getLastKnownLocation(LocationManager.NETWORK_PROVIDER) }.getOrNull(),
             runCatching { lm.getLastKnownLocation(LocationManager.GPS_PROVIDER) }.getOrNull(),
             runCatching { lm.getLastKnownLocation(LocationManager.PASSIVE_PROVIDER) }.getOrNull()
-        )
-        return candidates.maxByOrNull { it.time }
+        ).maxByOrNull { it.time }
+
+        // Kesh yetarlicha yangi bo'lsa — shuning o'zi. Aks holda HAQIQIY
+        // yangi o'lchov so'raymiz.
+        //
+        // Ilgari bu yerda faqat getLastKnownLocation() bor edi va u nomidan
+        // ko'rinib turganidek KESHDAGI nuqtani qaytaradi — soatlab eski
+        // bo'lishi mumkin. Yangi o'lchov hech qachon so'ralmasdi, ya'ni
+        // telefon kun bo'yi bir joyda turganday ko'rinishi mumkin edi.
+        if (cached != null && System.currentTimeMillis() - cached.time < 2 * 60 * 1000) {
+            return cached
+        }
+
+        val fresh = requestFreshLocation(lm)
+        // Yangisini ololmasak (ichkarida, GPS yo'q) — eskisi hech yo'qdan yaxshi,
+        // lekin uning haqiqiy vaqti bilan yuboriladi, "hozir" deb emas.
+        return fresh ?: cached
+    }
+
+    /**
+     * Bitta yangi o'lchov so'raydi va 25 soniya kutadi.
+     *
+     * WorkManager ishi fon oqimida bajariladi, shuning uchun bu yerda
+     * kutish mumkin — foydalanuvchi interfeysi bloklanmaydi. Vaqt
+     * chegarasi kerak: ichkarida yoki signal yo'q joyda o'lchov umuman
+     * kelmasligi mumkin.
+     */
+    private fun requestFreshLocation(lm: LocationManager): Location? {
+        val provider = when {
+            lm.isProviderEnabled(LocationManager.GPS_PROVIDER) -> LocationManager.GPS_PROVIDER
+            lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER) -> LocationManager.NETWORK_PROVIDER
+            else -> return null
+        }
+        return try {
+            val latch = java.util.concurrent.CountDownLatch(1)
+            val holder = java.util.concurrent.atomic.AtomicReference<Location?>(null)
+            val listener = object : android.location.LocationListener {
+                override fun onLocationChanged(loc: Location) {
+                    holder.set(loc)
+                    latch.countDown()
+                }
+                @Deprecated("Eski API uchun majburiy")
+                override fun onStatusChanged(p: String?, s: Int, e: android.os.Bundle?) {}
+                override fun onProviderEnabled(p: String) {}
+                override fun onProviderDisabled(p: String) { latch.countDown() }
+            }
+            val looper = android.os.Looper.getMainLooper()
+            android.os.Handler(looper).post {
+                runCatching { lm.requestSingleUpdate(provider, listener, looper) }
+            }
+            latch.await(25, java.util.concurrent.TimeUnit.SECONDS)
+            android.os.Handler(looper).post { runCatching { lm.removeUpdates(listener) } }
+            holder.get()
+        } catch (_: Exception) {
+            null
+        }
     }
 }
