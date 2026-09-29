@@ -1304,9 +1304,30 @@ async function deviceHealthWarningList(
     .limit(1);
 
   const h = data && data[0];
-  // Yozuv yo'q — bu Telegram orqali ulangan farzand (Android ilova yo'q).
-  // Bunday holatda ogohlantiradigan narsa ham yo'q.
-  if (!h) return [];
+  if (!h) {
+    // Yozuv yo'q. Ikki xil holat bor va ularni ajratish SHART:
+    //
+    //  - Farzand faqat Telegram orqali ulangan: Android ilova yo'q, demak
+    //    ogohlantiradigan narsa ham yo'q.
+    //  - Farzand Android ilova orqali juftlashgan, lekin holat yubormagan:
+    //    bu MUAMMO. Jonli bazada aynan shunday farzandni topdim —
+    //    telefoni 2 kundan beri hech narsa yubormagan, device_health esa
+    //    bo'sh. Ogohlantirish bo'lmagani uchun panel "Tizim faol,
+    //    ma'lumot muntazam kelmoqda" deb yozib turardi. Bu yolg'on.
+    const { data: pr } = await db
+      .from("child_pairings")
+      .select("source, last_seen_at")
+      .eq("family_code", familyCode)
+      .eq("child_id", childId)
+      .limit(1);
+    const p0 = pr && pr[0];
+    if (!p0 || p0.source !== "android_parental_guard") return [];
+    return [
+      ru
+        ? "📵 Приложение на телефоне ребёнка не присылает состояние — оно остановлено или это старая версия. Переустановите приложение."
+        : "📵 Farzand telefonidagi ilova holat yubormayapti — to'xtatilgan yoki eski versiya. Ilovani qayta o'rnatish kerak.",
+    ];
+  }
 
   const ogoh: string[] = [];
   const soatOldin = (Date.now() - new Date(h.reported_at).getTime()) / 3600000;
@@ -7648,6 +7669,11 @@ async function handleRequest(req: Request): Promise<Response> {
       let jamiSoniya = 0;
       for (const r of tel || []) {
         const sec = Number(r.screen_time_seconds) || 0;
+        // Bazada eski mijozdan qolgan "unknown / 0 soniya" yozuvlar bor.
+        // Ular ilova nomi ham, vaqt ham emas — ro'yxatga chiqarsak ota-ona
+        // "unknown — 0d" degan ma'nosiz qatorni o'qiydi.
+        if (sec <= 0) continue;
+        if (!r.app_package_name || r.app_package_name === "unknown") continue;
         totals[r.app_package_name] = (totals[r.app_package_name] || 0) + sec;
         jamiSoniya += sec;
       }
@@ -7671,9 +7697,34 @@ async function handleRequest(req: Request): Promise<Response> {
 
       const loc = await lastKnownLocation(actor!.familyCode, childId);
 
+      // Ma'lumot qanchalik yangi — uchta manbaning eng yangisi.
+      //
+      // Bu kerak, chunki "ma'lumot bor" va "ma'lumot yangi" bir narsa emas.
+      // Bazada 15 soat oldingi joylashuv turgan bo'lsa, panel "hasData"
+      // ni ko'rib "Tizim faol, ma'lumot muntazam kelmoqda" deb yozardi —
+      // aslida telefon ikki kundan beri jim edi.
+      const { data: oxirgiTel } = await db
+        .from("device_telemetry")
+        .select("created_at")
+        .eq("family_code", actor!.familyCode)
+        .eq("child_id", childId)
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      const vaqtlar = [
+        loc?.recordedAt,
+        hp && hp[0] ? hp[0].reported_at : null,
+        oxirgiTel && oxirgiTel[0] ? oxirgiTel[0].created_at : null,
+      ]
+        .filter((t): t is string => !!t)
+        .map((t) => new Date(t).getTime())
+        .filter((n) => Number.isFinite(n));
+      const lastDataAt = vaqtlar.length ? new Date(Math.max(...vaqtlar)).toISOString() : null;
+
       return jsonRes({
         ok: true,
         hasData: jamiSoniya > 0 || !!loc || !!(hp && hp[0]),
+        lastDataAt,
         screenSeconds: jamiSoniya,
         apps,
         battery: hp && hp[0] && typeof hp[0].battery_level === "number" && hp[0].battery_level >= 0
@@ -7939,19 +7990,31 @@ async function handleRequest(req: Request): Promise<Response> {
         }))
         .filter((r: any) => r.screen_time_seconds > 0);
 
-      if (rows.length === 0) {
+      // Eski mijoz (apps massivisiz) uchun orqaga moslik — LEKIN faqat
+      // haqiqiy son bo'lsa.
+      //
+      // Ilgari bu shart yo'q edi va natijada har 15 daqiqada
+      // {app_package_name: "unknown", screen_time_seconds: 0} degan axlat
+      // yozuv qo'shilardi: foydalanish statistikasiga ruxsat berilmagan
+      // telefonda mijoz aynan shuni yuboradi. Jonli bazada bitta
+      // farzandning 12 ta yozuvining HAMMASI shunday edi. Panel endi
+      // haqiqiy ma'lumot ko'rsatgani uchun bu axlat "unknown — 0d" bo'lib
+      // ota-ona ekraniga chiqib qolardi.
+      const legacySeconds = Math.max(0, Math.min(Number(payload.screenTimeSeconds) || 0, 24 * 3600));
+      const legacyPkg = String(payload.appPackageName || "").trim();
+      if (rows.length === 0 && legacySeconds > 0 && legacyPkg && legacyPkg !== "unknown") {
         rows.push({
           family_code: actor!.familyCode,
           child_id: actor!.childId,
-          app_package_name: String(payload.appPackageName || "unknown").slice(0, 200),
+          app_package_name: legacyPkg.slice(0, 200),
           category: String(payload.category || "General"),
-          screen_time_seconds: Math.max(0, Math.min(Number(payload.screenTimeSeconds) || 0, 24 * 3600)),
+          screen_time_seconds: legacySeconds,
           encrypted_payload: encryptedPayload,
           iv,
         });
       }
 
-      await db.from("device_telemetry").insert(rows);
+      if (rows.length > 0) await db.from("device_telemetry").insert(rows);
 
       // Qurilma sog'ligi — ota-ona "nega joylashuv eskirgan?" degan savolga
       // javob olishi uchun (database/24_device_health.sql izohiga qarang).
