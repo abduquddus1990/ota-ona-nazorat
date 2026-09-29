@@ -1488,6 +1488,12 @@ function checkChildConsentStatus() {
             renderTimeBank();
             renderLeague();
             renderReferral();
+            // Panel ochilishida bir nechta so'rov birdan ketadi (ball, liga,
+            // taklif, joylashuv) va shaffoflik jurnali ular orasida navbatda
+            // qolib, "Yuklanmoqda..." holatida qotib turardi. U ekranning
+            // pastida — birinchi ko'rinishga shoshilmaydi, shuning uchun
+            // birinchi to'lqin o'tgach yuklanadi.
+            setTimeout(renderChildTransparency, 2000);
             const noteCard = document.getElementById('dailyNoteCard');
             if (noteCard) noteCard.classList.remove('hidden');
             acceptDuelFromUrl().then(renderDuel);
@@ -2788,6 +2794,59 @@ function resetPomodoroTimer() {
  * (Google Play'ning stalkerware siyosati ham shuni talab qiladi). Ota-onaga
  * xabar boradi — jimgina yo'qolib qolish ishonchni buzadi.
  */
+/**
+ * Bolaga "men haqimda nima yuborilgan" jurnalini ko'rsatadi.
+ *
+ * Yuqoridagi "ular ko'radi / ko'rmaydi" ro'yxati va'da bo'lsa, bu —
+ * tekshirib ko'rish imkoni: haqiqiy sonlar va oxirgi vaqt. Bolaning
+ * o'zi ko'ra oladigan qilish "yashirin kuzatuv emas" tamoyilini
+ * shiordan faktga aylantiradi.
+ */
+async function renderChildTransparency() {
+    const box = document.getElementById('childTransparencyLog');
+    if (!box) return;
+    box.innerText = 'Yuklanmoqda...';
+    try {
+        const resp = await fetch(QALQON_BOT_FN, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'my_transparency' })
+        });
+        const d = await resp.json();
+        if (!d.ok) { box.innerText = "Hozircha ko'rsatib bo'lmadi."; return; }
+
+        const qachon = (iso) => {
+            if (!iso) return null;
+            const daq = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+            if (daq < 60) return `${daq} daqiqa oldin`;
+            const soat = Math.round(daq / 60);
+            if (soat < 24) return `${soat} soat oldin`;
+            return `${Math.round(soat / 24)} kun oldin`;
+        };
+
+        const qatorlar = [];
+        qatorlar.push(
+            d.locationCount > 0
+                ? `📍 <b>${d.locationCount} ta</b> joylashuv nuqtasi yuborilgan` +
+                  (d.lastLocationAt ? ` — oxirgisi ${qachon(d.lastLocationAt)}` : '')
+                : '📍 Joylashuv yuborilmagan'
+        );
+        qatorlar.push(
+            d.screenTimeCount > 0
+                ? `📱 <b>${d.screenTimeCount} ta</b> ekran vaqti yozuvi` +
+                  (d.lastScreenTimeAt ? ` — oxirgisi ${qachon(d.lastScreenTimeAt)}` : '')
+                : '📱 Ekran vaqti yig\'ilmagan'
+        );
+        if (d.parentAskedCount > 0) {
+            qatorlar.push(`🙋 Ota-onang <b>${d.parentAskedCount} marta</b> joylashuvingni so'ragan`);
+        }
+        qatorlar.push('<span class="text-slate-500">Yozishmalaring va ekrandagi matn — yuborilmagan.</span>');
+        box.innerHTML = qatorlar.join('<br>');
+    } catch (e) {
+        box.innerText = "Internet yo'q — keyinroq urinib ko'r.";
+    }
+}
+
 async function handleChildLeaveFamily() {
     const ok = confirm(
         "Ulanishni to'xtatmoqchimisan?\n\n" +

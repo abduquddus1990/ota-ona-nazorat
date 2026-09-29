@@ -359,7 +359,7 @@ async function authenticate(payload: any): Promise<Actor | null> {
       kind: "telegram",
       telegramId: tg.id,
       username: tg.username,
-      familyCode: generateFamilyCode(tg.id),
+      familyCode: await familyCodeFor(tg.id),
     };
   }
   const dev = await verifyDeviceToken(payload?.deviceToken);
@@ -950,6 +950,144 @@ function generateFamilyCode(userId: string | number): string {
   return String(num).padStart(6, "0");
 }
 
+// Hisoblangan kod uchun keshlangan "override" — har bir so'rovda bazaga
+// bormaslik uchun. Override juda kam yaratiladi (faqat to'qnashuvda) va
+// hech qachon o'zgarmaydi, shuning uchun keshni eskirtirish shart emas.
+const familyCodeCache = new Map<number, string>();
+
+/**
+ * Oilaning HAQIQIY kodi.
+ *
+ * Odatda bu generateFamilyCode() bilan bir xil — mavjud oilalarning
+ * hammasi shu kodda qolgan. Lekin hisoblangan kod boshqa oilaga tegib
+ * ketgan bo'lsa (900 000 variant, 1000 oilada ~43% ehtimol), o'sha
+ * oilaga family_code_overrides orqali boshqa kod berilgan bo'ladi va shu
+ * yerda qaytariladi. Qarang: database/23_family_code_overrides.sql
+ */
+async function familyCodeFor(userId: string | number): Promise<string> {
+  const id = Number(userId);
+  const derived = generateFamilyCode(id);
+  if (!db || !Number.isFinite(id)) return derived;
+
+  const cached = familyCodeCache.get(id);
+  if (cached) return cached;
+
+  const { data } = await db
+    .from("family_code_overrides")
+    .select("family_code")
+    .eq("parent_telegram_id", id)
+    .limit(1);
+
+  const code = (data && data[0] && data[0].family_code) || derived;
+  familyCodeCache.set(id, code);
+  return code;
+}
+
+/**
+ * Ro'yxatdan o'tayotgan oila uchun kodni BAND QILADI.
+ *
+ * Hisoblangan kod bo'sh bo'lsa — o'sha ishlatiladi (mavjud oilalar bilan
+ * bir xil xulq). Band bo'lsa — tasodifiy bo'sh kod topilib, override
+ * sifatida yoziladi. UNIQUE cheklovi tufayli ikki oila bir vaqtda bir
+ * kodni ololmaydi: ikkinchisi xato oladi va boshqa kod tanlaydi.
+ */
+async function claimFamilyCode(telegramId: number): Promise<string> {
+  const derived = generateFamilyCode(telegramId);
+  if (!db) return derived;
+
+  // Allaqachon override berilganmi.
+  const { data: mine } = await db
+    .from("family_code_overrides")
+    .select("family_code")
+    .eq("parent_telegram_id", telegramId)
+    .limit(1);
+  if (mine && mine[0]) return mine[0].family_code;
+
+  // Hisoblangan kod boshqa oilada ishlatilyaptimi.
+  const { data: taken } = await db
+    .from("parent_registrations")
+    .select("parent_telegram_id")
+    .eq("family_code", derived)
+    .limit(1);
+  const takenByOther = taken && taken[0] && Number(taken[0].parent_telegram_id) !== telegramId;
+
+  const { data: takenOverride } = await db
+    .from("family_code_overrides")
+    .select("parent_telegram_id")
+    .eq("family_code", derived)
+    .limit(1);
+  const takenByOverride = takenOverride && takenOverride[0] &&
+    Number(takenOverride[0].parent_telegram_id) !== telegramId;
+
+  if (!takenByOther && !takenByOverride) return derived;
+
+  // To'qnashuv — bo'sh kod qidiramiz.
+  for (let i = 0; i < 12; i++) {
+    const candidate = String(
+      Math.abs(crypto.getRandomValues(new Uint32Array(1))[0] % 900000) + 100000
+    ).padStart(6, "0");
+
+    const { data: used } = await db
+      .from("parent_registrations")
+      .select("family_code")
+      .eq("family_code", candidate)
+      .limit(1);
+    if (used && used[0]) continue;
+
+    const { error } = await db
+      .from("family_code_overrides")
+      .insert({ parent_telegram_id: telegramId, family_code: candidate });
+    if (!error) {
+      familyCodeCache.set(telegramId, candidate);
+      console.log(`Oila kodi to'qnashuvi: ${telegramId} uchun ${derived} -> ${candidate}`);
+      return candidate;
+    }
+    // UNIQUE buzildi — boshqa so'rov shu kodni oldi, yana urinamiz.
+  }
+
+  console.error(`Bo'sh oila kodi topilmadi: ${telegramId}`);
+  return derived;
+}
+
+/**
+ * Muddati o'tgan yozuvlarni o'chiradi (kunlik cron ichidan chaqiriladi).
+ *
+ * Muddatlar ataylab har xil: joylashuv va ekran vaqti ota-onaning
+ * hisobotlari uchun kerak (ular 7 kunlik oynada ishlaydi, 90 kun —
+ * ancha zaxira bilan), AI suhbatlari esa bolaning shaxsiy matni bo'lgani
+ * uchun eng qisqa muddatda o'chadi. Bir martalik kodlar va urinishlar
+ * jurnali umuman uzoq turishi shart emas.
+ */
+async function purgeOldRows(): Promise<Record<string, string>> {
+  const natija: Record<string, string> = {};
+  if (!db) return natija;
+
+  const kunOldin = (n: number) => new Date(Date.now() - n * 86400000).toISOString();
+
+  const rejalar: Array<{ jadval: string; ustun: string; kun: number }> = [
+    { jadval: "location_pings", ustun: "recorded_at", kun: 90 },
+    { jadval: "device_telemetry", ustun: "created_at", kun: 90 },
+    { jadval: "geofence_alerts", ustun: "created_at", kun: 90 },
+    { jadval: "location_requests", ustun: "created_at", kun: 90 },
+    { jadval: "ai_chat_messages", ustun: "created_at", kun: 30 },
+    { jadval: "join_attempts", ustun: "created_at", kun: 7 },
+    { jadval: "app_login_requests", ustun: "created_at", kun: 2 },
+    { jadval: "device_pair_codes", ustun: "created_at", kun: 2 },
+    { jadval: "parent_pair_codes", ustun: "created_at", kun: 2 },
+  ];
+
+  for (const r of rejalar) {
+    const { error } = await db.from(r.jadval).delete().lt(r.ustun, kunOldin(r.kun));
+    if (error) {
+      console.error(`purge ${r.jadval} xato:`, error.message);
+      natija[r.jadval] = "xato";
+    } else {
+      natija[r.jadval] = `${r.kun} kundan eskisi o'chirildi`;
+    }
+  }
+  return natija;
+}
+
 async function sendMessage(chatId: number | string, htmlText: string, replyMarkup?: any) {
   const payload: any = {
     chat_id: chatId,
@@ -1115,6 +1253,83 @@ function qanchaOldin(iso: string, lang: string = "uz"): string {
 const FRESH_LOCATION_MIN = 15;
 
 /**
+ * Farzand telefonining holati bo'yicha ogohlantirishlar.
+ *
+ * Bu — mahsulotdagi eng jim muammoning yechimi: xaritadagi eski nuqta
+ * bilan "hammasi joyida" bir xil ko'rinardi. Ota-ona ko'rsatkichga
+ * ishonardi, lekin u nega eskirganini — bola qimirlamayaptimi, ruxsat
+ * o'chirilganmi, batareya ilovani uxlatganmi yoki telefon umuman
+ * aloqada emasmi — bilolmasdi.
+ *
+ * Bularning hammasini telefonning o'zi biladi va har sinxronizatsiyada
+ * yuborib turadi (device_health). Bu yerda faqat MUAMMO bo'lganda gapiramiz:
+ * hammasi joyida bo'lsa, ortiqcha qator qo'shilmaydi.
+ */
+async function deviceHealthWarnings(
+  familyCode: string,
+  childId: string,
+  lang: string = "uz"
+): Promise<string> {
+  if (!db) return "";
+  const ru = lang === "ru";
+
+  const { data } = await db
+    .from("device_health")
+    .select("location_permission, background_location, usage_permission, battery_unrestricted, battery_level, reported_at")
+    .eq("family_code", familyCode)
+    .eq("child_id", childId)
+    .limit(1);
+
+  const h = data && data[0];
+  // Yozuv yo'q — bu Telegram orqali ulangan farzand (Android ilova yo'q).
+  // Bunday holatda ogohlantiradigan narsa ham yo'q.
+  if (!h) return "";
+
+  const ogoh: string[] = [];
+  const soatOldin = (Date.now() - new Date(h.reported_at).getTime()) / 3600000;
+
+  if (soatOldin > 6) {
+    ogoh.push(
+      ru
+        ? `📵 Телефон не выходил на связь ${Math.round(soatOldin)} ч — выключен, без интернета или приложение остановлено.`
+        : `📵 Telefon ${Math.round(soatOldin)} soatdan beri aloqaga chiqmadi — o'chiq, internetsiz yoki ilova to'xtatilgan.`
+    );
+  }
+  if (h.location_permission === false) {
+    ogoh.push(
+      ru
+        ? "🚫 Разрешение на локацию отключено — радар не работает."
+        : "🚫 Joylashuvga ruxsat o'chirilgan — radar ishlamaydi."
+    );
+  } else if (h.background_location === false) {
+    ogoh.push(
+      ru
+        ? "⚠️ Локация разрешена только при открытом приложении — с заблокированным экраном радар молчит."
+        : "⚠️ Joylashuv faqat ilova ochiq turganda ruxsat etilgan — ekran qulflansa radar jim qoladi."
+    );
+  }
+  if (h.battery_unrestricted === false) {
+    ogoh.push(
+      ru
+        ? "🔋 Экономия батареи усыпляет приложение — данные приходят с задержкой."
+        : "🔋 Batareya tejash ilovani uxlatyapti — ma'lumot kechikib keladi."
+    );
+  }
+  if (h.usage_permission === false) {
+    ogoh.push(
+      ru ? "📊 Нет доступа к статистике — экранное время не собирается." : "📊 Foydalanish ruxsati yo'q — ekran vaqti yig'ilmayapti."
+    );
+  }
+  if (typeof h.battery_level === "number" && h.battery_level >= 0 && h.battery_level <= 15) {
+    ogoh.push(
+      ru ? `🪫 Заряд ${h.battery_level}% — телефон скоро выключится.` : `🪫 Quvvat ${h.battery_level}% — telefon tez orada o'chishi mumkin.`
+    );
+  }
+
+  return ogoh.length ? "\n" + ogoh.join("\n") : "";
+}
+
+/**
  * Oiladagi har bir farzandning so'nggi joyi va vaqti — bot xabari sifatida.
  * Kvota yemaydi: bu bazada allaqachon bor nuqtani ko'rsatish, bolaga yangi
  * so'rov emas. Yangi nuqta kerak bo'lsa, xabardagi tugma request_location
@@ -1159,6 +1374,7 @@ async function buildWhereReport(
     const nom = k.child_name || (ru ? "Ребёнок" : "Farzand");
     const loc = await lastKnownLocation(familyCode, k.child_id);
     const live = !!k.live_until && new Date(k.live_until).getTime() > Date.now();
+    const health = await deviceHealthWarnings(familyCode, k.child_id, lang);
 
     if (!loc) {
       lines.push(
@@ -1178,6 +1394,12 @@ async function buildWhereReport(
             : "")
       );
     }
+
+    // Nega eskirgani — taxmin qildirmaymiz, telefon o'zi aytgan sababni
+    // ko'rsatamiz. Ilgari ota-ona faqat eski nuqtani ko'rardi va uning
+    // sababini (bola qimirlamayaptimi, ruxsat o'chganmi, batareya ilovani
+    // uxlatganmi) bilishning iloji yo'q edi.
+    if (health) lines.push(health);
 
     // Yangi nuqtani so'rash — faqat Telegram orqali ulangan bolaga (unga
     // tugmali xabar boradi) va jonli translyatsiya o'chiq bo'lsa.
@@ -1305,7 +1527,7 @@ async function isFamilyApproved(userId: string | number): Promise<boolean> {
     const { data } = await db
       .from("parent_registrations")
       .select("status")
-      .eq("family_code", generateFamilyCode(userId))
+      .eq("family_code", await familyCodeFor(userId))
       .limit(1);
     return !!(data && data[0] && data[0].status === "approved");
   } catch (e) {
@@ -1354,8 +1576,11 @@ async function setFamilyApproval(
   return true;
 }
 
-function getStartMenuText(userId: string | number, lang: string = "uz", isApproved: boolean = true, isAdmin: boolean = false): string {
-  const code = generateFamilyCode(userId);
+// familyCode tashqaridan beriladi: uni aniqlash uchun bazaga borish kerak
+// (to'qnashuvda oilaga boshqa kod berilgan bo'lishi mumkin), bu funksiya esa
+// sinxron. Berilmasa — hisoblangan kod, ya'ni eski xulq.
+function getStartMenuText(userId: string | number, lang: string = "uz", isApproved: boolean = true, isAdmin: boolean = false, familyCode?: string): string {
+  const code = familyCode || generateFamilyCode(userId);
 
   if (isAdmin) {
     return `👑 <b>QALQON AI — ADMINISTRATOR PANELI</b>
@@ -1406,8 +1631,8 @@ Quyidagi bo'limlardan birini tanlang:`;
 // Tugmalar ROLGA qarab beriladi. Ilgari bot hammaga bir xil "Ota-ona paneli"
 // tugmasini yuborardi — shu sabab allaqachon ulangan farzand ham /start bosib,
 // ota-ona panelini ochib olardi.
-function getStartKeyboard(userId: string | number, lang: string = "uz", isChild: boolean = false): any {
-  const code = generateFamilyCode(userId);
+function getStartKeyboard(userId: string | number, lang: string = "uz", isChild: boolean = false, familyCode?: string): any {
+  const code = familyCode || generateFamilyCode(userId);
 
   if (isChild) {
     return {
@@ -1518,7 +1743,7 @@ async function hasRegistration(userId: string | number): Promise<boolean> {
   const { data } = await db
     .from("parent_registrations")
     .select("family_code")
-    .eq("family_code", generateFamilyCode(userId))
+    .eq("family_code", await familyCodeFor(userId))
     .limit(1);
   return !!(data && data[0]);
 }
@@ -2643,7 +2868,7 @@ async function handleBallCallback(
   }
   const approve = data.startsWith("hw_ok_") || data.startsWith("rw_ok_");
   const id = data.slice(6);
-  const myFamily = generateFamilyCode(chatId);
+  const myFamily = await familyCodeFor(chatId);
   const table = isHw ? "homework_items" : "reward_redemptions";
 
   const { data: rows } = await db.from(table).select("*").eq("id", id).limit(1);
@@ -4087,7 +4312,15 @@ async function handleRequest(req: Request): Promise<Response> {
     if (payload.type === "parent_registration_request") {
       // Oila kodi mijozdan OLINMAYDI — imzolangan Telegram identitetidan
       // chiqariladi, aks holda birov boshqa oila nomidan yozib ketardi.
-      const familyCode = actor!.kind === "telegram" ? actor!.familyCode : "";
+      //
+      // claimFamilyCode() bu yerda chaqiriladi, chunki ro'yxatdan o'tish —
+      // oilaning kodi BIRINCHI MARTA yoziladigan yagona joy. Hisoblangan
+      // kod boshqa oilada band bo'lsa, shu yerda boshqa, bo'sh kod
+      // ajratiladi (family_code_overrides). Keyingi barcha so'rovlarda
+      // familyCodeFor() o'sha kodni qaytaradi.
+      const familyCode = actor!.kind === "telegram"
+        ? await claimFamilyCode(actor!.telegramId)
+        : "";
       if (!familyCode) return unauthorized("Faqat Mini App orqali");
       const parentUsername = normalizeUsername(
         payload.parentUsername || payload.username
@@ -4184,6 +4417,20 @@ async function handleRequest(req: Request): Promise<Response> {
       }
       const alreadyApproved = existingStatus === "approved";
 
+      // AVTOMATIK TASDIQLASH. Ilgari har bir yangi oila admin tugmani
+      // bosguncha "pending" holatda kutardi — ya'ni ro'yxatdan o'tgan odam
+      // ilovadan foydalana olmay, kutish ekranini ko'rib turardi. Bu
+      // mahsulotning o'sishiga eng katta to'siq edi: har bir foydalanuvchi
+      // jonli odamga bog'liq.
+      //
+      // Nazorat yo'qolmaydi — admin baribir xabar oladi va "❌ Rad etish"
+      // tugmasi joyida qoladi, ya'ni shubhali oilani keyin ham bloklash
+      // mumkin. Faqat tartib teskari bo'ldi: avval ruxsat, keyin ko'rib
+      // chiqish.
+      if (!alreadyApproved && existingStatus === "none") {
+        (row as Record<string, unknown>).status = "approved";
+      }
+
       let saved = false;
       if (db) {
         const { error } = await db
@@ -4204,7 +4451,7 @@ async function handleRequest(req: Request): Promise<Response> {
         value ? `\n${label} ${value}` : "";
 
       const adminNotice =
-        `🔔 <b>YANGI OTA-ONA RO'YXATDAN O'TMOQCHI!</b>` +
+        `✅ <b>YANGI OILA QO'SHILDI</b> (avtomatik tasdiqlandi)` +
         line("👨‍👩‍👧 <b>Oila:</b>", payload.familyName) +
         line("👤 <b>Ota:</b>", payload.parentName) +
         line("🔗 <b>Username:</b>", parentUsername ? "@" + parentUsername : null) +
@@ -4214,15 +4461,17 @@ async function handleRequest(req: Request): Promise<Response> {
         line("🎓 <b>Sinf:</b>", row.child_grade) +
         `\n🔑 <b>Oila Kodi:</b> <code>${familyCode}</code>` +
         `\n📅 <b>Vaqt:</b> ${tashkentVaqt(new Date().toISOString())}` +
-        `\n\nRuxsat berasizmi?`;
+        `\n\n<i>Foydalanuvchi kutib turmaydi — darhol ishlay boshladi. ` +
+        `Biror narsa shubhali ko'rinsa, pastdagi tugma bilan bloklashingiz mumkin.</i>`;
 
       // Tugma endi username emas, oila kodini olib yuradi — tasdiqlash
-      // bazadagi aynan shu qatorga yoziladi.
+      // bazadagi aynan shu qatorga yoziladi. "Ruxsat berish" ham qoldi:
+      // bloklangan oilani keyin qaytarish kerak bo'lishi mumkin.
       const approvalKeyboard = {
         inline_keyboard: [
           [
-            { text: "✅ Ruxsat berish", callback_data: `admin_approve_${familyCode}` },
-            { text: "❌ Rad etish", callback_data: `admin_reject_${familyCode}` },
+            { text: "🚫 Bloklash", callback_data: `admin_reject_${familyCode}` },
+            { text: "✅ Qayta ochish", callback_data: `admin_approve_${familyCode}` },
           ],
         ],
       };
@@ -5331,13 +5580,14 @@ async function handleRequest(req: Request): Promise<Response> {
         if (error) console.error("delete_account: game_matches o'chmadi:", error.message);
       }
 
-      // Faqat child_id bo'yicha saqlanadigan jadvallar.
-      for (const table of ["geo_zones", "location_events"]) {
-        for (const childId of childIds) {
-          const { error } = await db.from(table).delete().eq("child_id", childId);
-          if (error) console.error(`delete_account: ${table} o'chmadi:`, error.message);
-        }
-      }
+      // geo_zones va location_events bu yerdan OLIB TASHLANDI: ular eski
+      // sxemadan qolgan, kodda boshqa hech qayerda ishlatilmaydigan
+      // jadvallar va ularning child_id ustuni uuid turida — bizdagi
+      // "tg_..." matn ID'si u yerga umuman sig'maydi. Natijada har bir
+      // hisob o'chirishda ikkita "invalid input syntax for type uuid"
+      // xatosi logga tushib, haqiqiy xatolarni ko'rinmas qilardi.
+      // Hozirgi, ishlatiladigan jadvallar: geofence_zones / geofence_alerts
+      // (ikkalasi ham yuqoridagi family_code ro'yxatida).
 
       // AI suhbatlari Telegram ID bo'yicha saqlanadi — ota-ona va farzandlarniki.
       for (const tgId of [actor!.telegramId, ...childTelegramIds]) {
@@ -5386,6 +5636,62 @@ async function handleRequest(req: Request): Promise<Response> {
     // Stalkerware siyosati ham, bizning o'z tamoyilimiz ham buni talab
     // qiladi: kuzatilayotgan odam ulanishni to'xtata olishi kerak. Ota-onaga
     // xabar beriladi — jimgina yo'qolib qolish ishonchni buzadi.
+    // Bolaning "men haqimda nima yuborilgan" jurnali.
+    //
+    // Ilovadagi "ular ko'radi / ko'rmaydi" ro'yxati — VA'DA. Bu esa FAKT:
+    // so'nggi 7 kunda aynan nechta joylashuv nuqtasi va nechta ekran-vaqt
+    // yozuvi ketgani, oxirgisi qachon bo'lgani. Bolaning o'zi tekshira
+    // olishi — "yashirin kuzatuv emas" degan va'dani haqiqatan bajaradi.
+    //
+    // FAQAT o'z ma'lumoti: actor bola bo'lishi shart.
+    if (payload.type === "my_transparency") {
+      if (!db) return jsonRes({ ok: true, items: [] });
+
+      const familyCode = await resolveActorFamily(actor!);
+      const childId =
+        actor!.kind === "device" ? actor!.childId : "tg_" + actor!.telegramId;
+      if (actor!.kind === "telegram" && !(await isPairedChild(actor!.telegramId))) {
+        return unauthorized("Faqat farzandning o'zi");
+      }
+
+      const hafta = new Date(Date.now() - 7 * 86400000).toISOString();
+
+      const { data: loc } = await db
+        .from("location_pings")
+        .select("recorded_at")
+        .eq("family_code", familyCode)
+        .eq("child_id", childId)
+        .gte("recorded_at", hafta)
+        .order("recorded_at", { ascending: false })
+        .limit(500);
+
+      const { data: tel } = await db
+        .from("device_telemetry")
+        .select("created_at")
+        .eq("family_code", familyCode)
+        .eq("child_id", childId)
+        .gte("created_at", hafta)
+        .order("created_at", { ascending: false })
+        .limit(500);
+
+      const { data: soragan } = await db
+        .from("location_requests")
+        .select("created_at")
+        .eq("family_code", familyCode)
+        .eq("child_id", childId)
+        .gte("created_at", hafta)
+        .limit(200);
+
+      return jsonRes({
+        ok: true,
+        locationCount: (loc || []).length,
+        lastLocationAt: loc && loc[0] ? loc[0].recorded_at : null,
+        screenTimeCount: (tel || []).length,
+        lastScreenTimeAt: tel && tel[0] ? tel[0].created_at : null,
+        parentAskedCount: (soragan || []).length,
+      });
+    }
+
     if (payload.type === "leave_family") {
       if (!db) {
         return new Response(JSON.stringify({ ok: false, error: "Baza ulanmagan" }), {
@@ -6323,6 +6629,16 @@ async function handleRequest(req: Request): Promise<Response> {
           headers: { "Content-Type": "application/json" },
         });
       }
+
+      // Eski ma'lumotni o'chirish. Ilgari hech narsa o'chmasdi: voyaga
+      // yetmagan bolaning joylashuv tarixi va AI bilan yozishmalari cheksiz
+      // saqlanardi. Bu ham maxfiylik xavfi, ham Play tekshiruvida javob
+      // berish qiyin bo'lgan savol. Muddat tugagach, yozuv kerak emas —
+      // ota-ona hisobotlari 7 kunlik oynada ishlaydi.
+      //
+      // AI suhbatlariga eng qisqa muddat: bu bolaning shaxsiy matni, va
+      // uni saqlashning yagona sababi — suhbat kontekstini eslab qolish.
+      await purgeOldRows();
 
       const sinceIso = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
       const todayKey = new Date().toISOString().slice(0, 10);
@@ -7507,6 +7823,25 @@ async function handleRequest(req: Request): Promise<Response> {
 
       await db.from("device_telemetry").insert(rows);
 
+      // Qurilma sog'ligi — ota-ona "nega joylashuv eskirgan?" degan savolga
+      // javob olishi uchun (database/24_device_health.sql izohiga qarang).
+      const health = payload.health;
+      if (health && typeof health === "object") {
+        await db.from("device_health").upsert({
+          family_code: actor!.familyCode,
+          child_id: actor!.childId,
+          location_permission: health.locationPermission === true,
+          background_location: health.backgroundLocation === true,
+          usage_permission: health.usagePermission === true,
+          battery_unrestricted: health.batteryUnrestricted === true,
+          battery_level: Number.isFinite(Number(health.batteryLevel))
+            ? Math.max(-1, Math.min(100, Number(health.batteryLevel)))
+            : null,
+          app_version: String(health.appVersion || "").slice(0, 20),
+          reported_at: new Date().toISOString(),
+        }, { onConflict: "family_code,child_id" });
+      }
+
       return new Response(JSON.stringify({ ok: true }), {
         status: 200, headers: { "Content-Type": "application/json" },
       });
@@ -8274,7 +8609,7 @@ async function handleRequest(req: Request): Promise<Response> {
 
       // "Farzandim qayerda?" — so'nggi joy va vaqti.
       if (data === "action_where") {
-        const r = await buildWhereReport(generateFamilyCode(chatId), lang);
+        const r = await buildWhereReport(await familyCodeFor(chatId), lang);
         await sendMessage(chatId, r.text, r.keyboard);
         return new Response(JSON.stringify({ ok: true }), { status: 200 });
       }
@@ -8323,7 +8658,7 @@ async function handleRequest(req: Request): Promise<Response> {
       // bo'lmaydi (askChildForLocation egalikni ham tekshiradi).
       if (data.startsWith("askloc_")) {
         const childId = data.slice("askloc_".length);
-        const r = await askChildForLocation(generateFamilyCode(chatId), childId, chatId);
+        const r = await askChildForLocation(await familyCodeFor(chatId), childId, chatId);
         let javob: string;
         if (r.ok && r.live) {
           javob = "🟢 <b>Jonli joylashuv yoqilgan</b> — farzandingiz joyi o'zi yangilanib turibdi. Bezovta qilmadim.";
@@ -8348,7 +8683,7 @@ async function handleRequest(req: Request): Promise<Response> {
       if (data.startsWith("action_pair")) {
         await sendMessage(chatId, getPairingText(chatId, lang, isApproved));
       } else if (data === "action_reels") {
-        await sendMessage(chatId, await getAppUsageReportText(generateFamilyCode(chatId), lang));
+        await sendMessage(chatId, await getAppUsageReportText(await familyCodeFor(chatId), lang));
       } else if (data === "action_feedback") {
         await sendMessage(chatId, getFeedbackText(lang));
       } else if (data === "action_lang") {
@@ -8363,11 +8698,11 @@ async function handleRequest(req: Request): Promise<Response> {
         await sendMessage(chatId, "🌐 Tilni tanlang / Выберите язык интерфейса:", langKeyboard);
       } else if (data === "set_lang_uz") {
         USER_LANG[chatId] = "uz";
-        await sendMessage(chatId, "✅ Til o'zbekchaga o'zgartirildi!", getStartKeyboard(chatId, "uz"));
+        await sendMessage(chatId, "✅ Til o'zbekchaga o'zgartirildi!", getStartKeyboard(chatId, "uz", false, await familyCodeFor(chatId)));
       await sendMessage(chatId, "👇 <b>Start</b> tugmasi doim pastda.", boshlashReplyKeyboard());
       } else if (data === "set_lang_ru") {
         USER_LANG[chatId] = "ru";
-        await sendMessage(chatId, "✅ Язык успешно изменён на русский!", getStartKeyboard(chatId, "ru"));
+        await sendMessage(chatId, "✅ Язык успешно изменён на русский!", getStartKeyboard(chatId, "ru", false, await familyCodeFor(chatId)));
         await sendMessage(chatId, "👇 <b>Start</b> всегда внизу — / не нужен.", boshlashReplyKeyboard());
       }
       return new Response(JSON.stringify({ ok: true }), { status: 200 });
@@ -8669,8 +9004,8 @@ async function handleRequest(req: Request): Promise<Response> {
 
         await sendMessage(
           chatId,
-          startIsChild ? getChildStartText(lang) : getStartMenuText(chatId, lang, true, isAdmin),
-          getStartKeyboard(chatId, lang, startIsChild)
+          startIsChild ? getChildStartText(lang) : getStartMenuText(chatId, lang, true, isAdmin, await familyCodeFor(chatId)),
+          getStartKeyboard(chatId, lang, startIsChild, await familyCodeFor(chatId))
         );
         await sendMessage(chatId, "👇 <b>Start</b> tugmasi doim pastda — / kerak emas.", boshlashReplyKeyboard());
         return new Response(JSON.stringify({ ok: true }), { status: 200 });
@@ -8689,7 +9024,7 @@ async function handleRequest(req: Request): Promise<Response> {
           /(qayerda|lokatsiya|joylashuv|где)/i.test(text))
       ) {
         if (!(await isPairedChild(chatId)) && (await hasRegistration(chatId))) {
-          const r = await buildWhereReport(generateFamilyCode(chatId), lang);
+          const r = await buildWhereReport(await familyCodeFor(chatId), lang);
           await sendMessage(chatId, r.text, r.keyboard);
           return new Response(JSON.stringify({ ok: true }), { status: 200 });
         }
@@ -8764,7 +9099,7 @@ async function handleRequest(req: Request): Promise<Response> {
       // Kunlik xulosani yoqish/o'chirish.
       if (text.startsWith("/xulosa")) {
         if (db) {
-          const famCode = generateFamilyCode(chatId);
+          const famCode = await familyCodeFor(chatId);
           const { data } = await db
             .from("parent_registrations")
             .select("digest_enabled")
@@ -8795,7 +9130,7 @@ async function handleRequest(req: Request): Promise<Response> {
       }
 
       if (text.startsWith("/reels")) {
-        await sendMessage(chatId, await getAppUsageReportText(generateFamilyCode(chatId), lang));
+        await sendMessage(chatId, await getAppUsageReportText(await familyCodeFor(chatId), lang));
         return new Response(JSON.stringify({ ok: true }), { status: 200 });
       }
 
@@ -8811,7 +9146,7 @@ async function handleRequest(req: Request): Promise<Response> {
           return new Response(JSON.stringify({ ok: true }), { status: 200 });
         }
         if (db) {
-          const famCode = generateFamilyCode(chatId);
+          const famCode = await familyCodeFor(chatId);
           const { data } = await db
             .from("parent_registrations")
             .select("family_code")

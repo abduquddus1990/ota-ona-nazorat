@@ -107,6 +107,18 @@ class TelemetrySyncWorker(
                 put("screenTimeSeconds", apps.firstOrNull()?.foregroundSeconds ?: 0)
                 put("apps", appsArray)
                 put("windowSeconds", ((now - windowStart) / 1000).toInt())
+                // Qurilmaning "sog'ligi". Ota-ona xaritada eski nuqtani
+                // ko'rganda sababini bilishi uchun: ruxsat olib tashlanganmi,
+                // batareya ilovani uxlatib qo'yganmi yoki shunchaki bola
+                // qimirlamayaptimi. Buni faqat telefonning o'zi biladi.
+                put("health", JSONObject().apply {
+                    put("locationPermission", hasLocationPermission())
+                    put("backgroundLocation", hasBackgroundLocationPermission())
+                    put("usagePermission", hasUsageStatsPermission())
+                    put("batteryUnrestricted", isBatteryUnrestricted())
+                    put("batteryLevel", battery)
+                    put("appVersion", appVersionName())
+                })
                 put("encryptedPayload", encryptedPayload)
                 put("iv", iv)
             }
@@ -228,6 +240,36 @@ class TelemetrySyncWorker(
             .filter { it.foregroundSeconds > 0 }
             .sortedByDescending { it.foregroundSeconds }
             .take(20)
+    }
+
+    private fun hasLocationPermission(): Boolean =
+        ContextCompat.checkSelfPermission(
+            applicationContext, android.Manifest.permission.ACCESS_COARSE_LOCATION
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED ||
+            ContextCompat.checkSelfPermission(
+                applicationContext, android.Manifest.permission.ACCESS_FINE_LOCATION
+            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+
+    /** Fon rejimidagi joylashuv — usiz telefon qulflanganda radar ishlamaydi. */
+    private fun hasBackgroundLocationPermission(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return hasLocationPermission()
+        return ContextCompat.checkSelfPermission(
+            applicationContext, android.Manifest.permission.ACCESS_BACKGROUND_LOCATION
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun isBatteryUnrestricted(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return true
+        val pm = applicationContext.getSystemService(Context.POWER_SERVICE) as? android.os.PowerManager
+            ?: return true
+        return pm.isIgnoringBatteryOptimizations(applicationContext.packageName)
+    }
+
+    private fun appVersionName(): String = try {
+        applicationContext.packageManager
+            .getPackageInfo(applicationContext.packageName, 0).versionName ?: ""
+    } catch (_: Exception) {
+        ""
     }
 
     private fun hasUsageStatsPermission(): Boolean {
