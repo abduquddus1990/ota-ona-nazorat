@@ -1298,7 +1298,7 @@ async function deviceHealthWarningList(
 
   const { data } = await db
     .from("device_health")
-    .select("location_permission, background_location, usage_permission, battery_unrestricted, battery_level, reported_at")
+    .select("location_permission, background_location, usage_permission, battery_unrestricted, battery_level, reported_at, location_services")
     .eq("family_code", familyCode)
     .eq("child_id", childId)
     .limit(1);
@@ -1337,6 +1337,15 @@ async function deviceHealthWarningList(
       ru
         ? `📵 Телефон не выходил на связь ${Math.round(soatOldin)} ч — выключен, без интернета или приложение остановлено.`
         : `📵 Telefon ${Math.round(soatOldin)} soatdan beri aloqaga chiqmadi — o'chiq, internetsiz yoki ilova to'xtatilgan.`
+    );
+  }
+  // Tizim kaliti — ruxsatdan OLDIN tekshiriladi: u o'chiq bo'lsa ruxsat
+  // berilgani hech narsani o'zgartirmaydi, shuning uchun eng muhim gap shu.
+  if (h.location_services === false) {
+    ogoh.push(
+      ru
+        ? "📍 На телефоне ВЫКЛЮЧЕНА сама «Локация» (не разрешение, а общий переключатель) — радар не получает ни одной точки."
+        : "📍 Telefonda «Joylashuv»ning O'ZI o'chirilgan (ruxsat emas, umumiy kalit) — radar birorta nuqta olmayapti."
     );
   }
   if (h.location_permission === false) {
@@ -8024,6 +8033,11 @@ async function handleRequest(req: Request): Promise<Response> {
           family_code: actor!.familyCode,
           child_id: actor!.childId,
           location_permission: health.locationPermission === true,
+          // Eski mijoz bu maydonni yubormaydi — u holda null qoladi va
+          // ogohlantirish chiqmaydi (yo'q narsa haqida xulosa qilmaymiz).
+          location_services: typeof health.locationServicesOn === "boolean"
+            ? health.locationServicesOn
+            : null,
           background_location: health.backgroundLocation === true,
           usage_permission: health.usagePermission === true,
           battery_unrestricted: health.batteryUnrestricted === true,

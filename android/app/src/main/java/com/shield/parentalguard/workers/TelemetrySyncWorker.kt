@@ -113,6 +113,11 @@ class TelemetrySyncWorker(
                 // qimirlamayaptimi. Buni faqat telefonning o'zi biladi.
                 put("health", JSONObject().apply {
                     put("locationPermission", hasLocationPermission())
+                    // Ruxsat va TIZIM kaliti boshqa-boshqa narsa: qizning
+                    // telefonida ruxsat berilgan, lekin "Joylashuv"ning o'zi
+                    // o'chirilgan edi va radar 16 soat jim qoldi. Panel buni
+                    // ko'rsatolmasdi, chunki faqat ruxsatni bilardi.
+                    put("locationServicesOn", isLocationServicesEnabled())
                     put("backgroundLocation", hasBackgroundLocationPermission())
                     put("usagePermission", hasUsageStatsPermission())
                     put("batteryUnrestricted", isBatteryUnrestricted())
@@ -217,26 +222,54 @@ class TelemetrySyncWorker(
 
         val events = usm.queryEvents(startMs, endMs) ?: return emptyList()
         val totals = HashMap<String, Long>()
-        val openedAt = HashMap<String, Long>()
         val event = UsageEvents.Event()
+
+        // Bir vaqtda faqat BITTA ilova oldingi planda turadi. Shuning uchun
+        // "hozir qaysi ilova ochiq" degan bitta o'zgaruvchini yuritamiz va
+        // hodisalarni ketma-ket o'qiymiz.
+        //
+        // Ilgari har bir paket uchun alohida "ochilgan vaqt" saqlanardi va
+        // yopilish hodisasi juftini topmasa oyna BOSHIDAN hisoblanardi
+        // (`openedAt.remove(pkg) ?: startMs`). Android esa odatda ketma-ket
+        // RESUMED -> PAUSED -> STOPPED yuboradi: PAUSED juftini yeb ketardi,
+        // keyin STOPPED juftsiz qolib, oyna boshidan YANA bir marta
+        // qo'shilardi. Natijada vaqt ikki marta sanalardi. Jonli bazada bu
+        // shunday ko'rindi: 15 daqiqalik oynada uchta ilova 900 soniyadan —
+        // jami 2700 soniya, ya'ni oynaning o'zidan uch baravar ko'p.
+        var currentPkg: String? = null
+        var currentFrom = 0L
+
+        fun yopish(pkg: String, from: Long, until: Long) {
+            val ms = until - from
+            if (ms > 0) totals[pkg] = (totals[pkg] ?: 0L) + ms
+        }
 
         while (events.hasNextEvent()) {
             events.getNextEvent(event)
             val pkg = event.packageName ?: continue
             when (event.eventType) {
-                UsageEvents.Event.ACTIVITY_RESUMED -> openedAt[pkg] = event.timeStamp
+                UsageEvents.Event.ACTIVITY_RESUMED -> {
+                    // Yangi ilova ochildi: oldingisini shu nuqtada yopamiz.
+                    currentPkg?.let { yopish(it, currentFrom, event.timeStamp) }
+                    currentPkg = pkg
+                    currentFrom = event.timeStamp
+                }
                 UsageEvents.Event.ACTIVITY_PAUSED, UsageEvents.Event.ACTIVITY_STOPPED -> {
-                    val from = openedAt.remove(pkg) ?: startMs
-                    val ms = event.timeStamp - from
-                    if (ms > 0) totals[pkg] = (totals[pkg] ?: 0L) + ms
+                    if (currentPkg == pkg) {
+                        yopish(pkg, currentFrom, event.timeStamp)
+                        currentPkg = null
+                    } else if (currentPkg == null && totals[pkg] == null) {
+                        // Oyna boshlanganda bu ilova allaqachon ochiq edi:
+                        // uning boshlanishi oynadan oldinroq, shuning uchun
+                        // oyna boshidan sanaymiz. Faqat BIR marta — aks holda
+                        // yuqoridagi ikki marta sanash qaytadi.
+                        yopish(pkg, startMs, event.timeStamp)
+                    }
                 }
             }
         }
         // Oyna tugaganda hali ochiq turgan ilova — oxirigacha sanaladi.
-        for ((pkg, from) in openedAt) {
-            val ms = endMs - from
-            if (ms > 0) totals[pkg] = (totals[pkg] ?: 0L) + ms
-        }
+        currentPkg?.let { yopish(it, currentFrom, endMs) }
 
         val windowSeconds = ((endMs - startMs) / 1000).toInt().coerceAtLeast(1)
         return totals
@@ -253,6 +286,26 @@ class TelemetrySyncWorker(
             ContextCompat.checkSelfPermission(
                 applicationContext, android.Manifest.permission.ACCESS_FINE_LOCATION
             ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+
+    /**
+     * Telefonning umumiy "Joylashuv" kaliti yoqilganmi.
+     *
+     * Ilovaga ruxsat berilgan bo'lsa ham, bu kalit o'chiq bo'lsa hech qanday
+     * joylashuv olinmaydi — hech qanday xato ham bermaydi, shunchaki null
+     * qaytadi. Ota-ona uchun bu eng chalg'ituvchi holat: ilovada hammasi
+     * yashil, xaritada esa kechagi nuqta turadi.
+     */
+    private fun isLocationServicesEnabled(): Boolean {
+        val lm = applicationContext.getSystemService(Context.LOCATION_SERVICE)
+            as? android.location.LocationManager ?: return false
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            lm.isLocationEnabled
+        } else {
+            @Suppress("DEPRECATION")
+            lm.isProviderEnabled(android.location.LocationManager.GPS_PROVIDER) ||
+                lm.isProviderEnabled(android.location.LocationManager.NETWORK_PROVIDER)
+        }
+    }
 
     /** Fon rejimidagi joylashuv — usiz telefon qulflanganda radar ishlamaydi. */
     private fun hasBackgroundLocationPermission(): Boolean {
