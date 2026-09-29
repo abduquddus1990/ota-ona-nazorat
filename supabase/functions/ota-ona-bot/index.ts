@@ -1088,6 +1088,29 @@ async function purgeOldRows(): Promise<Record<string, string>> {
   return natija;
 }
 
+/**
+ * Joylashuv AYNAN QACHON o'lchangani.
+ *
+ * Ilgari bu maydon umuman yo'q edi va location_pings.recorded_at bazaning
+ * now() qiymatini olardi — ya'ni nuqta SERVERGA KELGAN vaqt yozilardi,
+ * o'lchangan vaqt emas. Ikkalasi bir xil emas: Telegram ham, Android'ning
+ * getLastKnownLocation() ham KESHDAGI nuqtani qaytarishi mumkin. Natijada
+ * ota-ona "2 daqiqa oldin" deb ko'rardi, nuqta esa 10 daqiqalik bo'lardi,
+ * va "maktabga yetdi" bildirishnomasi ham eski nuqtadan otilardi.
+ *
+ * Mijozning soati noto'g'ri bo'lishi mumkin, shuning uchun qiymat
+ * tekshiriladi: kelajakdagi vaqt va 24 soatdan eski vaqt qabul qilinmaydi —
+ * bunday holda "hozir" deb hisoblanadi (eski xulq).
+ */
+function olchovVaqti(raw: unknown): string {
+  const ms = Number(raw);
+  if (!Number.isFinite(ms) || ms <= 0) return new Date().toISOString();
+  const now = Date.now();
+  // Kelajak (soat oldinga surilgan) yoki juda eski — ishonmaymiz.
+  if (ms > now + 60_000 || ms < now - 24 * 3600 * 1000) return new Date().toISOString();
+  return new Date(ms).toISOString();
+}
+
 async function sendMessage(chatId: number | string, htmlText: string, replyMarkup?: any) {
   const payload: any = {
     chat_id: chatId,
@@ -7678,15 +7701,22 @@ async function handleRequest(req: Request): Promise<Response> {
         }
       }
 
+      const recordedAt = olchovVaqti(payload.recordedAt);
+
       await db.from("location_pings").insert({
         family_code: familyCode,
         child_id: childId,
         lat,
         lng,
         accuracy_m: Math.round(Number(payload.accuracyM) || 0) || null,
+        recorded_at: recordedAt,
       });
 
-      const fired = await evaluateGeofences(familyCode, childId, lat, lng);
+      // Eskirgan nuqtadan "maktabga yetdi" deb xabar bermaymiz: bola
+      // allaqachon u yerdan ketgan bo'lishi mumkin. 5 daqiqa — geo-hodisa
+      // hali ma'noli bo'lgan chegara.
+      const yangiNuqta = Date.now() - new Date(recordedAt).getTime() < 5 * 60 * 1000;
+      const fired = yangiNuqta ? await evaluateGeofences(familyCode, childId, lat, lng) : [];
       for (const f of fired) {
         await notifyFamilyParents(
           familyCode,
@@ -7744,17 +7774,23 @@ async function handleRequest(req: Request): Promise<Response> {
         });
       }
 
+      const devRecordedAt = olchovVaqti(payload.recordedAt);
+
       await db.from("location_pings").insert({
         family_code: actor!.familyCode,
         child_id: actor!.childId,
         lat,
         lng,
         accuracy_m: Number(payload.accuracyM) || null,
+        recorded_at: devRecordedAt,
       });
 
       // Geo-bildirishnoma OTA-ONAGA boradi. Ilgari u notifyAdmins() edi —
       // "maktabga yetdi" xabarini ota-ona emas, ilova admini olardi.
-      const fired = await evaluateGeofences(actor!.familyCode, actor!.childId, lat, lng);
+      const devYangi = Date.now() - new Date(devRecordedAt).getTime() < 5 * 60 * 1000;
+      const fired = devYangi
+        ? await evaluateGeofences(actor!.familyCode, actor!.childId, lat, lng)
+        : [];
       for (const f of fired) {
         await notifyFamilyParents(
           actor!.familyCode,
