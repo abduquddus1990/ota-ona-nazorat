@@ -610,50 +610,34 @@ const I18N = {
 };
 
 // 3. DINAMIK KO'P FARZANDLIK VA PROFIL BOSHQARUVI (LOCALSTORAGE & UNIQUE ID)
-const DEFAULT_INITIAL_CHILDREN = {
-    "CH-101": {
-        id: "CH-101",
-        name: "Aliyor Valijonov",
-        name_ru: "Алиёр Валиджонов",
-        username: "@aliyor_v",
-        phone: "+998 90 123 45 67",
-        grade: 5,
-        battery: 86,
-        screenTime: "2s 45d",
-        screenTime_ru: "2ч 45м",
-        remaining: "1s 30d",
-        remaining_ru: "1ч 30м",
-        location: {
-            lat: 41.3145,
-            lng: 69.2812,
-            address: "Yunusobod 4-mavze, 24-maktab",
-            address_ru: "Юнусабад 4-й квартал, 24-я школа",
-            geofences: [
-                { name: "🏠 Uy / Дом", status: "Xavfsiz / Безопасно", color: "text-emerald-400" },
-                { name: "🏫 24-Maktab / 24-Школа", status: "Ichida (Faol) / Внутри", color: "text-sky-400" }
-            ]
-        },
-        apps: [
-            { name: "YouTube", time: "1s 15d", percent: 35, category: "Ta'lim / Video", color: "bg-red-500", icon: "▶️" },
-            { name: "Instagram (Reels)", time: "45d", percent: 25, category: "Ijtimoiy Tarmoq", color: "bg-pink-500", icon: "📸" },
-            { name: "Telegram", time: "35d", percent: 20, category: "Muloqot", color: "bg-sky-500", icon: "💬" },
-            { name: "Duolingo", time: "25d", percent: 12, category: "Til O'rganish", color: "bg-emerald-500", icon: "🦉" },
-            { name: "O'yinlar", time: "15d", percent: 8, category: "O'yin", color: "bg-amber-500", icon: "🎮" }
-        ],
-        interests: {
-            uz: [
-                { topic: "Dasturlash va IT", percent: 85, color: "bg-emerald-500" },
-                { topic: "Robototexnika va Fizika", percent: 72, color: "bg-sky-500" },
-                { topic: "Ingliz tili muloqoti", percent: 65, color: "bg-purple-500" }
-            ],
-            ru: [
-                { topic: "Программирование и IT", percent: 85, color: "bg-emerald-500" },
-                { topic: "Робототехника и Физика", percent: 72, color: "bg-sky-500" },
-                { topic: "Английский разговорный", percent: 65, color: "bg-purple-500" }
-            ]
-        }
-    }
+// Yangi farzand yozuvining BO'SH shabloni.
+//
+// Ilgari bu yerda to'liq to'ldirilgan "Aliyor Valijonov" namunasi turardi:
+// 2s 45d ekran vaqti, YouTube/Instagram/Telegram/Duolingo ro'yxati, 86%
+// batareya, "Yunusobod 4-mavze, 24-maktab" manzili. buildChildRecord()
+// har bir HAQIQIY farzand uchun shu obyektdan nusxa olganligi sababli,
+// ota-ona o'z farzandining ismi ostida shu o'ylab topilgan raqamlarni
+// ko'rardi — ya'ni panelning asosiy ekrani soxta ma'lumot ko'rsatardi.
+//
+// Endi hamma son serverdan keladi (child_overview). Ma'lumot bo'lmasa
+// panel "ma'lumot yo'q" deb rostini aytadi.
+const EMPTY_CHILD_TEMPLATE = {
+    id: null,
+    name: "",
+    name_ru: "",
+    username: "",
+    phone: "",
+    grade: null,
+    battery: null,
+    screenTime: null,
+    screenTime_ru: null,
+    remaining: null,
+    remaining_ru: null,
+    location: null,
+    apps: null,
+    interests: null
 };
+const DEFAULT_INITIAL_CHILDREN = {};
 
 function loadChildrenDatabase() {
     try {
@@ -663,7 +647,8 @@ function loadChildrenDatabase() {
             if (parsed && Object.keys(parsed).length > 0) return parsed;
         }
     } catch(e) {}
-    return DEFAULT_INITIAL_CHILDREN;
+    // Demo farzand yo'q: ro'yxat serverdan (syncChildrenFromServer) keladi.
+    return {};
 }
 
 function saveChildrenDatabase() {
@@ -707,10 +692,9 @@ function renderChildSelectDropdown() {
 const QALQON_BOT_FN = 'https://wfrclcwjeeqeqchmdhzw.supabase.co/functions/v1/ota-ona-bot';
 
 function buildChildRecord(serverChild, existing) {
-    // Panelning qolgan qismi (xarita, ilovalar, qiziqishlar) hali demo
-    // ma'lumot bilan ishlaydi, shuning uchun yangi farzand uchun o'sha
-    // tuzilmadan nusxa olamiz va ustidan haqiqiy maydonlarni yozamiz.
-    const base = existing || JSON.parse(JSON.stringify(DEFAULT_INITIAL_CHILDREN["CH-101"]));
+    // Bo'sh shablondan boshlanadi: ekran vaqti, ilovalar, batareya va
+    // joylashuv serverdan (child_overview) keladi, mahalliy namunadan emas.
+    const base = existing || JSON.parse(JSON.stringify(EMPTY_CHILD_TEMPLATE));
     base.id = serverChild.child_id;
     base.name = serverChild.child_name || base.name;
     base.name_ru = base.name;
@@ -3086,45 +3070,225 @@ function switchChild(childKey) {
     if (mapInstance) updateMapCoordinates();
 }
 
+/**
+ * Ota-ona panelining asosiy ekranini HAQIQIY ma'lumot bilan to'ldiradi.
+ *
+ * Ilgari ekran vaqti, ilovalar reytingi, batareya va manzil app.js dagi
+ * DEFAULT_INITIAL_CHILDREN namunasidan olinardi — "2s 45d", "YouTube 1s
+ * 15d", "86%", "Yunusobod 4-mavze, 24-maktab". Bu sonlar hech qachon
+ * o'zgarmasdi va har bir haqiqiy farzand yozuvi shu namunadan nusxa olib
+ * qurilardi, ya'ni ota-ona o'z farzandining ismi ostida o'ylab topilgan
+ * raqamlarni ko'rardi.
+ *
+ * Endi hammasi serverdan (child_overview). Ma'lumot yo'q bo'lsa panel
+ * shuni rostini aytadi: "Android ilova hali ma'lumot yubormagan". Bo'sh
+ * holat noqulay ko'rinadi, lekin soxta ishonch berishdan yaxshiroq —
+ * ota-ona bu raqamlar asosida qaror qabul qiladi.
+ */
+function soatDaqiqa(sec) {
+    const s = Math.max(0, Math.round(Number(sec) || 0));
+    const soat = Math.floor(s / 3600);
+    const daq = Math.round((s % 3600) / 60);
+    if (soat > 0) return `${soat}s ${daq}d`;
+    return `${daq}d`;
+}
+
+function qachonBoldi(iso) {
+    if (!iso) return null;
+    const daq = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+    if (daq < 1) return 'hozir';
+    if (daq < 60) return `${daq} daqiqa oldin`;
+    if (daq < 1440) return `${Math.floor(daq / 60)} soat oldin`;
+    return `${Math.floor(daq / 1440)} kun oldin`;
+}
+
+const APP_RANG = ['bg-cyan-500', 'bg-pink-500', 'bg-amber-500', 'bg-emerald-500', 'bg-violet-500', 'bg-rose-500'];
+
+let overviewSoragan = null;
+async function loadChildOverview(childId) {
+    if (!childId) return;
+    // Panelda farzand almashtirilsa, eski so'rovning javobi kechikib kelib
+    // yangi farzandning ustiga yozib ketmasligi kerak.
+    const belgi = childId + ':' + Date.now();
+    overviewSoragan = belgi;
+
+    const screenEl = document.getElementById('totalScreenTime');
+    const remEl = document.getElementById('remainingTime');
+    const barEl = document.getElementById('screenTimeBar');
+    const battEl = document.getElementById('batteryBadge');
+    const statBattEl = document.getElementById('statBattery');
+    const appList = document.getElementById('appUsageList');
+    const addrEl = document.getElementById('radarCurrentAddress');
+    const radarAddrEl = document.getElementById('radarAddress');
+    const warnBox = document.getElementById('deviceWarningBox');
+
+    let d = null;
+    try {
+        const resp = await fetch(QALQON_BOT_FN, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'child_overview', childId, lang: currentLang })
+        });
+        d = await resp.json();
+    } catch (e) {
+        d = null;
+    }
+    if (overviewSoragan !== belgi) return;
+    if (!d || !d.ok) {
+        if (screenEl) screenEl.innerText = '—';
+        if (addrEl) addrEl.innerText = "Ma'lumot olinmadi";
+        return;
+    }
+
+    // --- Ekran vaqti ---
+    const jami = Number(d.screenSeconds) || 0;
+    if (screenEl) screenEl.innerText = jami > 0 ? soatDaqiqa(jami) : '—';
+
+    // Kunlik limit — farzand yozuvida saqlanadi (soat). Limit belgilanmagan
+    // bo'lsa "qoldi" degan son ma'nosiz, shuning uchun chiziqcha qo'yamiz.
+    const child = childrenDatabase[currentChildKey];
+    const limitSoat = child && Number(child.dailyLimitHours) > 0 ? Number(child.dailyLimitHours) : null;
+    const remWrap = document.getElementById('remainingWrap');
+    const barWrap = document.getElementById('screenTimeBarWrap');
+    const statusEl = document.getElementById('screenStatus');
+    if (limitSoat) {
+        const qolgan = Math.max(0, limitSoat * 3600 - jami);
+        const foiz = Math.min(100, Math.round((jami / (limitSoat * 3600)) * 100));
+        if (remEl) remEl.innerText = soatDaqiqa(qolgan);
+        if (barEl) barEl.style.width = foiz + '%';
+        if (remWrap) remWrap.classList.remove('hidden');
+        if (barWrap) barWrap.classList.remove('hidden');
+        if (statusEl) {
+            statusEl.classList.remove('hidden');
+            const oshgan = foiz >= 100;
+            statusEl.innerText = oshgan ? 'Limit tugadi' : (foiz >= 80 ? 'Limitga yaqin' : 'Normal');
+            statusEl.className = 'text-[10px] font-semibold px-2 py-0.5 rounded-full border ' + (
+                oshgan ? 'text-rose-300 bg-rose-500/10 border-rose-500/20'
+                       : foiz >= 80 ? 'text-amber-300 bg-amber-500/10 border-amber-500/20'
+                                    : 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20');
+        }
+    } else {
+        // Limit belgilanmagan: hech qanday baho bermaymiz.
+        if (remWrap) remWrap.classList.add('hidden');
+        if (barWrap) barWrap.classList.add('hidden');
+        if (statusEl) statusEl.classList.add('hidden');
+    }
+
+    // --- Batareya ---
+    const batt = (typeof d.battery === 'number') ? d.battery + '%' : '—';
+    if (battEl) battEl.innerText = batt;
+    if (statBattEl) statBattEl.innerText = batt;
+
+    // --- Ilovalar reytingi ---
+    if (appList) {
+        const apps = Array.isArray(d.apps) ? d.apps : [];
+        if (apps.length) {
+            appList.innerHTML = apps.map((a, i) => `
+                <div class="space-y-1">
+                    <div class="flex items-center justify-between text-xs">
+                        <span class="font-bold text-white">${escapeHtml(a.name || a.package || '')}</span>
+                        <span class="font-bold text-slate-300 font-mono">${soatDaqiqa(a.seconds)}</span>
+                    </div>
+                    <div class="progress-bar-bg">
+                        <div class="progress-bar-fill ${APP_RANG[i % APP_RANG.length]}" style="width: ${Math.max(2, Number(a.percent) || 0)}%;"></div>
+                    </div>
+                </div>
+            `).join('');
+        } else {
+            appList.innerHTML = `
+                <div class="text-[11px] text-slate-400 leading-relaxed">
+                    Bugun ilovalardan foydalanish ma'lumoti yo'q.<br>
+                    <span class="text-slate-500">Bu ma'lumot farzand telefonidagi Qalqon
+                    Android ilovasidan keladi. Ilova o'rnatilgan va ruxsatlar
+                    berilgan bo'lsa, birinchi hisobot bir soat ichida keladi.</span>
+                </div>`;
+        }
+    }
+
+    // --- Joylashuv ---
+    if (d.location && typeof d.location.lat === 'number') {
+        const vaqt = qachonBoldi(d.location.recordedAt);
+        const matn = `${d.location.lat.toFixed(5)}, ${d.location.lng.toFixed(5)}` +
+            (vaqt ? ` · ${vaqt}` : '');
+        if (addrEl) addrEl.innerText = matn;
+        if (radarAddrEl) radarAddrEl.innerText = matn;
+        // Xarita ham haqiqiy nuqtaga ko'chadi.
+        if (child) {
+            child.location = Object.assign({}, child.location || {}, {
+                lat: d.location.lat, lng: d.location.lng, recordedAt: d.location.recordedAt
+            });
+            if (mapInstance) updateMapCoordinates(); else initRadarMap();
+        }
+    } else {
+        if (addrEl) addrEl.innerText = "Joylashuv hali yuborilmagan";
+        if (radarAddrEl) radarAddrEl.innerText = "Joylashuv hali yuborilmagan";
+    }
+
+    // --- "Tizim faol" holati ---
+    // Bu sarlavha ilgari har doim "Tizim Faol & Xavfsiz / Barcha xavfsizlik
+    // himoyasi yoqilgan" deb turardi — hatto farzand telefonida ilova
+    // umuman o'rnatilmagan bo'lsa ham. Endi u haqiqiy holatni aytadi.
+    const dotEl = document.getElementById('systemStatusDot');
+    const titleEl = document.getElementById('systemStatusTitle');
+    const subEl = document.getElementById('systemStatusSub');
+    const ogohSoni = Array.isArray(d.warnings) ? d.warnings.length : 0;
+    if (titleEl && subEl && dotEl) {
+        if (!d.hasData) {
+            dotEl.className = 'w-2.5 h-2.5 rounded-full bg-slate-500';
+            titleEl.innerText = "Qurilma ulanmagan";
+            titleEl.className = 'text-sm font-black text-slate-300';
+            subEl.innerText = "Farzand telefonida Qalqon ilovasi hali ma'lumot yubormagan";
+            subEl.className = 'text-[11px] text-slate-400 font-medium';
+        } else if (ogohSoni > 0) {
+            dotEl.className = 'w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse-dot';
+            titleEl.innerText = "E'tibor talab qiladi";
+            titleEl.className = 'text-sm font-black text-amber-200';
+            subEl.innerText = ogohSoni + " ta muammo aniqlandi";
+            subEl.className = 'text-[11px] text-amber-400/90 font-medium';
+        } else {
+            dotEl.className = 'w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse-dot';
+            titleEl.innerText = "Tizim faol";
+            titleEl.className = 'text-sm font-black text-white';
+            subEl.innerText = "Qurilmadan ma'lumot muntazam kelmoqda";
+            subEl.className = 'text-[11px] text-emerald-400/90 font-medium';
+        }
+    }
+
+    // --- Qurilma ogohlantirishlari ---
+    if (warnBox) {
+        const w = Array.isArray(d.warnings) ? d.warnings : [];
+        if (w.length) {
+            warnBox.classList.remove('hidden');
+            warnBox.innerHTML = w.map(t => `
+                <div class="text-[10px] text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-lg px-2 py-1">
+                    ${escapeHtml(String(t))}
+                </div>`).join('');
+        } else {
+            warnBox.classList.add('hidden');
+            warnBox.innerHTML = '';
+        }
+    }
+}
+
 function renderActiveChild() {
     const child = childrenDatabase[currentChildKey];
     if (!child) return;
     const isRu = (currentLang === 'ru');
 
-    const screenEl = document.getElementById('totalScreenTime');
-    if (screenEl) screenEl.innerText = isRu ? child.screenTime_ru : child.screenTime;
+    // Ekran vaqti, batareya va ilovalar — serverdan (loadChildOverview).
+    // Bu yerda ataylab hech narsa yozilmaydi: ilgari bu uchta maydon
+    // DEFAULT_INITIAL_CHILDREN dagi namunadan to'ldirilardi va ota-ona
+    // o'z farzandining ismi ostida o'ylab topilgan raqamlarni ko'rardi.
+    loadChildOverview(child.id);
 
-    const battEl = document.getElementById('batteryBadge');
-    if (battEl) battEl.innerText = `${child.battery}%`;
-
-    const statBattEl = document.getElementById('statBattery');
-    if (statBattEl) statBattEl.innerText = `${child.battery}%`;
-
-    const remEl = document.getElementById('remainingTime');
-    if (remEl) remEl.innerText = isRu ? child.remaining_ru : child.remaining;
+    // "Qoldi" ham loadChildOverview() ichida — haqiqiy ekran vaqti va
+    // belgilangan limitdan hisoblanadi.
 
     const selectEl = document.getElementById('childSelector');
     if (selectEl) selectEl.value = currentChildKey;
 
-    // Ilovalar reytingi
-    const appList = document.getElementById('appUsageList');
-    if (appList && child.apps) {
-        appList.innerHTML = child.apps.map(app => `
-            <div class="space-y-1">
-                <div class="flex items-center justify-between text-xs">
-                    <div class="flex items-center gap-2">
-                        <span>${app.icon}</span>
-                        <span class="font-bold text-white">${app.name}</span>
-                        <span class="text-[10px] text-slate-400">(${isRu ? app.category_ru : app.category})</span>
-                    </div>
-                    <span class="font-bold text-slate-300 font-mono">${app.time}</span>
-                </div>
-                <div class="progress-bar-bg">
-                    <div class="progress-bar-fill ${app.color}" style="width: ${app.percent}%;"></div>
-                </div>
-            </div>
-        `).join('');
-    }
+    // Ilovalar reytingi ham loadChildOverview() ichida — haqiqiy
+    // ma'lumotdan. child.apps (demo massiv) endi ishlatilmaydi.
 
     // Qiziqishlar vektorlari
     const interestContainer = document.getElementById('aiInterestVectors');
@@ -3145,7 +3309,7 @@ function renderActiveChild() {
 
     // Geofences
     const geofenceList = document.getElementById('geofenceList');
-    if (geofenceList && child.location && child.location.geofences) {
+    if (geofenceList && child.location && Array.isArray(child.location.geofences)) {
         geofenceList.innerHTML = child.location.geofences.map(geo => `
             <div class="flex items-center justify-between p-2 rounded-lg bg-slate-900/60 border border-slate-800">
                 <span class="text-xs font-semibold text-slate-300">${geo.name}</span>
@@ -3154,11 +3318,8 @@ function renderActiveChild() {
         `).join('');
     }
 
-    // Radar manzil
-    const radarAddr = document.getElementById('radarCurrentAddress') || document.getElementById('radarAddress');
-    if (radarAddr && child.location) {
-        radarAddr.innerText = isRu ? child.location.address_ru : child.location.address;
-    }
+    // Radar manzilini ham loadChildOverview() yozadi (koordinata + o'lchov
+    // vaqti). Ilgari bu yerda demo "Yunusobod 4-mavze, 24-maktab" turardi.
 }
 
 // ============================================================================
