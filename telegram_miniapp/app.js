@@ -1809,9 +1809,29 @@ function switchChildTab(tabId) {
 }
 
 // 📍 FARZAND TEZKOR XABARLARI
-function sendChildQuickStatus(statusType) {
+//
+// Bu funksiya JIMGINA ishlamay qolgan edi va bola buni bilmasdi.
+//
+// Ikki sabab bor edi, ikkalasi ham xavfli:
+//
+//  1. So'rov tanasi `childrenDatabase[currentChildKey].name` dan ism
+//     olardi. Farzand panelida bu ro'yxat bo'sh (u ota-onaga tegishli),
+//     shuning uchun `child` — undefined, va `child.name` TypeError
+//     tashlardi. Xato esa funksiyani o'rab turgan bo'sh `catch (e) {}`
+//     ichida yo'q bo'lib ketardi — ya'ni fetch UMUMAN yuborilmasdi.
+//     Ism baribir kerak emas edi: server uni bazadagi juftlikdan oladi
+//     va mijoz yuborganini ataylab e'tiborsiz qoldiradi.
+//
+//  2. "✅ yuborildi" xabari so'rov natijasini KUTMASDAN ko'rsatilardi.
+//     Ya'ni internet bo'lmasa ham, server xato qaytarsa ham, ota-ona
+//     botni ochmagan bo'lsa ham — bola "yetib bordi" deb o'ylardi.
+//
+// SOS — shoshilinch yordam tugmasi. Unda "yuborildi" degan yolg'on
+// xabardan ko'ra, "yuborilmadi, qo'ng'iroq qil" degan rost xabar ancha
+// xavfsiz. Shuning uchun endi javob kutiladi va natija borligicha
+// aytiladi: yetkazildimi, yoki yo'q.
+async function sendChildQuickStatus(statusType) {
     const isRu = (currentLang === 'ru');
-    const child = childrenDatabase[currentChildKey];
     let statusTextUz = "Maktabga yetib keldi";
     let statusTextRu = "Прибыл в школу";
 
@@ -1826,25 +1846,55 @@ function sendChildQuickStatus(statusType) {
         statusTextRu = "🚨 СРОЧНОЕ SOS СООБЩЕНИЕ: Ребёнок просит о помощи!";
     }
 
+    const matn = isRu ? statusTextRu : statusTextUz;
+    const isSos = (statusType === 'sos');
+    const koRsat = (m) => { if (tg && tg.showAlert) tg.showAlert(m); else alert(m); };
+
+    let d = null;
     try {
-        fetch('https://wfrclcwjeeqeqchmdhzw.supabase.co/functions/v1/ota-ona-bot', {
+        const resp = await fetch(QALQON_BOT_FN, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 type: 'child_status_alert',
                 statusType: statusType,
-                statusText: isRu ? statusTextRu : statusTextUz,
-                childName: isRu ? (child.name_ru || child.name) : child.name,
-                familyCode: familyCode,
+                statusText: matn,
+                sos: isSos,
                 timestamp: new Date().toISOString()
             })
-        }).catch(e => console.log('Status alert sent'));
-    } catch(e) {}
+        });
+        d = await resp.json();
+    } catch (e) {
+        d = null;
+    }
 
-    const alertMsg = isRu 
-        ? `✅ Оповещение «${statusTextRu}» успешно отправлено родителям в Telegram!`
-        : `✅ «${statusTextUz}» xabari ota-onangizning Telegramiga muvaffaqiyatli yuborildi!`;
-    alert(alertMsg);
+    if (!d || !d.ok) {
+        koRsat(isRu
+            ? (isSos
+                ? "❌ SOS НЕ отправлен — нет связи. Позвони родителям прямо сейчас!"
+                : "❌ Сообщение не отправлено — нет связи. Попробуй ещё раз.")
+            : (isSos
+                ? "❌ SOS YUBORILMADI — aloqa yo'q. Hoziroq ota-onangga QO'NG'IROQ QIL!"
+                : "❌ Xabar yuborilmadi — aloqa yo'q. Qayta urinib ko'r."));
+        return;
+    }
+
+    if (d.delivered === false) {
+        // So'rov serverga yetdi, lekin Telegram'da ota-onaga yuborilmadi —
+        // odatda ota-ona botni hali ochmagan bo'ladi.
+        koRsat(isRu
+            ? (isSos
+                ? "⚠️ SOS сохранён, но родителям в Telegram не дошло (они ещё не открывали бота). Позвони им!"
+                : "⚠️ Сохранено, но в Telegram не дошло — родители ещё не открывали бота.")
+            : (isSos
+                ? "⚠️ SOS saqlandi, lekin ota-onangning Telegramiga YETIB BORMADI (ular botni hali ochmagan). Qo'ng'iroq qil!"
+                : "⚠️ Saqlandi, lekin Telegramga yetib bormadi — ota-onang botni hali ochmagan."));
+        return;
+    }
+
+    koRsat(isRu
+        ? `✅ Оповещение «${statusTextRu}» доставлено родителям в Telegram.`
+        : `✅ «${statusTextUz}» xabari ota-onangning Telegramiga yetib bordi.`);
 }
 
 // 🧠 FARZAND AI CHAT (MULTI-TURN UZLUKSIZ SUHBAT)
@@ -3026,6 +3076,16 @@ function setSchoolPeriod(period) {
 // ============================================================================
 function openChildProfileModal() {
     const child = childrenDatabase[currentChildKey];
+    // Farzand ro'yxati serverdan kelmaguncha (yoki umuman farzand yo'q
+    // bo'lsa) bu yerda `child` undefined bo'ladi va oyna ochilishi o'rniga
+    // butun skript to'xtardi.
+    if (!child) {
+        const m = (currentLang === 'ru')
+            ? "Сначала добавьте ребёнка."
+            : "Avval farzand qo'shing.";
+        if (tg && tg.showAlert) tg.showAlert(m); else alert(m);
+        return;
+    }
     document.getElementById('profileFullName').value = (currentLang === 'ru') ? (child.name_ru || child.name) : child.name;
     document.getElementById('profileUsername').value = child.username;
     document.getElementById('profileClassSelect').value = child.grade || 5;
