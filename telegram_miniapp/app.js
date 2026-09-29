@@ -3119,6 +3119,7 @@ async function loadChildOverview(childId) {
     const statBattEl = document.getElementById('statBattery');
     const appList = document.getElementById('appUsageList');
     const addrEl = document.getElementById('radarCurrentAddress');
+    const radarAddrEl = document.getElementById('radarAddress');
     const warnBox = document.getElementById('deviceWarningBox');
 
     let d = null;
@@ -3207,10 +3208,10 @@ async function loadChildOverview(childId) {
     // --- Joylashuv ---
     if (d.location && typeof d.location.lat === 'number') {
         const vaqt = qachonBoldi(d.location.recordedAt);
-        if (addrEl) {
-            addrEl.innerText = `${d.location.lat.toFixed(5)}, ${d.location.lng.toFixed(5)}` +
-                (vaqt ? ` · ${vaqt}` : '');
-        }
+        const matn = `${d.location.lat.toFixed(5)}, ${d.location.lng.toFixed(5)}` +
+            (vaqt ? ` · ${vaqt}` : '');
+        if (addrEl) addrEl.innerText = matn;
+        if (radarAddrEl) radarAddrEl.innerText = matn;
         // Xarita ham haqiqiy nuqtaga ko'chadi.
         if (child) {
             child.location = Object.assign({}, child.location || {}, {
@@ -3218,8 +3219,9 @@ async function loadChildOverview(childId) {
             });
             if (mapInstance) updateMapCoordinates(); else initRadarMap();
         }
-    } else if (addrEl) {
-        addrEl.innerText = "Joylashuv hali yuborilmagan";
+    } else {
+        if (addrEl) addrEl.innerText = "Joylashuv hali yuborilmagan";
+        if (radarAddrEl) radarAddrEl.innerText = "Joylashuv hali yuborilmagan";
     }
 
     // --- "Tizim faol" holati ---
