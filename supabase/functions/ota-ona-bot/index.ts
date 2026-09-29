@@ -1288,12 +1288,12 @@ const FRESH_LOCATION_MIN = 15;
  * yuborib turadi (device_health). Bu yerda faqat MUAMMO bo'lganda gapiramiz:
  * hammasi joyida bo'lsa, ortiqcha qator qo'shilmaydi.
  */
-async function deviceHealthWarnings(
+async function deviceHealthWarningList(
   familyCode: string,
   childId: string,
   lang: string = "uz"
-): Promise<string> {
-  if (!db) return "";
+): Promise<string[]> {
+  if (!db) return [];
   const ru = lang === "ru";
 
   const { data } = await db
@@ -1306,7 +1306,7 @@ async function deviceHealthWarnings(
   const h = data && data[0];
   // Yozuv yo'q — bu Telegram orqali ulangan farzand (Android ilova yo'q).
   // Bunday holatda ogohlantiradigan narsa ham yo'q.
-  if (!h) return "";
+  if (!h) return [];
 
   const ogoh: string[] = [];
   const soatOldin = (Date.now() - new Date(h.reported_at).getTime()) / 3600000;
@@ -1349,6 +1349,24 @@ async function deviceHealthWarnings(
     );
   }
 
+  return ogoh;
+}
+
+/**
+ * Yuqoridagi ro'yxatning bot xabariga tayyor matn ko'rinishi.
+ *
+ * Panel (child_overview) ro'yxatni massiv holida oladi — har bir
+ * ogohlantirishni alohida katakcha qilib chizishi uchun. Bot esa bitta
+ * matn bloki yuboradi. Ilgari faqat matn qaytarilardi va panel uni
+ * massiv deb o'ylab, Array.isArray() tekshiruvida yiqilib, hech qanday
+ * ogohlantirish ko'rsatmasdi.
+ */
+async function deviceHealthWarnings(
+  familyCode: string,
+  childId: string,
+  lang: string = "uz"
+): Promise<string> {
+  const ogoh = await deviceHealthWarningList(familyCode, childId, lang);
   return ogoh.length ? "\n" + ogoh.join("\n") : "";
 }
 
@@ -5584,6 +5602,14 @@ async function handleRequest(req: Request): Promise<Response> {
         "time_bank_entries", "time_bank_rules", "web_sessions", "families",
         "reward_items", "reward_redemptions", "shop_purchases", "collectible_cards",
         "family_messages", "family_chat_reads",
+        // Bular ro'yxatda YO'Q edi, ya'ni "hammasi o'chirildi" degan va'da
+        // yolg'on bo'lardi: qurilma holati (batareya foizi, ruxsatlar),
+        // ilovaga kirish so'rovlari, push token, oila kodi bandligi va
+        // ota-ona kodi bazada qolib ketardi. Buni testda topdim: hisob
+        // o'chirilgandan keyin yangi oila ochilganda ham panelda eski
+        // "41% batareya" va eski ogohlantirishlar ko'rinib turdi.
+        "device_health", "app_login_requests", "push_tokens",
+        "parent_pair_codes", "family_code_overrides",
       ];
 
       const failed: string[] = [];
@@ -7589,6 +7615,74 @@ async function handleRequest(req: Request): Promise<Response> {
         }),
         { status: 200, headers: { "Content-Type": "application/json" } }
       );
+    }
+
+    // Ota-ona panelining asosiy ekranidagi HAQIQIY raqamlar.
+    //
+    // Ilgari panel bu raqamlarni DEFAULT_INITIAL_CHILDREN dan olardi —
+    // "2s 45d ekran vaqti", "YouTube 1s 15d", "86% batareya", "Yunusobod
+    // 4-mavze" — hammasi app.js ga qattiq yozilgan namuna edi va HAR BIR
+    // haqiqiy farzand yozuvi shu obyektdan nusxa olib qurilardi. Ya'ni
+    // ota-ona o'z farzandining ismi ostida o'ylab topilgan raqamlarni
+    // ko'rardi. Endi hammasi bazadan; ma'lumot bo'lmasa — "ma'lumot yo'q",
+    // to'qib chiqarilgan raqam emas.
+    if (payload.type === "child_overview") {
+      if (actor!.kind !== "telegram") return unauthorized("Faqat ota-ona");
+      if (!db) return jsonRes({ ok: true, hasData: false });
+
+      const childId = String(payload.childId || "").trim();
+      if (!childId) return jsonRes({ ok: false, error: "childId majburiy" }, 400);
+
+      const kunBoshi = tashkentDayStartISO();
+
+      // Bugungi ekran vaqti — ilovalar bo'yicha.
+      const { data: tel } = await db
+        .from("device_telemetry")
+        .select("app_package_name, screen_time_seconds")
+        .eq("family_code", actor!.familyCode)
+        .eq("child_id", childId)
+        .gte("created_at", kunBoshi)
+        .limit(2000);
+
+      const totals: Record<string, number> = {};
+      let jamiSoniya = 0;
+      for (const r of tel || []) {
+        const sec = Number(r.screen_time_seconds) || 0;
+        totals[r.app_package_name] = (totals[r.app_package_name] || 0) + sec;
+        jamiSoniya += sec;
+      }
+      const apps = Object.entries(totals)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 6)
+        .map(([pkg, sec]) => ({
+          package: pkg,
+          name: friendlyAppName(pkg),
+          seconds: sec,
+          percent: jamiSoniya > 0 ? Math.round((sec / jamiSoniya) * 100) : 0,
+        }));
+
+      // Qurilma holati va so'nggi joylashuv.
+      const { data: hp } = await db
+        .from("device_health")
+        .select("battery_level, reported_at")
+        .eq("family_code", actor!.familyCode)
+        .eq("child_id", childId)
+        .limit(1);
+
+      const loc = await lastKnownLocation(actor!.familyCode, childId);
+
+      return jsonRes({
+        ok: true,
+        hasData: jamiSoniya > 0 || !!loc || !!(hp && hp[0]),
+        screenSeconds: jamiSoniya,
+        apps,
+        battery: hp && hp[0] && typeof hp[0].battery_level === "number" && hp[0].battery_level >= 0
+          ? hp[0].battery_level
+          : null,
+        batteryAt: hp && hp[0] ? hp[0].reported_at : null,
+        location: loc ? { lat: loc.lat, lng: loc.lng, recordedAt: loc.recordedAt } : null,
+        warnings: await deviceHealthWarningList(actor!.familyCode, childId, payload.lang === "ru" ? "ru" : "uz"),
+      });
     }
 
     // 0.0n Ekran vaqti hisoboti (PRO).
