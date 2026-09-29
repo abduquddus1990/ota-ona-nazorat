@@ -33,6 +33,24 @@ object DeviceCredentials {
             .apply()
     }
 
+    /**
+     * Farzand "ulanishni to'xtatish" tugmasini bosgach (leave_family) server
+     * tokenni o'chiradi va keyingi har bir so'rovga 401 qaytaradi. Shu holda
+     * telefonda ham hech narsa qolmasligi kerak — aks holda doimiy
+     * bildirishnoma va fon xizmati ishlab turaveradi, ya'ni bolaga berilgan
+     * "istagan paytda uzilishing mumkin" va'dasi faqat serverda bajarilib,
+     * telefonda bajarilmay qolardi.
+     */
+    fun clearDeviceToken(context: Context) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .remove("device_token_enc")
+            .remove("device_token_iv")
+            .remove("child_id")
+            .remove("last_usage_sync_at")
+            .putBoolean("is_paired", false)
+            .apply()
+    }
+
     fun readDeviceToken(context: Context): String? {
         val prefs = context.getSharedPreferences("shield_guard_prefs", Context.MODE_PRIVATE)
         val enc = prefs.getString("device_token_enc", null) ?: return null

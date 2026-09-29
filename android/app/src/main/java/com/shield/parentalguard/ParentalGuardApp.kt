@@ -76,5 +76,17 @@ class ParentalGuardApp : Application() {
                 syncRequest
             )
         }
+
+        /**
+         * Kuzatuvni butunlay to'xtatadi: xizmat ham, davriy sinxronizatsiya
+         * ham. Farzand oiladan chiqqanda (server 401 qaytarganda) chaqiriladi.
+         */
+        fun stopMonitoring(context: Context) {
+            try {
+                context.stopService(Intent(context, PersistentGuardService::class.java))
+            } catch (_: Exception) {
+            }
+            WorkManager.getInstance(context).cancelUniqueWork("TelemetrySyncWork")
+        }
     }
 }

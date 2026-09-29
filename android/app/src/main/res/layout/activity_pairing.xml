@@ -132,6 +132,21 @@
                 android:background="#334155"
                 android:layout_marginTop="10dp" />
 
+            <!--
+                Batareya optimizatsiyasi. Usiz Android (ayniqsa Samsung)
+                fon sinxronizatsiyasini uxlatib qo'yadi va radar soatlab
+                yangilanmay qolishi mumkin. Bu ruxsat EMAS — foydalanuvchi
+                tizim sozlamalarida o'zi tanlaydigan sozlama.
+            -->
+            <Button
+                android:id="@+id/btnBatteryOpt"
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
+                android:text="3. Batareyani cheklamaslik"
+                android:textColor="#ffffff"
+                android:background="#334155"
+                android:layout_marginTop="10dp" />
+
         </LinearLayout>
 
         <LinearLayout

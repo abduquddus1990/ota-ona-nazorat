@@ -635,6 +635,23 @@
                 </div>
             </div>
 
+            <!--
+                HAQIQIY jurnal. Yuqoridagi ikki ustun — va'da, bu esa fakt:
+                so'nggi kunlarda aynan nima yuborilgani. Bolaga "ishonaver"
+                deyishdan ko'ra, ko'rsatish kuchliroq — va bu ilovaning
+                "yashirin kuzatuv emas" degan tamoyilini tekshirib
+                ko'rish imkonini beradi.
+            -->
+            <div class="p-2.5 rounded-xl bg-slate-950/60 border border-slate-800 space-y-1.5">
+                <div class="flex items-center justify-between">
+                    <div class="text-[10px] font-bold text-sky-300">📋 So'nggi 7 kunda yuborilgani</div>
+                    <button onclick="renderChildTransparency()" class="text-[9px] text-slate-500 hover:text-slate-300">↻ yangilash</button>
+                </div>
+                <div id="childTransparencyLog" class="text-[10px] text-slate-400 leading-relaxed">
+                    Yuklanmoqda...
+                </div>
+            </div>
+
             <p class="text-[10px] text-slate-400 leading-relaxed">
                 Agar biror narsa senga noqulay bo'lsa — ota-onang bilan gaplash. Bu ilova
                 yashirinmaydi va sen istalgan payt ulanishni to'xtatishni so'rashing mumkin.
@@ -2722,7 +2739,7 @@
     </nav>
 
     <!-- Custom JavaScript -->
-    <script src="app.js?v=8.0"></script>
+    <script src="app.js?v=8.1"></script>
     <!-- O'yinlar alohida faylda: app.js allaqachon katta, va o'yin kontenti
          (savollar, kartalar) o'sib boradi. Alohida fayl brauzerda alohida
          keshlanadi — o'yin qo'shilsa, butun ilova qayta yuklanmaydi. -->

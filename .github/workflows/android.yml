@@ -12,6 +12,14 @@ on:
     paths:
       - "android/**"
       - ".github/workflows/android.yml"
+  # PR'lar ham yig'iladi. Ilgari faqat main'ga push'da ishlardi — ya'ni
+  # Kotlin kodidagi kompilyatsiya xatosi FAQAT merge qilingandan keyin
+  # ko'rinardi, va tuzatish uchun yana bitta PR kerak bo'lardi. Bu amalda
+  # bir necha marta sodir bo'lgan.
+  pull_request:
+    paths:
+      - "android/**"
+      - ".github/workflows/android.yml"
   workflow_dispatch:
 
 jobs:

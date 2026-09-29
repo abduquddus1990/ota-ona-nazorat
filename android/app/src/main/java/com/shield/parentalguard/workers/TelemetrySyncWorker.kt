@@ -1,6 +1,7 @@
 package com.shield.parentalguard.workers
 
 import android.app.AppOpsManager
+import android.app.usage.UsageEvents
 import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.location.Location
@@ -11,6 +12,7 @@ import android.os.Process
 import androidx.core.content.ContextCompat
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import com.shield.parentalguard.ParentalGuardApp
 import com.shield.parentalguard.network.DeviceCredentials
 import com.shield.parentalguard.network.EncryptedNetworkClient
 import com.shield.parentalguard.network.PairingApi
@@ -54,30 +56,69 @@ class TelemetrySyncWorker(
 
         try {
             val battery = readBatteryLevel()
-            val usage = readForegroundUsage()
             val location = readLastKnownLocation()
+
+            // O'lchov oynasi — oxirgi muvaffaqiyatli yuborishdan hozirgacha.
+            // Shunday qilinganining sababi: WorkManager 15 daqiqani KAFOLATLAMAYDI
+            // (batareya tejash, Doze — soatlab kechiktirishi mumkin). Doim
+            // "oxirgi 15 daqiqa" o'lchansa, kechikkan sikllarda oradagi vaqt
+            // butunlay yo'qolardi. Oyna 2 soat bilan cheklangan: telefon uzoq
+            // o'chiq turganidan keyin bir sikl butun kunni yig'ib yubormasin.
+            val now = System.currentTimeMillis()
+            val lastSync = prefs.getLong("last_usage_sync_at", 0L)
+            val windowStart = when {
+                lastSync <= 0L -> now - 15 * 60 * 1000L
+                now - lastSync > 2 * 3600 * 1000L -> now - 2 * 3600 * 1000L
+                else -> lastSync
+            }
+            val apps = readAppUsage(windowStart, now)
 
             if (location != null) {
                 reportLocationToRadar(location, token)
             }
 
             val rawTelemetry = JSONObject().apply {
-                put("timestamp", System.currentTimeMillis())
+                put("timestamp", now)
                 put("battery_level", battery)
-                put("active_app", usage?.packageName ?: "unknown")
-                put("screen_time_seconds", usage?.foregroundSeconds ?: 0)
+                put("active_app", apps.firstOrNull()?.packageName ?: "unknown")
+                put("screen_time_seconds", apps.firstOrNull()?.foregroundSeconds ?: 0)
             }.toString()
 
             // Hardware Keystore orqali AES-256-GCM shifrlash (xom ma'lumot
             // to'liq holida hech qachon tarmoqqa chiqmaydi)
             val (encryptedPayload, iv) = SecurityKeyStoreManager.encryptData(rawTelemetry)
 
+            val appsArray = org.json.JSONArray()
+            for (a in apps) {
+                appsArray.put(
+                    JSONObject()
+                        .put("package", a.packageName)
+                        .put("seconds", a.foregroundSeconds)
+                )
+            }
+
             val postPayload = JSONObject().apply {
                 put("type", "report_telemetry")
                 put("deviceToken", token)
-                put("appPackageName", usage?.packageName ?: "unknown")
+                // Eski maydonlar ham qoldi: server yangilanmagan bo'lsa ham
+                // hech bo'lmasa eng ko'p ishlatilgan ilova yozilaveradi.
+                put("appPackageName", apps.firstOrNull()?.packageName ?: "unknown")
                 put("category", "General")
-                put("screenTimeSeconds", usage?.foregroundSeconds ?: 0)
+                put("screenTimeSeconds", apps.firstOrNull()?.foregroundSeconds ?: 0)
+                put("apps", appsArray)
+                put("windowSeconds", ((now - windowStart) / 1000).toInt())
+                // Qurilmaning "sog'ligi". Ota-ona xaritada eski nuqtani
+                // ko'rganda sababini bilishi uchun: ruxsat olib tashlanganmi,
+                // batareya ilovani uxlatib qo'yganmi yoki shunchaki bola
+                // qimirlamayaptimi. Buni faqat telefonning o'zi biladi.
+                put("health", JSONObject().apply {
+                    put("locationPermission", hasLocationPermission())
+                    put("backgroundLocation", hasBackgroundLocationPermission())
+                    put("usagePermission", hasUsageStatsPermission())
+                    put("batteryUnrestricted", isBatteryUnrestricted())
+                    put("batteryLevel", battery)
+                    put("appVersion", appVersionName())
+                })
                 put("encryptedPayload", encryptedPayload)
                 put("iv", iv)
             }
@@ -93,7 +134,25 @@ class TelemetrySyncWorker(
 
             val response = EncryptedNetworkClient.client.newCall(request).execute()
             response.use {
-                if (it.isSuccessful) Result.success() else Result.retry()
+                when {
+                    it.isSuccessful -> {
+                        // Faqat yuborish muvaffaqiyatli bo'lgandagina oynani
+                        // surib qo'yamiz — aks holda qayta urinishda o'sha vaqt
+                        // ikkinchi marta yozilib, jami bo'rttirilardi.
+                        prefs.edit().putLong("last_usage_sync_at", now).apply()
+                        Result.success()
+                    }
+                    // 401/403 — token endi hech qanday oilaga tegishli emas:
+                    // farzand "ulanishni to'xtatish" tugmasini bosgan yoki
+                    // ota-ona hisobni o'chirgan. Qayta urinishning ma'nosi yo'q,
+                    // aksincha telefonda hamma narsani to'xtatish kerak.
+                    it.code == 401 || it.code == 403 -> {
+                        DeviceCredentials.clearDeviceToken(applicationContext)
+                        ParentalGuardApp.stopMonitoring(applicationContext)
+                        Result.success()
+                    }
+                    else -> Result.retry()
+                }
             }
         } catch (e: Exception) {
             Result.retry()
@@ -133,24 +192,84 @@ class TelemetrySyncWorker(
 
     data class ForegroundUsage(val packageName: String, val foregroundSeconds: Int)
 
-    /** Oxirgi 15 daqiqada eng ko'p vaqt oldingi planda bo'lgan ilova. */
-    private fun readForegroundUsage(): ForegroundUsage? {
-        if (!hasUsageStatsPermission()) return null
+    /**
+     * Oynadagi HAR BIR ilova bo'yicha oldingi planda o'tgan aniq vaqt.
+     *
+     * Ilgari bu yerda queryUsageStats() ishlatilib, faqat ENG KO'P
+     * ishlatilgan BITTA ilova yuborilardi — qolganlari butunlay yo'qolardi
+     * (bola 10 daqiqa YouTube, 5 daqiqa Instagram ishlatsa, Instagram
+     * hisobotga umuman tushmasdi). Bundan tashqari queryUsageStats
+     * oynaning emas, o'sha davrdagi BUTUN paqirning yig'indisini qaytaradi,
+     * ya'ni kun davomida ko'p ishlatilgan ilova har siklda to'liq 15 daqiqa
+     * deb yozilib, jami bo'rttirib ko'rsatilardi.
+     *
+     * queryEvents() esa aynan shu oynadagi RESUMED/PAUSED hodisalarini
+     * beradi — ulardan har bir ilova uchun haqiqiy davomiylik hisoblanadi.
+     */
+    private fun readAppUsage(startMs: Long, endMs: Long): List<ForegroundUsage> {
+        if (!hasUsageStatsPermission()) return emptyList()
         val usm = applicationContext.getSystemService(Context.USAGE_STATS_SERVICE) as? UsageStatsManager
-            ?: return null
+            ?: return emptyList()
 
-        val end = System.currentTimeMillis()
-        val start = end - 15 * 60 * 1000L
-        val stats = usm.queryUsageStats(UsageStatsManager.INTERVAL_BEST, start, end) ?: return null
-        val top = stats
-            .filter { it.lastTimeUsed in start..end && it.totalTimeInForeground > 0 }
-            .maxByOrNull { it.totalTimeInForeground }
-            ?: return null
+        val events = usm.queryEvents(startMs, endMs) ?: return emptyList()
+        val totals = HashMap<String, Long>()
+        val openedAt = HashMap<String, Long>()
+        val event = UsageEvents.Event()
 
-        return ForegroundUsage(
-            packageName = top.packageName,
-            foregroundSeconds = (top.totalTimeInForeground / 1000).toInt().coerceAtMost(15 * 60)
-        )
+        while (events.hasNextEvent()) {
+            events.getNextEvent(event)
+            val pkg = event.packageName ?: continue
+            when (event.eventType) {
+                UsageEvents.Event.ACTIVITY_RESUMED -> openedAt[pkg] = event.timeStamp
+                UsageEvents.Event.ACTIVITY_PAUSED, UsageEvents.Event.ACTIVITY_STOPPED -> {
+                    val from = openedAt.remove(pkg) ?: startMs
+                    val ms = event.timeStamp - from
+                    if (ms > 0) totals[pkg] = (totals[pkg] ?: 0L) + ms
+                }
+            }
+        }
+        // Oyna tugaganda hali ochiq turgan ilova — oxirigacha sanaladi.
+        for ((pkg, from) in openedAt) {
+            val ms = endMs - from
+            if (ms > 0) totals[pkg] = (totals[pkg] ?: 0L) + ms
+        }
+
+        val windowSeconds = ((endMs - startMs) / 1000).toInt().coerceAtLeast(1)
+        return totals
+            .map { (pkg, ms) -> ForegroundUsage(pkg, (ms / 1000).toInt().coerceAtMost(windowSeconds)) }
+            .filter { it.foregroundSeconds > 0 }
+            .sortedByDescending { it.foregroundSeconds }
+            .take(20)
+    }
+
+    private fun hasLocationPermission(): Boolean =
+        ContextCompat.checkSelfPermission(
+            applicationContext, android.Manifest.permission.ACCESS_COARSE_LOCATION
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED ||
+            ContextCompat.checkSelfPermission(
+                applicationContext, android.Manifest.permission.ACCESS_FINE_LOCATION
+            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+
+    /** Fon rejimidagi joylashuv — usiz telefon qulflanganda radar ishlamaydi. */
+    private fun hasBackgroundLocationPermission(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return hasLocationPermission()
+        return ContextCompat.checkSelfPermission(
+            applicationContext, android.Manifest.permission.ACCESS_BACKGROUND_LOCATION
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun isBatteryUnrestricted(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return true
+        val pm = applicationContext.getSystemService(Context.POWER_SERVICE) as? android.os.PowerManager
+            ?: return true
+        return pm.isIgnoringBatteryOptimizations(applicationContext.packageName)
+    }
+
+    private fun appVersionName(): String = try {
+        applicationContext.packageManager
+            .getPackageInfo(applicationContext.packageName, 0).versionName ?: ""
+    } catch (_: Exception) {
+        ""
     }
 
     private fun hasUsageStatsPermission(): Boolean {
