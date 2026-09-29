@@ -3232,6 +3232,13 @@ async function loadChildOverview(childId) {
     const titleEl = document.getElementById('systemStatusTitle');
     const subEl = document.getElementById('systemStatusSub');
     const ogohSoni = Array.isArray(d.warnings) ? d.warnings.length : 0;
+    // "Ma'lumot bor" va "ma'lumot yangi" bir narsa emas. Bazada 15 soatlik
+    // joylashuv turgan bo'lsa ham telefon ikki kundan beri jim bo'lishi
+    // mumkin — panel esa "ma'lumot muntazam kelmoqda" deb yozib turardi.
+    const dataYoshiSoat = d.lastDataAt
+        ? (Date.now() - new Date(d.lastDataAt).getTime()) / 3600000
+        : null;
+    const eskirgan = dataYoshiSoat !== null && dataYoshiSoat > 6;
     if (titleEl && subEl && dotEl) {
         if (!d.hasData) {
             dotEl.className = 'w-2.5 h-2.5 rounded-full bg-slate-500';
@@ -3239,17 +3246,19 @@ async function loadChildOverview(childId) {
             titleEl.className = 'text-sm font-black text-slate-300';
             subEl.innerText = "Farzand telefonida Qalqon ilovasi hali ma'lumot yubormagan";
             subEl.className = 'text-[11px] text-slate-400 font-medium';
-        } else if (ogohSoni > 0) {
+        } else if (ogohSoni > 0 || eskirgan) {
             dotEl.className = 'w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse-dot';
             titleEl.innerText = "E'tibor talab qiladi";
             titleEl.className = 'text-sm font-black text-amber-200';
-            subEl.innerText = ogohSoni + " ta muammo aniqlandi";
+            subEl.innerText = ogohSoni > 0
+                ? ogohSoni + " ta muammo aniqlandi"
+                : "Oxirgi ma'lumot " + qachonBoldi(d.lastDataAt) + " keldi";
             subEl.className = 'text-[11px] text-amber-400/90 font-medium';
         } else {
             dotEl.className = 'w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse-dot';
             titleEl.innerText = "Tizim faol";
             titleEl.className = 'text-sm font-black text-white';
-            subEl.innerText = "Qurilmadan ma'lumot muntazam kelmoqda";
+            subEl.innerText = "Oxirgi ma'lumot " + (qachonBoldi(d.lastDataAt) || 'hozir') + " keldi";
             subEl.className = 'text-[11px] text-emerald-400/90 font-medium';
         }
     }
