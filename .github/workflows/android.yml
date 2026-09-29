@@ -22,6 +22,9 @@ on:
       - ".github/workflows/android.yml"
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -61,3 +64,30 @@ jobs:
           name: qalqon-debug-apk
           path: android/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
+
+      # APK'ni ochiq Release'ga ham qo'yamiz.
+      #
+      # Nega kerak: artifact'ni yuklab olish uchun GitHub'ga kirish shart,
+      # va u ZIP bo'lib tushadi — Android ZIP'ni o'rnatolmaydi. Amalda bu
+      # shunday tugadi: APK telefonga ZIP holida yetib bordi va o'rnatilmadi.
+      # Release fayli esa oddiy havola: telefon brauzerida ochilsa darhov
+      # .apk bo'lib yuklanadi, hisobga kirish ham, arxivni ochish ham
+      # kerak emas. Havola doimiy, har yangi yig'ishda yangilanadi:
+      #   .../releases/latest/download/qalqon.apk
+      - name: Ochiq havolaga qo'yish
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          APK=$(ls android/app/build/outputs/apk/debug/*.apk | head -1)
+          cp "$APK" qalqon.apk
+          IZOH="Qalqon AI Android ilovasi. Commit: ${GITHUB_SHA:0:7}, yig'ilgan: $(date -u '+%Y-%m-%d %H:%M UTC').
+
+          Telefonda o'rnatish: shu sahifadagi **qalqon.apk** ni bosing, yuklab olingach faylni ochib 'O'rnatish' ni tanlang."
+          if gh release view apk --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload apk qalqon.apk --repo "$GITHUB_REPOSITORY" --clobber
+            gh release edit apk --repo "$GITHUB_REPOSITORY" --notes "$IZOH"
+          else
+            gh release create apk qalqon.apk --repo "$GITHUB_REPOSITORY"               --title "Qalqon AI — Android ilova" --notes "$IZOH" --latest
+          fi

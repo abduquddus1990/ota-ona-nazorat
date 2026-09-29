@@ -4733,6 +4733,34 @@ function copyPairingLink() {
     if (tg && tg.showAlert) tg.showAlert(msg); else alert(msg);
 }
 
+const QALQON_APK_URL = 'https://github.com/abduquddus1990/ota-ona-nazorat/releases/download/apk/qalqon.apk';
+
+/**
+ * APK havolasini nusxa oladi — ota-ona uni farzandga yuborishi uchun.
+ *
+ * Nega tugma kerak: ilovani Telegram orqali fayl sifatida yuborish amalda
+ * ishlamadi. GitHub artifact ZIP bo'lib tushadi, Android esa ZIP'ni
+ * o'rnatolmaydi; APK'ning o'zi yuborilsa ham Telegram'ga "noma'lum
+ * ilovalarni o'rnatish" ruxsati kerak bo'ladi. Havolani farzand
+ * telefonining brauzerida ochish bu ikki to'siqning ikkalasini ham
+ * chetlab o'tadi.
+ */
+function copyApkLink() {
+    const isRu = (currentLang === 'ru');
+    const xabar = isRu
+        ? "Ссылка скопирована. Откройте её в браузере телефона ребёнка — файл скачается как .apk."
+        : "Havola nusxalandi. Uni farzand telefonining brauzerida ochsangiz, fayl .apk bo'lib yuklanadi.";
+    const xato = isRu ? "Не удалось скопировать. Ссылка: " : "Nusxa olinmadi. Havola: ";
+    const koRsat = (matn) => { if (tg && tg.showAlert) tg.showAlert(matn); else alert(matn); };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(QALQON_APK_URL)
+            .then(() => koRsat(xabar))
+            .catch(() => koRsat(xato + QALQON_APK_URL));
+    } else {
+        koRsat(xato + QALQON_APK_URL);
+    }
+}
+
 // 9. LEAFLET MAP (BEPUL RADAR)
 function initRadarMap() {
     const mapEl = document.getElementById('map');
