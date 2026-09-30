@@ -3934,6 +3934,9 @@ function switchTab(tabId) {
 
     if (tabId === 'tab-ai' && typeof renderParentAdvice === 'function') renderParentAdvice();
     if (tabId === 'tab-extras') renderParentExtras();
+    // Ulangan qurilmalar ro'yxati sozlamalar bo'limida — har ochilganda
+    // yangilanadi, chunki qurilma istalgan payt ulanishi mumkin.
+    if (tabId === 'tab-settings') renderDevices();
     if (tabId === 'tab-games') mountGamesInto('parentGamesHost');
 
     if (tabId === 'tab-radar') {
@@ -4782,6 +4785,107 @@ function shareReferralLink() {
  * uni chat tarixidan qidirishi kerak bo'lardi. Shuning uchun ayni o'sha
  * hodisalar panelda ham turadi.
  */
+/**
+ * Oilaga ulangan qurilmalar ro'yxati va ularni uzish.
+ *
+ * Nega kerak: ota-ona farzandining telefoniga nima ulanganini ko'ra
+ * olmasdi. Bazada eski, o'chirib tashlangan ilovaning kaliti ham faol
+ * qolib ketgan edi — ya'ni uzoq vaqt oldin uzilgan telefon hali ham
+ * farzand nomidan ma'lumot yubora olardi, ota-ona esa bundan bexabar.
+ *
+ * Kuzatuv ilovasida bu shunchaki qulaylik emas: kim, qaysi telefondan va
+ * qachondan beri ulangani ko'rinib turishi shart.
+ */
+async function renderDevices() {
+    const box = document.getElementById('devicesList');
+    if (!box) return;
+    if (currentAppRole !== 'parent') return;
+    box.innerHTML = '<div class="text-[10px] text-slate-500">Yuklanmoqda...</div>';
+
+    let d = null;
+    try {
+        const resp = await fetch(QALQON_BOT_FN, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'list_devices' })
+        });
+        d = await resp.json();
+    } catch (e) {
+        box.innerHTML = '<div class="text-[10px] text-slate-500">Internet yo\'q — keyinroq urinib ko\'ring.</div>';
+        return;
+    }
+
+    if (!d || !d.ok) {
+        box.innerHTML = '<div class="text-[10px] text-slate-500">Ro\'yxatni olib bo\'lmadi.</div>';
+        return;
+    }
+
+    const list = Array.isArray(d.devices) ? d.devices : [];
+    if (!list.length) {
+        box.innerHTML = '<div class="text-[10px] text-slate-400 leading-relaxed">' +
+            'Hali birorta qurilma ulanmagan.<br>' +
+            '<span class="text-slate-500">Farzand telefoniga Qalqon ilovasini o\'rnatib, ' +
+            'pastdagi bo\'limdan olingan kodni kiriting.</span></div>';
+        return;
+    }
+
+    box.innerHTML = list.map(dev => {
+        const oxirgi = dev.lastSeenAt ? qachonBoldi(dev.lastSeenAt) : null;
+        const ulangan = dev.pairedAt ? qachonBoldi(dev.pairedAt) : null;
+        // Uzoq jim turgan qurilmani ajratib ko'rsatamiz: aynan shunday
+        // yozuvlar eskirib qolgan, keraksiz ulanishlar bo'lib chiqadi.
+        const jimSoat = dev.lastSeenAt
+            ? (Date.now() - new Date(dev.lastSeenAt).getTime()) / 3600000
+            : Infinity;
+        const holat = jimSoat > 24
+            ? '<span class="text-amber-300">⚠️ ' + (oxirgi ? oxirgi + ' aloqada bo\'lgan' : 'hech qachon aloqaga chiqmagan') + '</span>'
+            : '<span class="text-emerald-300">🟢 ' + (oxirgi || 'hozir') + '</span>';
+        return '' +
+        '<div class="p-2.5 rounded-xl bg-slate-900/60 border border-slate-800 space-y-1.5">' +
+            '<div class="flex items-center justify-between gap-2">' +
+                '<div class="min-w-0">' +
+                    '<div class="text-[11px] font-bold text-white truncate">' + escapeHtml(dev.childName) + '</div>' +
+                    '<div class="text-[10px] text-slate-400 truncate">' + escapeHtml(dev.model) + '</div>' +
+                '</div>' +
+                '<button onclick="revokeDevice(\'' + dev.id + '\', \'' + escapeHtml(dev.childName).replace(/'/g, "\\'") + '\')" ' +
+                    'class="shrink-0 px-2.5 py-1.5 rounded-lg bg-rose-500/15 border border-rose-500/40 text-rose-300 text-[10px] font-bold hover:bg-rose-500/25 transition">Uzish</button>' +
+            '</div>' +
+            '<div class="text-[10px] text-slate-500">' + holat +
+                (ulangan ? ' · ' + ulangan + ' ulangan' : '') + '</div>' +
+        '</div>';
+    }).join('');
+}
+
+/** Qurilmani uzadi — tasdiqdan keyin. */
+async function revokeDevice(deviceId, childName) {
+    const savol = 'Bu qurilmani uzasizmi?\n\n' + (childName || 'Farzand') +
+        ' telefonidagi ilova darhol joylashuv va ekran vaqtini yuborishdan to\'xtaydi.\n\n' +
+        'Farzandga bu haqda xabar boradi. Qayta ulash uchun yangi kod kerak bo\'ladi.';
+
+    const davom = async (ha) => {
+        if (!ha) return;
+        let d = null;
+        try {
+            const resp = await fetch(QALQON_BOT_FN, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ type: 'revoke_device', deviceId: deviceId })
+            });
+            d = await resp.json();
+        } catch (e) {
+            d = null;
+        }
+        const xabar = (d && d.ok)
+            ? '✅ Qurilma uzildi.'
+            : '❌ Uzib bo\'lmadi: ' + ((d && d.error) || 'aloqa yo\'q');
+        if (tg && tg.showAlert) tg.showAlert(xabar); else alert(xabar);
+        renderDevices();
+    };
+
+    if (tg && tg.showConfirm) tg.showConfirm(savol, davom);
+    else davom(confirm(savol));
+}
+
 async function renderRadarStatus() {
     if (currentAppRole !== 'parent') return;
     const list = document.getElementById('radarChildList');
