@@ -37,7 +37,14 @@
                         // bu yerda login/parol orqali olingan seans ishlatiladi.
                         try {
                             const token = localStorage.getItem('web_session_token');
+                            // Brauzerdan kirgan FARZANDning qurilma kaliti.
+                            // Ota-ona seansi bilan bir xil joyda saqlanmaydi:
+                            // bitta brauzerda ikkalasi ham bo'lishi mumkin
+                            // (ota-ona sinab ko'rgan bo'lsa), va o'sha holda
+                            // ota-ona seansi ustun turishi kerak.
+                            const qurilma = localStorage.getItem('qalqon_device_token');
                             if (token) payload.sessionToken = token;
+                            else if (qurilma) payload.deviceToken = qurilma;
                         } catch (e) {}
                     }
                     init = Object.assign({}, init, { body: JSON.stringify(payload) });
@@ -756,8 +763,13 @@ function nativeAppIdentity() {
     }
 }
 
+/** Brauzerdan kirgan farzandning qurilma kaliti. */
+function webDeviceToken() {
+    try { return localStorage.getItem('qalqon_device_token'); } catch (e) { return null; }
+}
+
 function hasAnyIdentity() {
-    return hasTelegramIdentity() || !!webSessionToken() || !!nativeAppIdentity();
+    return hasTelegramIdentity() || !!webSessionToken() || !!nativeAppIdentity() || !!webDeviceToken();
 }
 
 // Google'dan qaytganimizni SAHIFA OCHILISHIDA tekshiramiz: token
@@ -834,7 +846,7 @@ function checkWebLoginNeeded() {
     // emas: bu yerda uni ko'rsatish init oqimini to'xtatib qo'yardi.
     if (nativeAppIdentity()) return false;
     if (hasTelegramIdentity() && !wantsLogin) return false;
-    if (!hasTelegramIdentity() && !webSessionToken()) { showWebLogin(true); return true; }
+    if (!hasTelegramIdentity() && !webSessionToken() && !webDeviceToken()) { showWebLogin(true); return true; }
     if (wantsLogin && !hasTelegramIdentity()) { showWebLogin(true); return true; }
     return false;
 }
@@ -1320,6 +1332,106 @@ async function googleQaytishniTekshir() {
         window.location.reload();
     }
     return true;
+}
+
+// ============================================================================
+// FARZAND BRAUZERDAN KIRADI (bir martalik kod bilan)
+// ============================================================================
+//
+// Ilgari farzand faqat ikki yo'l bilan kira olardi: Telegram ichidagi Mini
+// App orqali yoki Android ilovasi orqali. Oddiy brauzerda — hech qanday
+// yo'l yo'q edi.
+//
+// Nega OILA KODI bilan emas: oila kodi atigi 6 raqam, ota-ona panelida
+// ochiq ko'rsatiladi va taklif havolalarida yuradi. Agar u bilan kirsa
+// bo'lganda, kodni bilgan HAR KIM o'zini o'sha oilaning farzandi qilib
+// ulab, oila chatini o'qiy olardi va ota-onaga soxta SOS yubora olardi.
+//
+// Bir martalik kod esa: bir marta ishlaydi, 15 daqiqa yashaydi va aynan
+// bitta farzandga bog'langan. Ulangach qurilma kaliti beriladi va uni
+// ota-ona istalgan payt panelidan uzib qo'ya oladi.
+
+/** Brauzerni tanitadigan qisqa nom — ota-ona qurilmalar ro'yxatida ko'radi. */
+function brauzerNomi() {
+    const ua = navigator.userAgent || '';
+    const nom =
+        /Edg\//.test(ua) ? 'Edge' :
+        /OPR\//.test(ua) ? 'Opera' :
+        /Firefox\//.test(ua) ? 'Firefox' :
+        /Chrome\//.test(ua) ? 'Chrome' :
+        /Safari\//.test(ua) ? 'Safari' : 'Brauzer';
+    const tizim =
+        /Android/.test(ua) ? 'Android' :
+        /iPhone|iPad/.test(ua) ? 'iOS' :
+        /Windows/.test(ua) ? 'Windows' :
+        /Mac OS/.test(ua) ? 'Mac' : '';
+    return (nom + (tizim ? ' · ' + tizim : '')).slice(0, 40);
+}
+
+/** Farzand kirish qismini ochadi/yopadi. */
+function toggleChildLogin(ochiq) {
+    const box = document.getElementById('childLoginBox');
+    const btn = document.getElementById('childLoginToggle');
+    if (!box) return;
+    const yopiq = box.classList.contains('hidden');
+    const koRsat = (ochiq === undefined) ? yopiq : ochiq;
+    box.classList.toggle('hidden', !koRsat);
+    if (btn) btn.classList.toggle('hidden', koRsat);
+    if (koRsat) {
+        const inp = document.getElementById('childLoginCode');
+        if (inp) inp.focus();
+    }
+}
+
+/** Kodni serverga yuborib, qurilma kalitini oladi. */
+async function handleChildWebLogin() {
+    const inp = document.getElementById('childLoginCode');
+    const errEl = document.getElementById('childLoginError');
+    const btn = document.getElementById('childLoginBtn');
+
+    const ayt = (t, rang) => {
+        if (!errEl) { alert(t); return; }
+        errEl.className = 'text-[10px] font-bold text-center ' + (rang || 'text-rose-400');
+        errEl.innerText = t;
+        errEl.classList.remove('hidden');
+    };
+
+    const code = ((inp && inp.value) || '').trim().toUpperCase().replace(/\s+/g, '');
+    if (code.length < 6) { ayt("Ota-onang bergan kodni to'liq kiriting."); return; }
+
+    if (btn) { btn.disabled = true; btn.innerText = 'Tekshirilmoqda...'; }
+    if (errEl) errEl.classList.add('hidden');
+
+    let d = null;
+    try {
+        const resp = await fetch(QALQON_BOT_FN, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'device_pair', pairCode: code, deviceModel: brauzerNomi() })
+        });
+        d = await resp.json();
+    } catch (e) {
+        d = null;
+    }
+
+    if (btn) { btn.disabled = false; btn.innerText = 'Kirish'; }
+
+    if (!d || !d.ok || !d.deviceToken) {
+        ayt((d && d.error) || "Kod noto'g'ri yoki muddati o'tgan. Ota-onangdan yangi kod so'ra.");
+        return;
+    }
+
+    try {
+        // Qurilma kaliti — bu brauzer endi shu farzand sifatida tanitadi.
+        // Fetch o'rovchisi uni har so'rovga o'zi qo'shadi.
+        localStorage.setItem('qalqon_device_token', d.deviceToken);
+        if (d.familyCode) localStorage.setItem('child_family_code', d.familyCode);
+        // Rol seansga tegishli — eski xotira tozalanadi.
+        localStorage.removeItem('app_role');
+    } catch (e) {}
+
+    ayt('Kirildi ✅', 'text-emerald-300');
+    kirgandanKeyinOt();
 }
 
 function showEntryError(errorEl, text) {
@@ -3937,6 +4049,7 @@ function switchTab(tabId) {
     // Ulangan qurilmalar ro'yxati sozlamalar bo'limida — har ochilganda
     // yangilanadi, chunki qurilma istalgan payt ulanishi mumkin.
     if (tabId === 'tab-settings') renderDevices();
+    if (tabId === 'tab-home') maybeShowOnboarding();
     if (tabId === 'tab-games') mountGamesInto('parentGamesHost');
 
     if (tabId === 'tab-radar') {
@@ -4796,6 +4909,160 @@ function shareReferralLink() {
  * Kuzatuv ilovasida bu shunchaki qulaylik emas: kim, qaysi telefondan va
  * qachondan beri ulangani ko'rinib turishi shart.
  */
+// ============================================================================
+// BIRINCHI KIRISH OQIMI (ota-ona)
+// ============================================================================
+//
+// Yangi ota-ona kirgandan keyin panel BO'SH ochilardi: farzand yo'q,
+// ma'lumot yo'q, nima qilish kerakligi aytilmagan. Google bilan kirganda
+// bu ayniqsa yomon — hech qanday ro'yxatdan o'tish qadami bo'lmagani
+// uchun odam to'g'ridan-to'g'ri bo'sh ekranga tushadi.
+//
+// Bundan ham muhimi: Google bilan ochilgan oilada Telegram bog'lanmagan
+// bo'ladi, ya'ni SOS VA OGOHLANTIRISHLAR HECH QAYERGA BORMAYDI. Buni
+// aytmaslik — eng xavfli jim qolish. Shuning uchun u birinchi qadam.
+let onboardingKorsatilgan = false;
+
+async function maybeShowOnboarding() {
+    if (currentAppRole !== 'parent') return;
+    const card = document.getElementById('onboardingCard');
+    if (!card) return;
+
+    let kids = 0;
+    try {
+        kids = Object.keys(childrenDatabase || {}).length;
+    } catch (e) {}
+
+    let tgUlangan = true;
+    try {
+        const resp = await fetch(QALQON_BOT_FN, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'link_telegram_status' })
+        });
+        const d = await resp.json();
+        if (d && d.ok) tgUlangan = !!d.linked;
+    } catch (e) {
+        // Bilolmasak, ogohlantirmaymiz: noto'g'ri xavotir ham zarar.
+    }
+
+    // Hammasi joyida bo'lsa kartani umuman ko'rsatmaymiz — "hammasi yaxshi"
+    // degan doimiy blok panelni shovqinga aylantiradi.
+    if (kids > 0 && tgUlangan) {
+        card.classList.add('hidden');
+        return;
+    }
+
+    const qadamlar = [];
+    if (!tgUlangan) {
+        qadamlar.push({
+            n: 1,
+            ogoh: true,
+            sarlavha: 'Telegramni ulang',
+            matn: "Shoshilinch xabarlar (SOS), xavfsiz hududdan chiqish va kunlik xulosa — hammasi Telegram orqali keladi. Ulanmaguncha ular <b>hech qayerga bormaydi</b>.",
+            tugma: 'Telegramni ulash',
+            amal: 'startTelegramLink()'
+        });
+    }
+    if (kids === 0) {
+        qadamlar.push({
+            n: qadamlar.length + 1,
+            ogoh: false,
+            sarlavha: "Farzandingizni qo'shing",
+            matn: "Farzand ismini kiriting — tizim bir martalik kod beradi. O'sha kodni uning telefonidagi Qalqon ilovasiga kiritasiz.",
+            tugma: "Farzand qo'shish",
+            amal: "openSubpage('modal-add-child')"
+        });
+        qadamlar.push({
+            n: qadamlar.length + 1,
+            ogoh: false,
+            sarlavha: "Ilovani farzand telefoniga o'rnating",
+            matn: "Havolani farzand telefonining brauzerida oching — fayl <b>.apk</b> bo'lib yuklanadi.",
+            tugma: 'Yuklab olish havolasi',
+            amal: 'copyApkLink()'
+        });
+    }
+
+    card.classList.remove('hidden');
+    card.innerHTML =
+        '<div class="flex items-center gap-2">' +
+            '<span class="text-lg">🚀</span>' +
+            '<h3 class="text-xs font-black text-white">Boshlash uchun ' + qadamlar.length + ' qadam</h3>' +
+        '</div>' +
+        qadamlar.map(q =>
+            '<div class="p-3 rounded-xl ' +
+                (q.ogoh ? 'bg-amber-500/10 border border-amber-500/30' : 'bg-slate-900/60 border border-slate-800') +
+                ' space-y-1.5">' +
+                '<div class="flex items-center gap-2">' +
+                    '<span class="w-5 h-5 rounded-full ' + (q.ogoh ? 'bg-amber-500/25 text-amber-200' : 'bg-slate-700 text-slate-200') +
+                        ' flex items-center justify-center text-[10px] font-black">' + q.n + '</span>' +
+                    '<span class="text-[11px] font-bold ' + (q.ogoh ? 'text-amber-100' : 'text-white') + '">' + q.sarlavha + '</span>' +
+                '</div>' +
+                '<p class="text-[10px] text-slate-300 leading-relaxed">' + q.matn + '</p>' +
+                '<button onclick="' + q.amal + '" class="w-full py-2 rounded-lg ' +
+                    (q.ogoh ? 'bg-amber-500 hover:bg-amber-600 text-slate-900' : 'bg-slate-800 hover:bg-slate-700 text-slate-100') +
+                    ' text-[11px] font-bold transition">' + q.tugma + '</button>' +
+            '</div>'
+        ).join('');
+    onboardingKorsatilgan = true;
+}
+
+/**
+ * Telegramni oilaga bog'lash: panel kod oladi, ota-ona botda havolani
+ * bosadi, bot uning Telegram ID'sini oilaga yozadi.
+ */
+async function startTelegramLink() {
+    let d = null;
+    try {
+        const resp = await fetch(QALQON_BOT_FN, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'link_telegram_start' })
+        });
+        d = await resp.json();
+    } catch (e) {
+        d = null;
+    }
+
+    const ayt = (m) => { if (tg && tg.showAlert) tg.showAlert(m); else alert(m); };
+
+    if (!d || !d.ok) { ayt("Aloqa yo'q. Qayta urinib ko'ring."); return; }
+    if (d.alreadyLinked) {
+        ayt('✅ Telegram allaqachon ulangan.');
+        maybeShowOnboarding();
+        return;
+    }
+    if (!d.deepLink) { ayt("Havola olinmadi. Qayta urinib ko'ring."); return; }
+
+    // Yangi oynada ochamiz. Telegram ichida bo'lsak — Telegram'ning o'z
+    // usuli bilan, aks holda oddiy havola.
+    if (tg && tg.openTelegramLink) tg.openTelegramLink(d.deepLink);
+    else window.open(d.deepLink, '_blank');
+
+    ayt("Telegram ochildi. U yerda «Start» ni bosing — shundan keyin bu sahifaga qaytib, «Yangilash» ni bosing.");
+
+    // Bog'langanini o'zimiz ham tekshirib turamiz: odam qaytganda karta
+    // o'zgargan bo'lsin.
+    let urinish = 0;
+    const tekshir = setInterval(async () => {
+        urinish++;
+        if (urinish > 20) { clearInterval(tekshir); return; }
+        try {
+            const r = await fetch(QALQON_BOT_FN, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ type: 'link_telegram_status' })
+            });
+            const s = await r.json();
+            if (s && s.ok && s.linked) {
+                clearInterval(tekshir);
+                maybeShowOnboarding();
+                ayt('✅ Telegram ulandi. Endi shoshilinch xabarlar sizga keladi.');
+            }
+        } catch (e) {}
+    }, 6000);
+}
+
 async function renderDevices() {
     const box = document.getElementById('devicesList');
     if (!box) return;
@@ -5367,6 +5634,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             .then((ok) => { if (!ok) checkParentOnboarding(); })
             .then(() => syncChildrenFromServer())
             .then(() => {
+                // Farzandlar ro'yxati kelgandan KEYIN: undan oldin chaqirsak
+                // ro'yxat hali bo'sh bo'lib, "farzand qo'shing" qadami
+                // farzandi borlarga ham ko'rinardi.
+                maybeShowOnboarding();
                 refreshPlanStatus();
                 loadGeofences();
                 // Taklif kartasi va radar holati — ikkalasi ham oila kodi
