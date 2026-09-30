@@ -9484,7 +9484,24 @@ serve(async (req) => {
     return new Response(null, { status: 204, headers: CORS_HEADERS });
   }
 
-  const res = await handleRequest(req);
+  // handleRequest ichidagi HAR QANDAY kutilmagan xato ham CORS sarlavhali,
+  // JSON javob bo'lib qaytishi shart.
+  //
+  // Aks holda Deno o'zining 500 javobini qaytaradi — unda CORS sarlavhasi
+  // yo'q, ya'ni brauzer javobni umuman o'qiy olmaydi va fetch() "Failed to
+  // fetch" bo'lib yiqiladi. Mijoz tomonida bu "Server javob bermayapti"
+  // degan xabar bo'lib ko'rinadi va haqiqiy sabab butunlay yo'qoladi —
+  // xuddi ilgari CORS'ning o'zi yo'q bo'lganida haftalab qidirganimizdek.
+  let res: Response;
+  try {
+    res = await handleRequest(req);
+  } catch (e) {
+    console.error("handleRequest kutilmagan xato:", e);
+    res = new Response(
+      JSON.stringify({ ok: false, error: "Ichki xato. Qayta urinib ko'ring." }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
+    );
+  }
   const headers = new Headers(res.headers);
   for (const [key, value] of Object.entries(CORS_HEADERS)) headers.set(key, value);
   return new Response(res.body, { status: res.status, statusText: res.statusText, headers });

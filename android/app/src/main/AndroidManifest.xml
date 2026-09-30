@@ -45,6 +45,28 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.ParentalGuard">
 
+        <!--
+            Play Market'ning "Stalkerware va kuzatuv ilovalari" siyosati
+            uchun MAJBURIY belgi.
+            https://support.google.com/googleplay/android-developer/answer/12955211
+
+            Google boshqa odamning ma'lumotini yig'adigan ilovalarni faqat
+            bitta shart bilan qabul qiladi: ular ota-ona o'z farzandini
+            kuzatishi uchun mo'ljallangan bo'lsin va buni YASHIRMASIN. Shu
+            belgi ilovaning aynan shunday ekanini tizimga aytadi va Android
+            foydalanuvchiga ruxsat so'ralganda buni ko'rsatadi.
+
+            Belgi barcha versiya kodlarida bo'lishi shart. Usiz ilova
+            ko'rib chiqishda rad etiladi — bizning manifestimizda u umuman
+            yo'q edi, ya'ni Play'ga yuborishga tayyor emas edik.
+
+            Qolgan ikki shartni ham bajaramiz: doimiy bildirishnoma
+            (PersistentGuardService) va yashirilmaydigan, aniq nomli ikonka.
+        -->
+        <meta-data
+            android:name="android.app.isMonitoringTool"
+            android:value="true" />
+
         <!-- Asosiy Juftlash va Ruxsatlar Oynasi (Pairing Activity) -->
         <!-- Kirish ekrani — ilova shu yerdan boshlanadi. -->
         <activity

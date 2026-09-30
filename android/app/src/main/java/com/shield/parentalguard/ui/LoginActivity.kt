@@ -55,6 +55,7 @@ class LoginActivity : AppCompatActivity() {
             return
         }
         setContentView(R.layout.activity_login)
+        tizimPanellariUchunJoyAjrat(findViewById(R.id.loginRoot))
         btnTelegram = findViewById(R.id.btnTelegramLogin)
         btnPassword = findViewById(R.id.btnPasswordLogin)
         btnChild = findViewById(R.id.btnChildLogin)
@@ -228,4 +229,32 @@ class LoginActivity : AppCompatActivity() {
         startActivity(Intent(this, AppWebActivity::class.java))
         finish()
     }
+
+    /**
+     * Tizim panellari (yuqorida soat/batareya, pastda navigatsiya tugmalari)
+     * ostida qolgan joyni bo'shatadi.
+     *
+     * targetSdk 35 dan boshlab Android oynani majburan chetdan chetga
+     * chizadi, shuning uchun bu joyni ilovaning o'zi hisobga olishi kerak.
+     */
+    private fun tizimPanellariUchunJoyAjrat(root: android.view.View) {
+        androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(root) { view, insets ->
+            val bars = insets.getInsets(
+                androidx.core.view.WindowInsetsCompat.Type.systemBars() or
+                    androidx.core.view.WindowInsetsCompat.Type.displayCutout()
+            )
+            // ScrollView'ning o'z to'ldirmasi (24dp) saqlanadi, ustiga
+            // tizim panellari uchun joy qo'shiladi.
+            view.setPadding(
+                view.paddingLeft + bars.left,
+                view.paddingTop + bars.top,
+                view.paddingRight + bars.right,
+                view.paddingBottom + bars.bottom
+            )
+            androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(root, null)
+            insets
+        }
+        androidx.core.view.ViewCompat.requestApplyInsets(root)
+    }
+
 }

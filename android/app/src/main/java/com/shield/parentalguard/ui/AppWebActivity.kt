@@ -44,6 +44,32 @@ class AppWebActivity : AppCompatActivity() {
         filePicker = null
     }
 
+    /**
+     * Sahifani tizim panellari ostidan chiqaradi.
+     *
+     * targetSdk 35 dan boshlab Android oynani majburan "chetdan chetga"
+     * chizadi: WebView yuqorida soat/batareya paneli ostiga, pastda esa
+     * "orqaga/uy" tugmalari ostiga kirib ketadi. Natijada ilovaning o'z
+     * sarlavhasi va pastki menyusi yarim berkilib qoladi — foydalanuvchi
+     * telefonda aynan shuni ko'rdi.
+     *
+     * CSS'dagi env(safe-area-inset-*) bu yerda yordam bermaydi: WebView
+     * ichida u nolga teng bo'lib qolaveradi. Shuning uchun joyni tizimning
+     * o'zidan so'rab, konteynerga to'ldirma qilib beramiz. Ekran o'yig'i
+     * (kamera teshigi) ham hisobga olinadi.
+     */
+    private fun tizimPanellariUchunJoyAjrat(root: android.view.View) {
+        androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(root) { view, insets ->
+            val bars = insets.getInsets(
+                androidx.core.view.WindowInsetsCompat.Type.systemBars() or
+                    androidx.core.view.WindowInsetsCompat.Type.displayCutout()
+            )
+            view.setPadding(bars.left, bars.top, bars.right, bars.bottom)
+            insets
+        }
+        androidx.core.view.ViewCompat.requestApplyInsets(root)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val role = AppAuthApi.currentRole(this)
@@ -54,6 +80,7 @@ class AppWebActivity : AppCompatActivity() {
         }
         setContentView(R.layout.activity_app_web)
         web = findViewById(R.id.webView)
+        tizimPanellariUchunJoyAjrat(findViewById(R.id.webRoot))
 
         web.settings.apply {
             javaScriptEnabled = true
