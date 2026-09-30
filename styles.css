@@ -227,7 +227,8 @@ body[data-theme="sky"] .bottom-nav {
     display: none;
     overflow-y: auto;
     padding: 16px;
-    padding-bottom: 90px;
+    padding-top: calc(16px + env(safe-area-inset-top, 0px));
+    padding-bottom: calc(90px + env(safe-area-inset-bottom, 0px));
     animation: slideUp 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -255,7 +256,12 @@ body[data-theme="sky"] .bottom-nav {
     z-index: 1000;
     display: flex;
     justify-content: space-around;
-    padding: 8px 12px 14px 12px;
+    /* Telefonning pastki navigatsiya tugmalari (orqaga / uy / oxirgi
+       ilovalar) menyuning ustiga chiqib, tugmalarning yarmini berkitib
+       qo'yardi. env(safe-area-inset-bottom) telefon aytgan haqiqiy
+       balandlikni beradi; qo'llab-quvvatlamaydigan brauzerda u 0 bo'ladi
+       va oldingi ko'rinish saqlanadi. */
+    padding: 8px 12px calc(14px + env(safe-area-inset-bottom, 0px)) 12px;
 }
 
 .nav-btn {
@@ -509,4 +515,23 @@ body[data-theme="sky"] .subject-item-card {
 /* Modal oynalar ham xuddi shunday: ichidagi oxirgi tugma ko'rinsin. */
 .subpage-modal {
     padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+}
+
+/* ==========================================================================
+   TIZIM PANELLARI UCHUN JOY (safe area)
+   ==========================================================================
+   Android 15 dan boshlab ilova oynasi majburan "chetdan chetga" chiziladi:
+   sahifaning yuqorisi soat/batareya paneli ostiga, pastki menyusi esa
+   navigatsiya tugmalari ostiga kirib ketadi. Telefonda aynan shu ko'rindi —
+   sarlavha va pastki menyu yarim berkilgan edi.
+
+   Native ilovada buni Kotlin tomoni ham hal qiladi (WebView konteyneriga
+   tizim to'ldirmasi beriladi), lekin Telegram Mini App oddiy brauzerda
+   ochiladi va u yerda faqat shu CSS ishlaydi. Ikkalasi bir-biriga xalal
+   bermaydi: WebView ichida env(...) qiymatlari 0 bo'ladi.
+   ========================================================================== */
+body {
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
 }

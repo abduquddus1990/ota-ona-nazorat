@@ -4755,21 +4755,13 @@ function closeSubpage() {
     document.querySelectorAll('.subpage-modal').forEach(m => m.classList.remove('active'));
 }
 
-function triggerVoiceAlert() {
-    const title = (currentLang === 'ru') ? "🎙️ Голосовой Радар" : "🎙️ Ovozli Radar";
-    const msg = (currentLang === 'ru') 
-        ? "Запрос локации отправлен ребёнку в виде звукового оповещения."
-        : "Farzandingizga ota-ona joylashuv so'rovi ovozli bildirishnoma ko'rinishida yuborildi.";
-    if (tg?.showPopup) {
-        tg.showPopup({
-            title: title,
-            message: msg,
-            buttons: [{ type: "ok" }]
-        });
-    } else {
-        alert(msg);
-    }
-}
+// triggerVoiceAlert() OLIB TASHLANDI.
+//
+// "🎙️ Ovozli Radar" tugmasi ota-onaga "Farzandingizga joylashuv so'rovi
+// ovozli bildirishnoma ko'rinishida yuborildi" deb yozardi, lekin serverga
+// hech qanday so'rov yubormasdi — butun funksiya shu oynani ko'rsatishdan
+// iborat edi. Bu SOS tugmasidagi bilan bir xil nuqson: ota-ona yordam
+// so'radim deb o'ylab, javob kutib qolardi.
 
 // Ilgari bu tugma `?start=pair_<oila kodi>` havolasini nusxalardi. O'sha
 // havola HECH QACHON ulanish yaratmagan: bot faqat "bog'landingiz" deb
