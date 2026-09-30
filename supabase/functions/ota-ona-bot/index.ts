@@ -983,6 +983,159 @@ async function familyCodeFor(userId: string | number): Promise<string> {
   return code;
 }
 
+// ============================================================================
+// GOOGLE HISOBI BILAN KIRISH
+// ============================================================================
+//
+// Nega kerakligi database/26_google_signin.sql da yozilgan: Telegram bot —
+// yagona kirish yo'li bo'lib qolsa, Play Market tekshiruvchisi ilovaga kira
+// olmaydi va Telegramsiz ota-onalar umuman foydalana olmaydi.
+//
+// XAVFSIZLIK. Mijoz bizga Google bergan ID token (JWT) ni yuboradi. Unga
+// ISHONMAYMIZ: har bir token Google'ning ochiq kalitlari bilan qayta
+// tekshiriladi. Tekshirilmasa, istalgan odam o'zi yozgan "men falonchiman"
+// degan JWT bilan begona oilaga kirib olardi.
+//
+// Tekshiriladigan to'rt narsa — to'rttasi ham majburiy:
+//   1) imzo Google kalitiga mos (RS256);
+//   2) iss — accounts.google.com;
+//   3) aud — AYNAN bizning Client ID (aks holda boshqa saytning tokeni
+//      bizda ham ishlab ketardi);
+//   4) exp — muddati o'tmagan.
+
+const GOOGLE_ISSUERS = new Set(["accounts.google.com", "https://accounts.google.com"]);
+
+/** Google'ning imzo kalitlari. Ular aylanib turadi, shuning uchun keshlanadi. */
+let googleKeysCache: { keys: any[]; until: number } | null = null;
+
+async function googleSigningKeys(): Promise<any[]> {
+  if (googleKeysCache && googleKeysCache.until > Date.now()) return googleKeysCache.keys;
+  const res = await fetch("https://www.googleapis.com/oauth2/v3/certs");
+  if (!res.ok) throw new Error("Google kalitlari olinmadi: " + res.status);
+  const body = await res.json();
+  const keys = Array.isArray(body.keys) ? body.keys : [];
+  // Cache-Control aytgan muddatgacha, lekin ko'pi bilan 1 soat.
+  const cc = res.headers.get("cache-control") || "";
+  const maxAge = Number((cc.match(/max-age=(\d+)/) || [])[1]) || 3600;
+  googleKeysCache = { keys, until: Date.now() + Math.min(maxAge, 3600) * 1000 };
+  return keys;
+}
+
+function b64urlToBytes(s: string): Uint8Array {
+  const pad = s.length % 4 === 0 ? "" : "=".repeat(4 - (s.length % 4));
+  const b64 = s.replace(/-/g, "+").replace(/_/g, "/") + pad;
+  const bin = atob(b64);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+type GoogleUser = { sub: string; email: string; name: string; emailVerified: boolean };
+
+/**
+ * ID tokenni tekshiradi va ichidagi foydalanuvchini qaytaradi.
+ * Biror shart bajarilmasa — null. Sababi logga yoziladi, mijozga emas:
+ * tafsilot hujumchiga yordam beradi.
+ */
+async function verifyGoogleIdToken(idToken: string, clientId: string): Promise<GoogleUser | null> {
+  const parts = String(idToken || "").split(".");
+  if (parts.length !== 3) return null;
+
+  let header: any, claims: any;
+  try {
+    header = JSON.parse(new TextDecoder().decode(b64urlToBytes(parts[0])));
+    claims = JSON.parse(new TextDecoder().decode(b64urlToBytes(parts[1])));
+  } catch (_e) {
+    return null;
+  }
+  if (header.alg !== "RS256") {
+    console.error("google_login: kutilmagan alg:", header.alg);
+    return null;
+  }
+
+  const jwk = (await googleSigningKeys()).find((k: any) => k.kid === header.kid);
+  if (!jwk) {
+    console.error("google_login: kid topilmadi:", header.kid);
+    return null;
+  }
+
+  const key = await crypto.subtle.importKey(
+    "jwk",
+    { kty: jwk.kty, n: jwk.n, e: jwk.e, alg: "RS256", ext: true },
+    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+    false,
+    ["verify"]
+  );
+  const signed = new TextEncoder().encode(parts[0] + "." + parts[1]);
+  const valid = await crypto.subtle.verify(
+    "RSASSA-PKCS1-v1_5", key, b64urlToBytes(parts[2]), signed
+  );
+  if (!valid) {
+    console.error("google_login: imzo mos kelmadi");
+    return null;
+  }
+
+  if (!GOOGLE_ISSUERS.has(String(claims.iss))) {
+    console.error("google_login: iss noto'g'ri:", claims.iss);
+    return null;
+  }
+  if (String(claims.aud) !== clientId) {
+    console.error("google_login: aud boshqa ilovaniki:", claims.aud);
+    return null;
+  }
+  const now = Math.floor(Date.now() / 1000);
+  if (!Number.isFinite(Number(claims.exp)) || Number(claims.exp) <= now) {
+    console.error("google_login: muddati o'tgan");
+    return null;
+  }
+
+  return {
+    sub: String(claims.sub || ""),
+    email: String(claims.email || ""),
+    name: String(claims.name || claims.given_name || ""),
+    emailVerified: claims.email_verified === true || claims.email_verified === "true",
+  };
+}
+
+/**
+ * Telegram ID'siz ota-ona uchun oila kodini band qiladi.
+ *
+ * claimFamilyCode() Telegram ID (son) bilan ishlaydi; Google orqali kirgan
+ * ota-onada bunday son yo'q. Shuning uchun kalit matn ko'rinishida
+ * saqlanadi (family_code_overrides.owner_key) va kod tasodifiy tanlanadi.
+ * UNIQUE cheklovi tufayli ikki odam bir kodni ololmaydi.
+ */
+async function claimFamilyCodeForKey(ownerKey: string): Promise<string | null> {
+  if (!db) return null;
+
+  const { data: mine } = await db
+    .from("family_code_overrides")
+    .select("family_code")
+    .eq("owner_key", ownerKey)
+    .limit(1);
+  if (mine && mine[0]) return mine[0].family_code;
+
+  for (let i = 0; i < 12; i++) {
+    const candidate = String(
+      Math.abs(crypto.getRandomValues(new Uint32Array(1))[0] % 900000) + 100000
+    ).padStart(6, "0");
+
+    const { data: used } = await db
+      .from("parent_registrations")
+      .select("family_code")
+      .eq("family_code", candidate)
+      .limit(1);
+    if (used && used[0]) continue;
+
+    const { error } = await db
+      .from("family_code_overrides")
+      .insert({ owner_key: ownerKey, family_code: candidate });
+    if (!error) return candidate;
+  }
+  console.error("claimFamilyCodeForKey: bo'sh kod topilmadi");
+  return null;
+}
+
 /**
  * Ro'yxatdan o'tayotgan oila uchun kodni BAND QILADI.
  *
@@ -4355,7 +4508,7 @@ async function handleRequest(req: Request): Promise<Response> {
     //   login/parolni tekshiradi va urinishlar soni cheklangan.
     const NO_ACTOR_TYPES = [
       "device_pair", "parent_pair", "cron_daily_digest", "cron_live_reminder",
-      "cron_evening_check", "web_login", "web_logout",
+      "cron_evening_check", "web_login", "web_logout", "google_login",
       "app_login_start", "app_login_poll",
     ];
     let actor: Actor | null = null;
@@ -6380,6 +6533,117 @@ async function handleRequest(req: Request): Promise<Response> {
     // brauzerda Telegram imzosi yo'q. Shu sabab urinishlar cheklanadi va
     // xato xabari "login yo'q" bilan "parol noto'g'ri"ni farqlamaydi —
     // aks holda qaysi username ro'yxatda borligini bilib olish mumkin bo'lardi.
+    // Google hisobi bilan kirish / ro'yxatdan o'tish.
+    //
+    // Mijoz Google'dan olgan ID tokenni yuboradi, biz uni Google kalitlari
+    // bilan tekshiramiz va o'z seansimizni beramiz (web_login bilan aynan
+    // bir xil naqsh: token faqat shu javobda ko'rinadi, bazada faqat hash).
+    if (payload.type === "google_login") {
+      if (!db) return jsonRes({ ok: false, error: "Baza ulanmagan" }, 500);
+
+      const clientId = Deno.env.get("GOOGLE_CLIENT_ID") || "";
+      if (!clientId) {
+        console.error("google_login: GOOGLE_CLIENT_ID sozlanmagan");
+        return jsonRes({ ok: false, error: "Google kirishi hali sozlanmagan." }, 503);
+      }
+
+      const actorKey = `google:${clientKey(req)}`;
+      if (await joinRateLimited(actorKey)) {
+        return jsonRes({ ok: false, error: "Juda ko'p urinish. Keyinroq qayta urinib ko'ring." }, 429);
+      }
+
+      const g = await verifyGoogleIdToken(String(payload.idToken || ""), clientId);
+      if (!g || !g.sub) {
+        await recordJoinAttempt(actorKey, "", false);
+        return jsonRes({ ok: false, error: "Google tasdiqlamadi. Qayta urinib ko'ring." }, 401);
+      }
+      // Tasdiqlanmagan pochta bilan hisob ochsak, boshqa odamning
+      // manzilini yozib qo'yib, uning oilasiga ulanib olish mumkin edi.
+      if (!g.emailVerified) {
+        return jsonRes({ ok: false, error: "Google pochtangiz tasdiqlanmagan." }, 401);
+      }
+
+      // 1) Shu Google hisobi allaqachon bormi.
+      let { data: rows } = await db
+        .from("parent_registrations")
+        .select("family_code, parent_telegram_id, status")
+        .eq("google_sub", g.sub)
+        .limit(1);
+      let row = rows && rows[0];
+
+      // 2) Yo'q bo'lsa — ayni pochta bilan Telegram orqali ochilgan oila
+      //    bormi. Bo'lsa, ikkinchi oila ochmasdan o'shanga bog'laymiz.
+      if (!row && g.email) {
+        const { data: byMail } = await db
+          .from("parent_registrations")
+          .select("family_code, parent_telegram_id, status, google_sub")
+          .ilike("parent_email", g.email)
+          .limit(1);
+        if (byMail && byMail[0] && !byMail[0].google_sub) {
+          await db.from("parent_registrations")
+            .update({ google_sub: g.sub })
+            .eq("family_code", byMail[0].family_code);
+          row = byMail[0];
+        }
+      }
+
+      // 3) Hali ham yo'q — yangi oila.
+      let yangi = false;
+      if (!row) {
+        const familyCode = await claimFamilyCodeForKey("google:" + g.sub);
+        if (!familyCode) return jsonRes({ ok: false, error: "Oila kodi berilmadi." }, 500);
+
+        const { error: insErr } = await db.from("parent_registrations").insert({
+          family_code: familyCode,
+          parent_name: g.name || "Ota-ona",
+          parent_email: g.email,
+          google_sub: g.sub,
+          // Telegram ID yo'q: bu ota-ona hali botga ulanmagan. Shu sababli
+          // SOS va ogohlantirishlar unga Telegram orqali BORMAYDI — buni
+          // javobda ochiq aytamiz, mijoz esa ekranda ko'rsatadi.
+          parent_telegram_id: null,
+          status: "approved",
+        });
+        if (insErr) {
+          console.error("google_login: oila ochilmadi:", insErr.message);
+          return jsonRes({ ok: false, error: insErr.message }, 500);
+        }
+        row = { family_code: familyCode, parent_telegram_id: null, status: "approved" };
+        yangi = true;
+      }
+
+      await recordJoinAttempt(actorKey, row.family_code, true);
+
+      const token = toHex(crypto.getRandomValues(new Uint8Array(32)));
+      const expiresAt = new Date(Date.now() + WEB_SESSION_DAYS * 86400000).toISOString();
+      const { error: sErr } = await db.from("web_sessions").insert({
+        token_hash: await sha256Hex(token),
+        family_code: row.family_code,
+        telegram_id: row.parent_telegram_id,
+        user_agent: (req.headers.get("user-agent") || "").slice(0, 200),
+        expires_at: expiresAt,
+      });
+      if (sErr) {
+        console.error("google_login: seans ochilmadi:", sErr.message);
+        return jsonRes({ ok: false, error: sErr.message }, 500);
+      }
+
+      return jsonRes({
+        ok: true,
+        sessionToken: token,
+        familyCode: row.family_code,
+        registrationStatus: row.status,
+        isNew: yangi,
+        email: g.email,
+        name: g.name,
+        // Telegram ulanmagan bo'lsa, shoshilinch xabarlar yetib bormaydi.
+        // Mijoz buni ekranda aytishi shart — jim qolsak, ota-ona SOS
+        // keladi deb o'ylab yuradi.
+        telegramLinked: !!row.parent_telegram_id,
+        expiresAt,
+      });
+    }
+
     if (payload.type === "web_login") {
       if (!db) {
         return new Response(JSON.stringify({ ok: false, error: "Baza ulanmagan" }), {
