@@ -768,6 +768,29 @@ function showWebLogin(show) {
     if (show) initGoogleSignIn();
 }
 
+/**
+ * Kirish muvaffaqiyatli tugagach panelga o'tadi.
+ *
+ * Nega shunchaki reload() EMAS: kirish oynasi `?mode=login` manzili bilan
+ * ochiladi, checkWebLoginNeeded() esa shu parametrni ko'rib oynani QAYTA
+ * ochadi — seans bor-yo'qligidan qat'i nazar. Ya'ni kirish muvaffaqiyatli
+ * bo'lsa ham, sahifa yangilangach yana o'sha kirish oynasi chiqardi va
+ * foydalanuvchi "kirmayapti" deb o'ylardi. Parol bilan kirishda ham,
+ * Google bilan kirishda ham aynan shu bo'lgan.
+ *
+ * Shuning uchun manzildan `mode` olib tashlanadi va o'sha toza manzilga
+ * o'tiladi.
+ */
+function kirgandanKeyinOt() {
+    try {
+        const u = new URL(window.location.href);
+        u.searchParams.delete('mode');
+        window.location.replace(u.toString());
+    } catch (e) {
+        window.location.reload();
+    }
+}
+
 /** Kirish oynasi kerakmi: Telegram identifikatori ham, seans ham bo'lmasa. */
 function checkWebLoginNeeded() {
     const wantsLogin = new URLSearchParams(window.location.search).get('mode') === 'login';
@@ -811,7 +834,7 @@ async function handleWebLogin() {
             if (data.familyCode) localStorage.setItem('parent_family_code', data.familyCode);
         } catch (e) {}
         showWebLogin(false);
-        window.location.reload();
+        kirgandanKeyinOt();
     } catch (e) {
         console.error('web_login error:', e);
         fail("Server javob bermayapti. Keyinroq urinib ko'ring.");
@@ -1238,7 +1261,11 @@ async function handleGoogleCredential(response) {
 
     try { localStorage.setItem('web_session_token', d.sessionToken); } catch (e) {}
     if (d.familyCode) {
-        try { localStorage.setItem('qalqon_family_code', d.familyCode); } catch (e) {}
+        // Kalit nomi 'parent_family_code' bo'lishi SHART: panel oila kodini
+        // shu nomdan o'qiydi (resolveInitialFamilyCode). Men uni avval
+        // 'qalqon_family_code' deb yozgan edim — o'sha nomni hech kim
+        // o'qimasdi, ya'ni kod saqlanмаganday bo'lardi.
+        try { localStorage.setItem('parent_family_code', d.familyCode); } catch (e) {}
     }
 
     // Telegram ulanmagan bo'lsa, buni JIM O'TKAZIB YUBORMAYMIZ: SOS va
@@ -1250,7 +1277,7 @@ async function handleGoogleCredential(response) {
         if (tg && tg.showAlert) tg.showAlert(m); else alert(m);
     }
 
-    window.location.reload();
+    kirgandanKeyinOt();
 }
 
 function showEntryError(errorEl, text) {
