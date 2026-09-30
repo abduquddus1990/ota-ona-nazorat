@@ -763,6 +763,9 @@ function hasAnyIdentity() {
 function showWebLogin(show) {
     const overlay = document.getElementById('webLoginOverlay');
     if (overlay) overlay.classList.toggle('hidden', !show);
+    // Google tugmasi oyna ochilgandagina chiziladi: Google kutubxonasini
+    // har bir sahifa ochilishida yuklab o'tirishning hojati yo'q.
+    if (show) initGoogleSignIn();
 }
 
 /** Kirish oynasi kerakmi: Telegram identifikatori ham, seans ham bo'lmasa. */
@@ -1079,6 +1082,120 @@ async function loadGeofences() {
 // ============================================================================
 
 let entryBanTimer = null;
+
+// ============================================================================
+// GOOGLE HISOBI BILAN KIRISH (ota-ona uchun)
+// ============================================================================
+//
+// Nega kerak: hozirgacha ota-ona bo'lishning yagona yo'li Telegram bot edi.
+// Bu Telegramsiz ota-onalarni ham, Play Market tekshiruvchisini ham to'sib
+// qo'yadi — tekshiruvchi o'zbekcha botni topib ro'yxatdan o'tmaydi, ilovani
+// "ishlamaydi" deb rad etadi.
+//
+// FARZAND UCHUN GOOGLE KERAK EMAS. Bola ota-ona bergan bir martalik kod
+// bilan kiradi: 13 yoshgacha bolada odatda Google hisobi bo'lmaydi
+// (Family Link talab qilinadi), va bolaning o'z paroli bo'lmagani
+// xavfsizroq — yo'qotadigan yoki aytib qo'yadigan narsa yo'q.
+const GOOGLE_CLIENT_ID = '167850690503-rpllk27r3pku2s1l5gq2fql2tl4j4tk0.apps.googleusercontent.com';
+
+/**
+ * Google tugmasini chizadi — faqat u ishlay oladigan joyda.
+ *
+ * Google o'z kirish oynasini ilova ichidagi WebView'da ochishni ATAYLAB
+ * taqiqlaydi ("disallowed_useragent" xatosi): aks holda yovuz ilova
+ * foydalanuvchining parolini o'qib olishi mumkin edi. Shuning uchun
+ * native ilovada tugmani umuman ko'rsatmaymiz — u yerda kod bilan kirish
+ * ishlaydi va ishonchli.
+ */
+function initGoogleSignIn() {
+    const block = document.getElementById('googleSignInBlock');
+    const host = document.getElementById('googleBtnHost');
+    if (!block || !host) return;
+
+    // Native ilova ichidamizmi (QalqonNative ko'prigi bor).
+    if (window.QalqonNative) return;
+    if (!GOOGLE_CLIENT_ID) return;
+
+    const chiz = () => {
+        if (!(window.google && google.accounts && google.accounts.id)) return false;
+        google.accounts.id.initialize({
+            client_id: GOOGLE_CLIENT_ID,
+            callback: handleGoogleCredential,
+            auto_select: false,
+            cancel_on_tap_outside: true
+        });
+        google.accounts.id.renderButton(host, {
+            theme: 'filled_blue', size: 'large', shape: 'pill',
+            text: 'continue_with', locale: 'uz', width: 280
+        });
+        block.classList.remove('hidden');
+        return true;
+    };
+
+    if (chiz()) return;
+    // Kutubxona hali yuklanmagan bo'lsa — yuklaymiz.
+    const s = document.createElement('script');
+    s.src = 'https://accounts.google.com/gsi/client';
+    s.async = true;
+    s.defer = true;
+    s.onload = () => { chiz(); };
+    s.onerror = () => { /* Google ochilmadi — boshqa yo'llar ishlayveradi. */ };
+    document.head.appendChild(s);
+}
+
+/**
+ * Google bergan ID tokenni serverga yuboradi.
+ *
+ * Tokenga MIJOZDA ishonilmaydi va u yerda ochilmaydi ham: server uni
+ * Google'ning ochiq kalitlari bilan qayta tekshiradi (imzo, iss, aud,
+ * muddati). Bu yerda faqat natijani ko'rsatamiz.
+ */
+async function handleGoogleCredential(response) {
+    const xatoEl = document.getElementById('googleSignInError');
+    const koRsatXato = (t) => {
+        if (!xatoEl) { alert(t); return; }
+        xatoEl.innerText = t;
+        xatoEl.classList.remove('hidden');
+    };
+    if (xatoEl) xatoEl.classList.add('hidden');
+
+    const idToken = response && response.credential;
+    if (!idToken) { koRsatXato("Google javob bermadi. Qayta urinib ko'ring."); return; }
+
+    let d = null;
+    try {
+        const resp = await fetch(QALQON_BOT_FN, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'google_login', idToken })
+        });
+        d = await resp.json();
+    } catch (e) {
+        koRsatXato("Internet yo'q. Qayta urinib ko'ring.");
+        return;
+    }
+
+    if (!d || !d.ok || !d.sessionToken) {
+        koRsatXato((d && d.error) || "Kirish amalga oshmadi.");
+        return;
+    }
+
+    try { localStorage.setItem('web_session_token', d.sessionToken); } catch (e) {}
+    if (d.familyCode) {
+        try { localStorage.setItem('qalqon_family_code', d.familyCode); } catch (e) {}
+    }
+
+    // Telegram ulanmagan bo'lsa, buni JIM O'TKAZIB YUBORMAYMIZ: SOS va
+    // ogohlantirishlar ota-onaga Telegram orqali boradi, ulanmagan bo'lsa
+    // ular yetib bormaydi. Buni bilmagan ota-ona xabar keladi deb kutadi.
+    if (d.telegramLinked === false) {
+        const m = "✅ Kirdingiz.\n\n⚠️ Muhim: shoshilinch xabarlar (SOS) Telegram orqali keladi. " +
+                  "Ularni olish uchun botni ham ulang: @qalqon_aibot";
+        if (tg && tg.showAlert) tg.showAlert(m); else alert(m);
+    }
+
+    window.location.reload();
+}
 
 function showEntryError(errorEl, text) {
     if (!errorEl) { alert(text); return; }

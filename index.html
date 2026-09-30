@@ -77,6 +77,27 @@
                     🔐 Kirish
                 </button>
 
+                <!-- Google bilan kirish.
+                     Telegramsiz ota-onalar uchun va Play Market tekshiruvchisi
+                     ilovaga kira olishi uchun. Bu blok JS orqali ko'rsatiladi:
+                     Google ilovaning ichidagi WebView'dan kirishni o'zi
+                     taqiqlaydi ("disallowed_useragent"), shuning uchun native
+                     ilovada u yashirin qoladi va kod bilan kirish ishlaydi. -->
+                <div id="googleSignInBlock" class="hidden space-y-2">
+                    <div class="flex items-center gap-2">
+                        <div class="h-px flex-1 bg-slate-700"></div>
+                        <span class="text-[10px] text-slate-500 font-bold">yoki</span>
+                        <div class="h-px flex-1 bg-slate-700"></div>
+                    </div>
+                    <div id="googleBtnHost" class="flex justify-center"></div>
+                    <p id="googleSignInError" class="text-[10px] text-rose-400 font-bold text-center hidden"></p>
+                    <p class="text-[10px] text-slate-500 text-center leading-relaxed">
+                        Google bilan kirsangiz, oila darhol ochiladi. Shoshilinch
+                        xabarlar Telegramga borishi uchun keyinroq botni ham
+                        ulaysiz.
+                    </p>
+                </div>
+
                 <div class="pt-1 text-center">
                     <p class="text-[10px] text-slate-500 leading-relaxed">
                         Parolni unutdingizmi yoki hali qo'ymaganmisiz? Telegram'da botni oching —
@@ -2754,7 +2775,7 @@
     </nav>
 
     <!-- Custom JavaScript -->
-    <script src="app.js?v=8.7"></script>
+    <script src="app.js?v=8.8"></script>
     <!-- O'yinlar alohida faylda: app.js allaqachon katta, va o'yin kontenti
          (savollar, kartalar) o'sib boradi. Alohida fayl brauzerda alohida
          keshlanadi — o'yin qo'shilsa, butun ilova qayta yuklanmaydi. -->
