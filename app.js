@@ -760,6 +760,18 @@ function hasAnyIdentity() {
     return hasTelegramIdentity() || !!webSessionToken() || !!nativeAppIdentity();
 }
 
+// Google'dan qaytganimizni SAHIFA OCHILISHIDA tekshiramiz: token
+// manzilning "#" qismida keladi va uni birinchi bo'lib ushlash kerak,
+// aks holda kirish oynasi ochilib, foydalanuvchi qaytadan bosaverardi.
+(function googleQaytishiniKuzat() {
+    const ishga = () => { try { googleQaytishniTekshir(); } catch (e) {} };
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', ishga);
+    } else {
+        ishga();
+    }
+})();
+
 function showWebLogin(show) {
     const overlay = document.getElementById('webLoginOverlay');
     if (overlay) overlay.classList.toggle('hidden', !show);
@@ -1107,177 +1119,183 @@ async function loadGeofences() {
 let entryBanTimer = null;
 
 // ============================================================================
-// GOOGLE HISOBI BILAN KIRISH (ota-ona uchun)
+// GOOGLE HISOBI BILAN KIRISH (ota-ona uchun) — YO'NALTIRISH USULI
 // ============================================================================
 //
-// Nega kerak: hozirgacha ota-ona bo'lishning yagona yo'li Telegram bot edi.
-// Bu Telegramsiz ota-onalarni ham, Play Market tekshiruvchisini ham to'sib
-// qo'yadi — tekshiruvchi o'zbekcha botni topib ro'yxatdan o'tmaydi, ilovani
-// "ishlamaydi" deb rad etadi.
+// Avval Google'ning tayyor tugmasi (Google Identity Services) ishlatilgan
+// edi. U ishonchsiz bo'lib chiqdi: tugma ko'rinardi, bosilardi, lekin hech
+// narsa bo'lmasdi va SABABI sahifaga umuman yetib kelmasdi. Uchta ko'rinmas
+// to'siq bor: brauzer qalqib chiquvchi oynani bloklaydi, Chrome'ning FedCM
+// ("uchinchi tomon orqali kirish") sozlamasi o'chiq bo'ladi, yoki uchinchi
+// tomon cookie'lari taqiqlangan bo'ladi. Uchalasi ham JIM ishlaydi.
 //
-// FARZAND UCHUN GOOGLE KERAK EMAS. Bola ota-ona bergan bir martalik kod
-// bilan kiradi: 13 yoshgacha bolada odatda Google hisobi bo'lmaydi
-// (Family Link talab qilinadi), va bolaning o'z paroli bo'lmagani
-// xavfsizroq — yo'qotadigan yoki aytib qo'yadigan narsa yo'q.
+// Shuning uchun eng oddiy va eng ishonchli yo'lga o'tildi: butun sahifa
+// Google'ga o'tadi, foydalanuvchi hisobini tanlaydi, Google bizni qaytaradi
+// va tokenni manzilning "#" qismida beradi. Bu yerda qalqib chiquvchi oyna
+// ham, iframe ham, cookie ham qatnashmaydi — bloklanadigan narsaning o'zi
+// yo'q.
+//
+// Xavfsizlik: nonce. Har kirishda tasodifiy satr yasaladi, Google uni
+// tokenning ichiga yozadi, server esa qaytgan tokendagi nonce biz
+// yuborganiga mos kelishini tekshiradi. Shu tufayli o'g'irlangan eski
+// tokenni qayta ishlatib bo'lmaydi.
 const GOOGLE_CLIENT_ID = '167850690503-rpllk27r3pku2s1l5gq2fql2tl4j4tk0.apps.googleusercontent.com';
 
-/**
- * Google tugmasini chizadi — faqat u ishlay oladigan joyda.
- *
- * Google o'z kirish oynasini ilova ichidagi WebView'da ochishni ATAYLAB
- * taqiqlaydi ("disallowed_useragent" xatosi): aks holda yovuz ilova
- * foydalanuvchining parolini o'qib olishi mumkin edi. Shuning uchun
- * native ilovada tugmani umuman ko'rsatmaymiz — u yerda kod bilan kirish
- * ishlaydi va ishonchli.
- */
+/** Google bizni shu manzilga qaytaradi — Console'da ham AYNAN shu turishi shart. */
+function googleRedirectUri() {
+    return window.location.origin + window.location.pathname;
+}
+
+function googleTasodifiy() {
+    const a = new Uint8Array(16);
+    if (window.crypto && window.crypto.getRandomValues) {
+        window.crypto.getRandomValues(a);
+    } else {
+        for (let i = 0; i < a.length; i++) a[i] = Math.floor(Math.random() * 256);
+    }
+    return Array.from(a).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+/** Google tugmasini ko'rsatadi (ilova ichida — yo'q). */
 function initGoogleSignIn() {
     const block = document.getElementById('googleSignInBlock');
-    const host = document.getElementById('googleBtnHost');
-    if (!block || !host) return;
-
-    // Native ilova ichidamizmi (QalqonNative ko'prigi bor).
+    if (!block) return;
+    // Google ilova ichidagi WebView'dan kirishni taqiqlaydi
+    // ("disallowed_useragent") — u yerda kod bilan kirish ishlaydi.
     if (window.QalqonNative) return;
     if (!GOOGLE_CLIENT_ID) return;
+    block.classList.remove('hidden');
+}
 
-    const chiz = () => {
-        if (!(window.google && google.accounts && google.accounts.id)) return false;
-        google.accounts.id.initialize({
-            client_id: GOOGLE_CLIENT_ID,
-            callback: handleGoogleCredential,
-            auto_select: false,
-            cancel_on_tap_outside: true,
-            use_fedcm_for_prompt: true
-        });
-        google.accounts.id.renderButton(host, {
-            theme: 'filled_blue', size: 'large', shape: 'pill',
-            text: 'continue_with', locale: 'uz', width: 280
-        });
-        block.classList.remove('hidden');
+/** Foydalanuvchini Google'ga yuboradi. */
+function googleBilanKirish() {
+    const xatoEl = document.getElementById('googleSignInError');
+    if (!GOOGLE_CLIENT_ID) return;
 
-        // Zaxira yo'l.
-        //
-        // Google tugmasi bosilgandan keyin JIM qolishi mumkin: brauzer
-        // qalqib chiquvchi oynani bloklasa yoki Chrome'ning "uchinchi tomon
-        // orqali kirish" sozlamasi o'chiq bo'lsa, hech qanday xato
-        // ko'rsatilmaydi va foydalanuvchi nima bo'lganini bilmaydi.
-        // Shuning uchun ikkinchi tugma: u Google oynasini boshqa yo'l
-        // (One Tap) bilan ochadi va ochilmasa — SABABINI ekranga yozadi.
-        const zaxira = document.getElementById('googleFallbackBtn');
-        if (zaxira && !zaxira.dataset.ulandi) {
-            zaxira.dataset.ulandi = '1';
-            zaxira.addEventListener('click', () => {
-                const xatoEl = document.getElementById('googleSignInError');
-                const ayt = (t) => {
-                    if (!xatoEl) { alert(t); return; }
-                    xatoEl.innerText = t;
-                    xatoEl.classList.remove('hidden');
-                };
-                if (xatoEl) xatoEl.classList.add('hidden');
-                try {
-                    google.accounts.id.prompt((n) => {
-                        // FedCM yoqilganda bu obyektning maydonlari boshqa,
-                        // shuning uchun ikkalasini ham tekshiramiz.
-                        let sabab = '';
-                        try {
-                            if (n && n.isNotDisplayed && n.isNotDisplayed()) sabab = n.getNotDisplayedReason();
-                            else if (n && n.isSkippedMoment && n.isSkippedMoment()) sabab = n.getSkippedReason();
-                            else if (n && n.isDismissedMoment && n.isDismissedMoment()) sabab = n.getDismissedReason();
-                        } catch (e) { sabab = String((n && n.type) || ''); }
-                        if (!sabab || sabab === 'credential_returned') return;
-                        const izoh = {
-                            opt_out_or_no_session: "Bu brauzerda Google hisobingizga kirilmagan. Avval google.com ga kiring.",
-                            suppressed_by_user: "Siz ilgari bu oynani yopgansiz — Google uni vaqtincha ko'rsatmayapti. Boshqa brauzerda yoki yashirin oynada urinib ko'ring.",
-                            unregistered_origin: "Sayt manzili Google sozlamasida ro'yxatdan o'tmagan.",
-                            browser_not_supported: "Brauzer qo'llab-quvvatlamaydi.",
-                            secure_http_required: "HTTPS talab qilinadi.",
-                            missing_client_id: "Client ID yo'q."
-                        }[sabab];
-                        ayt("Google oynasi ochilmadi (" + sabab + "). " + (izoh || "Yuqoridagi ko'k tugmani sinab ko'ring."));
-                    });
-                } catch (e) {
-                    ayt("Google ochilmadi: " + (e && e.message ? e.message : e));
-                }
-            });
-        }
-        return true;
-    };
+    const nonce = googleTasodifiy();
+    const state = googleTasodifiy();
+    try {
+        sessionStorage.setItem('google_nonce', nonce);
+        sessionStorage.setItem('google_state', state);
+    } catch (e) {
+        // sessionStorage yopiq bo'lsa — nonce tekshiruvisiz davom etamiz,
+        // server baribir imzoni tekshiradi.
+    }
+    if (xatoEl) {
+        xatoEl.className = 'text-[10px] text-cyan-300 font-bold text-center';
+        xatoEl.innerText = "Google'ga o'tilmoqda...";
+        xatoEl.classList.remove('hidden');
+    }
 
-    if (chiz()) return;
-    // Kutubxona hali yuklanmagan bo'lsa — yuklaymiz.
-    const s = document.createElement('script');
-    s.src = 'https://accounts.google.com/gsi/client';
-    s.async = true;
-    s.defer = true;
-    s.onload = () => { chiz(); };
-    s.onerror = () => { /* Google ochilmadi — boshqa yo'llar ishlayveradi. */ };
-    document.head.appendChild(s);
+    const u = new URL('https://accounts.google.com/o/oauth2/v2/auth');
+    u.searchParams.set('client_id', GOOGLE_CLIENT_ID);
+    u.searchParams.set('redirect_uri', googleRedirectUri());
+    // id_token — bizga faqat "bu kim" kerak, hisobiga kirish emas.
+    u.searchParams.set('response_type', 'id_token');
+    u.searchParams.set('scope', 'openid email profile');
+    u.searchParams.set('nonce', nonce);
+    u.searchParams.set('state', state);
+    // Har safar hisobni tanlatamiz: bitta kompyuterda ikki ota-ona bo'lishi
+    // mumkin va avtomatik tanlov noto'g'ri hisobga kiritib yuborardi.
+    u.searchParams.set('prompt', 'select_account');
+    window.location.href = u.toString();
 }
 
 /**
- * Google bergan ID tokenni serverga yuboradi.
- *
- * Tokenga MIJOZDA ishonilmaydi va u yerda ochilmaydi ham: server uni
- * Google'ning ochiq kalitlari bilan qayta tekshiradi (imzo, iss, aud,
- * muddati). Bu yerda faqat natijani ko'rsatamiz.
+ * Google'dan qaytganda chaqiriladi: manzilning "#" qismida token bormi.
+ * Sahifa ochilishida bir marta ishlaydi.
  */
-async function handleGoogleCredential(response) {
-    const xatoEl = document.getElementById('googleSignInError');
-    const koRsatXato = (t) => {
-        if (!xatoEl) { alert(t); return; }
-        xatoEl.className = 'text-[10px] text-rose-400 font-bold text-center';
-        xatoEl.innerText = t;
-        xatoEl.classList.remove('hidden');
+async function googleQaytishniTekshir() {
+    const hash = window.location.hash || '';
+    if (hash.indexOf('id_token=') < 0 && hash.indexOf('error=') < 0) return false;
+
+    const q = new URLSearchParams(hash.replace(/^#/, ''));
+    const tozala = () => {
+        try {
+            const u = new URL(window.location.href);
+            u.hash = '';
+            u.searchParams.delete('mode');
+            window.history.replaceState({}, '', u.toString());
+        } catch (e) {}
     };
-    if (xatoEl) xatoEl.classList.add('hidden');
+    const ayt = (t, rang) => {
+        const el = document.getElementById('googleSignInError');
+        if (!el) { alert(t); return; }
+        el.className = 'text-[10px] font-bold text-center ' + (rang || 'text-rose-400');
+        el.innerText = t;
+        el.classList.remove('hidden');
+    };
 
-    const idToken = response && response.credential;
-    if (!idToken) { koRsatXato("Google javob bermadi. Qayta urinib ko'ring."); return; }
-
-    // Tarmoq sekin bo'lsa ham foydalanuvchi bir narsa ko'rsin: jim turgan
-    // tugma "ishlamadi" degan taassurot qoldiradi.
-    if (xatoEl) {
-        xatoEl.classList.remove('hidden');
-        xatoEl.className = 'text-[10px] text-cyan-300 font-bold text-center';
-        xatoEl.innerText = 'Tekshirilmoqda...';
+    if (q.get('error')) {
+        tozala();
+        const e = q.get('error');
+        ayt(e === 'access_denied'
+            ? "Kirish bekor qilindi."
+            : "Google xatosi: " + e + ". " + (q.get('error_description') || ''));
+        return true;
     }
+
+    const idToken = q.get('id_token');
+    const state = q.get('state');
+    let kutilgan = null, nonce = null;
+    try {
+        kutilgan = sessionStorage.getItem('google_state');
+        nonce = sessionStorage.getItem('google_nonce');
+        sessionStorage.removeItem('google_state');
+        sessionStorage.removeItem('google_nonce');
+    } catch (e) {}
+
+    // state mos kelmasa — bu so'rovni biz boshlamaganmiz.
+    if (kutilgan && state && state !== kutilgan) {
+        tozala();
+        ayt("Xavfsizlik tekshiruvi o'tmadi. Qayta urinib ko'ring.");
+        return true;
+    }
+
+    ayt("Tekshirilmoqda...", 'text-cyan-300');
 
     let d = null;
     try {
         const resp = await fetch(QALQON_BOT_FN, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ type: 'google_login', idToken })
+            body: JSON.stringify({ type: 'google_login', idToken: idToken, nonce: nonce })
         });
         d = await resp.json();
     } catch (e) {
-        koRsatXato("Internet yo'q. Qayta urinib ko'ring.");
-        return;
+        tozala();
+        ayt("Internet yo'q. Qayta urinib ko'ring.");
+        return true;
     }
 
     if (!d || !d.ok || !d.sessionToken) {
-        koRsatXato((d && d.error) || "Kirish amalga oshmadi.");
-        return;
+        tozala();
+        ayt((d && d.error) || "Kirish amalga oshmadi.");
+        return true;
     }
 
-    try { localStorage.setItem('web_session_token', d.sessionToken); } catch (e) {}
-    if (d.familyCode) {
-        // Kalit nomi 'parent_family_code' bo'lishi SHART: panel oila kodini
-        // shu nomdan o'qiydi (resolveInitialFamilyCode). Men uni avval
-        // 'qalqon_family_code' deb yozgan edim — o'sha nomni hech kim
-        // o'qimasdi, ya'ni kod saqlanмаganday bo'lardi.
-        try { localStorage.setItem('parent_family_code', d.familyCode); } catch (e) {}
-    }
+    try {
+        localStorage.setItem('web_session_token', d.sessionToken);
+        if (d.familyCode) localStorage.setItem('parent_family_code', d.familyCode);
+    } catch (e) {}
 
-    // Telegram ulanmagan bo'lsa, buni JIM O'TKAZIB YUBORMAYMIZ: SOS va
-    // ogohlantirishlar ota-onaga Telegram orqali boradi, ulanmagan bo'lsa
-    // ular yetib bormaydi. Buni bilmagan ota-ona xabar keladi deb kutadi.
     if (d.telegramLinked === false) {
         const m = "✅ Kirdingiz.\n\n⚠️ Muhim: shoshilinch xabarlar (SOS) Telegram orqali keladi. " +
                   "Ularni olish uchun botni ham ulang: @qalqon_aibot";
         if (tg && tg.showAlert) tg.showAlert(m); else alert(m);
     }
 
-    kirgandanKeyinOt();
+    // Manzilda "#" ham, mode=login ham qolmasin: aks holda kirish oynasi
+    // qaytadan ochilardi.
+    try {
+        const u = new URL(window.location.href);
+        u.hash = '';
+        u.searchParams.delete('mode');
+        window.location.replace(u.toString());
+    } catch (e) {
+        window.location.reload();
+    }
+    return true;
 }
 
 function showEntryError(errorEl, text) {

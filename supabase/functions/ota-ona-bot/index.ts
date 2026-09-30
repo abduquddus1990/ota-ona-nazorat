@@ -1037,7 +1037,11 @@ type GoogleUser = { sub: string; email: string; name: string; emailVerified: boo
  * Biror shart bajarilmasa — null. Sababi logga yoziladi, mijozga emas:
  * tafsilot hujumchiga yordam beradi.
  */
-async function verifyGoogleIdToken(idToken: string, clientId: string): Promise<GoogleUser | null> {
+async function verifyGoogleIdToken(
+  idToken: string,
+  clientId: string,
+  kutilganNonce?: string | null
+): Promise<GoogleUser | null> {
   const parts = String(idToken || "").split(".");
   if (parts.length !== 3) return null;
 
@@ -1087,6 +1091,17 @@ async function verifyGoogleIdToken(idToken: string, clientId: string): Promise<G
   if (!Number.isFinite(Number(claims.exp)) || Number(claims.exp) <= now) {
     console.error("google_login: muddati o'tgan");
     return null;
+  }
+
+  // nonce — qayta ishlatishga qarshi. Mijoz har kirishda tasodifiy satr
+  // yasab Google'ga beradi va o'shani bizga ham yuboradi; Google uni
+  // tokenning ichiga yozadi. Ikkalasi mos kelmasa, bu token boshqa
+  // seansniki — masalan, brauzer tarixidan olingan eski manzil.
+  if (kutilganNonce) {
+    if (String(claims.nonce || "") !== String(kutilganNonce)) {
+      console.error("google_login: nonce mos kelmadi");
+      return null;
+    }
   }
 
   return {
@@ -6552,7 +6567,11 @@ async function handleRequest(req: Request): Promise<Response> {
         return jsonRes({ ok: false, error: "Juda ko'p urinish. Keyinroq qayta urinib ko'ring." }, 429);
       }
 
-      const g = await verifyGoogleIdToken(String(payload.idToken || ""), clientId);
+      const g = await verifyGoogleIdToken(
+        String(payload.idToken || ""),
+        clientId,
+        payload.nonce ? String(payload.nonce) : null
+      );
       if (!g || !g.sub) {
         await recordJoinAttempt(actorKey, "", false);
         return jsonRes({ ok: false, error: "Google tasdiqlamadi. Qayta urinib ko'ring." }, 401);
