@@ -7209,7 +7209,17 @@ async function handleRequest(req: Request): Promise<Response> {
         // qachon yozilmagan, ya'ni eski oilalarga bildirishnoma (SOS, geo,
         // kunlik xulosa) yubora olmasdik. Panel har ochilganda shu yerda
         // jimgina tiklanadi.
-        if (data && data[0] && !data[0].parent_telegram_id) {
+        // FAQAT haqiqiy Telegram hisobidan. Google orqali kirgan ota-onada
+        // Telegram ID yo'q va aktorda u 0 bo'lib keladi — o'shani yozib
+        // qo'ysak, maydon to'ldirilgandek ko'rinadi, lekin 0 ga xabar
+        // yuborib bo'lmaydi. Jonli holatda aynan shunday bo'ldi: yozuvda
+        // 0 turardi va SOS "yetkazilmadi" bo'lib adminga tushdi.
+        if (
+          actor!.kind === "telegram" &&
+          Number.isFinite(actor!.telegramId) &&
+          actor!.telegramId > 0 &&
+          data && data[0] && !data[0].parent_telegram_id
+        ) {
           await db
             .from("parent_registrations")
             .update({ parent_telegram_id: actor!.telegramId })
