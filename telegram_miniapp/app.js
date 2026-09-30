@@ -804,6 +804,20 @@ function showWebLogin(show) {
  * o'tiladi.
  */
 function kirgandanKeyinOt() {
+    // Eski rol xotirasini tozalaymiz.
+    //
+    // currentAppRole ishga tushganda localStorage'dagi 'app_role' dan
+    // o'qiladi. O'sha brauzerda ilgari farzand sifatida kirilgan bo'lsa
+    // (sinov paytida yoki oiladagi boshqa odam), yangi hisob bilan
+    // kirilgandan keyin ham panel FARZAND rejimida ochilaverardi.
+    //
+    // Jonli holatda bu shunday tugadi: ota-ona Google bilan kirdi, oldiga
+    // farzand paneli chiqdi, u SOS tugmasini bosdi — va bot "SOS
+    // yetkazilmadi" deb ogohlantirdi. Rol yangi seansda serverdan qayta
+    // aniqlanishi shart.
+    try {
+        localStorage.removeItem('app_role');
+    } catch (e) {}
     try {
         const u = new URL(window.location.href);
         u.searchParams.delete('mode');
@@ -5108,8 +5122,16 @@ async function fetchAndApplyRole() {
             // uchun server tabiiy ravishda "parent" deydi, chunki uning
             // child_pairings'da yozuvi yo'q — aks holda u rozilik oynasini
             // umuman ko'rmay, ota-ona panelini ochib yuborardi.
+            const oldingi = currentAppRole;
             currentAppRole = 'parent';
             localStorage.setItem('app_role', 'parent');
+            // Ekran allaqachon farzand rejimida chizilgan bo'lsa, uni shu
+            // yerda to'g'rilaymiz. Ilgari faqat o'zgaruvchi yangilanardi,
+            // ekran esa farzand panelida qolib ketardi — va ota-ona SOS
+            // tugmasini ko'rib turardi.
+            if (oldingi === 'child' && typeof switchAppRole === 'function') {
+                switchAppRole('parent');
+            }
         }
     } catch (e) {
         console.error('check_role sorovida xato:', e);
