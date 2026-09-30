@@ -1098,41 +1098,60 @@ async function verifyGoogleIdToken(idToken: string, clientId: string): Promise<G
 }
 
 /**
- * Telegram ID'siz ota-ona uchun oila kodini band qiladi.
+ * Telegram ID'siz (Google orqali kirgan) ota-ona uchun oila ochadi.
  *
- * claimFamilyCode() Telegram ID (son) bilan ishlaydi; Google orqali kirgan
- * ota-onada bunday son yo'q. Shuning uchun kalit matn ko'rinishida
- * saqlanadi (family_code_overrides.owner_key) va kod tasodifiy tanlanadi.
- * UNIQUE cheklovi tufayli ikki odam bir kodni ololmaydi.
+ * Nega alohida yo'l: family_code_overrides jadvalining BIRLAMCHI KALITI —
+ * parent_telegram_id. Google orqali kirgan ota-onada bunday son yo'q, ya'ni
+ * u jadvalga yozib bo'lmaydi. Birinchi urinishimda aynan shu sabab
+ * "Oila kodi berilmadi" xatosi chiqdi.
+ *
+ * Aslida override yozuvi bu yerda umuman kerak emas. Override — hisoblangan
+ * kodni BOSHQA kodga almashtirish uchun; Google ota-onasida hisoblangan kod
+ * yo'q, shuning uchun to'g'ridan-to'g'ri bo'sh kod tanlanadi.
+ *
+ * To'qnashuvni oldindan "band emasmi" deb tekshirish bilan emas, bazaning
+ * O'ZI bilan hal qilamiz: parent_registrations.family_code ustunida UNIQUE
+ * indeks bor, shuning uchun ikki so'rov bir vaqtda bir kodni olsa,
+ * ikkinchisi xato oladi va boshqa kod bilan qayta uriniladi. Oldindan
+ * tekshirish bu poygani yopa olmaydi — tekshiruv bilan yozuv orasida
+ * boshqa so'rov o'sha kodni olib ulgurishi mumkin.
  */
-async function claimFamilyCodeForKey(ownerKey: string): Promise<string | null> {
+async function createGoogleFamily(
+  googleSub: string,
+  name: string,
+  email: string
+): Promise<string | null> {
   if (!db) return null;
-
-  const { data: mine } = await db
-    .from("family_code_overrides")
-    .select("family_code")
-    .eq("owner_key", ownerKey)
-    .limit(1);
-  if (mine && mine[0]) return mine[0].family_code;
 
   for (let i = 0; i < 12; i++) {
     const candidate = String(
       Math.abs(crypto.getRandomValues(new Uint32Array(1))[0] % 900000) + 100000
     ).padStart(6, "0");
 
-    const { data: used } = await db
-      .from("parent_registrations")
-      .select("family_code")
-      .eq("family_code", candidate)
-      .limit(1);
-    if (used && used[0]) continue;
+    const { error } = await db.from("parent_registrations").insert({
+      family_code: candidate,
+      parent_name: name || "Ota-ona",
+      parent_email: email,
+      google_sub: googleSub,
+      // Telegram ID yo'q: bu ota-ona hali botga ulanmagan.
+      parent_telegram_id: null,
+      status: "approved",
+    });
 
-    const { error } = await db
-      .from("family_code_overrides")
-      .insert({ owner_key: ownerKey, family_code: candidate });
     if (!error) return candidate;
+
+    // 23505 — UNIQUE buzildi. family_code band bo'lsa boshqasini sinaymiz;
+    // google_sub band bo'lsa, demak hisob shu orada boshqa so'rov
+    // tomonidan ochilgan — qayta urinishning ma'nosi yo'q.
+    if (error.code === "23505" && /google_sub/.test(error.message || "")) {
+      return null;
+    }
+    if (error.code !== "23505") {
+      console.error("createGoogleFamily: yozib bo'lmadi:", error.message);
+      return null;
+    }
   }
-  console.error("claimFamilyCodeForKey: bo'sh kod topilmadi");
+  console.error("createGoogleFamily: bo'sh kod topilmadi");
   return null;
 }
 
@@ -6590,26 +6609,24 @@ async function handleRequest(req: Request): Promise<Response> {
       // 3) Hali ham yo'q — yangi oila.
       let yangi = false;
       if (!row) {
-        const familyCode = await claimFamilyCodeForKey("google:" + g.sub);
-        if (!familyCode) return jsonRes({ ok: false, error: "Oila kodi berilmadi." }, 500);
-
-        const { error: insErr } = await db.from("parent_registrations").insert({
-          family_code: familyCode,
-          parent_name: g.name || "Ota-ona",
-          parent_email: g.email,
-          google_sub: g.sub,
-          // Telegram ID yo'q: bu ota-ona hali botga ulanmagan. Shu sababli
-          // SOS va ogohlantirishlar unga Telegram orqali BORMAYDI — buni
-          // javobda ochiq aytamiz, mijoz esa ekranda ko'rsatadi.
-          parent_telegram_id: null,
-          status: "approved",
-        });
-        if (insErr) {
-          console.error("google_login: oila ochilmadi:", insErr.message);
-          return jsonRes({ ok: false, error: insErr.message }, 500);
+        const familyCode = await createGoogleFamily(g.sub, g.name, g.email);
+        if (!familyCode) {
+          // Ayni paytda boshqa so'rov shu hisobni ochib ulgurgan bo'lishi
+          // mumkin — o'shanda hisob bor, qaytadan o'qiymiz.
+          const { data: retry } = await db
+            .from("parent_registrations")
+            .select("family_code, parent_telegram_id, status")
+            .eq("google_sub", g.sub)
+            .limit(1);
+          if (retry && retry[0]) {
+            row = retry[0];
+          } else {
+            return jsonRes({ ok: false, error: "Oila ochilmadi. Qayta urinib ko'ring." }, 500);
+          }
+        } else {
+          row = { family_code: familyCode, parent_telegram_id: null, status: "approved" };
+          yangi = true;
         }
-        row = { family_code: familyCode, parent_telegram_id: null, status: "approved" };
-        yangi = true;
       }
 
       await recordJoinAttempt(actorKey, row.family_code, true);
