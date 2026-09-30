@@ -7949,6 +7949,114 @@ async function handleRequest(req: Request): Promise<Response> {
     // ota-ona o'z farzandining ismi ostida o'ylab topilgan raqamlarni
     // ko'rardi. Endi hammasi bazadan; ma'lumot bo'lmasa — "ma'lumot yo'q",
     // to'qib chiqarilgan raqam emas.
+    // Oilaga ulangan qurilmalar ro'yxati (ota-ona uchun).
+    //
+    // Nega kerak: ota-ona farzandining telefoniga nima ulanganini ko'ra
+    // olmasdi va uzib qo'ya olmasdi. device_tokens jadvalida is_active va
+    // revoked_at ustunlari BOR edi, lekin ularni ishlatadigan birorta
+    // endpoint ham, tugma ham yo'q edi.
+    //
+    // Bu shunchaki qulaylik emas: Play Market'ning kuzatuv ilovalari
+    // siyosati ham, bizning o'z tamoyilimiz ham kuzatuv KO'RINIB turishini
+    // talab qiladi — kim, qaysi telefondan, qachondan beri ulangan.
+    if (payload.type === "list_devices") {
+      if (actor!.kind !== "telegram") return unauthorized("Faqat ota-ona");
+      if (!db) return jsonRes({ ok: true, devices: [] });
+
+      const familyCode = await resolveActorFamily(actor!);
+      const { data, error } = await db
+        .from("device_tokens")
+        .select("id, child_id, device_label, device_model, created_at, last_used_at")
+        .eq("family_code", familyCode)
+        .eq("is_active", true)
+        .order("created_at", { ascending: false })
+        .limit(50);
+
+      if (error) {
+        console.error("list_devices:", error.message);
+        return jsonRes({ ok: false, error: error.message }, 500);
+      }
+
+      // Farzand ismini juftlikdan olamiz: device_label eskirgan bo'lishi
+      // mumkin (ulanish paytidagi nom yoziladi va keyin o'zgarmaydi).
+      const { data: kids } = await db
+        .from("child_pairings")
+        .select("child_id, child_name")
+        .eq("family_code", familyCode);
+      const nomlar = new Map<string, string>();
+      for (const k of kids || []) nomlar.set(k.child_id, k.child_name || "");
+
+      return jsonRes({
+        ok: true,
+        devices: (data || []).map((d: any) => ({
+          id: d.id,
+          childId: d.child_id,
+          childName: nomlar.get(d.child_id) || d.device_label || "Farzand",
+          model: d.device_model || "Android",
+          pairedAt: d.created_at,
+          lastSeenAt: d.last_used_at,
+        })),
+      });
+    }
+
+    // Qurilmani uzish (ota-ona).
+    //
+    // Uzilgan qurilma darhol ishlamay qoladi: qurilma autentifikatsiyasi
+    // faqat is_active = true kalitlarni qabul qiladi.
+    if (payload.type === "revoke_device") {
+      if (actor!.kind !== "telegram") return unauthorized("Faqat ota-ona");
+      if (!db) return jsonRes({ ok: false, error: "Baza ulanmagan" }, 500);
+
+      const id = String(payload.deviceId || "").trim();
+      if (!id) return jsonRes({ ok: false, error: "deviceId majburiy" }, 400);
+
+      const familyCode = await resolveActorFamily(actor!);
+
+      // O'z oilasiniki ekanini ALOHIDA tekshiramiz: aks holda id'ni bilgan
+      // boshqa ota-ona begona oilaning qurilmasini uzib qo'yishi mumkin
+      // edi. Faqat update'dagi family_code sharti ham yetarli, lekin
+      // shunda "topilmadi" va "sizniki emas" farqlanmasdi.
+      const { data: own } = await db
+        .from("device_tokens")
+        .select("id, child_id")
+        .eq("id", id)
+        .eq("family_code", familyCode)
+        .limit(1);
+      if (!own || !own[0]) {
+        return jsonRes({ ok: false, error: "Bunday qurilma topilmadi" }, 404);
+      }
+
+      const { error } = await db
+        .from("device_tokens")
+        .update({ is_active: false, revoked_at: new Date().toISOString() })
+        .eq("id", id)
+        .eq("family_code", familyCode);
+
+      if (error) {
+        console.error("revoke_device:", error.message);
+        return jsonRes({ ok: false, error: error.message }, 500);
+      }
+
+      // Farzandga xabar beramiz. Jimgina uzib qo'yish ishonchni buzadi va
+      // bola nima uchun ilova ishlamay qolganini bilmay qoladi.
+      const childId = own[0].child_id;
+      if (childId && childId.startsWith("tg_")) {
+        const tgId = Number(childId.slice(3));
+        if (Number.isFinite(tgId) && tgId > 0) {
+          try {
+            await sendMessage(
+              tgId,
+              "ℹ️ <b>Qurilma uzildi.</b>\n\nOta-onang bu telefonni Qalqon'dan uzdi. Ilova endi joylashuv va ekran vaqtini yubormaydi. Qayta ulash uchun ota-onangdan yangi kod so'ra."
+            );
+          } catch (e) {
+            console.error("revoke_device: farzandga xabar bormadi:", e);
+          }
+        }
+      }
+
+      return jsonRes({ ok: true });
+    }
+
     if (payload.type === "child_overview") {
       if (actor!.kind !== "telegram") return unauthorized("Faqat ota-ona");
       if (!db) return jsonRes({ ok: true, hasData: false });
@@ -8540,6 +8648,22 @@ async function handleRequest(req: Request): Promise<Response> {
         `android_${row.family_code}_${deviceModel}`.replace(/\s+/g, "_");
 
       // Tokenning O'ZI saqlanmaydi — faqat hash'i.
+      // Bitta farzand — bitta telefon.
+      //
+      // Ilgari har juftlash YANGI kalit qo'shardi, eskisi esa faol qolardi.
+      // Jonli bazada shu ko'rindi: farzandning 27-sentabrda O'CHIRIB
+      // TASHLANGAN ilovasining kaliti hali ham faol turardi — ya'ni o'sha
+      // telefon xotirasi tiklansa, u hali ham uning nomidan joylashuv
+      // yubora olardi. Endi yangi qurilma ulanishi bilan eskilari bekor
+      // qilinadi.
+      const { error: revErr } = await db
+        .from("device_tokens")
+        .update({ is_active: false, revoked_at: new Date().toISOString() })
+        .eq("family_code", row.family_code)
+        .eq("child_id", childId)
+        .eq("is_active", true);
+      if (revErr) console.error("device_pair: eski kalitlar bekor qilinmadi:", revErr.message);
+
       const { error: tokErr } = await db.from("device_tokens").insert({
         token_hash: await sha256Hex(token),
         family_code: row.family_code,
