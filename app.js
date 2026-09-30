@@ -764,12 +764,22 @@ function hasAnyIdentity() {
 // manzilning "#" qismida keladi va uni birinchi bo'lib ushlash kerak,
 // aks holda kirish oynasi ochilib, foydalanuvchi qaytadan bosaverardi.
 (function googleQaytishiniKuzat() {
-    const ishga = () => { try { googleQaytishniTekshir(); } catch (e) {} };
+    const ishga = () => {
+        try {
+            const p = googleQaytishniTekshir();
+            if (p && p.catch) p.catch((e) => console.error('google qaytish:', e));
+        } catch (e) { console.error('google qaytish:', e); }
+    };
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', ishga);
     } else {
         ishga();
     }
+    // Manzilning faqat "#" qismi o'zgarsa brauzer sahifani QAYTA
+    // YUKLAMAYDI va DOMContentLoaded ikkinchi marta ishlamaydi. Google
+    // odatda to'liq yuklanish bilan qaytaradi, lekin orqaga/oldinga
+    // tugmalari yoki tarixdagi manzil shu holatni yuzaga keltiradi.
+    window.addEventListener('hashchange', ishga);
 })();
 
 function showWebLogin(show) {
