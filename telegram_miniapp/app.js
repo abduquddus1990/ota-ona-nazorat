@@ -1122,13 +1122,60 @@ function initGoogleSignIn() {
             client_id: GOOGLE_CLIENT_ID,
             callback: handleGoogleCredential,
             auto_select: false,
-            cancel_on_tap_outside: true
+            cancel_on_tap_outside: true,
+            use_fedcm_for_prompt: true
         });
         google.accounts.id.renderButton(host, {
             theme: 'filled_blue', size: 'large', shape: 'pill',
             text: 'continue_with', locale: 'uz', width: 280
         });
         block.classList.remove('hidden');
+
+        // Zaxira yo'l.
+        //
+        // Google tugmasi bosilgandan keyin JIM qolishi mumkin: brauzer
+        // qalqib chiquvchi oynani bloklasa yoki Chrome'ning "uchinchi tomon
+        // orqali kirish" sozlamasi o'chiq bo'lsa, hech qanday xato
+        // ko'rsatilmaydi va foydalanuvchi nima bo'lganini bilmaydi.
+        // Shuning uchun ikkinchi tugma: u Google oynasini boshqa yo'l
+        // (One Tap) bilan ochadi va ochilmasa — SABABINI ekranga yozadi.
+        const zaxira = document.getElementById('googleFallbackBtn');
+        if (zaxira && !zaxira.dataset.ulandi) {
+            zaxira.dataset.ulandi = '1';
+            zaxira.addEventListener('click', () => {
+                const xatoEl = document.getElementById('googleSignInError');
+                const ayt = (t) => {
+                    if (!xatoEl) { alert(t); return; }
+                    xatoEl.innerText = t;
+                    xatoEl.classList.remove('hidden');
+                };
+                if (xatoEl) xatoEl.classList.add('hidden');
+                try {
+                    google.accounts.id.prompt((n) => {
+                        // FedCM yoqilganda bu obyektning maydonlari boshqa,
+                        // shuning uchun ikkalasini ham tekshiramiz.
+                        let sabab = '';
+                        try {
+                            if (n && n.isNotDisplayed && n.isNotDisplayed()) sabab = n.getNotDisplayedReason();
+                            else if (n && n.isSkippedMoment && n.isSkippedMoment()) sabab = n.getSkippedReason();
+                            else if (n && n.isDismissedMoment && n.isDismissedMoment()) sabab = n.getDismissedReason();
+                        } catch (e) { sabab = String((n && n.type) || ''); }
+                        if (!sabab || sabab === 'credential_returned') return;
+                        const izoh = {
+                            opt_out_or_no_session: "Bu brauzerda Google hisobingizga kirilmagan. Avval google.com ga kiring.",
+                            suppressed_by_user: "Siz ilgari bu oynani yopgansiz — Google uni vaqtincha ko'rsatmayapti. Boshqa brauzerda yoki yashirin oynada urinib ko'ring.",
+                            unregistered_origin: "Sayt manzili Google sozlamasida ro'yxatdan o'tmagan.",
+                            browser_not_supported: "Brauzer qo'llab-quvvatlamaydi.",
+                            secure_http_required: "HTTPS talab qilinadi.",
+                            missing_client_id: "Client ID yo'q."
+                        }[sabab];
+                        ayt("Google oynasi ochilmadi (" + sabab + "). " + (izoh || "Yuqoridagi ko'k tugmani sinab ko'ring."));
+                    });
+                } catch (e) {
+                    ayt("Google ochilmadi: " + (e && e.message ? e.message : e));
+                }
+            });
+        }
         return true;
     };
 
@@ -1154,6 +1201,7 @@ async function handleGoogleCredential(response) {
     const xatoEl = document.getElementById('googleSignInError');
     const koRsatXato = (t) => {
         if (!xatoEl) { alert(t); return; }
+        xatoEl.className = 'text-[10px] text-rose-400 font-bold text-center';
         xatoEl.innerText = t;
         xatoEl.classList.remove('hidden');
     };
@@ -1161,6 +1209,14 @@ async function handleGoogleCredential(response) {
 
     const idToken = response && response.credential;
     if (!idToken) { koRsatXato("Google javob bermadi. Qayta urinib ko'ring."); return; }
+
+    // Tarmoq sekin bo'lsa ham foydalanuvchi bir narsa ko'rsin: jim turgan
+    // tugma "ishlamadi" degan taassurot qoldiradi.
+    if (xatoEl) {
+        xatoEl.classList.remove('hidden');
+        xatoEl.className = 'text-[10px] text-cyan-300 font-bold text-center';
+        xatoEl.innerText = 'Tekshirilmoqda...';
+    }
 
     let d = null;
     try {
