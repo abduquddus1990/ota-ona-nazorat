@@ -7959,6 +7959,68 @@ async function handleRequest(req: Request): Promise<Response> {
     // Bu shunchaki qulaylik emas: Play Market'ning kuzatuv ilovalari
     // siyosati ham, bizning o'z tamoyilimiz ham kuzatuv KO'RINIB turishini
     // talab qiladi — kim, qaysi telefondan, qachondan beri ulangan.
+    // Telegramni oilaga bog'lash uchun qisqa kod (ota-ona panelidan).
+    //
+    // Google bilan ochilgan oilada parent_telegram_id bo'sh bo'ladi va SOS
+    // hech qayerga yetmaydi. Bu yerda kod beriladi, ota-ona botdagi
+    // havolani bosadi, bot esa o'z Telegram ID'sini shu oilaga yozadi.
+    if (payload.type === "link_telegram_start") {
+      if (actor!.kind !== "telegram") return unauthorized("Faqat ota-ona");
+      if (!db) return jsonRes({ ok: false, error: "Baza ulanmagan" }, 500);
+
+      const familyCode = await resolveActorFamily(actor!);
+      const { data: reg } = await db
+        .from("parent_registrations")
+        .select("parent_telegram_id")
+        .eq("family_code", familyCode)
+        .limit(1);
+
+      const bor = reg && reg[0] && Number(reg[0].parent_telegram_id) > 0;
+      if (bor) {
+        return jsonRes({ ok: true, alreadyLinked: true });
+      }
+
+      const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+      const bytes = crypto.getRandomValues(new Uint8Array(8));
+      const code = Array.from(bytes).map((b) => alphabet[b % alphabet.length]).join("");
+
+      const { error } = await db.from("parent_pair_codes").insert({
+        code,
+        family_code: familyCode,
+        parent_telegram_id: null,
+        purpose: "tg_link",
+        expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+      });
+      if (error) {
+        console.error("link_telegram_start:", error.message);
+        return jsonRes({ ok: false, error: error.message }, 500);
+      }
+
+      return jsonRes({
+        ok: true,
+        alreadyLinked: false,
+        code,
+        deepLink: `https://t.me/qalqon_aibot?start=tglink_${code}`,
+        expiresInSec: 900,
+      });
+    }
+
+    // Telegram bog'landimi — panel shuni so'rab turadi.
+    if (payload.type === "link_telegram_status") {
+      if (actor!.kind !== "telegram") return unauthorized("Faqat ota-ona");
+      if (!db) return jsonRes({ ok: true, linked: false });
+      const familyCode = await resolveActorFamily(actor!);
+      const { data } = await db
+        .from("parent_registrations")
+        .select("parent_telegram_id")
+        .eq("family_code", familyCode)
+        .limit(1);
+      return jsonRes({
+        ok: true,
+        linked: !!(data && data[0] && Number(data[0].parent_telegram_id) > 0),
+      });
+    }
+
     if (payload.type === "list_devices") {
       if (actor!.kind !== "telegram") return unauthorized("Faqat ota-ona");
       if (!db) return jsonRes({ ok: true, devices: [] });
@@ -8728,6 +8790,10 @@ async function handleRequest(req: Request): Promise<Response> {
         .from("parent_pair_codes")
         .select("code, family_code, parent_telegram_id, expires_at, used_at")
         .eq("code", code)
+        // Faqat ilovaga kirish kodlari. Telegramni bog'lash kodi ham shu
+        // jadvalda yotadi; uni bu yerda qabul qilsak, kodni bilgan odam
+        // oilaga KIRIB oladi — holbuki kod boshqa maqsad uchun berilgan.
+        .eq("purpose", "app_login")
         .limit(1);
 
       const row = data && data[0];
@@ -9424,6 +9490,89 @@ async function handleRequest(req: Request): Promise<Response> {
         // beradi, shuning uchun bot farzandga birinchi bo'lib yoza olmaydi.
         // Havola bosilishi /start ni yuboradi — aynan shu payt bot unga
         // yozish huquqiga ega bo'ladi va kodni o'zi yetkazadi.
+        // Telegramni Google orqali ochilgan oilaga bog'lash.
+        //
+        // Panel qisqa kod beradi, ota-ona havolani bosadi va bot aynan shu
+        // yerda uning Telegram ID'sini o'sha oilaga yozadi. Shundan keyin
+        // SOS, geo-ogohlantirish va kunlik xulosa unga yetib boradi —
+        // ungacha ular hech qayerga bormasdi.
+        const tgLinkMatch = text.match(/tglink_([A-Za-z0-9]{4,16})/);
+        if (tgLinkMatch && db) {
+          const linkCode = tgLinkMatch[1].toUpperCase();
+          const { data: lc } = await db
+            .from("parent_pair_codes")
+            .select("code, family_code, expires_at, used_at")
+            .eq("code", linkCode)
+            .eq("purpose", "tg_link")
+            .limit(1);
+          const row = lc && lc[0];
+          const yaroqli =
+            row && !row.used_at && new Date(row.expires_at).getTime() > Date.now();
+
+          if (!yaroqli) {
+            await sendMessage(
+              chatId,
+              "⌛️ <b>Bu havola eskirgan.</b>\n\nPanelga qayting va «Telegramni ulash» tugmasini qaytadan bosing — yangi havola 15 daqiqa amal qiladi."
+            );
+            return new Response("ok");
+          }
+
+          // Bu Telegram hisobi allaqachon O'Z oilasiga egami.
+          //
+          // Ikki oilani birlashtirish bu yerda qilinmaydi: har ikkalasida
+          // ham farzandlar, ballar va tarix bo'lishi mumkin, va ularni
+          // jimgina qo'shib yuborish ma'lumotni chalkashtiradi. Shuning
+          // uchun ochiq aytamiz.
+          const { data: oz } = await db
+            .from("parent_registrations")
+            .select("family_code")
+            .eq("parent_telegram_id", chatId)
+            .limit(1);
+          if (oz && oz[0] && oz[0].family_code !== row.family_code) {
+            await sendMessage(
+              chatId,
+              "⚠️ <b>Bu Telegram hisobi boshqa oilaga bog'langan</b> (kod: <code>" +
+                oz[0].family_code +
+                "</code>).\n\nIkki oilani avtomatik birlashtirmaymiz — ikkalasida ham farzandlar va tarix bo'lishi mumkin.\n\nAgar ikkalasi ham sizniki bo'lsa, panelga <b>Telegram orqali</b> kiring: u yerda hamma farzandlaringiz ko'rinadi."
+            );
+            return new Response("ok");
+          }
+
+          // Oilaga allaqachon boshqa Telegram bog'langanmi.
+          const { data: fam } = await db
+            .from("parent_registrations")
+            .select("parent_telegram_id")
+            .eq("family_code", row.family_code)
+            .limit(1);
+          if (fam && fam[0] && Number(fam[0].parent_telegram_id) > 0 &&
+              Number(fam[0].parent_telegram_id) !== chatId) {
+            await sendMessage(
+              chatId,
+              "⚠️ <b>Bu oilaga allaqachon boshqa Telegram hisobi bog'langan.</b>\n\nO'zgartirish kerak bo'lsa, avval o'sha hisobdan kiring."
+            );
+            return new Response("ok");
+          }
+
+          await db
+            .from("parent_registrations")
+            .update({ parent_telegram_id: chatId })
+            .eq("family_code", row.family_code);
+          await db
+            .from("parent_pair_codes")
+            .update({ used_at: new Date().toISOString(), parent_telegram_id: chatId })
+            .eq("code", linkCode);
+
+          await sendMessage(
+            chatId,
+            "✅ <b>Telegram ulandi.</b>\n\nEndi shoshilinch xabarlar shu yerga keladi:\n" +
+              "🆘 farzandingiz SOS bossa\n" +
+              "📍 xavfsiz hududdan chiqsa\n" +
+              "📊 kunlik xulosa\n\n" +
+              "Panelni yangilang — u yerda ham «ulangan» deb ko'rinadi."
+          );
+          return new Response("ok");
+        }
+
         const invMatch = text.match(/inv_([A-Za-z0-9]{4,16})/);
         if (invMatch) {
           const invCode = invMatch[1].toUpperCase();
