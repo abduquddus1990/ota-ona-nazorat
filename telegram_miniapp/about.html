@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Loyiha haqida · About — Qalqon AI</title>
+<link rel="stylesheet" href="assets/docs.css?v=1">
+</head>
+<body>
+<div class="wrap">
+
+  <div class="langbar">
+    <button type="button" data-set="uz" aria-pressed="false">O‘zbekcha</button>
+    <button type="button" data-set="ru" aria-pressed="false">Русский</button>
+    <button type="button" data-set="en" aria-pressed="false">English</button>
+  </div>
+
+<!-- ====================================================== O'ZBEKCHA -->
+<div data-lang="uz">
+  <h1>Qalqon AI — loyiha haqida</h1>
+  <div class="sub">Oilaviy xavfsizlik, ekran vaqti muvozanati va AI repetitor</div>
+
+  <h2>Muammo</h2>
+  <p>
+    Ota-ona ikki narsani bilmay xavotirlanadi: farzandi <b>qayerda</b> va
+    telefonda <b>nima qilyapti</b>. Mavjud yechimlarning ko‘pi yo juda qimmat,
+    yo o‘zbek tilida emas, yo bolaning bexabarligiga qurilgan — bu esa oiladagi
+    ishonchni buzadi.
+  </p>
+
+  <h2>Bizning yondashuvimiz</h2>
+  <div class="card good">
+    <p>
+      <b>Yashirin kuzatuv emas, ochiq kelishuv.</b> Farzand ilova borligini
+      biladi, nima yuborilayotganini ko‘ra oladi va istalgan payt ulanishni
+      uza oladi. Shuning uchun ilova bolaga ham foyda beradi: AI repetitor,
+      ball va mukofot tizimi, bir bosishda ota-onaga xabar.
+    </p>
+  </div>
+
+  <h2>Ilova nimalardan iborat</h2>
+  <table>
+    <tr><th>Bo‘lim</th><th>Nima qiladi</th></tr>
+    <tr><td><b>Radar</b></td><td>Farzand qayerda — xaritada, o‘lchangan vaqti bilan. Kun marshruti.</td></tr>
+    <tr><td><b>Xavfsiz hududlar</b></td><td>Uy va maktab belgilanadi. Kirgan-chiqqanida ota-onaga xabar.</td></tr>
+    <tr><td><b>Ekran vaqti</b></td><td>Bugun qaysi ilovada qancha vaqt o‘tgani.</td></tr>
+    <tr><td><b>Qurilma holati</b></td><td>Batareya, ruxsatlar, aloqa. Nimadir ishlamasa — sababini aytadi.</td></tr>
+    <tr><td><b>AI repetitor</b></td><td>1–11-sinf darsliklari bo‘yicha savol-javob. Tayyor javob bermaydi — savol berib, o‘zi topishga yo‘naltiradi.</td></tr>
+    <tr><td><b>SOS va tezkor xabar</b></td><td>Bola bir tugma bilan “maktabdaman”, “uydaman”, “olib keting” yoki SOS yuboradi.</td></tr>
+    <tr><td><b>Ball tizimi</b></td><td>Fokus seanslari va uy vazifasi uchun ball. Ota-ona ballni haqiqiy mukofotga almashtiradi.</td></tr>
+    <tr><td><b>Oila chati</b></td><td>Faqat oila a‘zolari ko‘radigan yozishmalar.</td></tr>
+    <tr><td><b>O‘yinlar va viktorina</b></td><td>Ota-ona va farzand bellashadigan bilim o‘yinlari.</td></tr>
+    <tr><td><b>Ulangan qurilmalar</b></td><td>Qaysi telefon ulangan, qachondan beri. Istalganini uzish mumkin.</td></tr>
+  </table>
+
+  <h2>Qanday ishlaydi</h2>
+  <ol>
+    <li>Ota-ona Telegram bot yoki Google hisobi orqali ro‘yxatdan o‘tadi</li>
+    <li>Farzand ismini kiritadi — tizim <b>bir martalik kod</b> beradi</li>
+    <li>Farzand telefoniga Qalqon ilovasi o‘rnatiladi va kod kiritiladi</li>
+    <li>Farzand ruxsatlarni ko‘rib, roziligini beradi</li>
+    <li>Ma‘lumot har 15 daqiqada yangilanadi</li>
+  </ol>
+
+  <h2>Texnik asos</h2>
+  <ul>
+    <li><b>Android ilova</b> — Kotlin, fon xizmati va WorkManager</li>
+    <li><b>Server</b> — Supabase Edge Function (Deno), PostgreSQL</li>
+    <li><b>Panel</b> — Telegram Mini App va ilova ichidagi bir xil interfeys</li>
+    <li><b>AI</b> — Google Gemini</li>
+  </ul>
+
+  <h2>Nima qilmaymiz</h2>
+  <div class="card warn">
+    <ul>
+      <li>Yozishmalarni o‘qimaymiz</li>
+      <li>Ekranni suratga olmaymiz va yozmaymiz</li>
+      <li>Mikrofon va kamerani ishlatmaymiz</li>
+      <li>Ikonkani yashirmaymiz</li>
+      <li>Ma‘lumotni sotmaymiz</li>
+    </ul>
+  </div>
+
+  <div class="nav">
+    <a href="privacy-policy.html">Maxfiylik siyosati</a>
+    <a href="terms.html">Foydalanish shartlari</a>
+  </div>
+</div>
+
+<!-- ======================================================== РУССКИЙ -->
+<div data-lang="ru">
+  <h1>Qalqon AI — о проекте</h1>
+  <div class="sub">Безопасность семьи, баланс экранного времени и ИИ-репетитор</div>
+
+  <h2>Проблема</h2>
+  <p>
+    Родителя беспокоят два вопроса: <b>где</b> ребёнок и <b>что</b> он делает
+    в телефоне. Большинство существующих решений либо дороги, либо не
+    переведены на узбекский, либо построены на том, что ребёнок ничего не
+    знает, — а это разрушает доверие в семье.
+  </p>
+
+  <h2>Наш подход</h2>
+  <div class="card good">
+    <p>
+      <b>Не слежка, а открытая договорённость.</b> Ребёнок знает о приложении,
+      видит, что именно отправляется, и может отключиться в любой момент.
+      Поэтому приложение полезно и самому ребёнку: ИИ-репетитор, баллы и
+      награды, сообщение родителям в одно нажатие.
+    </p>
+  </div>
+
+  <h2>Из чего состоит приложение</h2>
+  <table>
+    <tr><th>Раздел</th><th>Что делает</th></tr>
+    <tr><td><b>Радар</b></td><td>Где ребёнок — на карте, с временем измерения. Маршрут за день.</td></tr>
+    <tr><td><b>Безопасные зоны</b></td><td>Дом и школа. Уведомление при входе и выходе.</td></tr>
+    <tr><td><b>Экранное время</b></td><td>Сколько времени и в каких приложениях прошло сегодня.</td></tr>
+    <tr><td><b>Состояние устройства</b></td><td>Батарея, разрешения, связь. Если что-то не работает — называет причину.</td></tr>
+    <tr><td><b>ИИ-репетитор</b></td><td>Вопросы по школьной программе 1–11 классов. Не даёт готовый ответ, а наводящими вопросами ведёт к решению.</td></tr>
+    <tr><td><b>SOS и быстрые сообщения</b></td><td>Одно нажатие: «я в школе», «я дома», «заберите меня» или SOS.</td></tr>
+    <tr><td><b>Система баллов</b></td><td>Баллы за фокус-сессии и домашние задания. Родитель обменивает их на реальную награду.</td></tr>
+    <tr><td><b>Семейный чат</b></td><td>Переписка, видимая только членам семьи.</td></tr>
+    <tr><td><b>Игры и викторина</b></td><td>Образовательные состязания родителя с ребёнком.</td></tr>
+    <tr><td><b>Подключённые устройства</b></td><td>Какой телефон подключён и с какого времени. Любое можно отключить.</td></tr>
+  </table>
+
+  <h2>Как это работает</h2>
+  <ol>
+    <li>Родитель регистрируется через Telegram-бота или аккаунт Google</li>
+    <li>Вводит имя ребёнка — система выдаёт <b>одноразовый код</b></li>
+    <li>На телефон ребёнка ставится приложение Qalqon, вводится код</li>
+    <li>Ребёнок видит список разрешений и даёт согласие</li>
+    <li>Данные обновляются каждые 15 минут</li>
+  </ol>
+
+  <h2>Технологии</h2>
+  <ul>
+    <li><b>Android</b> — Kotlin, фоновая служба и WorkManager</li>
+    <li><b>Сервер</b> — Supabase Edge Function (Deno), PostgreSQL</li>
+    <li><b>Панель</b> — одинаковый интерфейс в Telegram Mini App и в приложении</li>
+    <li><b>ИИ</b> — Google Gemini</li>
+  </ul>
+
+  <h2>Чего мы не делаем</h2>
+  <div class="card warn">
+    <ul>
+      <li>Не читаем переписку</li>
+      <li>Не снимаем и не записываем экран</li>
+      <li>Не используем микрофон и камеру</li>
+      <li>Не прячем значок приложения</li>
+      <li>Не продаём данные</li>
+    </ul>
+  </div>
+
+  <div class="nav">
+    <a href="privacy-policy.html">Политика конфиденциальности</a>
+    <a href="terms.html">Условия использования</a>
+  </div>
+</div>
+
+<!-- ======================================================== ENGLISH -->
+<div data-lang="en">
+  <h1>Qalqon AI — about the project</h1>
+  <div class="sub">Family safety, screen-time balance and an AI tutor</div>
+
+  <h2>The problem</h2>
+  <p>
+    Two questions worry a parent: <b>where</b> the child is, and <b>what</b>
+    they are doing on the phone. Most existing answers are either expensive,
+    or unavailable in Uzbek, or built on the child not knowing — which
+    damages trust inside the family.
+  </p>
+
+  <h2>Our approach</h2>
+  <div class="card good">
+    <p>
+      <b>An open agreement, not covert surveillance.</b> The child knows the
+      app is there, can see exactly what is sent, and can disconnect at any
+      time. That is why the app also has to be useful to the child: an AI
+      tutor, points and rewards, and a one-tap message to a parent.
+    </p>
+  </div>
+
+  <h2>What the app contains</h2>
+  <table>
+    <tr><th>Section</th><th>What it does</th></tr>
+    <tr><td><b>Radar</b></td><td>Where the child is, on a map, with the time the fix was taken. Route of the day.</td></tr>
+    <tr><td><b>Safe zones</b></td><td>Home and school. The parent is notified on entry and exit.</td></tr>
+    <tr><td><b>Screen time</b></td><td>How long was spent in which app today.</td></tr>
+    <tr><td><b>Device health</b></td><td>Battery, permissions, connectivity. When something is broken, it names the cause.</td></tr>
+    <tr><td><b>AI tutor</b></td><td>School-curriculum questions for grades 1–11. It does not hand over the answer; it asks questions that lead to it.</td></tr>
+    <tr><td><b>SOS and quick messages</b></td><td>One tap for "I'm at school", "I'm home", "pick me up" or SOS.</td></tr>
+    <tr><td><b>Points</b></td><td>Earned for focus sessions and homework; the parent exchanges them for a real reward.</td></tr>
+    <tr><td><b>Family chat</b></td><td>Messages visible only to the family.</td></tr>
+    <tr><td><b>Games and quizzes</b></td><td>Educational contests between parent and child.</td></tr>
+    <tr><td><b>Connected devices</b></td><td>Which phone is connected and since when. Any of them can be revoked.</td></tr>
+  </table>
+
+  <h2>How it works</h2>
+  <ol>
+    <li>The parent registers through the Telegram bot or a Google account</li>
+    <li>They enter the child's name and receive a <b>one-time code</b></li>
+    <li>The Qalqon app is installed on the child's phone and the code entered</li>
+    <li>The child reviews the permissions and gives consent</li>
+    <li>Data refreshes every 15 minutes</li>
+  </ol>
+
+  <h2>Technology</h2>
+  <ul>
+    <li><b>Android</b> — Kotlin, a foreground service and WorkManager</li>
+    <li><b>Server</b> — Supabase Edge Function (Deno) with PostgreSQL</li>
+    <li><b>Panel</b> — the same interface in the Telegram Mini App and in the app</li>
+    <li><b>AI</b> — Google Gemini</li>
+  </ul>
+
+  <h2>What we do not do</h2>
+  <div class="card warn">
+    <ul>
+      <li>We do not read messages</li>
+      <li>We do not capture or record the screen</li>
+      <li>We do not use the microphone or camera</li>
+      <li>We do not hide the app icon</li>
+      <li>We do not sell data</li>
+    </ul>
+  </div>
+
+  <div class="nav">
+    <a href="privacy-policy.html">Privacy policy</a>
+    <a href="terms.html">Terms of use</a>
+  </div>
+</div>
+
+  <div class="foot">
+    <a href="https://t.me/qalqon_aibot" target="_blank" rel="noopener">@qalqon_aibot</a> ·
+    alhamdulillah@tmail.ton<br>
+    Qalqon AI · 2026
+  </div>
+
+</div>
+<script src="assets/docs.js?v=1"></script>
+</body>
+</html>
