@@ -797,9 +797,28 @@ async function evaluateGeofences(
   familyCode: string,
   childId: string,
   lat: number,
-  lng: number
+  lng: number,
+  accuracyM?: number | null
 ): Promise<Array<{ zone: string; type: string; message: string }>> {
   if (!db) return [];
+
+  // Aniqligi past nuqtadan hudud haqida xulosa chiqarmaymiz.
+  //
+  // Telefon GPS ko'rmasa (uy ichida, deraza yonida emas), joylashuvni
+  // Wi-Fi va uyali tarmoq bo'yicha taxmin qiladi. Bunday nuqtaning xatosi
+  // 100-200 metr bo'ladi va u xaritada butunlay boshqa joyga tushishi
+  // mumkin. Hududlarimiz esa 150-250 metr radiusli — ya'ni xato radius
+  // bilan bir xil tartibda.
+  //
+  // Jonli holat: bola uyda o'tirgan, 08:34 da aniq GPS nuqtasi kelgan
+  // (xato 10 metr, uyda), 08:49 da esa xatosi 173 metrli nuqta kelib,
+  // ota-onaga "Uy hududidan chiqdi" deb xabar ketgan. 09:04 da yana
+  // "kirdi". Bola hech qayerga chiqmagan edi.
+  const ANIQLIK_CHEGARASI = 100;
+  const aniqlik = Number(accuracyM);
+  if (Number.isFinite(aniqlik) && aniqlik > ANIQLIK_CHEGARASI) {
+    return [];
+  }
 
   const { data: zones } = await db
     .from("geofence_zones")
@@ -827,6 +846,38 @@ async function evaluateGeofences(
 
     const wasInside = last && last[0] ? last[0].alert_type === "enter" : null;
     if (wasInside === inside) continue; // holat o'zgarmagan - jim turamiz
+
+    // CHIQISH ikki marta tasdiqlanadi.
+    //
+    // Yolg'on "chiqdi" xabari ota-onani bekorga qo'rqitadi va bir necha
+    // marta takrorlansa, u haqiqiy xabarga ham ishonmay qo'yadi. Noto'g'ri
+    // nuqta odatda YAKKA bo'ladi: oldingi va keyingi nuqtalar joyida
+    // turadi. Shuning uchun chiqishni e'lon qilishdan oldin OLDINGI nuqta
+    // ham hududdan tashqarida bo'lganini talab qilamiz.
+    //
+    // Kirishda bunday shart yo'q: "farzandingiz maktabga yetdi" xabarining
+    // bir sikl kechikishi zarar qilmaydi, umuman kelmasligi esa qiladi.
+    if (!inside) {
+      const { data: oldingi } = await db
+        .from("location_pings")
+        .select("lat, lng, accuracy_m")
+        .eq("family_code", familyCode)
+        .eq("child_id", childId)
+        .order("recorded_at", { ascending: false })
+        .range(1, 1);
+
+      const o = oldingi && oldingi[0];
+      if (o) {
+        const oAniq = Number(o.accuracy_m);
+        const oIshonchli = !Number.isFinite(oAniq) || oAniq <= ANIQLIK_CHEGARASI;
+        const oTashqarida =
+          distanceMeters(o.lat, o.lng, z.center_lat, z.center_lng) > z.radius_m;
+        // Oldingi nuqta ichkarida bo'lsa (yoki unga ishonib bo'lmasa) —
+        // hozircha jim turamiz. Chiqish haqiqiy bo'lsa, keyingi nuqtada
+        // tasdiqlanadi va xabar o'shanda ketadi.
+        if (oIshonchli && !oTashqarida) continue;
+      }
+    }
 
     const type = inside ? "enter" : "exit";
     const message = inside
@@ -8333,7 +8384,9 @@ async function handleRequest(req: Request): Promise<Response> {
       // allaqachon u yerdan ketgan bo'lishi mumkin. 5 daqiqa — geo-hodisa
       // hali ma'noli bo'lgan chegara.
       const yangiNuqta = Date.now() - new Date(recordedAt).getTime() < 5 * 60 * 1000;
-      const fired = yangiNuqta ? await evaluateGeofences(familyCode, childId, lat, lng) : [];
+      const fired = yangiNuqta
+        ? await evaluateGeofences(familyCode, childId, lat, lng, Number(payload.accuracyM) || null)
+        : [];
       for (const f of fired) {
         await notifyFamilyParents(
           familyCode,
@@ -8406,7 +8459,7 @@ async function handleRequest(req: Request): Promise<Response> {
       // "maktabga yetdi" xabarini ota-ona emas, ilova admini olardi.
       const devYangi = Date.now() - new Date(devRecordedAt).getTime() < 5 * 60 * 1000;
       const fired = devYangi
-        ? await evaluateGeofences(actor!.familyCode, actor!.childId, lat, lng)
+        ? await evaluateGeofences(actor!.familyCode, actor!.childId, lat, lng, Number(payload.accuracyM) || null)
         : [];
       for (const f of fired) {
         await notifyFamilyParents(
