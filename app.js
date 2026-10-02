@@ -4048,7 +4048,7 @@ function switchTab(tabId) {
     if (tabId === 'tab-extras') renderParentExtras();
     // Ulangan qurilmalar ro'yxati sozlamalar bo'limida — har ochilganda
     // yangilanadi, chunki qurilma istalgan payt ulanishi mumkin.
-    if (tabId === 'tab-settings') renderDevices();
+    if (tabId === 'tab-settings') { renderDevices(); renderCoParents(); }
     if (tabId === 'tab-home') maybeShowOnboarding();
     if (tabId === 'tab-games') mountGamesInto('parentGamesHost');
 
@@ -5121,6 +5121,98 @@ async function renderDevices() {
                 (ulangan ? ' · ' + ulangan + ' ulangan' : '') + '</div>' +
         '</div>';
     }).join('');
+}
+
+// ============================================================================
+// OTA-ONALAR — onani (ikkinchi ota-onani) oilaga qo'shish.
+// Server: coparent_list / coparent_invite_start / coparent_remove.
+// ============================================================================
+
+async function coParentCall(body) {
+    try {
+        const resp = await fetch(QALQON_BOT_FN, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        return await resp.json();
+    } catch (e) {
+        return null;
+    }
+}
+
+async function renderCoParents() {
+    const box = document.getElementById('coParentList');
+    const btn = document.getElementById('coParentInviteBtn');
+    if (!box) return;
+    if (currentAppRole !== 'parent') return;
+    box.innerHTML = '<div class="text-[10px] text-slate-500">Yuklanmoqda...</div>';
+
+    const d = await coParentCall({ type: 'coparent_list' });
+    if (!d || !d.ok) {
+        box.innerHTML = '<div class="text-[10px] text-slate-500">Ro\'yxatni olib bo\'lmadi.</div>';
+        if (btn) btn.classList.add('hidden');
+        return;
+    }
+
+    const list = Array.isArray(d.parents) ? d.parents : [];
+    const menAsosiy = list.some(p => p.main && p.me);
+    box.innerHTML = list.map(p => {
+        const belgi = p.main ? '👨 Oila egasi' : '👩 Qo\'shilgan';
+        const men = p.me ? ' <span class="text-cyan-300">(siz)</span>' : '';
+        const olib = (menAsosiy && !p.main && p.id)
+            ? '<button onclick="removeCoParent(' + Number(p.id) + ', \'' + escapeHtml(p.name).replace(/'/g, "\\'") + '\')" ' +
+              'class="shrink-0 px-2.5 py-1.5 rounded-lg bg-rose-500/15 border border-rose-500/40 text-rose-300 text-[10px] font-bold hover:bg-rose-500/25 transition">Olib tashlash</button>'
+            : '';
+        return '' +
+        '<div class="p-2.5 rounded-xl bg-slate-900/60 border border-slate-800 flex items-center justify-between gap-2">' +
+            '<div class="min-w-0">' +
+                '<div class="text-[11px] font-bold text-white truncate">' + escapeHtml(p.name) + men + '</div>' +
+                '<div class="text-[10px] text-slate-400">' + belgi + '</div>' +
+            '</div>' + olib +
+        '</div>';
+    }).join('');
+
+    if (btn) btn.classList.toggle('hidden', !d.canInvite);
+}
+
+/** Onaga yuboriladigan taklif havolasini oladi va Telegramning "ulashish" oynasini ochadi. */
+async function inviteCoParent() {
+    const btn = document.getElementById('coParentInviteBtn');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Havola tayyorlanmoqda...'; }
+    const d = await coParentCall({ type: 'coparent_invite_start' });
+    if (btn) { btn.disabled = false; btn.textContent = '👩 Onani qo\'shish'; }
+
+    if (!d || !d.ok) {
+        const x = '❌ Havolani olib bo\'lmadi: ' + ((d && d.error) || 'aloqa yo\'q');
+        if (tg && tg.showAlert) tg.showAlert(x); else alert(x);
+        return;
+    }
+
+    // Telegram ichida: kontakt tanlash oynasi ochiladi, ota onani tanlab
+    // yuboradi — havolani nusxalab, boshqa ilovaga o'tish shart emas.
+    if (tg && tg.openTelegramLink) {
+        tg.openTelegramLink(d.shareUrl);
+    } else {
+        try { await navigator.clipboard.writeText(d.deepLink); } catch (e) {}
+        const x = 'Havola nusxalandi. Uni onaga Telegramda yuboring:\n\n' + d.deepLink +
+            '\n\nHavola 24 soat amal qiladi.';
+        alert(x);
+    }
+}
+
+async function removeCoParent(telegramId, name) {
+    const savol = (name || 'Bu ota-ona') + ' oiladan olib tashlansinmi?\n\n' +
+        'U endi panelni ko\'ra olmaydi va xabarlar unga bormaydi. Unga bu haqda xabar boradi.';
+    const davom = async (ha) => {
+        if (!ha) return;
+        const d = await coParentCall({ type: 'coparent_remove', telegramId: telegramId });
+        const x = (d && d.ok) ? '✅ Olib tashlandi.' : '❌ Bo\'lmadi: ' + ((d && d.error) || 'aloqa yo\'q');
+        if (tg && tg.showAlert) tg.showAlert(x); else alert(x);
+        renderCoParents();
+    };
+    if (tg && tg.showConfirm) tg.showConfirm(savol, davom);
+    else davom(confirm(savol));
 }
 
 /** Qurilmani uzadi — tasdiqdan keyin. */

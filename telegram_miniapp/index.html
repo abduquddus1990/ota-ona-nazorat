@@ -2654,6 +2654,28 @@
             </button>
         </div>
 
+        <!-- Ota-onalar: onani (ikkinchi ota-onani) oilaga qo'shish.
+             Ilgari oila faqat ro'yxatdan o'tgan bitta ota-onaga bog'langan
+             edi — ona panelga kira olmasdi va SOS ham, "maktabga yetdi" ham
+             unga bormasdi. Endi bitta tugma: havola Telegramda onaga
+             yuboriladi, u bosgan zahoti oilaga qo'shiladi. -->
+        <div class="glass-card p-4 space-y-3">
+            <div class="flex items-center justify-between">
+                <h3 class="text-xs font-bold text-white">👨‍👩‍👧 Ota-onalar</h3>
+                <button onclick="renderCoParents()" class="text-[10px] text-cyan-400 font-bold hover:underline">Yangilash</button>
+            </div>
+            <p class="text-[10px] text-slate-400 leading-relaxed">
+                Onani (yoki ikkinchi ota-onani) qo'shing — u ham panelni ko'radi,
+                SOS, "maktabga yetdi" va kunlik xulosani oladi.
+            </p>
+            <div id="coParentList" class="space-y-2">
+                <div class="text-[10px] text-slate-500">Yuklanmoqda...</div>
+            </div>
+            <button id="coParentInviteBtn" onclick="inviteCoParent()" class="hidden w-full py-2.5 rounded-xl bg-pink-500/15 border border-pink-500/40 text-pink-300 font-bold text-[11px] hover:bg-pink-500/25 transition">
+                👩 Onani qo'shish
+            </button>
+        </div>
+
         <!-- Ulangan qurilmalar.
              Ota-ona farzandining telefoniga nima ulanganini ko'ra olmasdi va
              uzib qo'ya olmasdi. Kuzatuv ilovasida bu shunchaki qulaylik emas:
@@ -2832,7 +2854,7 @@
     </nav>
 
     <!-- Custom JavaScript -->
-    <script src="app.js?v=9.4"></script>
+    <script src="app.js?v=9.5"></script>
     <!-- O'yinlar alohida faylda: app.js allaqachon katta, va o'yin kontenti
          (savollar, kartalar) o'sib boradi. Alohida fayl brauzerda alohida
          keshlanadi — o'yin qo'shilsa, butun ilova qayta yuklanmaydi. -->

@@ -1129,6 +1129,8 @@ async function familyCodeFor(userId: string | number): Promise<string> {
 
   const cached = familyCodeCache.get(id);
   if (cached) return cached;
+  const yaqinda = familyCodeMiss.get(id);
+  if (yaqinda && yaqinda > Date.now()) return derived;
 
   const { data } = await db
     .from("family_code_overrides")
@@ -1136,9 +1138,58 @@ async function familyCodeFor(userId: string | number): Promise<string> {
     .eq("parent_telegram_id", id)
     .limit(1);
 
-  const code = (data && data[0] && data[0].family_code) || derived;
-  familyCodeCache.set(id, code);
-  return code;
+  const override = data && data[0] && data[0].family_code;
+  if (override) {
+    familyCodeCache.set(id, override);
+    return override;
+  }
+
+  // Ikkinchi ota-ona (ona): u otaning oilasiga taklif orqali qo'shilgan.
+  // Bu natija keshlanmaydi — ota uni olib tashlashi mumkin.
+  const ikkinchi = await coParentFamily(id);
+  if (ikkinchi) return ikkinchi;
+
+  // "Hech narsa topilmadi" ham qisqa muddat eslab qolinadi, aks holda har
+  // bir so'rov ikkita qo'shimcha so'rov qilardi. Muddat qisqa: ona havolani
+  // bosgandan keyin panelini darhol o'z oilasi bilan ochishi kerak.
+  familyCodeMiss.set(id, Date.now() + 30_000);
+  return derived;
+}
+
+const familyCodeMiss = new Map<number, number>();
+
+/** Shu Telegram hisobi qaysi oilaning IKKINCHI ota-onasi (database/29). */
+async function coParentFamily(telegramId: number): Promise<string | null> {
+  if (!db) return null;
+  const { data } = await db
+    .from("family_parents")
+    .select("family_code")
+    .eq("telegram_id", telegramId)
+    .limit(1);
+  return (data && data[0] && data[0].family_code) || null;
+}
+
+/**
+ * Oilaning BARCHA ota-onalari: ro'yxatdan o'tgan asosiy ota-ona va taklif
+ * orqali qo'shilganlar. Bildirishnomalar (SOS, hudud, chat, kunlik xulosa)
+ * shu ro'yxatning hammasiga boradi.
+ */
+async function familyParentIds(familyCode: string): Promise<number[]> {
+  if (!db || !familyCode) return [];
+  const [{ data: reg }, { data: qoshimcha }] = await Promise.all([
+    db.from("parent_registrations").select("parent_telegram_id")
+      .eq("family_code", familyCode).limit(1),
+    db.from("family_parents").select("telegram_id")
+      .eq("family_code", familyCode).limit(5),
+  ]);
+  const ids: number[] = [];
+  const asosiy = Number(reg && reg[0] && reg[0].parent_telegram_id);
+  if (asosiy > 0) ids.push(asosiy);
+  for (const r of qoshimcha || []) {
+    const id = Number(r.telegram_id);
+    if (id > 0 && !ids.includes(id)) ids.push(id);
+  }
+  return ids;
 }
 
 // ============================================================================
@@ -1493,28 +1544,32 @@ async function notifyFamilyParents(
   replyMarkup?: any
 ): Promise<boolean> {
   if (!db || !familyCode) return false;
-  const { data } = await db
-    .from("parent_registrations")
-    .select("parent_telegram_id")
-    .eq("family_code", familyCode)
-    .limit(1);
-
-  const chatId = data && data[0] && data[0].parent_telegram_id;
-  if (!chatId) {
+  // Ota ham, ona ham: SOS yoki "maktabga yetdi" faqat bittasiga borsa,
+  // ikkinchisi bundan bexabar qoladi.
+  const ids = await familyParentIds(familyCode);
+  if (!ids.length) {
     console.error("notifyFamilyParents: oila uchun parent_telegram_id yo'q:", familyCode);
     return false;
   }
+  let yetdi = false;
+  for (const chatId of ids) {
+    try {
+      const r: any = await sendMessage(chatId, htmlText, replyMarkup);
+      if (r && r.ok) yetdi = true;
+    } catch (e) {
+      console.error("notifyFamilyParents yuborilmadi:", chatId, e);
+    }
+  }
   try {
-    await sendMessage(chatId, htmlText, replyMarkup);
     // Ilova o'rnatgan ota-onaga push ham boradi: bot xabari Telegram
     // ochilmasa ko'rinmay qolishi mumkin, SOS esa kutib turmaydi.
     const lines = plainText(htmlText).split("\n");
-    await sendPush(familyCode, ["parent_" + chatId], lines[0].slice(0, 80) || "Qalqon AI", lines.slice(1).join(" ").trim() || lines[0]);
-    return true;
+    const push = await sendPush(familyCode, ids.map((id) => "parent_" + id), lines[0].slice(0, 80) || "Qalqon AI", lines.slice(1).join(" ").trim() || lines[0]);
+    if (push > 0) yetdi = true;
   } catch (e) {
-    console.error("notifyFamilyParents yuborilmadi:", e);
-    return false;
+    console.error("notifyFamilyParents push:", e);
   }
+  return yetdi;
 }
 
 /**
@@ -3368,7 +3423,110 @@ async function registeredParentFamily(telegramId: number): Promise<string | null
   if (!db) return null;
   const { data } = await db.from("parent_registrations").select("family_code")
     .eq("parent_telegram_id", telegramId).limit(1);
-  return (data && data[0] && data[0].family_code) || null;
+  return (data && data[0] && data[0].family_code) || (await coParentFamily(telegramId));
+}
+
+/**
+ * Ona (ikkinchi ota-ona) botda taklif havolasini bosdi.
+ *
+ * Har bir rad etish sababi ochiq aytiladi: "ishlamadi" deyish ona uchun
+ * boshi berk ko'cha — u nima qilishni bilmay qoladi.
+ */
+async function handleCoParentJoin(chatId: number, code: string, firstName: string | null) {
+  if (!db) return;
+  const { data: rows } = await db
+    .from("parent_pair_codes")
+    .select("code, family_code, parent_telegram_id, expires_at, used_at")
+    .eq("code", code)
+    .eq("purpose", "co_parent")
+    .limit(1);
+  const row = rows && rows[0];
+  if (!row || row.used_at || new Date(row.expires_at).getTime() < Date.now()) {
+    await sendMessage(
+      chatId,
+      "⌛️ <b>Bu taklif havolasi eskirgan yoki ishlatilgan.</b>\n\nOila egasidan panelda «Onani qo'shish» tugmasini qayta bosib, yangi havola yuborishini so'rang. Yangi havola 24 soat amal qiladi."
+    );
+    return;
+  }
+
+  // Havolani otaning o'zi bosib ko'rdi — bu odatiy holat, tushuntiramiz.
+  if (Number(row.parent_telegram_id) === chatId) {
+    await sendMessage(
+      chatId,
+      "ℹ️ <b>Bu havola onaga yuborish uchun.</b>\n\nUni o'zingiz bosmang — onaning Telegramiga yuboring. U bosgan zahoti oilaga qo'shiladi va sizga xabar keladi."
+    );
+    return;
+  }
+
+  if (await isPairedChild(chatId)) {
+    await sendMessage(
+      chatId,
+      "⚠️ <b>Bu Telegram hisobi farzand sifatida ulangan.</b>\n\nOta-ona taklifini farzand hisobi bilan qabul qilib bo'lmaydi. Onaning o'z Telegram hisobidan oching."
+    );
+    return;
+  }
+
+  // O'zi alohida oila ochgan bo'lsa — jimgina birlashtirmaymiz: ikkala oilada
+  // ham farzandlar va tarix bo'lishi mumkin.
+  const { data: oz } = await db.from("parent_registrations").select("family_code")
+    .eq("parent_telegram_id", chatId).limit(1);
+  if (oz && oz[0] && oz[0].family_code !== row.family_code) {
+    await sendMessage(
+      chatId,
+      "⚠️ <b>Siz allaqachon o'z oilangizni ro'yxatdan o'tkazgansiz</b> (kod: <code>" + oz[0].family_code + "</code>).\n\n" +
+        "Ikki oilani avtomatik birlashtirmaymiz — ikkalasida ham farzandlar va tarix bo'lishi mumkin. Birlashtirish kerak bo'lsa, qo'llab-quvvatlash xizmatiga yozing."
+    );
+    return;
+  }
+
+  const mavjud = await coParentFamily(chatId);
+  if (mavjud && mavjud !== row.family_code) {
+    await sendMessage(
+      chatId,
+      "⚠️ <b>Siz boshqa oilaga ota-ona sifatida qo'shilgansiz.</b>\n\nBitta Telegram hisobi faqat bitta oilada bo'la oladi. Avval o'sha oila egasi sizni paneldan olib tashlashi kerak."
+    );
+    return;
+  }
+
+  if (!mavjud) {
+    const { error } = await db.from("family_parents").insert({
+      telegram_id: chatId,
+      family_code: row.family_code,
+      name: firstName,
+      role: "mother",
+      added_by: row.parent_telegram_id,
+    });
+    if (error) {
+      console.error("family_parents insert:", error.message);
+      await sendMessage(chatId, "⚠️ Server xatosi. Birozdan keyin havolani qayta bosing.");
+      return;
+    }
+  }
+  await db.from("parent_pair_codes")
+    .update({ used_at: new Date().toISOString() })
+    .eq("code", code);
+  familyCodeMiss.delete(chatId);
+
+  await sendMessage(
+    chatId,
+    "✅ <b>Siz oilaga qo'shildingiz!</b>\n\n" +
+      "Endi farzandingiz haqidagi muhim xabarlar sizga ham keladi:\n" +
+      "🆘 SOS bossa\n📍 maktabga yetsa yoki xavfsiz hududdan chiqsa\n📊 kunlik xulosa\n\n" +
+      "Pastdagi tugma orqali ota-ona panelini oching — u yerda farzandlaringiz, xarita va oila chati bor.",
+    { inline_keyboard: [[{ text: "🛡️ Ota-ona paneli", web_app: { url: miniAppUrl() } }]] }
+  );
+
+  if (Number(row.parent_telegram_id) > 0) {
+    await sendMessage(
+      Number(row.parent_telegram_id),
+      "👩 <b>" + (firstName ? escapeHtmlText(firstName) : "Ona") + " oilaga qo'shildi.</b>\n\n" +
+        "Endi SOS, hudud va kunlik xabarlar ikkalangizga ham boradi. Kerak bo'lsa, panelda «Ota-onalar» bo'limidan olib tashlashingiz mumkin."
+    );
+  }
+}
+
+function escapeHtmlText(t: string): string {
+  return String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
 /* ------------------------------------------------------------------ PUSH */
@@ -3615,14 +3773,22 @@ async function chatMember(actor: Actor): Promise<ChatMember | null> {
   const { data } = await db.from("parent_registrations").select("parent_name, parent_telegram_id, mother_name")
     .eq("family_code", fam).limit(1);
   const reg = data && data[0];
-  // Faqat shu oilaning RO'YXATDAN O'TGAN ota-onasi. Ilgari ulanmagan istalgan
-  // Telegram foydalanuvchisi o'z ID'sidan hisoblangan (mavjud bo'lmagan)
-  // oila kodi bilan chatga "ota-ona" bo'lib yoza olardi.
-  if (!reg || Number(reg.parent_telegram_id) !== Number(actor.telegramId)) return null;
-  const isMain = true;
+  // Faqat shu oilaning RO'YXATDAN O'TGAN ota-onasi yoki taklif orqali
+  // qo'shilgan ikkinchi ota-onasi. Ilgari ulanmagan istalgan Telegram
+  // foydalanuvchisi o'z ID'sidan hisoblangan (mavjud bo'lmagan) oila kodi
+  // bilan chatga "ota-ona" bo'lib yoza olardi.
+  if (!reg) return null;
+  const isMain = Number(reg.parent_telegram_id) === Number(actor.telegramId);
+  let ikkinchiIsm: string | null = null;
+  if (!isMain) {
+    const { data: fp } = await db.from("family_parents").select("name")
+      .eq("family_code", fam).eq("telegram_id", actor.telegramId).limit(1);
+    if (!fp || !fp[0]) return null;
+    ikkinchiIsm = fp[0].name || null;
+  }
   return {
     familyCode: fam, memberId: "parent_" + actor.telegramId, role: "parent",
-    name: (isMain ? reg?.parent_name : reg?.mother_name) || "Ota-ona",
+    name: (isMain ? reg?.parent_name : ikkinchiIsm || reg?.mother_name) || "Ota-ona",
     telegramId: actor.telegramId,
   };
 }
@@ -3672,10 +3838,8 @@ async function notifyChatMembers(familyCode: string, author: ChatMember, preview
     .map((r: any) => r.member_id));
   const text = `💬 <b>${author.name}</b> (oila chati):\n${preview}`;
 
-  const { data: reg } = await db.from("parent_registrations").select("parent_telegram_id")
-    .eq("family_code", familyCode).limit(1);
-  const parentTg = reg && reg[0]?.parent_telegram_id;
-  if (parentTg && author.memberId !== "parent_" + parentTg && !active.has("parent_" + parentTg)) {
+  for (const parentTg of await familyParentIds(familyCode)) {
+    if (author.memberId === "parent_" + parentTg || active.has("parent_" + parentTg)) continue;
     await sendMessage(parentTg, text, {
       inline_keyboard: [[{ text: "💬 Chatni ochish", web_app: { url: `${miniAppUrl()}&chat=1` } }]],
     });
@@ -4707,6 +4871,12 @@ async function handleRequest(req: Request): Promise<Response> {
     // orqali xabar berishga urinamiz va urinish natijasini o'sha qatorga
     // qayd qilamiz. Xabar yetmasa ham so'rov yo'qolmaydi.
     if (payload.type === "parent_registration_request") {
+      // Ona taklif orqali allaqachon otaning oilasida. U ro'yxatdan o'tish
+      // formasini to'ldirsa, claimFamilyCode() unga BOSHQA, bo'sh oila
+      // ochib berardi va u farzandlarini ko'rmay qolardi.
+      if (actor!.kind === "telegram" && (await coParentFamily(actor!.telegramId))) {
+        return jsonRes({ ok: true, alreadyMember: true });
+      }
       // Oila kodi mijozdan OLINMAYDI — imzolangan Telegram identitetidan
       // chiqariladi, aks holda birov boshqa oila nomidan yozib ketardi.
       //
@@ -8150,6 +8320,118 @@ async function handleRequest(req: Request): Promise<Response> {
       });
     }
 
+    // IKKINCHI OTA-ONA (ONA) — database/29_family_parents.sql
+    //
+    // Ota panelda "Onani qo'shish"ni bosadi va bot havolasini oladi. Uni
+    // onaga Telegramda yuboradi; ona bossa, bot uni shu oilaga yozadi.
+    // Taklif qilish va olib tashlash faqat asosiy ota-onaga ruxsat: ikkinchi
+    // ota-ona o'zi boshqa odamni qo'sha olsa yoki otani chiqarib yubora olsa,
+    // oilaning kimga tegishli ekani noaniq bo'lib qolardi.
+    if (payload.type === "coparent_invite_start") {
+      if (actor!.kind !== "telegram") return unauthorized("Faqat ota-ona");
+      if (!db) return jsonRes({ ok: false, error: "Baza ulanmagan" }, 500);
+      if (await isPairedChild(actor!.telegramId)) return unauthorized("Faqat ota-ona");
+      if (await coParentFamily(actor!.telegramId)) {
+        return jsonRes({ ok: false, error: "Faqat oilani ochgan ota-ona taklif qila oladi" }, 403);
+      }
+
+      const familyCode = await resolveActorFamily(actor!);
+      const { data: reg } = await db.from("parent_registrations").select("family_code")
+        .eq("family_code", familyCode).limit(1);
+      if (!reg || !reg[0]) {
+        return jsonRes({ ok: false, error: "Avval ro'yxatdan o'ting" }, 400);
+      }
+
+      const { data: bor } = await db.from("family_parents").select("telegram_id")
+        .eq("family_code", familyCode).limit(5);
+      if ((bor || []).length >= 3) {
+        return jsonRes({ ok: false, error: "Oilada ota-onalar soni chegaraga yetgan" }, 400);
+      }
+
+      const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+      const bytes = crypto.getRandomValues(new Uint8Array(10));
+      const code = Array.from(bytes).map((b) => alphabet[b % alphabet.length]).join("");
+
+      // 24 soat: ona havolani darhol ochmasligi mumkin (ishda, telefoni
+      // yonida emas). 15 daqiqalik muddat bu yerda faqat qayta-qayta
+      // "havola eskirdi" degan xabarga olib kelardi.
+      const { error } = await db.from("parent_pair_codes").insert({
+        code,
+        family_code: familyCode,
+        parent_telegram_id: actor!.telegramId,
+        purpose: "co_parent",
+        expires_at: new Date(Date.now() + 24 * 3600 * 1000).toISOString(),
+      });
+      if (error) {
+        console.error("coparent_invite_start:", error.message);
+        return jsonRes({ ok: false, error: error.message }, 500);
+      }
+
+      const deepLink = `https://t.me/qalqon_aibot?start=ona_${code}`;
+      const shareText =
+        "Farzandimizni birga kuzataylik: Qalqon AI'da oilamizga qo'shiling. Havolani bosing — bot hammasini o'zi qiladi.";
+      return jsonRes({
+        ok: true,
+        code,
+        deepLink,
+        shareUrl: `https://t.me/share/url?url=${encodeURIComponent(deepLink)}&text=${encodeURIComponent(shareText)}`,
+        expiresInSec: 24 * 3600,
+      });
+    }
+
+    // Oiladagi ota-onalar ro'yxati — panel "Ota-onalar" kartasida ko'rsatadi.
+    if (payload.type === "coparent_list") {
+      if (actor!.kind !== "telegram") return unauthorized("Faqat ota-ona");
+      if (!db) return jsonRes({ ok: true, parents: [] });
+      if (await isPairedChild(actor!.telegramId)) return unauthorized("Faqat ota-ona");
+
+      const familyCode = await resolveActorFamily(actor!);
+      const [{ data: reg }, { data: qoshimcha }] = await Promise.all([
+        db.from("parent_registrations").select("parent_name, parent_telegram_id")
+          .eq("family_code", familyCode).limit(1),
+        db.from("family_parents").select("telegram_id, name, role, created_at")
+          .eq("family_code", familyCode).order("created_at", { ascending: true }).limit(5),
+      ]);
+      const r = reg && reg[0];
+      if (!r) return jsonRes({ ok: true, parents: [], canInvite: false });
+      const menAsosiy = !(await coParentFamily(actor!.telegramId));
+      const parents = [
+        { id: Number(r.parent_telegram_id) || null, name: r.parent_name || "Ota-ona", main: true, me: menAsosiy },
+        ...(qoshimcha || []).map((p: any) => ({
+          id: Number(p.telegram_id),
+          name: p.name || "Ona",
+          main: false,
+          me: Number(p.telegram_id) === Number(actor!.telegramId),
+          since: p.created_at,
+        })),
+      ];
+      return jsonRes({ ok: true, parents, canInvite: menAsosiy && (qoshimcha || []).length < 3 });
+    }
+
+    if (payload.type === "coparent_remove") {
+      if (actor!.kind !== "telegram") return unauthorized("Faqat ota-ona");
+      if (!db) return jsonRes({ ok: false, error: "Baza ulanmagan" }, 500);
+      if (await isPairedChild(actor!.telegramId)) return unauthorized("Faqat ota-ona");
+      if (await coParentFamily(actor!.telegramId)) {
+        return jsonRes({ ok: false, error: "Faqat oilani ochgan ota-ona olib tashlay oladi" }, 403);
+      }
+      const familyCode = await resolveActorFamily(actor!);
+      const target = Number(payload.telegramId);
+      if (!Number.isFinite(target) || target <= 0) return jsonRes({ ok: false, error: "telegramId kerak" }, 400);
+
+      const { data: del, error } = await db.from("family_parents").delete()
+        .eq("family_code", familyCode).eq("telegram_id", target).select("telegram_id");
+      if (error) return jsonRes({ ok: false, error: error.message }, 500);
+      if (!del || !del.length) return jsonRes({ ok: false, error: "Topilmadi" }, 404);
+
+      // Olib tashlangan odamga ochiq aytamiz — u xabarlar nega to'xtaganini bilsin.
+      await sendMessage(
+        target,
+        "ℹ️ <b>Siz oila panelidan olib tashlandingiz.</b>\n\nEndi bu oila haqidagi xabarlar sizga kelmaydi. Xato bo'lsa, oila egasidan yangi taklif havolasini so'rang."
+      );
+      return jsonRes({ ok: true });
+    }
+
     // Telegram bog'landimi — panel shuni so'rab turadi.
     if (payload.type === "link_telegram_status") {
       if (actor!.kind !== "telegram") return unauthorized("Faqat ota-ona");
@@ -9644,6 +9926,13 @@ async function handleRequest(req: Request): Promise<Response> {
         // yerda uning Telegram ID'sini o'sha oilaga yozadi. Shundan keyin
         // SOS, geo-ogohlantirish va kunlik xulosa unga yetib boradi —
         // ungacha ular hech qayerga bormasdi.
+        // Ikkinchi ota-ona (ona) taklif havolasini bosdi.
+        const onaMatch = text.match(/ona_([A-Za-z0-9]{4,16})/);
+        if (onaMatch && db) {
+          await handleCoParentJoin(chatId, onaMatch[1].toUpperCase(), msg.from?.first_name || null);
+          return new Response("ok");
+        }
+
         const tgLinkMatch = text.match(/tglink_([A-Za-z0-9]{4,16})/);
         if (tgLinkMatch && db) {
           const linkCode = tgLinkMatch[1].toUpperCase();
