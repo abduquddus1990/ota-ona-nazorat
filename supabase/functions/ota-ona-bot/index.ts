@@ -786,6 +786,56 @@ function distanceMeters(
 }
 
 /**
+ * Ota-onaga ko'rsatiladigan "hozirgi joy".
+ *
+ * Eng oxirgi nuqtani ko'r-ko'rona bermaymiz: bino ichida telefon xatosi
+ * 150-300 metrli taxmin beradi va u xaritada qo'shni ko'chaga tushadi —
+ * ota-ona bola maktabda emas deb o'ylaydi. Agar oxirgi nuqta noaniq bo'lsa
+ * va u avvalgi ANIQ nuqtaning xato doirasiga sig'sa (ya'ni bola o'sha
+ * joydan ketgani ko'rinmaydi), aniq nuqtaning koordinatasini ko'rsatamiz,
+ * vaqtini esa oxirgi nuqtanikini — "shu yerda, hozir ham" degan ma'noda.
+ * Noaniq nuqta aniq joydan uzoqqa tushsa, bola haqiqatan yurgan bo'lishi
+ * mumkin: unda oxirgi nuqtani o'z xatosi bilan beramiz.
+ */
+async function ishonchliOxirgiNuqta(familyCode: string, childId: string): Promise<any | null> {
+  if (!db) return null;
+  const { data } = await db
+    .from("location_pings")
+    .select("lat, lng, accuracy_m, recorded_at")
+    .eq("family_code", familyCode)
+    .eq("child_id", childId)
+    .order("recorded_at", { ascending: false })
+    .limit(30);
+  const pings = data || [];
+  const oxirgi = pings[0];
+  if (!oxirgi) return null;
+
+  const aniq = (p: any) => !(Number(p.accuracy_m) > 100);
+  if (aniq(oxirgi)) return oxirgi;
+
+  const uchSoat = 3 * 3600 * 1000;
+  const oxirgiVaqt = new Date(oxirgi.recorded_at).getTime();
+  const tayanch = pings.find(
+    (p: any) => aniq(p) && oxirgiVaqt - new Date(p.recorded_at).getTime() <= uchSoat
+  );
+  if (!tayanch) return oxirgi;
+
+  // Tayanch nuqtadan keyingi barcha noaniq nuqtalar uning atrofida bo'lsagina.
+  const keyingilar = pings.slice(0, pings.indexOf(tayanch));
+  const joyida = keyingilar.every(
+    (p: any) => distanceMeters(p.lat, p.lng, tayanch.lat, tayanch.lng) <= Number(p.accuracy_m)
+  );
+  if (!joyida) return oxirgi;
+
+  return {
+    lat: tayanch.lat,
+    lng: tayanch.lng,
+    accuracy_m: tayanch.accuracy_m,
+    recorded_at: oxirgi.recorded_at,
+  };
+}
+
+/**
  * Yangi joylashuv kelganda xavfsiz hududlarni tekshiradi va kerak bo'lsa
  * ogohlantirish yozadi.
  *
@@ -814,11 +864,21 @@ async function evaluateGeofences(
   // (xato 10 metr, uyda), 08:49 da esa xatosi 173 metrli nuqta kelib,
   // ota-onaga "Uy hududidan chiqdi" deb xabar ketgan. 09:04 da yana
   // "kirdi". Bola hech qayerga chiqmagan edi.
+  //
+  // Lekin bunday nuqtani BUTUNLAY tashlab yuborish ham xato bo'lib chiqdi:
+  // maktab binosi ichida telefon kun bo'yi faqat shunday nuqtalar beradi,
+  // va bola maktabga kirganda "hududga kirdi" xabari umuman kelmay qoldi.
+  // Shuning uchun noaniq nuqta CHIQISH haqida hech narsa hal qilmaydi,
+  // lekin KIRISHni tasdiqlay oladi (pastda, tsikl ichida).
   const ANIQLIK_CHEGARASI = 100;
+  // Bundan yomon nuqta (uyali minora bo'yicha taxmin) hech narsaga yaramaydi.
+  const ANIQLIK_MAKSIMUM = 500;
   const aniqlik = Number(accuracyM);
-  if (Number.isFinite(aniqlik) && aniqlik > ANIQLIK_CHEGARASI) {
+  const aniqlikMalum = Number.isFinite(aniqlik) && aniqlik > 0;
+  if (aniqlikMalum && aniqlik > ANIQLIK_MAKSIMUM) {
     return [];
   }
+  const ishonchli = !aniqlikMalum || aniqlik <= ANIQLIK_CHEGARASI;
 
   const { data: zones } = await db
     .from("geofence_zones")
@@ -846,6 +906,38 @@ async function evaluateGeofences(
 
     const wasInside = last && last[0] ? last[0].alert_type === "enter" : null;
     if (wasInside === inside) continue; // holat o'zgarmagan - jim turamiz
+
+    // NOANIQ nuqta (xatosi 100-500 m): faqat KIRISHni e'lon qila oladi.
+    //
+    // Bola maktab binosiga kirgach, telefon GPS'ni yo'qotadi va qolgan kun
+    // davomida faqat Wi-Fi/minora bo'yicha taxmin beradi. Agar bunday
+    // nuqtalarni e'tiborsiz qoldirsak, "maktabga yetdi" xabari hech qachon
+    // kelmaydi. Kirishni ikki holatda qabul qilamiz:
+    //   1) xato doirasi BUTUNLAY hudud ichida (masofa + xato <= radius) —
+    //      bu holda bola qayerda bo'lmasin, baribir ichkarida;
+    //   2) oldingi nuqta ham shu hudud ichida edi — yakka adashgan nuqta
+    //      emas, ketma-ket ikki o'lchov bir xil gapni aytyapti.
+    // Chiqishni esa noaniq nuqta hech qachon e'lon qilmaydi — 08:49 dagi
+    // yolg'on "uydan chiqdi" aynan shundan bo'lgan edi.
+    if (!ishonchli) {
+      if (!inside) continue;
+      const aniqIchkarida = dist + aniqlik <= z.radius_m;
+      if (!aniqIchkarida) {
+        const { data: oldingi } = await db
+          .from("location_pings")
+          .select("lat, lng, accuracy_m")
+          .eq("family_code", familyCode)
+          .eq("child_id", childId)
+          .order("recorded_at", { ascending: false })
+          .range(1, 1);
+        const o = oldingi && oldingi[0];
+        const oAniq = o ? Number(o.accuracy_m) : NaN;
+        const oYaroqli = !!o && (!Number.isFinite(oAniq) || oAniq <= ANIQLIK_MAKSIMUM);
+        const oIchkarida =
+          oYaroqli && distanceMeters(o.lat, o.lng, z.center_lat, z.center_lng) <= z.radius_m;
+        if (!oIchkarida) continue;
+      }
+    }
 
     // CHIQISH ikki marta tasdiqlanadi.
     //
@@ -6981,16 +7073,8 @@ async function handleRequest(req: Request): Promise<Response> {
         // Hududi yo'q oilaga bu xabarning ma'nosi yo'q — jim o'tamiz.
         if (!zones || !zones.length) continue;
 
-        const { data: ping } = await db
-          .from("location_pings")
-          .select("lat, lng, recorded_at")
-          .eq("family_code", k.family_code)
-          .eq("child_id", k.child_id)
-          .order("recorded_at", { ascending: false })
-          .limit(1);
-
         const nom = k.child_name || "Farzandingiz";
-        const p = ping && ping[0];
+        const p = await ishonchliOxirgiNuqta(k.family_code, k.child_id);
 
         let line: string;
         if (!p || Date.now() - new Date(p.recorded_at).getTime() > 12 * 3600 * 1000) {
@@ -7327,13 +7411,7 @@ async function handleRequest(req: Request): Promise<Response> {
       }
 
       // Eng so'nggi ma'lum joylashuv (qurilma yoki Mini App yuborgan).
-      const { data: pings } = await db!
-        .from("location_pings")
-        .select("lat, lng, accuracy_m, recorded_at")
-        .eq("family_code", familyCode)
-        .eq("child_id", childId)
-        .order("recorded_at", { ascending: false })
-        .limit(1);
+      const nuqta = await ishonchliOxirgiNuqta(familyCode, childId);
 
       return new Response(
         JSON.stringify({
@@ -7342,7 +7420,7 @@ async function handleRequest(req: Request): Promise<Response> {
           // Pro uchun -1 (cheklovsiz), bepul uchun bu so'rovdan keyin qolgani.
           remaining: q!.remaining > 0 ? q!.remaining - 1 : q!.remaining,
           resetInHours: q!.resetInHours,
-          location: pings && pings[0] ? pings[0] : null,
+          location: nuqta,
           liveUntil: r.liveUntil,
           asked: r.asked,
         }),
@@ -7585,13 +7663,7 @@ async function handleRequest(req: Request): Promise<Response> {
       const children: any[] = [];
 
       for (const k of kids || []) {
-        const { data: ping } = await db
-          .from("location_pings")
-          .select("lat, lng, accuracy_m, recorded_at")
-          .eq("family_code", familyCode)
-          .eq("child_id", k.child_id)
-          .order("recorded_at", { ascending: false })
-          .limit(1);
+        const lastPing = await ishonchliOxirgiNuqta(familyCode, k.child_id);
 
         const { data: events } = await db
           .from("geofence_alerts")
@@ -7613,7 +7685,7 @@ async function handleRequest(req: Request): Promise<Response> {
           liveMinutesLeft: liveActive
             ? Math.max(0, Math.round((new Date(k.live_until).getTime() - Date.now()) / 60000))
             : 0,
-          lastPing: (ping && ping[0]) || null,
+          lastPing,
           events: events || [],
         });
       }
@@ -7898,8 +7970,15 @@ async function handleRequest(req: Request): Promise<Response> {
         .limit(2000);
 
       // Bir-biriga 40 metrdan yaqin ketma-ket nuqtalarni tashlab yuboramiz.
+      //
+      // Xatosi 100 metrdan katta nuqtalarni chiziqqa qo'shmaymiz: bino
+      // ichidagi taxminlar marshrutni qo'shni ko'chalarga sakratib, bola
+      // bormagan joyga borgandek ko'rsatardi. Kun bo'yi faqat noaniq nuqta
+      // kelgan bo'lsa, bo'sh xaritadan ko'ra ular yaxshiroq — o'shanda qoldiramiz.
+      const aniqlari = (raw || []).filter((p: any) => !(Number(p.accuracy_m) > 100));
+      const manba = aniqlari.length ? aniqlari : (raw || []);
       const thinned: any[] = [];
-      for (const p of raw || []) {
+      for (const p of manba) {
         const last = thinned[thinned.length - 1];
         if (!last || distanceMeters(last.lat, last.lng, p.lat, p.lng) > 40) {
           thinned.push(p);
@@ -9234,7 +9313,8 @@ async function handleRequest(req: Request): Promise<Response> {
           row.family_code,
           childId,
           loc.latitude,
-          loc.longitude
+          loc.longitude,
+          Number(loc.horizontal_accuracy) || null
         );
         for (const f of fired) {
           await notifyFamilyParents(
