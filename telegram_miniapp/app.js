@@ -5190,7 +5190,10 @@ async function renderRadarStatus() {
 
         list.innerHTML = kids.length ? kids.map(k => {
             const p = k.lastPing;
-            const coords = p ? p.lat.toFixed(5) + ', ' + p.lng.toFixed(5) : null;
+            const acc = p && Number(p.accuracy_m) > 0 ? Math.round(Number(p.accuracy_m)) : null;
+            const coords = p
+                ? p.lat.toFixed(5) + ', ' + p.lng.toFixed(5) + (acc ? ' (±' + acc + ' m)' : '')
+                : null;
             const live = k.live
                 ? `<span class="text-emerald-300 font-bold">🟢 Jonli · ${k.liveMinutesLeft} daqiqa qoldi</span>`
                 : `<span class="text-slate-400">⚪️ Jonli ulashish o'chiq</span>`;
