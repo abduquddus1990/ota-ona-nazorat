@@ -100,7 +100,13 @@ class AppWebActivity : AppCompatActivity() {
                 // Telegram havolalari (do'stni chaqirish, o'yin taklifi) va
                 // tashqi sahifalar brauzerda/Telegramda ochilsin.
                 val host = url.host.orEmpty()
-                return if (host.contains("github.io")) {
+                // qalqonai.uz — loyihaning o'z domeni. Sayt keyinchalik
+                // github.io'dan shu domenga ko'chiriladi va github.io unga
+                // yo'naltiradi; shu qatorsiz o'rnatilgan ilova yo'naltirishni
+                // tashqi brauzerga chiqarib yuborardi va panel ochilmay qolardi.
+                val ichki = host.contains("github.io") ||
+                    host == "qalqonai.uz" || host.endsWith(".qalqonai.uz")
+                return if (ichki) {
                     false
                 } else {
                     try { startActivity(Intent(Intent.ACTION_VIEW, url)) } catch (_: Exception) {}
