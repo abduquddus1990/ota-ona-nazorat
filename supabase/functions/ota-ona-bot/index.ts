@@ -907,67 +907,82 @@ async function evaluateGeofences(
     const wasInside = last && last[0] ? last[0].alert_type === "enter" : null;
     if (wasInside === inside) continue; // holat o'zgarmagan - jim turamiz
 
-    // NOANIQ nuqta (xatosi 100-500 m): faqat KIRISHni e'lon qila oladi.
-    //
-    // Bola maktab binosiga kirgach, telefon GPS'ni yo'qotadi va qolgan kun
-    // davomida faqat Wi-Fi/minora bo'yicha taxmin beradi. Agar bunday
-    // nuqtalarni e'tiborsiz qoldirsak, "maktabga yetdi" xabari hech qachon
-    // kelmaydi. Kirishni ikki holatda qabul qilamiz:
-    //   1) xato doirasi BUTUNLAY hudud ichida (masofa + xato <= radius) —
-    //      bu holda bola qayerda bo'lmasin, baribir ichkarida;
-    //   2) oldingi nuqta ham shu hudud ichida edi — yakka adashgan nuqta
-    //      emas, ketma-ket ikki o'lchov bir xil gapni aytyapti.
-    // Chiqishni esa noaniq nuqta hech qachon e'lon qilmaydi — 08:49 dagi
-    // yolg'on "uydan chiqdi" aynan shundan bo'lgan edi.
-    if (!ishonchli) {
-      if (!inside) continue;
-      const aniqIchkarida = dist + aniqlik <= z.radius_m;
-      if (!aniqIchkarida) {
-        const { data: oldingi } = await db
+    // Oldingi nuqta — kirish va chiqishni tasdiqlash uchun kerak bo'ladi.
+    let oldingiYuklandi = false;
+    let o: any = null;
+    const oldingiNuqta = async () => {
+      if (!oldingiYuklandi) {
+        // Bir nuqta ba'zan bazaga ikki marta yoziladi (bir xil vaqt bilan).
+        // Nusxa "oldingi nuqta" bo'lib qolsa, yakka adashgan nuqta o'zini
+        // o'zi tasdiqlab yuboradi — shuning uchun vaqti boshqa bo'lgan
+        // birinchi nuqtani olamiz.
+        const { data: oxirgilar } = await db
           .from("location_pings")
-          .select("lat, lng, accuracy_m")
+          .select("lat, lng, accuracy_m, recorded_at")
           .eq("family_code", familyCode)
           .eq("child_id", childId)
           .order("recorded_at", { ascending: false })
-          .range(1, 1);
-        const o = oldingi && oldingi[0];
-        const oAniq = o ? Number(o.accuracy_m) : NaN;
-        const oYaroqli = !!o && (!Number.isFinite(oAniq) || oAniq <= ANIQLIK_MAKSIMUM);
-        const oIchkarida =
-          oYaroqli && distanceMeters(o.lat, o.lng, z.center_lat, z.center_lng) <= z.radius_m;
-        if (!oIchkarida) continue;
+          .limit(6);
+        const r = oxirgilar || [];
+        o = r.find((x: any) => r[0] && x.recorded_at !== r[0].recorded_at) || null;
+        oldingiYuklandi = true;
       }
-    }
+      return o;
+    };
 
-    // CHIQISH ikki marta tasdiqlanadi.
-    //
-    // Yolg'on "chiqdi" xabari ota-onani bekorga qo'rqitadi va bir necha
-    // marta takrorlansa, u haqiqiy xabarga ham ishonmay qo'yadi. Noto'g'ri
-    // nuqta odatda YAKKA bo'ladi: oldingi va keyingi nuqtalar joyida
-    // turadi. Shuning uchun chiqishni e'lon qilishdan oldin OLDINGI nuqta
-    // ham hududdan tashqarida bo'lganini talab qilamiz.
-    //
-    // Kirishda bunday shart yo'q: "farzandingiz maktabga yetdi" xabarining
-    // bir sikl kechikishi zarar qilmaydi, umuman kelmasligi esa qiladi.
-    if (!inside) {
-      const { data: oldingi } = await db
-        .from("location_pings")
-        .select("lat, lng, accuracy_m")
-        .eq("family_code", familyCode)
-        .eq("child_id", childId)
-        .order("recorded_at", { ascending: false })
-        .range(1, 1);
+    if (inside) {
+      // KIRISH. Aniq nuqta — darhol.
+      //
+      // Noaniq nuqta (xatosi 100-500 m) ham kirishni tasdiqlay oladi: bola
+      // maktab binosiga kirgach, telefon GPS'ni yo'qotadi va qolgan kun
+      // faqat Wi-Fi/minora taxminini beradi. Bunday nuqtalarni tashlab
+      // yuborsak, "maktabga yetdi" xabari hech qachon kelmaydi. Shartlar:
+      //   1) xato doirasi BUTUNLAY hudud ichida (masofa + xato <= radius), yoki
+      //   2) oldingi nuqta ham shu hudud ichida edi — yakka adashgan nuqta
+      //      emas, ketma-ket ikki o'lchov bir xil gapni aytyapti.
+      if (!ishonchli && dist + aniqlik > z.radius_m) {
+        const p = await oldingiNuqta();
+        const pAniq = p ? Number(p.accuracy_m) : NaN;
+        const pYaroqli = !!p && (!Number.isFinite(pAniq) || pAniq <= ANIQLIK_MAKSIMUM);
+        const pIchkarida =
+          pYaroqli && distanceMeters(p.lat, p.lng, z.center_lat, z.center_lng) <= z.radius_m;
+        if (!pIchkarida) continue;
+      }
+    } else {
+      // CHIQISH ikki o'lchov bilan tasdiqlanadi.
+      //
+      // Yolg'on "chiqdi" xabari ota-onani bekorga qo'rqitadi va bir necha
+      // marta takrorlansa, u haqiqiy xabarga ham ishonmay qo'yadi. Noto'g'ri
+      // nuqta odatda YAKKA bo'ladi, shuning uchun OLDINGI nuqta ham
+      // tashqarida bo'lishini talab qilamiz.
+      //
+      // Nuqta "aniq tashqarida" deb hisoblanadi, agar u aniq bo'lsa yoki
+      // butun xato doirasi hududdan tashqarida bo'lsa (masofa - xato > radius).
+      // Ilgari noaniq nuqtalar chiqishni umuman tasdiqlay olmasdi va
+      // 2026-10-02 da bola 07:36 da uydan 5 km uzoqda bo'lsa ham, "uydan
+      // chiqdi" xabari faqat 08:11 da — 35 daqiqa kechikib — keldi.
+      const tashqarida = (lat2: number, lng2: number, acc: number) => {
+        const d = distanceMeters(lat2, lng2, z.center_lat, z.center_lng);
+        const aniqMi = !Number.isFinite(acc) || acc <= 0 || acc <= ANIQLIK_CHEGARASI;
+        if (aniqMi) return d > z.radius_m;
+        return acc <= ANIQLIK_MAKSIMUM && d - acc > z.radius_m;
+      };
+      if (!tashqarida(lat, lng, aniqlik)) continue;
 
-      const o = oldingi && oldingi[0];
-      if (o) {
-        const oAniq = Number(o.accuracy_m);
-        const oIshonchli = !Number.isFinite(oAniq) || oAniq <= ANIQLIK_CHEGARASI;
-        const oTashqarida =
-          distanceMeters(o.lat, o.lng, z.center_lat, z.center_lng) > z.radius_m;
-        // Oldingi nuqta ichkarida bo'lsa (yoki unga ishonib bo'lmasa) —
-        // hozircha jim turamiz. Chiqish haqiqiy bo'lsa, keyingi nuqtada
-        // tasdiqlanadi va xabar o'shanda ketadi.
-        if (oIshonchli && !oTashqarida) continue;
+      // Aniq nuqta hududdan 1 km dan ham uzoqda bo'lsa — bu adashish emas:
+      // Wi-Fi taxmini bunday sakramaydi, GPS esa o'zi aniq deyapti.
+      const uzoqSakrash = ishonchli && dist > z.radius_m + 1000;
+      if (!uzoqSakrash) {
+        const p = await oldingiNuqta();
+        if (p) {
+          const pAniq = Number(p.accuracy_m);
+          const pIshonchli = !Number.isFinite(pAniq) || pAniq <= ANIQLIK_CHEGARASI;
+          // Oldingi nuqta ichkarida (yoki noaniq) bo'lsa — hozircha jim
+          // turamiz; chiqish haqiqiy bo'lsa, keyingi nuqtada tasdiqlanadi.
+          // Faqat bitta istisno: hozirgi nuqta aniq, oldingisi esa noaniq
+          // va hech narsani isbotlamaydi — unga ishonib kutib turmaymiz.
+          if (!tashqarida(p.lat, p.lng, pAniq) && !(ishonchli && !pIshonchli)) continue;
+        }
       }
     }
 
