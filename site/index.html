@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Qalqon AI — farzandingiz xavfsiz, siz xotirjam</title>
+<meta name="description" content="Qalqon AI — ota-onalar uchun: farzand qayerdaligi, maktabga yetgani haqida xabar, SOS, ekran vaqti va AI repetitor. Yashirin kuzatuv emas — ochiq kelishuv.">
+<meta property="og:title" content="Qalqon AI — farzandingiz xavfsiz, siz xotirjam">
+<meta property="og:description" content="Maktabga yetdi, uyga qaytdi, SOS — barchasi Telegramingizga. Farzand bilan ochiq kelishuv asosida.">
+<meta property="og:image" content="https://qalqonai.uz/assets/qalqon-wolf.jpg">
+<meta property="og:url" content="https://qalqonai.uz/">
+<link rel="icon" href="assets/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy: #0f2a4a;
+    --navy-2: #1d3f66;
+    --ice: #22b8e6;
+    --ice-soft: #e3f6fd;
+    --ink: #13233a;
+    --muted: #5b6b80;
+    --line: #e2e8f0;
+    --paper: #ffffff;
+    --ground: #f6f9fc;
+    --warm: #fff7ed;
+    --good: #0f9d58;
+    --sos: #e5484d;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font: 500 16px/1.6 "Nunito", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  a { color: var(--navy-2); }
+  img { max-width: 100%; display: block; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding-inline: 20px; }
+
+  [data-lang] { display: none; }
+  [data-lang].on { display: block; }
+
+  /* --- Header */
+  header { padding-block: 18px; }
+  .bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--navy); font-weight: 900; font-size: 20px; }
+  .brand img { width: 40px; height: 40px; border-radius: 10px; }
+  .langbar { display: flex; gap: 4px; background: var(--paper); border: 1px solid var(--line); border-radius: 999px; padding: 4px; }
+  .langbar button {
+    appearance: none; border: 0; cursor: pointer; background: transparent; color: var(--muted);
+    font: 800 13px/1 inherit; font-family: inherit; padding: 8px 12px; border-radius: 999px;
+  }
+  .langbar button[aria-pressed="true"] { background: var(--navy); color: #fff; }
+
+  /* --- Hero */
+  .hero { display: grid; grid-template-columns: 1.15fr .85fr; gap: 32px; align-items: center; padding-block: 28px 56px; }
+  .eyebrow { display: inline-block; background: var(--ice-soft); color: #0b6a88; font-weight: 800; font-size: 13px; padding: 6px 12px; border-radius: 999px; }
+  h1 { font-size: clamp(32px, 5.2vw, 54px); line-height: 1.08; margin: 16px 0 14px; color: var(--navy); font-weight: 900; letter-spacing: -0.5px; }
+  h1 em { font-style: normal; color: var(--ice); }
+  .lead { font-size: 18px; color: var(--muted); max-width: 34em; margin: 0 0 26px; }
+  .ctas { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 10px; text-decoration: none;
+    font-weight: 800; font-size: 16px; padding: 14px 22px; border-radius: 14px;
+  }
+  .btn.primary { background: var(--navy); color: #fff; box-shadow: 0 8px 22px rgba(15, 42, 74, .25); }
+  .btn.primary:hover { background: var(--navy-2); }
+  .btn.ghost { background: var(--paper); color: var(--navy); border: 1.5px solid var(--line); }
+  .soon { font-size: 13px; color: var(--muted); }
+  .hero-art { position: relative; }
+  .hero-art .disc {
+    background: var(--paper); border-radius: 32px; padding: 18px;
+    box-shadow: 0 30px 60px rgba(15, 42, 74, .12);
+  }
+  .toast {
+    position: absolute; left: -18px; bottom: 26px; background: var(--paper); border-radius: 16px;
+    box-shadow: 0 14px 34px rgba(15, 42, 74, .18); padding: 12px 14px; display: flex; gap: 10px;
+    align-items: center; max-width: 260px; font-size: 14px; line-height: 1.35;
+  }
+  .toast b { display: block; color: var(--navy); }
+  .toast .dot { width: 34px; height: 34px; border-radius: 10px; background: #e7f7ee; display: grid; place-items: center; font-size: 18px; flex: none; }
+  .toast small { color: var(--muted); }
+
+  /* --- Sections */
+  section { padding-block: 56px; }
+  section.alt { background: var(--paper); }
+  h2 { font-size: clamp(26px, 3.6vw, 36px); line-height: 1.15; color: var(--navy); margin: 0 0 10px; font-weight: 900; }
+  .sect-lead { color: var(--muted); margin: 0 0 30px; max-width: 40em; }
+
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; counter-reset: s; }
+  .step { background: var(--ground); border-radius: 20px; padding: 22px; }
+  .step::before {
+    counter-increment: s; content: counter(s);
+    display: grid; place-items: center; width: 36px; height: 36px; border-radius: 12px;
+    background: var(--navy); color: #fff; font-weight: 900; margin-bottom: 12px;
+  }
+  .step h3 { margin: 0 0 6px; font-size: 18px; color: var(--navy); }
+  .step p { margin: 0; color: var(--muted); font-size: 15px; }
+
+  .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+  .feat { background: var(--paper); border: 1px solid var(--line); border-radius: 20px; padding: 22px; }
+  .feat .ic { font-size: 26px; width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center; background: var(--ice-soft); margin-bottom: 12px; }
+  .feat h3 { margin: 0 0 6px; font-size: 18px; color: var(--navy); }
+  .feat p { margin: 0; color: var(--muted); font-size: 15px; }
+  .feat.new { border-color: var(--ice); box-shadow: 0 0 0 3px var(--ice-soft); }
+  .tag { display: inline-block; font-size: 11px; font-weight: 900; background: var(--ice); color: #fff; padding: 2px 8px; border-radius: 999px; margin-left: 6px; vertical-align: 3px; }
+
+  .trust { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .panel { border-radius: 20px; padding: 24px; }
+  .panel.yes { background: #eefaf3; }
+  .panel.no { background: var(--warm); }
+  .panel h3 { margin: 0 0 10px; color: var(--navy); font-size: 18px; }
+  .panel ul { margin: 0; padding-left: 0; list-style: none; }
+  .panel li { padding: 6px 0 6px 28px; position: relative; }
+  .panel.yes li::before { content: "✓"; position: absolute; left: 0; color: var(--good); font-weight: 900; }
+  .panel.no li::before { content: "✕"; position: absolute; left: 0; color: var(--sos); font-weight: 900; }
+
+  details { background: var(--paper); border: 1px solid var(--line); border-radius: 16px; padding: 16px 20px; margin-bottom: 10px; }
+  summary { cursor: pointer; font-weight: 800; color: var(--navy); }
+  details p { margin: 10px 0 0; color: var(--muted); }
+
+  .final { text-align: center; background: var(--navy); color: #fff; border-radius: 28px; padding: 44px 24px; }
+  .final h2 { color: #fff; }
+  .final p { color: #c7d6e8; margin: 0 auto 24px; max-width: 32em; }
+  .final .btn.primary { background: var(--ice); color: var(--navy); box-shadow: none; }
+
+  footer { padding-block: 36px 48px; color: var(--muted); font-size: 14px; }
+  .foot { display: flex; justify-content: space-between; gap: 18px; flex-wrap: wrap; }
+  .foot nav a { margin-right: 16px; color: var(--muted); }
+
+  @media (max-width: 820px) {
+    .hero { grid-template-columns: 1fr; padding-top: 8px; }
+    .hero-art { max-width: 360px; margin: 0 auto; }
+    .toast { left: 0; }
+    .steps, .features, .trust { grid-template-columns: 1fr; }
+  }
+  @media (min-width: 821px) and (max-width: 980px) {
+    .features { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<header class="wrap">
+  <div class="bar">
+    <a class="brand" href="/"><img src="assets/icon.png" alt="">Qalqon AI</a>
+    <div class="langbar" role="group" aria-label="Til">
+      <button type="button" data-set="uz" aria-pressed="false">UZ</button>
+      <button type="button" data-set="ru" aria-pressed="false">RU</button>
+      <button type="button" data-set="en" aria-pressed="false">EN</button>
+    </div>
+  </div>
+</header>
+
+<!-- ============================================================ O'ZBEKCHA -->
+<main data-lang="uz">
+  <div class="wrap hero">
+    <div>
+      <span class="eyebrow">Ota-onalar uchun · Telegram va Android</span>
+      <h1>Farzandingiz <em>maktabga yetdi</em> — siz buni darhol bilasiz.</h1>
+      <p class="lead">Qalqon AI farzandingiz qayerdaligini ko'rsatadi, uyga va maktabga kirib-chiqqanida xabar beradi, xavf bo'lsa bir tugma bilan SOS yuboradi. Yashirin kuzatuv emas — farzand bilan ochiq kelishuv.</p>
+      <div class="ctas">
+        <a class="btn primary" href="https://t.me/qalqon_aibot">✈️ Telegram botda boshlash</a>
+        <span class="soon">Android ilova — tez orada Google Play'da</span>
+      </div>
+    </div>
+    <div class="hero-art">
+      <div class="disc"><img src="assets/qalqon-wolf.jpg" alt="Qalqon AI maskoti — qilichli bo'richa" width="512" height="512"></div>
+      <div class="toast"><span class="dot">📍</span><span><b>Maktab hududiga kirdi</b><small>Bugun, 08:05 · Xaritada ko'rish</small></span></div>
+    </div>
+  </div>
+
+  <section class="alt">
+    <div class="wrap">
+      <h2>Uch qadamda tayyor</h2>
+      <p class="sect-lead">Hech qanday murakkab sozlash yo'q. O'rtacha 5 daqiqa.</p>
+      <div class="steps">
+        <div class="step"><h3>Botni oching</h3><p>Telegramda @qalqon_aibot ga kiring va ro'yxatdan o'ting — parol shart emas.</p></div>
+        <div class="step"><h3>Farzandni ulang</h3><p>Bot bir martalik kod beradi. Farzand telefoniga Qalqon ilovasini o'rnatib, kodni kiritadi.</p></div>
+        <div class="step"><h3>Uy va maktabni belgilang</h3><p>Xaritada ikki nuqtani tanlang — kirib-chiqqanida xabar Telegramingizga keladi.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <h2>Kundalik xotirjamlik uchun</h2>
+      <p class="sect-lead">Har bir imkoniyat bitta savolga javob beradi: "Farzandim hozir yaxshimi?"</p>
+      <div class="features">
+        <div class="feat"><div class="ic">🏫</div><h3>Maktabga yetdi, uyga qaytdi</h3><p>Uy, maktab, to'garak — belgilangan hududga kirganda va chiqqanda xabar.</p></div>
+        <div class="feat"><div class="ic">🗺️</div><h3>Xarita va kun marshruti</h3><p>Hozir qayerda va bugun qayerlarda bo'lgani — o'lchangan vaqti bilan.</p></div>
+        <div class="feat"><div class="ic">🆘</div><h3>Bir tugmada SOS</h3><p>"Olib keting", "Maktabdaman" yoki SOS — joylashuvi bilan darhol sizga.</p></div>
+        <div class="feat new"><div class="ic">👨‍👩‍👧</div><h3>Ota va ona birga <span class="tag">YANGI</span></h3><p>Onani bitta havola bilan qo'shing — xabarlar ikkalangizga ham keladi.</p></div>
+        <div class="feat"><div class="ic">📱</div><h3>Ekran vaqti</h3><p>Qaysi ilovada qancha vaqt o'tdi — ta'qiqlash emas, muvozanat haqida suhbat uchun.</p></div>
+        <div class="feat"><div class="ic">🎓</div><h3>AI repetitor</h3><p>1–11-sinf darsliklari bo'yicha yordam: tayyor javob emas, o'zi topishga yo'naltiradi.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="alt">
+    <div class="wrap">
+      <h2>Ishonch — kuzatuvdan muhimroq</h2>
+      <p class="sect-lead">Farzand ilova borligini biladi va nima yuborilayotganini ko'radi. Shunday bo'lgani uchun u ilovani o'chirib qo'yishga urinmaydi.</p>
+      <div class="trust">
+        <div class="panel yes"><h3>Nima qilamiz</h3><ul>
+          <li>Joylashuvni faqat oilangizga ko'rsatamiz</li>
+          <li>Farzandga qaysi ma'lumot ketayotganini ko'rsatamiz</li>
+          <li>Hisobni bir bosishda butunlay o'chirish imkonini beramiz</li>
+        </ul></div>
+        <div class="panel no"><h3>Nima qilmaymiz</h3><ul>
+          <li>Yozishmalarni o'qimaymiz, ekranni yozmaymiz</li>
+          <li>Mikrofon va kamerani ishlatmaymiz, ikonkani yashirmaymiz</li>
+          <li>Ma'lumotni hech kimga sotmaymiz</li>
+        </ul></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <h2>Ko'p beriladigan savollar</h2>
+      <details><summary>Bu pullikmi?</summary><p>Boshlash bepul. Bepul tarifda bitta farzandni kuzatish va asosiy xabarlar ishlaydi. Pro tarif uzoqroq jonli kuzatuv va 30 kunlik yo'l tarixini qo'shadi.</p></details>
+      <details><summary>Farzandimning telefoni iPhone bo'lsa-chi?</summary><p>Hozircha farzand ilovasi Android uchun. iPhone'da farzand Telegram orqali jonli joylashuvini ulashishi mumkin — bot uni ham qabul qiladi.</p></details>
+      <details><summary>Bino ichida joylashuv noaniq bo'lmaydimi?</summary><p>Bino ichida telefon GPS'ni yo'qotadi va xato 100–200 metrgacha oshadi. Qalqon buni hisobga oladi: noaniq o'lchovdan yolg'on "chiqdi" xabarini bermaydi, kirishni esa ketma-ket o'lchovlar bilan tasdiqlaydi.</p></details>
+      <details><summary>Ma'lumotlarim qayerda saqlanadi?</summary><p>Himoyalangan serverda, faqat sizning oilangiz uchun. Batafsil — <a href="privacy-policy.html">maxfiylik siyosatida</a>.</p></details>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap final">
+      <h2>Bugun boshlang — ertalab xotirjam bo'ling</h2>
+      <p>Botni oching, farzandni ulang va ertaga birinchi "maktabga yetdi" xabarini oling.</p>
+      <a class="btn primary" href="https://t.me/qalqon_aibot">✈️ @qalqon_aibot ni ochish</a>
+    </div>
+  </section>
+</main>
+
+<!-- ============================================================ РУССКИЙ -->
+<main data-lang="ru">
+  <div class="wrap hero">
+    <div>
+      <span class="eyebrow">Для родителей · Telegram и Android</span>
+      <h1>Ребёнок <em>дошёл до школы</em> — вы узнаёте об этом сразу.</h1>
+      <p class="lead">Qalqon AI показывает, где ваш ребёнок, сообщает, когда он пришёл в школу или домой, и одним нажатием отправляет SOS. Не тайная слежка — открытая договорённость с ребёнком.</p>
+      <div class="ctas">
+        <a class="btn primary" href="https://t.me/qalqon_aibot">✈️ Начать в Telegram-боте</a>
+        <span class="soon">Android-приложение — скоро в Google Play</span>
+      </div>
+    </div>
+    <div class="hero-art">
+      <div class="disc"><img src="assets/qalqon-wolf.jpg" alt="Маскот Qalqon AI — волчонок с мечом" width="512" height="512"></div>
+      <div class="toast"><span class="dot">📍</span><span><b>Вошёл в зону «Школа»</b><small>Сегодня, 08:05 · На карте</small></span></div>
+    </div>
+  </div>
+
+  <section class="alt">
+    <div class="wrap">
+      <h2>Готово за три шага</h2>
+      <p class="sect-lead">Без сложных настроек. В среднем 5 минут.</p>
+      <div class="steps">
+        <div class="step"><h3>Откройте бота</h3><p>Зайдите в @qalqon_aibot в Telegram и зарегистрируйтесь — пароль не нужен.</p></div>
+        <div class="step"><h3>Подключите ребёнка</h3><p>Бот выдаст одноразовый код. Ребёнок устанавливает Qalqon и вводит код.</p></div>
+        <div class="step"><h3>Отметьте дом и школу</h3><p>Выберите две точки на карте — о каждом входе и выходе придёт сообщение.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <h2>Спокойствие каждый день</h2>
+      <p class="sect-lead">Каждая функция отвечает на один вопрос: «С моим ребёнком сейчас всё хорошо?»</p>
+      <div class="features">
+        <div class="feat"><div class="ic">🏫</div><h3>Дошёл до школы, вернулся домой</h3><p>Дом, школа, кружок — сообщение при входе в зону и выходе из неё.</p></div>
+        <div class="feat"><div class="ic">🗺️</div><h3>Карта и маршрут дня</h3><p>Где сейчас и где был сегодня — со временем каждого замера.</p></div>
+        <div class="feat"><div class="ic">🆘</div><h3>SOS одной кнопкой</h3><p>«Заберите меня», «Я в школе» или SOS — сразу вам, с геолокацией.</p></div>
+        <div class="feat new"><div class="ic">👨‍👩‍👧</div><h3>Папа и мама вместе <span class="tag">НОВОЕ</span></h3><p>Добавьте маму одной ссылкой — уведомления придут вам обоим.</p></div>
+        <div class="feat"><div class="ic">📱</div><h3>Экранное время</h3><p>Сколько времени в каких приложениях — не для запретов, а для разговора о балансе.</p></div>
+        <div class="feat"><div class="ic">🎓</div><h3>AI-репетитор</h3><p>Помощь по учебникам 1–11 классов: не готовый ответ, а подсказка, как найти его самому.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="alt">
+    <div class="wrap">
+      <h2>Доверие важнее контроля</h2>
+      <p class="sect-lead">Ребёнок знает о приложении и видит, какие данные отправляются. Поэтому ему незачем его отключать.</p>
+      <div class="trust">
+        <div class="panel yes"><h3>Что мы делаем</h3><ul>
+          <li>Показываем геолокацию только вашей семье</li>
+          <li>Показываем ребёнку, какие данные отправляются</li>
+          <li>Даём удалить аккаунт полностью в один клик</li>
+        </ul></div>
+        <div class="panel no"><h3>Чего мы не делаем</h3><ul>
+          <li>Не читаем переписку и не записываем экран</li>
+          <li>Не используем микрофон и камеру, не прячем иконку</li>
+          <li>Никому не продаём данные</li>
+        </ul></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <h2>Частые вопросы</h2>
+      <details><summary>Это платно?</summary><p>Начать можно бесплатно. Бесплатный тариф — один ребёнок и основные уведомления. Pro добавляет более долгое живое отслеживание и историю маршрутов за 30 дней.</p></details>
+      <details><summary>А если у ребёнка iPhone?</summary><p>Пока приложение для ребёнка есть только на Android. С iPhone ребёнок может делиться живой геолокацией через Telegram — бот её принимает.</p></details>
+      <details><summary>Внутри здания геолокация не будет неточной?</summary><p>В здании телефон теряет GPS, и ошибка растёт до 100–200 метров. Qalqon это учитывает: не шлёт ложное «вышел» по неточному замеру, а вход подтверждает несколькими замерами подряд.</p></details>
+      <details><summary>Где хранятся данные?</summary><p>На защищённом сервере, только для вашей семьи. Подробнее — в <a href="privacy-policy.html?lang=ru">политике конфиденциальности</a>.</p></details>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap final">
+      <h2>Начните сегодня — будьте спокойны завтра утром</h2>
+      <p>Откройте бота, подключите ребёнка и получите первое «дошёл до школы» уже завтра.</p>
+      <a class="btn primary" href="https://t.me/qalqon_aibot">✈️ Открыть @qalqon_aibot</a>
+    </div>
+  </section>
+</main>
+
+<!-- ============================================================ ENGLISH -->
+<main data-lang="en">
+  <div class="wrap hero">
+    <div>
+      <span class="eyebrow">For parents · Telegram and Android</span>
+      <h1>Your child <em>reached school</em> — and you know right away.</h1>
+      <p class="lead">Qalqon AI shows where your child is, tells you when they arrive at school or home, and sends an SOS with one tap. Not secret surveillance — an open agreement with your child.</p>
+      <div class="ctas">
+        <a class="btn primary" href="https://t.me/qalqon_aibot">✈️ Start in the Telegram bot</a>
+        <span class="soon">Android app — coming soon to Google Play</span>
+      </div>
+    </div>
+    <div class="hero-art">
+      <div class="disc"><img src="assets/qalqon-wolf.jpg" alt="Qalqon AI mascot — a wolf cub with a sword" width="512" height="512"></div>
+      <div class="toast"><span class="dot">📍</span><span><b>Entered the School zone</b><small>Today, 08:05 · View on map</small></span></div>
+    </div>
+  </div>
+
+  <section class="alt">
+    <div class="wrap">
+      <h2>Ready in three steps</h2>
+      <p class="sect-lead">No complicated setup. About 5 minutes.</p>
+      <div class="steps">
+        <div class="step"><h3>Open the bot</h3><p>Go to @qalqon_aibot in Telegram and sign up — no password needed.</p></div>
+        <div class="step"><h3>Connect your child</h3><p>The bot gives a one-time code. Your child installs Qalqon and enters it.</p></div>
+        <div class="step"><h3>Mark home and school</h3><p>Pick two places on the map — every arrival and departure comes to your Telegram.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <h2>Peace of mind, every day</h2>
+      <p class="sect-lead">Every feature answers one question: "Is my child okay right now?"</p>
+      <div class="features">
+        <div class="feat"><div class="ic">🏫</div><h3>Reached school, back home</h3><p>Home, school, after-school club — a message on every arrival and departure.</p></div>
+        <div class="feat"><div class="ic">🗺️</div><h3>Map and daily route</h3><p>Where they are now and where they've been today, with the time of each reading.</p></div>
+        <div class="feat"><div class="ic">🆘</div><h3>One-tap SOS</h3><p>"Pick me up", "I'm at school" or SOS — straight to you, with location.</p></div>
+        <div class="feat new"><div class="ic">👨‍👩‍👧</div><h3>Both parents <span class="tag">NEW</span></h3><p>Add the other parent with one link — alerts reach you both.</p></div>
+        <div class="feat"><div class="ic">📱</div><h3>Screen time</h3><p>How long in which apps — not to forbid, but to talk about balance.</p></div>
+        <div class="feat"><div class="ic">🎓</div><h3>AI tutor</h3><p>Help with grade 1–11 textbooks: not ready answers, but guidance to find them.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="alt">
+    <div class="wrap">
+      <h2>Trust matters more than tracking</h2>
+      <p class="sect-lead">Your child knows the app is there and sees what is sent. That's why they have no reason to switch it off.</p>
+      <div class="trust">
+        <div class="panel yes"><h3>What we do</h3><ul>
+          <li>Show location only to your family</li>
+          <li>Show your child what data is being sent</li>
+          <li>Let you delete your account completely in one tap</li>
+        </ul></div>
+        <div class="panel no"><h3>What we never do</h3><ul>
+          <li>Read messages or record the screen</li>
+          <li>Use the microphone or camera, or hide the icon</li>
+          <li>Sell data to anyone</li>
+        </ul></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <h2>Frequently asked questions</h2>
+      <details><summary>Is it paid?</summary><p>You can start for free. The free plan covers one child and the core alerts. Pro adds longer live tracking and 30 days of route history.</p></details>
+      <details><summary>What if my child has an iPhone?</summary><p>The child app is Android-only for now. On iPhone, your child can share live location through Telegram — the bot accepts it too.</p></details>
+      <details><summary>Isn't location inaccurate indoors?</summary><p>Indoors the phone loses GPS and the error grows to 100–200 m. Qalqon accounts for it: no false "left" alert from an imprecise reading, and arrival is confirmed by consecutive readings.</p></details>
+      <details><summary>Where is my data stored?</summary><p>On a protected server, for your family only. Details in the <a href="privacy-policy.html?lang=en">privacy policy</a>.</p></details>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap final">
+      <h2>Start today — feel calm tomorrow morning</h2>
+      <p>Open the bot, connect your child and get your first "reached school" tomorrow.</p>
+      <a class="btn primary" href="https://t.me/qalqon_aibot">✈️ Open @qalqon_aibot</a>
+    </div>
+  </section>
+</main>
+
+<footer class="wrap">
+  <div class="foot">
+    <nav>
+      <a href="about.html">Loyiha haqida · About</a>
+      <a href="privacy-policy.html">Maxfiylik · Privacy</a>
+      <a href="terms.html">Shartlar · Terms</a>
+      <a href="account-deletion.html">Hisobni o'chirish · Delete account</a>
+    </nav>
+    <div>© 2026 Qalqon AI · <a href="mailto:support@qalqonai.uz">support@qalqonai.uz</a></div>
+  </div>
+</footer>
+
+<script src="assets/docs.js?v=1"></script>
+</body>
+</html>
