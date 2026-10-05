@@ -610,3 +610,144 @@ body {
         0 24px 60px -18px rgba(0, 0, 0, 0.75),
         inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
+
+/* ==========================================================================
+   "TINCH TONG" — 2026-10 dan standart mavzu (yorug').
+   Tailwind rang klasslarining yorug' muqobillari theme-tong.css da
+   (tools/gen_tong.py yaratadi). Bu yerda — komponentlar: fon, kartochka,
+   suzuvchi pastki panel, kirish ekrani, shrift va matn o'lchamlari.
+   ========================================================================== */
+body[data-theme="tong"] {
+    --bg-primary: #eef4fa;
+    --bg-surface: #ffffff;
+    --bg-card: rgba(255, 255, 255, 0.94);
+    --border-subtle: rgba(15, 42, 74, 0.08);
+    --border-active: rgba(29, 111, 224, 0.35);
+    --accent-primary: #1d6fe0;
+    --accent-hover: #1858b8;
+    --accent-secondary: #f59e0b;
+    --text-primary: #0f2a4a;
+    --text-secondary: #4f6684;
+    --text-muted: #7d8ea6;
+    --wallpaper-gradient: radial-gradient(120% 60% at 70% 0%, #ffffff 0%, #eaf3fb 45%, #dcebf7 100%);
+    --font-brand: 'Nunito', 'Outfit', sans-serif;
+    color: var(--text-primary);
+    padding-bottom: calc(110px + env(safe-area-inset-bottom, 0px));
+}
+body[data-theme="tong"] * { font-family: var(--font-brand), -apple-system, BlinkMacSystemFont, sans-serif; }
+body[data-theme="tong"] .material-symbols-outlined { font-family: 'Material Symbols Outlined' !important; }
+
+/* Mayda matnlar: ota-onalar ko'pincha telefonni qo'lda, yo'lda ushlaydi —
+   9–10 pikselli yozuvni o'qib bo'lmaydi. */
+body[data-theme="tong"] .text-\[9px\]  { font-size: 11px; }
+body[data-theme="tong"] .text-\[10px\] { font-size: 12px; }
+body[data-theme="tong"] .text-\[11px\] { font-size: 12.5px; }
+body[data-theme="tong"] .text-xs { font-size: 13px; line-height: 1.45; }
+
+/* Kartochkalar: qora "shisha" o'rniga oq, yumshoq soyali. */
+body[data-theme="tong"] .glass-card {
+    background: var(--bg-card);
+    border: 1px solid rgba(15, 42, 74, 0.06);
+    box-shadow: 0 10px 30px -12px rgba(15, 42, 74, 0.18);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+}
+body[data-theme="tong"] .glass-card:hover { border-color: rgba(29, 111, 224, 0.25); }
+
+/* Gradientli "porlovchi" sarlavhalar yorug' fonda o'qilmaydi (oxiri oqqa
+   o'tib yo'qolardi) — bir tekis to'q ko'k. */
+body[data-theme="tong"] .bg-clip-text {
+    background-image: none !important;
+    color: var(--text-primary) !important;
+    -webkit-text-fill-color: currentColor;
+}
+
+/* Qo'lda yozilgan rang kodlari. */
+body[data-theme="tong"] .text-\[\#22D3EE\] { color: #0891b2; }
+body[data-theme="tong"] .border-\[\#334155\] { border-color: rgba(15, 42, 74, 0.1); }
+body[data-theme="tong"] .border-\[\#22D3EE\] { border-color: #22b8e6; }
+body[data-theme="tong"] .bg-\[\#13131b\], body[data-theme="tong"] .bg-\[\#13131bcc\] { background-color: #ffffff; }
+
+/* Neon soyalar yorug' fonda kir dog'dek ko'rinadi. */
+body[data-theme="tong"] [class*="shadow-[0_0_"] { box-shadow: 0 8px 22px -10px rgba(15, 42, 74, 0.25) !important; }
+body[data-theme="tong"] [class*="drop-shadow-[0_0_"] { filter: drop-shadow(0 10px 18px rgba(15, 42, 74, 0.18)) !important; }
+
+/* ---------------- Suzuvchi pastki panel ("tabletka") ----------------
+   3 bo'lim, faqat tanlanganining nomi yoziladi. Ekran chetiga yopishmaydi. */
+body[data-theme="tong"] .bottom-nav {
+    left: 50%;
+    right: auto;
+    bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+    transform: translateX(-50%);
+    width: auto;
+    max-width: calc(100% - 32px);
+    margin: 0;
+    padding: 7px;
+    gap: 6px;
+    background: #0f2a4a;
+    border: 0;
+    border-radius: 999px;
+    box-shadow: 0 16px 36px -10px rgba(15, 42, 74, 0.55);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    justify-content: center;
+}
+body[data-theme="tong"] .bottom-nav .nav-btn {
+    flex-direction: row;
+    gap: 7px;
+    min-width: 54px;
+    height: 48px;
+    padding: 0 16px;
+    border-radius: 999px;
+    color: #b9cbe0;
+    font-size: 14px;
+    font-weight: 800;
+}
+body[data-theme="tong"] .bottom-nav .nav-btn > span:not(.material-symbols-outlined) { display: none; }
+body[data-theme="tong"] .bottom-nav .nav-btn.active { background: rgba(255, 255, 255, 0.16); color: #ffffff; }
+body[data-theme="tong"] .bottom-nav .nav-btn.active > span:not(.material-symbols-outlined) { display: inline; }
+body[data-theme="tong"] .bottom-nav .nav-btn .material-symbols-outlined { font-size: 22px; }
+
+/* Profil doirasi = Sozlamalar. Kichik tishli belgi buni ko'rsatadi. */
+body[data-theme="tong"] .qalqon-me { position: relative; border-color: rgba(15, 42, 74, 0.12) !important; background: #ffffff !important; box-shadow: 0 4px 12px -4px rgba(15, 42, 74, 0.3) !important; }
+.qalqon-me::after {
+    content: "settings";
+    font-family: 'Material Symbols Outlined';
+    position: absolute; right: -4px; bottom: -4px;
+    width: 16px; height: 16px; border-radius: 50%;
+    background: #0f2a4a; color: #ffffff; font-size: 11px; line-height: 16px; text-align: center;
+}
+
+/* Modal oynalar va pastki sahifalar */
+body[data-theme="tong"] .subpage-modal { background: var(--bg-primary); background-image: var(--wallpaper-gradient); }
+
+/* ---------------- Kirish ekrani ---------------- */
+body[data-theme="tong"] .qalqon-auth {
+    background-color: #e7f1fa;
+    background-image: radial-gradient(90% 60% at 70% 10%, #ffffff 0%, #e4f1fb 45%, #c9e0f2 100%);
+}
+body[data-theme="tong"] .qalqon-auth::before { opacity: 0.35; }
+body[data-theme="tong"] .qalqon-auth::after { background: linear-gradient(to bottom, rgba(29, 111, 224, 0.35), transparent); }
+body[data-theme="tong"] .qalqon-auth-badge {
+    background: #0f2a4a;
+    border: 0;
+    box-shadow: 0 14px 30px -10px rgba(15, 42, 74, 0.5);
+}
+body[data-theme="tong"] .qalqon-auth-badge * { color: #ffffff !important; }
+body[data-theme="tong"] .qalqon-auth-card {
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid #ffffff;
+    box-shadow: 0 24px 60px -22px rgba(15, 42, 74, 0.35);
+}
+body[data-theme="tong"] input, body[data-theme="tong"] textarea, body[data-theme="tong"] select { color: var(--text-primary); }
+body[data-theme="tong"] input::placeholder, body[data-theme="tong"] textarea::placeholder { color: #94a3b8; }
+
+/* Leaflet xarita ustidagi qorong'i filtrlar (tungi xarita) olib tashlanadi. */
+body[data-theme="tong"] .leaflet-tile-pane { filter: none !important; }
+
+/* Suzuvchi ⚙️ tugma "Tinch tong"da kerak emas: Sozlamalar — profil
+   doirasida, uning barcha bandlari Sozlamalar va "Farzand" bo'limida bor.
+   U suzuvchi panel ustiga chiqib, uni to'sib qo'yardi. */
+body[data-theme="tong"] #quickMenuFab { display: none !important; }
+/* "Sizning rolingiz: Otasi / Onasi" — endi har kim o'z hisobidan kiradi. */
+body[data-theme="tong"] #parentRolePillContainer { display: none !important; }

@@ -41,9 +41,11 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <!-- Custom Stitch Styles -->
-    <link rel="stylesheet" href="styles.css?v=6.6">
+    <link rel="stylesheet" href="styles.css?v=7.0">
+    <link rel="stylesheet" href="theme-tong.css?v=1">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;600;700;800;900&display=swap" rel="stylesheet"/>
 </head>
-<body class="p-3 max-w-md mx-auto relative antialiased text-slate-200">
+<body data-theme="tong" class="p-3 max-w-md mx-auto relative antialiased text-slate-200">
     <!-- ==================================================================== -->
     <!-- 🔐 TELEGRAMDAN TASHQARIDA KIRISH (login va parol) -->
     <!-- Telegram ichida ko'rsatilmaydi: u yerda initData paroldan kuchliroq. -->
@@ -256,7 +258,7 @@
 
         <div class="flex items-center gap-2">
             <!-- Silver Wolf Mascot Avatar -->
-            <div class="w-8 h-8 rounded-full border-2 border-[#22D3EE]/80 bg-[#22D3EE]/20 flex items-center justify-center overflow-hidden relative shadow-[0_0_10px_rgba(34,211,238,0.35)]">
+            <div onclick="openSettings()" role="button" aria-label="Sozlamalar" title="Sozlamalar" class="qalqon-me cursor-pointer w-8 h-8 rounded-full border-2 border-[#22D3EE]/80 bg-[#22D3EE]/20 flex items-center justify-center overflow-hidden relative shadow-[0_0_10px_rgba(34,211,238,0.35)]">
                 <img src="assets/wolf_mascot.png" onerror="this.src='https://lh3.googleusercontent.com/aida-public/AB6AXuD4KD1uqMogxlSUh4XTwFZ6O8CcikpLzeXyE_AoKP5Bb7hfxrK_rDplyKX2s0KI3Kf-D2TRnanZtUX21nyuflU3WUny5Q3xGqSOAFplw0NaQNtSmIFXg_tVGW1h8CU70IPksptF26DN2hbF2nFN9sZOKWou2ZiNFaEl1s9UvWP8vjflsQwQWMt_BttzLNQBBJHpzrSqvqz-wwxaNui-4J52Xz6TfF8kqKuSIoBQubAXZiw9_QUtaSOjOw'" alt="Kumush Bo'ri" class="w-full h-full object-cover">
             </div>
             <!-- Plan Badge -->
@@ -281,7 +283,7 @@
     </div>
 
     <!-- Ota / Ona Tanlash Pills -->
-    <div id="parentRolePillContainer" class="flex items-center justify-between px-2.5 py-1 mb-3 bg-slate-900/60 rounded-xl border border-slate-800 text-[11px]">
+    <div id="parentRolePillContainer" class="hidden flex items-center justify-between px-2.5 py-1 mb-3 bg-slate-900/60 rounded-xl border border-slate-800 text-[11px]">
         <div class="flex items-center gap-1.5 text-slate-400">
             <span class="material-symbols-outlined text-xs text-cyan-400">person</span>
             <span data-i18n="parentIdentityLabel">Sizning rolingiz:</span>
@@ -1460,6 +1462,19 @@
             <span class="text-slate-500 text-sm font-bold">›</span>
         </div>
 
+        <!-- 9. Hisobni o'chirish. Ilgari faqat suzuvchi ⚙️ menyuda edi; u
+             "Tinch tong"da olib tashlangani uchun shu yerga ko'chdi. Google
+             Play bu imkoniyat ilova ichida topiladigan bo'lishini talab qiladi. -->
+        <div onclick="openSubpage('modal-delete-account')" class="glass-panel p-3.5 flex items-center justify-between cursor-pointer hover:border-rose-500/50 transition">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center text-rose-400 text-lg">🗑</div>
+                <div>
+                    <div class="text-xs font-bold text-white">Hisobni o'chirish</div>
+                    <div class="text-[10px] text-slate-400">Barcha ma'lumotlar darhol o'chiriladi</div>
+                </div>
+            </div>
+            <span class="text-slate-500 text-sm font-bold">›</span>
+        </div>
     </main>
 
     <!-- ==================================================================== -->
@@ -1905,9 +1920,13 @@
         </div>
 
         <div class="grid grid-cols-2 gap-3">
-            <div onclick="setTheme('default')" data-theme-name="default" class="theme-card active bg-gradient-to-br from-slate-900 to-slate-950 border-slate-800 text-emerald-400">
+            <div onclick="setTheme('tong')" data-theme-name="tong" class="theme-card" style="background:linear-gradient(135deg,#ffffff,#dcebf7);border-color:#bcd3e8;color:#0f2a4a">
+                <div class="text-[9px]" style="color:#1d6fe0">☀️ Yangi · standart</div>
+                <div>Tinch tong</div>
+            </div>
+            <div onclick="setTheme('default')" data-theme-name="default" class="theme-card bg-gradient-to-br from-slate-900 to-slate-950 border-slate-800 text-emerald-400">
                 <div class="text-[9px] text-emerald-500">🌌 Qorong'i</div>
-                <div>Cyber Dark</div>
+                <div>Tungi</div>
             </div>
             <div onclick="setTheme('aurora')" data-theme-name="aurora" class="theme-card bg-gradient-to-br from-sky-950 to-emerald-950 border-sky-800 text-sky-400">
                 <div class="text-[9px] text-sky-500">🌌 Shimoliy Nur</div>
@@ -2741,7 +2760,7 @@
     <!-- OTA-ONA TAB: ✨ QO'SHIMCHA IMKONIYATLAR -->
     <!-- ==================================================================== -->
     <main id="tab-extras" class="tab-content space-y-3 hidden">
-        <h2 class="text-xs font-black text-white uppercase tracking-wider px-1">✨ Qo'shimcha imkoniyatlar</h2>
+        <h2 class="text-xs font-black text-white uppercase tracking-wider px-1" data-i18n="navChild">Farzand</h2>
         <div id="parentExtrasGrid" class="grid grid-cols-2 gap-2.5"></div>
     </main>
 
@@ -2769,6 +2788,14 @@
     <!-- ==================================================================== -->
     <main id="child-tab-games" class="tab-content space-y-3 hidden">
         <h2 class="text-xs font-black text-white uppercase tracking-wider px-1">🎮 O'yinlar</h2>
+        <div class="grid grid-cols-2 gap-2.5">
+            <button onclick="switchChildTab('child-tab-rewards')" class="p-3 rounded-2xl bg-slate-900/70 border border-slate-700 text-left">
+                <div class="text-xl">🏆</div><div class="text-[11px] font-bold text-white mt-1" data-i18n="childNavRewards">Yutuqlar</div>
+            </button>
+            <button onclick="switchChildTab('child-tab-extras')" class="p-3 rounded-2xl bg-slate-900/70 border border-slate-700 text-left">
+                <div class="text-xl">✨</div><div class="text-[11px] font-bold text-white mt-1">Qo'shimcha</div>
+            </button>
+        </div>
         <div class="text-[10px] text-slate-400 leading-relaxed p-2.5 rounded-xl bg-slate-900/60 border border-slate-800">
             Bu o'yinlar ball bermaydi — shunchaki o'ynash uchun. 🔒 belgili o'yinlar
             <b>Ball do'koni</b>da bir marta ochiladi. Ochilgandan keyin <b>internetsiz</b> ham ishlaydi.
@@ -2783,21 +2810,21 @@
         </button>
 
         <button onclick="switchTab('tab-radar')" id="nav-tab-radar" class="nav-btn">
-            <span class="material-symbols-outlined">distance</span>
-            <span data-i18n="navRadar">Radar</span>
+            <span class="material-symbols-outlined">map</span>
+            <span data-i18n="navRadar">Xarita</span>
         </button>
 
-        <button onclick="switchTab('tab-ai')" id="nav-tab-ai" class="nav-btn">
+        <button onclick="switchTab('tab-ai')" id="nav-tab-ai" class="nav-btn nav-extra hidden">
             <span class="material-symbols-outlined">psychology</span>
             <span data-i18n="navAi">AI Murabbiy</span>
         </button>
 
         <button onclick="switchTab('tab-extras')" id="nav-tab-extras" class="nav-btn">
-            <span class="material-symbols-outlined">apps</span>
-            <span>Qo'shimcha</span>
+            <span class="material-symbols-outlined">child_care</span>
+            <span data-i18n="navChild">Farzand</span>
         </button>
 
-        <button onclick="switchTab('tab-games')" id="nav-tab-games" class="nav-btn">
+        <button onclick="switchTab('tab-games')" id="nav-tab-games" class="nav-btn nav-extra hidden">
             <span class="material-symbols-outlined">stadia_controller</span>
             <span>O'yinlar</span>
         </button>
@@ -2807,7 +2834,7 @@
             <span data-i18n="navSchool">e-Maktab 💎</span>
         </button>
 
-        <button onclick="switchTab('tab-settings')" id="nav-tab-settings" class="nav-btn">
+        <button onclick="switchTab('tab-settings')" id="nav-tab-settings" class="nav-btn nav-extra hidden">
             <span class="material-symbols-outlined">settings</span>
             <span data-i18n="navSettings">Sozlamalar</span>
         </button>
@@ -2823,11 +2850,11 @@
         </button>
 
         <button onclick="switchChildTab('child-tab-ai')" id="nav-child-tab-ai" class="nav-btn">
-            <span class="material-symbols-outlined">smart_toy</span>
-            <span data-i18n="childNavAi">AI Do'st</span>
+            <span class="material-symbols-outlined">school</span>
+            <span data-i18n="childNavAi">O'qish</span>
         </button>
 
-        <button onclick="switchChildTab('child-tab-extras')" id="nav-child-tab-extras" class="nav-btn">
+        <button onclick="switchChildTab('child-tab-extras')" id="nav-child-tab-extras" class="nav-btn nav-extra hidden">
             <span class="material-symbols-outlined">apps</span>
             <span>Qo'shimcha</span>
         </button>
@@ -2837,7 +2864,7 @@
             <span>O'yinlar</span>
         </button>
 
-        <button onclick="switchChildTab('child-tab-rewards')" id="nav-child-tab-rewards" class="nav-btn">
+        <button onclick="switchChildTab('child-tab-rewards')" id="nav-child-tab-rewards" class="nav-btn nav-extra hidden">
             <span class="material-symbols-outlined">military_tech</span>
             <span data-i18n="childNavRewards">Yutuqlar</span>
         </button>
@@ -2847,14 +2874,14 @@
             <span data-i18n="childNavSchool">e-Maktabim</span>
         </button>
 
-        <button onclick="switchChildTab('child-tab-settings')" id="nav-child-tab-settings" class="nav-btn">
+        <button onclick="switchChildTab('child-tab-settings')" id="nav-child-tab-settings" class="nav-btn nav-extra hidden">
             <span class="material-symbols-outlined">settings</span>
             <span>Sozlamalar</span>
         </button>
     </nav>
 
     <!-- Custom JavaScript -->
-    <script src="app.js?v=9.5"></script>
+    <script src="app.js?v=9.6"></script>
     <!-- O'yinlar alohida faylda: app.js allaqachon katta, va o'yin kontenti
          (savollar, kartalar) o'sib boradi. Alohida fayl brauzerda alohida
          keshlanadi — o'yin qo'shilsa, butun ilova qayta yuklanmaydi. -->
