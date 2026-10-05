@@ -1,0 +1,2 @@
+site/build.sh text eol=lf
+site/CNAME text eol=lf

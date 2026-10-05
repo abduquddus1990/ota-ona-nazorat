@@ -16,8 +16,9 @@
   function qoy(til) {
     if (TILLAR.indexOf(til) < 0) til = 'uz';
     TILLAR.forEach(function (t) {
-      var bor = document.querySelector('[data-lang="' + t + '"]');
-      if (bor) bor.classList.toggle('on', t === til);
+      // Sahifada bir tilning bir nechta bloki bo'lishi mumkin (bosh sahifa).
+      var bloklar = document.querySelectorAll('[data-lang="' + t + '"]');
+      for (var i = 0; i < bloklar.length; i++) bloklar[i].classList.toggle('on', t === til);
       var btn = document.querySelector('.langbar button[data-set="' + t + '"]');
       if (btn) btn.setAttribute('aria-pressed', String(t === til));
     });
