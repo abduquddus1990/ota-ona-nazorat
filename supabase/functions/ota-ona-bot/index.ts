@@ -836,6 +836,37 @@ async function ishonchliOxirgiNuqta(familyCode: string, childId: string): Promis
 }
 
 /**
+ * Hudud xabarining matni — uchala yo'l (Android, Mini App, Telegram jonli
+ * joylashuvi) uchun bitta.
+ *
+ * Ilgari xabar faqat "📍 Maktab hududiga kirdi" edi — KIM kirgani
+ * yozilmasdi. Ikki farzandli oilada ota-ona qaysi biri ekanini taxmin
+ * qilishga majbur edi. Endi ism birinchi o'rinda, kirish va chiqish rang
+ * bilan ajratilgan, vaqt va xarita bitta qatorda.
+ */
+async function geoXabar(
+  familyCode: string,
+  childId: string,
+  f: { zone: string; type: string; message: string },
+  lat: number,
+  lng: number,
+): Promise<string> {
+  let ism = "Farzandingiz";
+  if (db) {
+    const { data } = await db.from("child_pairings").select("child_name")
+      .eq("family_code", familyCode).eq("child_id", childId).limit(1);
+    if (data && data[0] && data[0].child_name) ism = String(data[0].child_name);
+  }
+  const toza = (t: string) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const kirdi = f.type === "enter";
+  const belgi = kirdi ? "🟢" : "🔵";
+  const harakat = kirdi ? "hududiga kirdi" : "hududidan chiqdi";
+  const vaqt = tashkentVaqt(new Date().toISOString());
+  return `${belgi} <b>${toza(ism)}</b> — ${toza(f.zone)} ${harakat}\n` +
+    `🕒 ${vaqt} · <a href="https://maps.google.com/?q=${lat},${lng}">xaritada ko'rish</a>`;
+}
+
+/**
  * Yangi joylashuv kelganda xavfsiz hududlarni tekshiradi va kerak bo'lsa
  * ogohlantirish yozadi.
  *
@@ -2051,33 +2082,44 @@ Assalomu alaykum, hurmatli Boshqaruvchi / Hamkor!
 Quyidagi tugma orqali boshqaruv panelini to'liq ochishingiz mumkin:`;
   }
 
+  // Ohang sayt (qalqonai.uz) bilan bir xil: xotirjam, katta harflarsiz.
+  // "24/7 nazorat ostida" o'rniga — mahsulotning asosiy va'dasi, chunki
+  // Qalqon yashirin kuzatuv emas, farzand bilan ochiq kelishuv.
+  // Narxlar o'zgarmagan; "jonli lokatsiya 100% bepul" esa olib tashlandi —
+  // bepul tarifda jonli kuzatuv 2 soat bilan cheklangan (FREE_LIVE_HOURS).
   if (lang === "ru") {
-    return `🛡️ <b>QALQON AI — ЦЕНТР РОДИТЕЛЬСКОГО КОНТРОЛЯ</b>
+    return `🛡 <b>Qalqon AI</b>
+<i>Ваш ребёнок в безопасности — вы спокойны.</i>
 
-Добро пожаловать! Безопасность, школьные предметы и цифровые привычки вашего ребёнка под защитой 24/7.
+✅ Ваш аккаунт активен.
 
-✅ <b>Ваш доступ полностью активен!</b>
+🔑 Семейный код: <code>${code}</code>
+<i>Вводится на телефоне ребёнка при подключении.</i>
 
-🔑 <b>Ваш семейный код:</b> <code>${code}</code>
-📍 <b>Онлайн-радар и локация:</b> <b>Бесплатно</b>
-💎 <b>Pro Версия (AI & e-Maktab 100 баллов):</b> <b>10,000 сум/мес (за 1 ребёнка)</b>
-ℹ️ <i>Официальная почта для предложений: <code>alhamdulillah@tmail.ton</code></i>
+📍 Геолокация, зоны и SOS — <b>бесплатно</b>
+💎 Pro (AI-репетитор и e-Maktab) — <b>10 000 сум/мес</b> за ребёнка
 
-Выберите нужный раздел:`;
+💬 Вопросы и предложения: @ai_loyihachi
+🌐 qalqonai.uz
+
+Выберите раздел:`;
   }
 
-  return `🛡️ <b>QALQON AI — OTA-ONA BOSHQARUV MARKAZI</b>
+  return `🛡 <b>Qalqon AI</b>
+<i>Farzandingiz xavfsiz — siz xotirjam.</i>
 
-Assalomu alaykum! Farzandingizning xavfsizligi, darsliklari va raqamli odatlari 24/7 doimiy nazorat ostida.
+✅ Hisobingiz faol.
 
-✅ <b>Sizning hisobingiz to'liq faol!</b>
+🔑 Oila kodi: <code>${code}</code>
+<i>Farzand telefonini ulashda kiritiladi.</i>
 
-🔑 <b>Sizning oila kodingiz:</b> <code>${code}</code>
-📍 <b>Jonli lokatsiya va radar:</b> <b>100% BEPUL</b>
-💎 <b>Pro Versiya (AI & 100 ballik e-Maktab):</b> <b>10,000 so'm/oy (har bir bola uchun)</b>
-ℹ️ <i>Taklif va mulohazalar uchun rasmiy pochta: <code>alhamdulillah@tmail.ton</code></i>
+📍 Joylashuv, hududlar va SOS — <b>bepul</b>
+💎 Pro (AI repetitor va e-Maktab) — <b>10 000 so'm/oy</b>, har bir farzand uchun
 
-Quyidagi bo'limlardan birini tanlang:`;
+💬 Savol va takliflar: @ai_loyihachi
+🌐 qalqonai.uz
+
+Bo'limni tanlang:`;
 }
 
 // Tugmalar ROLGA qarab beriladi. Ilgari bot hammaga bir xil "Ota-ona paneli"
@@ -8764,12 +8806,7 @@ async function handleRequest(req: Request): Promise<Response> {
         ? await evaluateGeofences(familyCode, childId, lat, lng, Number(payload.accuracyM) || null)
         : [];
       for (const f of fired) {
-        await notifyFamilyParents(
-          familyCode,
-          "\u{1F4CD} <b>" + f.message + "</b>\n\n" +
-            '<a href="https://maps.google.com/?q=' + lat + "," + lng + '">Xaritada ko\'rish</a>' +
-            "\n🕒 " + tashkentVaqt(new Date().toISOString())
-        );
+        await notifyFamilyParents(familyCode, await geoXabar(familyCode, childId, f, lat, lng));
       }
 
       // "Yetib keldim" va "Qayerdasan?" javobi ota-onaga alohida boradi:
@@ -8838,12 +8875,7 @@ async function handleRequest(req: Request): Promise<Response> {
         ? await evaluateGeofences(actor!.familyCode, actor!.childId, lat, lng, Number(payload.accuracyM) || null)
         : [];
       for (const f of fired) {
-        await notifyFamilyParents(
-          actor!.familyCode,
-          "\u{1F4CD} <b>" + f.message + "</b>\n\n" +
-            '<a href="https://maps.google.com/?q=' + lat + "," + lng + '">Xaritada ko\'rish</a>' +
-            "\n🕒 " + tashkentVaqt(new Date().toISOString())
-        );
+        await notifyFamilyParents(actor!.familyCode, await geoXabar(actor!.familyCode, actor!.childId, f, lat, lng));
       }
 
       return new Response(JSON.stringify({ ok: true, alerts: fired }), {
@@ -9614,12 +9646,7 @@ async function handleRequest(req: Request): Promise<Response> {
           Number(loc.horizontal_accuracy) || null
         );
         for (const f of fired) {
-          await notifyFamilyParents(
-            row.family_code,
-            "\u{1F4CD} <b>" + f.message + "</b>\n\n" +
-              '<a href="https://maps.google.com/?q=' + loc.latitude + "," + loc.longitude + '">Xaritada ko\'rish</a>' +
-              "\n🕒 " + tashkentVaqt(new Date().toISOString())
-          );
+          await notifyFamilyParents(row.family_code, await geoXabar(row.family_code, childId, f, loc.latitude, loc.longitude));
         }
 
         // Bir martalik joylashuv (live emas) uchun qisqa tasdiq.
