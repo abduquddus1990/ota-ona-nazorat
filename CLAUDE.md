@@ -18,6 +18,11 @@ telefondan topshiriq beradi va natijani telefonda ko'radi.
 - **Tanlov** kerak bo'lsa, 2–4 variantni bir jumladan oqibati bilan bering
   va tavsiyangizni ayting — u o'zi tanlaydi.
 - **Dizayn takliflari** — JPEG (Playwright bilan HTML'dan render qilinadi).
+- **Ilova (Mini App) ko'rinishini o'zgartirishdan OLDIN** JPEG'da ko'rsatib,
+  tasdiq oling. Merge qilingan Mini App o'zgarishi darhol jonli bo'ladi
+  (Telegram ham, Android ham) — foydalanuvchi uni oldindan ko'ra olmaydi.
+  2026-10-05 da "Tinch tong" uslubi JPEG'siz merge bo'lib ketgani uchun
+  u shuni aniq so'radi.
 
 ## Loyiha tuzilishi
 
