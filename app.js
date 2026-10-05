@@ -419,7 +419,8 @@ const I18N = {
         childPairedSuccess: "🎉 Tabriklaymiz! Siz Oila Profiliga Muvaffaqiyatli Ulandingiz!",
         childPairedSub: "Ota-onangizning Telegram botiga xabar yuborildi.",
         childNavHome: "Asosiy",
-        childNavAi: "AI Do'st",
+        childNavAi: "O'qish",
+        navChild: "Farzand",
         childNavRewards: "Yutuqlar",
         childNavSchool: "e-Maktabim",
         childNavExplore: "Qiziqishlar",
@@ -442,7 +443,7 @@ const I18N = {
         statParentsLabel: "Ulangan Ota-onalar",
         statChildrenLabel: "Ulangan Farzandlar",
         navDashboard: "Asosiy",
-        navRadar: "Radar",
+        navRadar: "Xarita",
         navAi: "AI Murabbiy",
         navSchool: "e-Maktab 💎",
         navSettings: "Sozlamalar",
@@ -581,12 +582,13 @@ const I18N = {
         childPairedSuccess: "🎉 Поздравляем! Вы успешно подключены к семейному профилю!",
         childPairedSub: "Уведомление отправлено родителям в Telegram-бот.",
         childNavHome: "Главная",
-        childNavAi: "AI Друг",
+        childNavAi: "Учёба",
+        navChild: "Ребёнок",
         childNavRewards: "Награды",
         childNavSchool: "e-Maktab",
         childNavExplore: "Интересы",
         navDashboard: "Главная",
-        navRadar: "Радар",
+        navRadar: "Карта",
         navAi: "AI Наставник 💎",
         navSchool: "e-Maktab 💎",
         navSettings: "Настройки",
@@ -1887,7 +1889,11 @@ if (isNativeApp) {
         document.querySelectorAll('[data-tg-only]').forEach(el => el.classList.add('hidden'));
     });
 }
-let currentTheme = localStorage.getItem('app_theme') || 'default';
+// "Tinch tong" (yorug') — 2026-10 dan standart. Eski kalit ('app_theme')
+// deyarli hammada 'default' bo'lib qolgan edi, chunki ilova uni har
+// ochilishda o'zi saqlardi; yangi kalit bilan hamma yangi dizaynni ko'radi,
+// qorong'i mavzuni xohlagan esa sozlamalardan qayta tanlaydi.
+let currentTheme = localStorage.getItem('app_theme_v2') || 'tong';
 let userPlan = localStorage.getItem('user_plan') || 'pro';
 let activeSchoolPeriod = 'weekly';
 let isRecordingVoice = false;
@@ -2158,6 +2164,13 @@ function switchChildTab(tabId) {
 
     const activeNav = document.getElementById(`nav-${tabId}`);
     if (activeNav) activeNav.classList.add('active');
+    // Pastki panel: Asosiy · O'qish · O'yinlar. Yutuqlar va Qo'shimcha
+    // "O'yinlar" ichidan, e-Maktab "O'qish" ichidan ochiladi.
+    const guruh = { 'child-tab-rewards': 'child-tab-games', 'child-tab-extras': 'child-tab-games', 'child-tab-school': 'child-tab-ai' }[tabId];
+    if (guruh) {
+        const g = document.getElementById(`nav-${guruh}`);
+        if (g) g.classList.add('active');
+    }
 
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -4020,8 +4033,8 @@ function appendAIMessage(htmlContent) {
 // 8. SUBPAGE, MAVZU VA LOKATSIYA BOSHQARUVI
 // ============================================================================
 function setTheme(themeName) {
-    currentTheme = themeName || 'default';
-    localStorage.setItem('app_theme', currentTheme);
+    currentTheme = themeName || 'tong';
+    localStorage.setItem('app_theme_v2', currentTheme);
     document.body.setAttribute('data-theme', currentTheme);
     document.querySelectorAll('.theme-card').forEach(c => c.classList.remove('active'));
     const activeCard = document.querySelector(`[data-theme-name="${currentTheme}"]`);
@@ -4043,6 +4056,12 @@ function switchTab(tabId) {
         targetTab.classList.add('active');
     }
     if (targetBtn) targetBtn.classList.add('active');
+    // Pastki panelda 3 bo'lim qoldi: AI murabbiy va O'yinlar "Farzand"
+    // ichida ochiladi — o'shanda "Farzand" tugmasi yonib tursin.
+    if (tabId === 'tab-ai' || tabId === 'tab-games') {
+        const farzand = document.getElementById('nav-tab-extras');
+        if (farzand) farzand.classList.add('active');
+    }
 
     if (tabId === 'tab-ai' && typeof renderParentAdvice === 'function') renderParentAdvice();
     if (tabId === 'tab-extras') renderParentExtras();
@@ -6226,12 +6245,20 @@ function moveNode(id, hostId) {
     return true;
 }
 
-/** Ota-ona: "Qo'shimcha" bo'limi kataklari. */
+/** Sozlamalar — pastki paneldan sarlavhadagi profil doirasiga ko'chdi. */
+function openSettings() {
+    if (currentAppRole === 'child') switchChildTab('child-tab-settings');
+    else switchTab('tab-settings');
+}
+
+/** Ota-ona: "Farzand" bo'limi kataklari. */
 function renderParentExtras() {
     const grid = document.getElementById('parentExtrasGrid');
     if (!grid) return;
 
     const tiles = [
+        { emoji: '🎓', name: 'AI murabbiy', desc: "Darslar va maslahatlar", fn: "switchTab('tab-ai')" },
+        { emoji: '🎮', name: "O'yinlar", desc: 'Farzand bilan birga', fn: "switchTab('tab-games')" },
         { emoji: '🧠', name: 'Farzandingiz haqida', desc: 'Haftalik tahlil va suhbat savollari', fn: 'openWeeklyReport()' },
         { emoji: '💰', name: 'Ball tizimi', desc: "Ball kursi va sovg'alar ro'yxati", fn: 'openTimeBankRules()' },
         { emoji: '🗺️', name: 'Kun marshruti', desc: "Bugun qayerlarda bo'ldi", fn: "switchTab('tab-radar'); setTimeout(renderDayRoute, 500);" },
