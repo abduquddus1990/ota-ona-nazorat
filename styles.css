@@ -819,3 +819,20 @@ body[data-theme="tong"] #parentRolePillContainer { display: none !important; }
 .ovoz-kalit::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.25); transition: transform .2s; }
 .ovoz-kalit.on { background: #1d6fe0; }
 .ovoz-kalit.on::after { transform: translateX(18px); }
+
+/* ==========================================================================
+   DASTUR STATISTIKASI grafiklari (renderAppStats). Bitta qator — bitta rang;
+   ustunlar asosga yopishgan, uchi 4px yumaloq; qiymat yozuvi matn rangida.
+   ========================================================================== */
+.st-num { font-size: 28px; font-weight: 900; color: var(--text-primary); line-height: 1.1; margin-top: 4px; font-variant-numeric: tabular-nums; }
+.st-cols { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; align-items: end; height: 150px; padding-top: 6px; }
+.st-col { display: flex; flex-direction: column; align-items: center; height: 100%; }
+.st-val { font-size: 12px; font-weight: 800; color: var(--text-primary); min-height: 16px; font-variant-numeric: tabular-nums; }
+.st-bar-wrap { flex: 1; width: 100%; display: flex; align-items: flex-end; border-bottom: 1px solid rgba(100, 116, 139, 0.35); }
+.st-bar { width: 100%; max-width: 30px; margin: 0 auto; background: #1d6fe0; border-radius: 4px 4px 0 0; }
+.st-lbl { font-size: 11px; color: var(--text-secondary); margin-top: 5px; font-weight: 700; }
+.st-row { display: grid; grid-template-columns: 112px 1fr 34px; align-items: center; gap: 8px; }
+.st-row-name { font-size: 12px; font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.st-row-track { height: 12px; }
+.st-row-bar { height: 100%; background: #1d6fe0; border-radius: 0 4px 4px 0; }
+.st-row-val { font-size: 12px; font-weight: 800; color: var(--text-primary); text-align: right; font-variant-numeric: tabular-nums; }

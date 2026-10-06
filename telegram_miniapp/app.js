@@ -438,7 +438,7 @@ const I18N = {
         aboutContactHint: "Loyiha bo'yicha taklif, mulohaza va murojaatlaringiz uchun rasmiy manzil:",
         writeGmailBtn: "Gmail orqali xat yozish",
         appStatsTitle: "Dastur Statistikasi & Dinamika",
-        appStatsSub: "14,820+ Ota-onalar, 23,450+ Farzandlar",
+        appStatsSub: "Foydalanuvchilar soni va hududlar",
         appStatsModalTitle: "Dastur Statistikasi & Dinamika",
         statParentsLabel: "Ulangan Ota-onalar",
         statChildrenLabel: "Ulangan Farzandlar",
@@ -530,7 +530,7 @@ const I18N = {
         aboutContactHint: "Официальный адрес для предложений и связи с создателями:",
         writeGmailBtn: "Написать через Gmail",
         appStatsTitle: "Статистика Программы и Динамика",
-        appStatsSub: "14,820+ Родителей, 23,450+ Детей",
+        appStatsSub: "Число пользователей и регионы",
         appStatsModalTitle: "Статистика Программы и Динамика",
         statParentsLabel: "Подключённых Родителей",
         statChildrenLabel: "Подключённых Детей",
@@ -5476,6 +5476,84 @@ function openSubpage(subpageId) {
     // Android kodi ro'yxati har safar yangi ochilganda yangilanadi — shu
     // orasida yangi farzand qo'shilgan bo'lishi mumkin.
     if (subpageId === 'modal-add-child') fillAndroidChildPicker();
+    if (subpageId === 'modal-app-stats') renderAppStats();
+}
+
+// ============================================================================
+// DASTUR STATISTIKASI — haqiqiy raqamlar va ikki grafik.
+// Bitta ma'lumot qatori = bitta rang (ko'k); qiymat yozuvlari matn rangida.
+// ============================================================================
+async function renderAppStats() {
+    const box = document.getElementById('appStatsBody');
+    if (!box) return;
+    box.innerHTML = '<div class="text-[11px] text-slate-400 text-center py-8">Yuklanmoqda…</div>';
+    let d = null;
+    try {
+        const r = await fetch(QALQON_BOT_FN, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'app_stats' })
+        });
+        d = await r.json();
+    } catch (e) { d = null; }
+    if (!d || !d.ok) {
+        box.innerHTML = '<div class="text-[11px] text-slate-400 text-center py-8">Statistikani olib bo\'lmadi. Internetni tekshirib, qayta oching.</div>';
+        return;
+    }
+    const son = (n) => String(Number(n || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+    const OY = ['yan', 'fev', 'mar', 'apr', 'may', 'iyn', 'iyl', 'avg', 'sen', 'okt', 'noy', 'dek'];
+    const months = Array.isArray(d.months) ? d.months : [];
+    const maxM = Math.max(1, ...months.map(m => m.families));
+    const regions = Array.isArray(d.regions) ? d.regions : [];
+    const maxR = Math.max(1, ...regions.map(r => r.count));
+    const yangilangan = d.updatedAt ? new Date(d.updatedAt).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' }) : '';
+
+    const tile = (emoji, value, label) =>
+        '<div class="glass-card p-4 text-center">' +
+            '<div class="text-xl">' + emoji + '</div>' +
+            '<div class="st-num">' + son(value) + '</div>' +
+            '<div class="text-[11px] font-bold text-slate-400">' + label + '</div>' +
+        '</div>';
+
+    const bars = months.map(m => {
+        const h = Math.round((m.families / maxM) * 100);
+        const oy = OY[Number(m.key.slice(5, 7)) - 1] || m.key;
+        return '<div class="st-col" title="' + oy + ': ' + m.families + ' ta oila, ' + m.children + ' ta farzand">' +
+            '<div class="st-val">' + (m.families ? son(m.families) : '') + '</div>' +
+            '<div class="st-bar-wrap"><div class="st-bar" style="height:' + (m.families ? Math.max(h, 4) : 0) + '%"></div></div>' +
+            '<div class="st-lbl">' + oy + '</div>' +
+        '</div>';
+    }).join('');
+
+    const rows = regions.length ? regions.map(r =>
+        '<div class="st-row" title="' + escapeHtml(r.name) + ': ' + r.count + ' ta oila">' +
+            '<div class="st-row-name">' + escapeHtml(r.name) + '</div>' +
+            '<div class="st-row-track"><div class="st-row-bar" style="width:' + Math.max(Math.round((r.count / maxR) * 100), 3) + '%"></div></div>' +
+            '<div class="st-row-val">' + son(r.count) + '</div>' +
+        '</div>').join('')
+        : '<div class="text-[11px] text-slate-400">Hali hudud aniqlangan oila yo\'q.</div>';
+
+    box.innerHTML =
+        '<div class="grid grid-cols-2 gap-3">' +
+            tile('👨‍👩‍👧', d.parents, 'Ota-onalar') +
+            tile('🧒', d.children, 'Ulangan farzandlar') +
+        '</div>' +
+        '<div class="glass-card p-4 space-y-2">' +
+            '<div><div class="text-xs font-bold text-white">Yangi oilalar</div>' +
+            '<div class="text-[10px] text-slate-400">Oxirgi 6 oyda har oy qo\'shilganlar</div></div>' +
+            '<div class="st-cols">' + bars + '</div>' +
+        '</div>' +
+        '<div class="glass-card p-4 space-y-2.5">' +
+            '<div><div class="text-xs font-bold text-white">Hududlar bo\'yicha</div>' +
+            '<div class="text-[10px] text-slate-400">Oilalar soni, viloyatlar kesimida</div></div>' +
+            rows +
+            (d.regionUnknown ? '<div class="text-[10px] text-slate-400">Yana ' + son(d.regionUnknown) + ' ta oilaning hududi hali aniqlanmagan.</div>' : '') +
+        '</div>' +
+        '<div class="text-[10px] text-slate-400 leading-relaxed px-1">' +
+            'Raqamlar bazadan olinadi va har 10 daqiqada yangilanadi' + (yangilangan ? ' (oxirgisi ' + yangilangan + ')' : '') + '. ' +
+            'Hudud oilaning uy hududi yoki oxirgi joylashuvi bo\'yicha <b>taxminan</b> aniqlanadi. ' +
+            'Faqat jami sonlar ko\'rsatiladi — hech bir oila, ism yoki manzil emas.' +
+        '</div>';
 }
 
 function closeSubpage() {
