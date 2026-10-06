@@ -2,10 +2,10 @@
    OTA-ONA PANELIGA KIRISH ANIMATSIYASI va OVOZ EFFEKTLARI
    ==========================================================================
 
-   Kunning BIRINCHI ochilishida — to'liq sahna (4,6 s): shahar xaritasi,
-   farzand nuqtasi uydan maktabga boradi, maktab atrofida qalqon yonadi,
-   farzandning HAQIQIY holati kartada chiqadi ("Madina maktabda · 08:05 da
-   kirdi"), keyin bo'ri va va'da. Shu kunning keyingi ochilishlarida —
+   Kunning BIRINCHI ochilishida — to'liq sahna (6 s): markazda qalqon,
+   atrofida to'rt yo'nalish — xavfsizlik (farzandning HAQIQIY holati:
+   "Madina maktabda · 08:05 da kirdi"), AI murabbiy, xulosa, ekran vaqti —
+   ular qalqonga yig'iladi, keyin bo'ri va va'da. Shu kunning keyingi ochilishlarida —
    1 soniyalik qisqa logotip: panelni kuniga bir necha marta ochadigan
    ota-onani har safar 4,6 soniya kutdirish charchatadi.
 
@@ -102,23 +102,31 @@
   }
 
   // ------------------------------------------------------------------ sahna
+  // "Hammasi bitta qalqonda" (2026-10-06 da tasdiqlangan): markazda qalqon,
+  // atrofida to'rt yo'nalish. Faqat XAVFSIZLIK kartasi haqiqiy ma'lumot
+  // ko'rsatadi; qolganlari — imkoniyat tavsifi. O'ylab topilgan raqam
+  // ("matematika +12%") ota-onani chalg'itadi, shuning uchun yo'q.
   var SAHNA = '' +
     '<button type="button" class="qs-skip">O\'tkazib yuborish ›</button>' +
-    '<div class="qs-map"><svg viewBox="0 0 390 420" preserveAspectRatio="xMidYMid slice">' +
-      '<g fill="#dbe8f4"><rect x="14" y="14" width="96" height="70" rx="12"/><rect x="128" y="14" width="110" height="70" rx="12"/><rect x="330" y="14" width="50" height="160" rx="12"/>' +
-      '<rect x="14" y="104" width="96" height="120" rx="12"/><rect x="128" y="250" width="110" height="150" rx="12"/><rect x="256" y="250" width="124" height="150" rx="12"/><rect x="14" y="250" width="96" height="150" rx="12"/></g>' +
-      '<g stroke="#ffffff" stroke-width="12" fill="none" stroke-linecap="round"><path d="M0 236 H390"/><path d="M119 0 V420"/><path d="M247 0 V420"/><path d="M0 94 H390"/></g>' +
-      '<circle cx="62" cy="330" r="24" fill="#1d6fe022"/><text x="62" y="338" font-size="22" text-anchor="middle">🏠</text>' +
-      '<path class="qs-route" d="M62 330 C 70 280, 110 250, 150 236 S 230 200, 247 160 S 270 115, 290 110" stroke="#22b8e6" stroke-width="4" fill="none" stroke-linecap="round"/>' +
-      '<g class="qs-zone"><circle cx="290" cy="110" r="56" fill="#22b8e633" stroke="#22b8e6" stroke-width="2.5" stroke-dasharray="7 7"/></g>' +
-      '<g class="qs-shield"><path d="M290 70 l32 12 v21 c0 20 -14 32 -32 40 c-18 -8 -32 -20 -32 -40 v-21 z" fill="#1d6fe0" fill-opacity=".16" stroke="#1d6fe0" stroke-width="3"/>' +
-      '<text x="290" y="113" font-size="22" text-anchor="middle">🏫</text></g>' +
-      '<g class="qs-dot" transform="translate(62,330)"><circle r="10" fill="#1d6fe0" fill-opacity=".25"/><circle r="8" fill="#1d6fe0" stroke="#fff" stroke-width="4"/></g>' +
+    '<svg class="qs-lines" viewBox="0 0 390 844" preserveAspectRatio="none">' +
+      '<path class="qs-ln qs-l1" d="M150 236 L170 335"/><path class="qs-ln qs-l2" d="M235 300 L215 335"/>' +
+      '<path class="qs-ln qs-l3" d="M150 545 L172 476"/><path class="qs-ln qs-l4" d="M235 505 L215 476"/></svg>' +
+    '<div class="qs-hub"><svg viewBox="0 0 150 150">' +
+      '<circle class="qs-pulse" cx="75" cy="75" r="62" fill="none" stroke="#1d6fe0" stroke-width="3"/>' +
+      '<circle cx="75" cy="75" r="62" fill="#ffffffcc"/>' +
+      '<circle class="qs-ring" cx="75" cy="75" r="70" fill="none" stroke="#22b8e6" stroke-width="3" stroke-linecap="round"/>' +
+      '<path d="M75 38 l30 11 v20 c0 19 -13 31 -30 38 c-17 -7 -30 -19 -30 -38 v-20 z" fill="#0f2a4a"/>' +
+      '<path d="M62 75 l9 9 l18 -19" stroke="#fff" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>' +
     '</svg></div>' +
-    '<div class="qs-note"><i class="qs-e">🛡</i><div><div class="qs-app">Qalqon AI · hozir</div>' +
-      '<b class="qs-t">Farzandingiz himoyada</b><small class="qs-s">Holat yuklanmoqda…</small></div></div>' +
+    '<div class="qs-card qs-c1"><i class="qs-e">📍</i><div class="qs-k">Xavfsizlik</div><b class="qs-t">Farzandingiz himoyada</b><small class="qs-s">Holat yuklanmoqda…</small></div>' +
+    '<div class="qs-card qs-c2"><i>🎓</i><div class="qs-k">AI murabbiy</div><b>Darsda yordam</b><small>1–11-sinf, o\'zi topishga o\'rgatadi</small></div>' +
+    '<div class="qs-card qs-c3"><i>📊</i><div class="qs-k">Xulosa</div><b>Farzandingiz haqida</b><small>Haftalik tahlil va suhbat savollari</small></div>' +
+    '<div class="qs-card qs-c4"><i>⏱</i><div class="qs-k">Ekran vaqti</div><b>Muvozanat</b><small>Taqiq emas — kelishuv</small></div>' +
+    '<div class="qs-chips"><span>🆘 SOS</span><span>🏆 Ball va sovg\'alar</span><span>💬 Oila chati</span></div>' +
     '<img class="qs-wolf" src="assets/qalqon-qoriqchi.webp" alt="">' +
-    '<div class="qs-brand"><div class="qs-logo"><span>🛡</span>Qalqon AI</div><h1>Farzandingiz xavfsiz —<br><em>siz xotirjam.</em></h1></div>' +
+    '<div class="qs-brand"><div class="qs-logo"><span>🛡</span>Qalqon AI</div>' +
+      '<p>Xavfsizlik, bilim va oila — bitta qalqonda.</p>' +
+      '<h1>Farzandingiz xavfsiz —<br><em>siz xotirjam.</em></h1></div>' +
     '<div class="qs-bar"><i></i></div>';
 
   var QISQA = '<div class="qs-mini"><span>🛡</span><b>Qalqon AI</b></div>';
@@ -128,28 +136,6 @@
     el.dataset.yopildi = '1';
     el.classList.add('qs-ket');
     setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 450);
-  }
-
-  /** Nuqta va chiziq bir xil hisob bilan: 0.35 s dan 1.8 s gacha, ease-in-out. */
-  function yolniYurit(el) {
-    var r = el.querySelector('.qs-route');
-    var dot = el.querySelector('.qs-dot');
-    if (!r || !dot || !r.getTotalLength) return;
-    var L = r.getTotalLength();
-    r.style.strokeDasharray = L;
-    r.style.strokeDashoffset = L;
-    var t0 = performance.now();
-    function kadr(now) {
-      if (!el.isConnected) return;
-      var t = (now - t0) / 1000;
-      var p = Math.max(0, Math.min(1, (t - 0.35) / 1.45));
-      p = p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
-      r.style.strokeDashoffset = L * (1 - p);
-      var pt = r.getPointAtLength(L * p);
-      dot.setAttribute('transform', 'translate(' + pt.x + ',' + pt.y + ')');
-      if (t < 2) requestAnimationFrame(kadr);
-    }
-    requestAnimationFrame(kadr);
   }
 
   /**
@@ -176,11 +162,11 @@
     try { localStorage.setItem(KUN_KALIT, bugun()); } catch (e) {}
 
     el.querySelector('.qs-skip').addEventListener('click', function () { yop(el); });
-    yolniYurit(el);
     ovozChal('kirish');
 
-    // Karta 2,5 s da tushadi — javob shungacha kelsa, haqiqiy holat yoziladi.
-    var muddat = Date.now() + 2300;
+    // Xavfsizlik kartasi ~0,7 s da paydo bo'lib, 3,8 s gacha turadi —
+    // javob shungacha kelsa, haqiqiy holat yoziladi.
+    var muddat = Date.now() + 3600;
     if (holatOl && holatOl.then) {
       holatOl.then(function (d) {
         if (Date.now() > muddat) return;
@@ -194,8 +180,8 @@
     setTimeout(function () {
       var s = el.querySelector('.qs-s');
       if (s && s.textContent === 'Holat yuklanmoqda…') s.textContent = 'Qalqon AI';
-      ovozChal('xabar');
-    }, 2500);
-    setTimeout(function () { yop(el); }, 4900);
+    }, 3600);
+    setTimeout(function () { ovozChal('xabar'); }, 4100);
+    setTimeout(function () { yop(el); }, 6300);
   };
 })();
