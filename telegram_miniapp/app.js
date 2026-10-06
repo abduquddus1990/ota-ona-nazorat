@@ -5744,6 +5744,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     // muvaffaqiyatli bo'lmaydi va konsolda foydasiz 401 xatolar qoldiradi —
     // shuning uchun faqat ota-ona rolida yuboriladi.
     if (currentAppRole === 'parent') {
+        // Kirish animatsiyasi: kunning birinchi ochilishida to'liq sahna,
+        // kartada farzandning haqiqiy holati (splash.js).
+        if (typeof showPanelSplash === 'function') {
+            showPanelSplash(
+                fetch(QALQON_BOT_FN, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ type: 'radar_status' })
+                }).then(r => r.json()).catch(() => null)
+            );
+        }
         syncFamilyFromServer()
             .then((ok) => { if (!ok) checkParentOnboarding(); })
             .then(() => syncChildrenFromServer())

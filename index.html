@@ -41,7 +41,7 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <!-- Custom Stitch Styles -->
-    <link rel="stylesheet" href="styles.css?v=7.0">
+    <link rel="stylesheet" href="styles.css?v=7.1">
     <link rel="stylesheet" href="theme-tong.css?v=1">
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;600;700;800;900&display=swap" rel="stylesheet"/>
 </head>
@@ -1460,6 +1460,18 @@
                 </div>
             </div>
             <span class="text-slate-500 text-sm font-bold">›</span>
+        </div>
+
+        <!-- Ovoz effektlari: panelga kirish va xabar ohanglari (splash.js). -->
+        <div onclick="qalqonOvoz.almashtir()" class="glass-panel p-3.5 flex items-center justify-between cursor-pointer transition">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-sky-500/15 border border-sky-500/30 flex items-center justify-center text-sky-400 text-lg">🔔</div>
+                <div>
+                    <div class="text-xs font-bold text-white">Ovoz effektlari</div>
+                    <div class="text-[10px] text-slate-400" id="ovozHolati">Yoqilgan</div>
+                </div>
+            </div>
+            <span id="ovozKalit" class="ovoz-kalit on" role="switch" aria-label="Ovoz effektlari"></span>
         </div>
 
         <!-- 9. Hisobni o'chirish. Ilgari faqat suzuvchi ⚙️ menyuda edi; u
@@ -2881,7 +2893,8 @@
     </nav>
 
     <!-- Custom JavaScript -->
-    <script src="app.js?v=9.6"></script>
+    <script src="splash.js?v=1"></script>
+    <script src="app.js?v=9.7"></script>
     <!-- O'yinlar alohida faylda: app.js allaqachon katta, va o'yin kontenti
          (savollar, kartalar) o'sib boradi. Alohida fayl brauzerda alohida
          keshlanadi — o'yin qo'shilsa, butun ilova qayta yuklanmaydi. -->
