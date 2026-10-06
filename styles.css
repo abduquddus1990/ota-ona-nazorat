@@ -751,3 +751,58 @@ body[data-theme="tong"] .leaflet-tile-pane { filter: none !important; }
 body[data-theme="tong"] #quickMenuFab { display: none !important; }
 /* "Sizning rolingiz: Otasi / Onasi" — endi har kim o'z hisobidan kiradi. */
 body[data-theme="tong"] #parentRolePillContainer { display: none !important; }
+
+/* ==========================================================================
+   OTA-ONA PANELIGA KIRISH ANIMATSIYASI (splash.js)
+   Vaqtlar ma'qullangan ko'rinish bilan bir xil: 4,6 s, karta 2,5 s da.
+   ========================================================================== */
+.qalqon-splash {
+    position: fixed; inset: 0; z-index: 100001; overflow: hidden;
+    background: radial-gradient(110% 70% at 70% 8%, #ffffff 0%, #e4f1fb 45%, #b9d8ee 100%);
+    font-family: 'Nunito', 'Outfit', sans-serif;
+    transition: opacity .45s ease;
+}
+.qalqon-splash * { font-family: inherit; }
+.qalqon-splash.qs-ket { opacity: 0; pointer-events: none; }
+.qalqon-splash .qs-skip {
+    position: absolute; z-index: 9; top: calc(18px + env(safe-area-inset-top, 0px)); right: 16px;
+    font-size: 13px; font-weight: 800; color: #33507a; background: #ffffffc8; border: 0; padding: 8px 13px; border-radius: 999px;
+}
+.qalqon-splash .qs-map { position: absolute; left: 0; right: 0; top: 7%; height: 50%; animation: qsMap 4.6s ease both; }
+.qalqon-splash .qs-map svg { width: 100%; height: 100%; }
+@keyframes qsMap { 0%{opacity:0;transform:scale(1.05)} 10%{opacity:1;transform:none} 62%{opacity:1;filter:none} 74%{opacity:.25;filter:blur(2px)} 100%{opacity:.25;filter:blur(2px)} }
+.qalqon-splash .qs-zone { transform-origin: 290px 110px; animation: qsZone 4.6s ease both; }
+@keyframes qsZone { 0%,38%{opacity:0;transform:scale(.4)} 46%{opacity:1;transform:scale(1.07)} 50%{opacity:1;transform:none} 100%{opacity:1} }
+.qalqon-splash .qs-shield { transform-origin: 290px 104px; animation: qsShield 4.6s ease both; }
+@keyframes qsShield { 0%,42%{opacity:0;transform:scale(.3)} 52%{opacity:1;transform:scale(1.12)} 56%{opacity:1;transform:none} 100%{opacity:1} }
+.qalqon-splash .qs-note {
+    position: absolute; z-index: 5; left: 20px; right: 20px; top: 36%;
+    display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 20px; background: #fff;
+    box-shadow: 0 18px 40px -12px rgba(15,42,74,.35); animation: qsNote 4.6s ease both;
+}
+@keyframes qsNote { 0%,50%{opacity:0;transform:translateY(-40px) scale(.96)} 58%{opacity:1;transform:translateY(4px)} 62%{transform:none} 100%{opacity:1;transform:none} }
+.qalqon-splash .qs-note i { font-style: normal; width: 46px; height: 46px; border-radius: 14px; background: #e6f6ec; display: grid; place-items: center; font-size: 24px; flex: none; }
+.qalqon-splash .qs-note b { display: block; color: #0f2a4a; font-size: 18px; font-weight: 900; line-height: 1.15; }
+.qalqon-splash .qs-note small { color: #5b6b80; font-size: 13.5px; font-weight: 700; }
+.qalqon-splash .qs-app { color: #1d6fe0; font-size: 11px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+.qalqon-splash .qs-wolf { position: absolute; right: -70px; bottom: -10px; height: 50%; max-height: 420px; filter: drop-shadow(0 18px 24px rgba(15,42,74,.3)); animation: qsWolf 4.6s ease both; }
+@keyframes qsWolf { 0%,62%{opacity:0;transform:translateY(60px)} 76%{opacity:1;transform:none} 100%{opacity:1} }
+.qalqon-splash .qs-brand { position: absolute; z-index: 4; left: 24px; bottom: 15%; width: 200px; animation: qsBrand 4.6s ease both; }
+@keyframes qsBrand { 0%,68%{opacity:0;transform:translateX(-16px)} 80%{opacity:1;transform:none} 100%{opacity:1} }
+.qalqon-splash .qs-logo { display: flex; align-items: center; gap: 9px; color: #0f2a4a; font-weight: 900; font-size: 24px; }
+.qalqon-splash .qs-logo span, .qalqon-splash .qs-mini span { width: 38px; height: 38px; border-radius: 11px; background: #0f2a4a; display: grid; place-items: center; color: #fff; font-size: 19px; }
+.qalqon-splash h1 { margin-top: 12px; color: #0f2a4a; font-size: 25px; line-height: 1.15; font-weight: 900; }
+.qalqon-splash h1 em { font-style: normal; color: #1d6fe0; }
+.qalqon-splash .qs-bar { position: absolute; z-index: 4; left: 24px; right: 24px; bottom: calc(40px + env(safe-area-inset-bottom, 0px)); height: 5px; border-radius: 9px; background: #0f2a4a1a; overflow: hidden; }
+.qalqon-splash .qs-bar i { display: block; height: 100%; background: #1d6fe0; transform-origin: left; animation: qsBar 4.6s linear both; }
+@keyframes qsBar { from{transform:scaleX(0)} to{transform:scaleX(1)} }
+/* Kunning keyingi ochilishlari: 1 soniyalik logotip. */
+.qalqon-splash.qs-qisqa { display: grid; place-items: center; }
+.qalqon-splash .qs-mini { display: flex; align-items: center; gap: 10px; color: #0f2a4a; font-size: 24px; animation: qsMini 1s ease both; }
+@keyframes qsMini { 0%{opacity:0;transform:scale(.92)} 30%{opacity:1;transform:none} 100%{opacity:1} }
+
+/* Sozlamalardagi ovoz kaliti */
+.ovoz-kalit { width: 44px; height: 26px; border-radius: 999px; background: #cbd5e1; position: relative; transition: background .2s; flex: none; }
+.ovoz-kalit::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.25); transition: transform .2s; }
+.ovoz-kalit.on { background: #1d6fe0; }
+.ovoz-kalit.on::after { transform: translateX(18px); }

@@ -85,6 +85,10 @@ class AppWebActivity : AppCompatActivity() {
         web.settings.apply {
             javaScriptEnabled = true
             domStorageEnabled = true
+            // Panelga kirishdagi qisqa ohang (splash.js) teginishsiz chalinsin.
+            // Brauzerlar buni sukut bo'yicha bloklaydi; o'z ilovamizda ruxsat
+            // beramiz — ovozni foydalanuvchi Sozlamalarda o'chira oladi.
+            mediaPlaybackRequiresUserGesture = false
             databaseEnabled = true
             mediaPlaybackRequiresUserGesture = false
             // Mini App'ning o'zi mobil o'lchamga moslangan.
