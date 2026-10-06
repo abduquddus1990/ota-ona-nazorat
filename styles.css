@@ -754,7 +754,7 @@ body[data-theme="tong"] #parentRolePillContainer { display: none !important; }
 
 /* ==========================================================================
    OTA-ONA PANELIGA KIRISH ANIMATSIYASI (splash.js)
-   Vaqtlar ma'qullangan ko'rinish bilan bir xil: 4,6 s, karta 2,5 s da.
+   "Hammasi bitta qalqonda" — 2026-10-06 da tasdiqlangan ko'rinish, 6 s.
    ========================================================================== */
 .qalqon-splash {
     position: fixed; inset: 0; z-index: 100001; overflow: hidden;
@@ -768,33 +768,46 @@ body[data-theme="tong"] #parentRolePillContainer { display: none !important; }
     position: absolute; z-index: 9; top: calc(18px + env(safe-area-inset-top, 0px)); right: 16px;
     font-size: 13px; font-weight: 800; color: #33507a; background: #ffffffc8; border: 0; padding: 8px 13px; border-radius: 999px;
 }
-.qalqon-splash .qs-map { position: absolute; left: 0; right: 0; top: 7%; height: 50%; animation: qsMap 4.6s ease both; }
-.qalqon-splash .qs-map svg { width: 100%; height: 100%; }
-@keyframes qsMap { 0%{opacity:0;transform:scale(1.05)} 10%{opacity:1;transform:none} 62%{opacity:1;filter:none} 74%{opacity:.25;filter:blur(2px)} 100%{opacity:.25;filter:blur(2px)} }
-.qalqon-splash .qs-zone { transform-origin: 290px 110px; animation: qsZone 4.6s ease both; }
-@keyframes qsZone { 0%,38%{opacity:0;transform:scale(.4)} 46%{opacity:1;transform:scale(1.07)} 50%{opacity:1;transform:none} 100%{opacity:1} }
-.qalqon-splash .qs-shield { transform-origin: 290px 104px; animation: qsShield 4.6s ease both; }
-@keyframes qsShield { 0%,42%{opacity:0;transform:scale(.3)} 52%{opacity:1;transform:scale(1.12)} 56%{opacity:1;transform:none} 100%{opacity:1} }
-.qalqon-splash .qs-note {
-    position: absolute; z-index: 5; left: 20px; right: 20px; top: 36%;
-    display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 20px; background: #fff;
-    box-shadow: 0 18px 40px -12px rgba(15,42,74,.35); animation: qsNote 4.6s ease both;
-}
-@keyframes qsNote { 0%,50%{opacity:0;transform:translateY(-40px) scale(.96)} 58%{opacity:1;transform:translateY(4px)} 62%{transform:none} 100%{opacity:1;transform:none} }
-.qalqon-splash .qs-note i { font-style: normal; width: 46px; height: 46px; border-radius: 14px; background: #e6f6ec; display: grid; place-items: center; font-size: 24px; flex: none; }
-.qalqon-splash .qs-note b { display: block; color: #0f2a4a; font-size: 18px; font-weight: 900; line-height: 1.15; }
-.qalqon-splash .qs-note small { color: #5b6b80; font-size: 13.5px; font-weight: 700; }
-.qalqon-splash .qs-app { color: #1d6fe0; font-size: 11px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
-.qalqon-splash .qs-wolf { position: absolute; right: -70px; bottom: -10px; height: 50%; max-height: 420px; filter: drop-shadow(0 18px 24px rgba(15,42,74,.3)); animation: qsWolf 4.6s ease both; }
-@keyframes qsWolf { 0%,62%{opacity:0;transform:translateY(60px)} 76%{opacity:1;transform:none} 100%{opacity:1} }
-.qalqon-splash .qs-brand { position: absolute; z-index: 4; left: 24px; bottom: 15%; width: 200px; animation: qsBrand 4.6s ease both; }
-@keyframes qsBrand { 0%,68%{opacity:0;transform:translateX(-16px)} 80%{opacity:1;transform:none} 100%{opacity:1} }
+.qalqon-splash .qs-lines { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.qalqon-splash .qs-ln { stroke: #22b8e6; stroke-width: 2; stroke-dasharray: 4 6; fill: none; opacity: 0; }
+.qalqon-splash .qs-l1 { animation: qsL1 6s ease both; } @keyframes qsL1 { 0%,10%{opacity:0} 16%{opacity:.8} 64%{opacity:.8} 70%{opacity:0} 100%{opacity:0} }
+.qalqon-splash .qs-l2 { animation: qsL2 6s ease both; } @keyframes qsL2 { 0%,23%{opacity:0} 29%{opacity:.8} 64%{opacity:.8} 70%{opacity:0} 100%{opacity:0} }
+.qalqon-splash .qs-l3 { animation: qsL3 6s ease both; } @keyframes qsL3 { 0%,36%{opacity:0} 42%{opacity:.8} 64%{opacity:.8} 70%{opacity:0} 100%{opacity:0} }
+.qalqon-splash .qs-l4 { animation: qsL4 6s ease both; } @keyframes qsL4 { 0%,49%{opacity:0} 55%{opacity:.8} 64%{opacity:.8} 70%{opacity:0} 100%{opacity:0} }
+.qalqon-splash .qs-hub { position: absolute; left: 50%; top: 48%; width: 150px; height: 150px; margin: -75px 0 0 -75px; animation: qsHub 6s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes qsHub { 0%{opacity:0;transform:scale(.6)} 8%{opacity:1;transform:none} 66%{opacity:1;transform:none} 72%{opacity:1;transform:scale(1.15)} 80%{opacity:0;transform:scale(.7)} 100%{opacity:0} }
+.qalqon-splash .qs-hub svg { width: 100%; height: 100%; overflow: visible; }
+.qalqon-splash .qs-ring { stroke-dasharray: 440; stroke-dashoffset: 440; animation: qsRing 6s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes qsRing { 0%{stroke-dashoffset:440} 12%{stroke-dashoffset:0} 100%{stroke-dashoffset:0} }
+.qalqon-splash .qs-pulse { transform-origin: 75px 75px; animation: qsPulse 6s ease-out both; }
+@keyframes qsPulse { 0%,62%{opacity:0;transform:scale(1)} 66%{opacity:.6;transform:scale(1)} 76%{opacity:0;transform:scale(1.9)} 100%{opacity:0} }
+.qalqon-splash .qs-card { position: absolute; width: 43%; max-width: 190px; background: #fff; border-radius: 18px; padding: 12px; box-shadow: 0 16px 34px -14px rgba(15,42,74,.35); }
+.qalqon-splash .qs-card i { font-style: normal; width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; font-size: 20px; margin-bottom: 8px; }
+.qalqon-splash .qs-k { color: #1d6fe0; font-size: 10.5px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+.qalqon-splash .qs-card b { display: block; color: #0f2a4a; font-size: 15.5px; font-weight: 900; line-height: 1.15; margin-top: 2px; }
+.qalqon-splash .qs-card small { display: block; color: #5b6b80; font-size: 12.5px; font-weight: 700; line-height: 1.3; margin-top: 3px; }
+.qalqon-splash .qs-c1 { left: 16px; top: 15%; animation: qsC1 6s cubic-bezier(.2,.8,.2,1) both; } .qalqon-splash .qs-c1 i { background: #e6f6ec; }
+.qalqon-splash .qs-c2 { right: 16px; top: 22.5%; animation: qsC2 6s cubic-bezier(.2,.8,.2,1) both; } .qalqon-splash .qs-c2 i { background: #ede9fe; }
+.qalqon-splash .qs-c3 { left: 16px; top: 64%; animation: qsC3 6s cubic-bezier(.2,.8,.2,1) both; } .qalqon-splash .qs-c3 i { background: #fff4e5; }
+.qalqon-splash .qs-c4 { right: 16px; top: 59%; animation: qsC4 6s cubic-bezier(.2,.8,.2,1) both; } .qalqon-splash .qs-c4 i { background: #e3f6fd; }
+@keyframes qsC1 { 0%,10%{opacity:0;transform:translate(-30px,10px) scale(.92)} 18%{opacity:1;transform:none} 64%{opacity:1;transform:none} 74%{opacity:0;transform:translate(95px,225px) scale(.3)} 100%{opacity:0} }
+@keyframes qsC2 { 0%,23%{opacity:0;transform:translate(30px,10px) scale(.92)} 31%{opacity:1;transform:none} 64%{opacity:1;transform:none} 74%{opacity:0;transform:translate(-95px,165px) scale(.3)} 100%{opacity:0} }
+@keyframes qsC3 { 0%,36%{opacity:0;transform:translate(-30px,-10px) scale(.92)} 44%{opacity:1;transform:none} 64%{opacity:1;transform:none} 74%{opacity:0;transform:translate(95px,-185px) scale(.3)} 100%{opacity:0} }
+@keyframes qsC4 { 0%,49%{opacity:0;transform:translate(30px,-10px) scale(.92)} 57%{opacity:1;transform:none} 64%{opacity:1;transform:none} 74%{opacity:0;transform:translate(-95px,-145px) scale(.3)} 100%{opacity:0} }
+.qalqon-splash .qs-chips { position: absolute; left: 16px; right: 16px; top: 83%; display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; animation: qsChips 6s ease both; }
+@keyframes qsChips { 0%,55%{opacity:0;transform:translateY(12px)} 61%{opacity:1;transform:none} 66%{opacity:1} 72%{opacity:0} 100%{opacity:0} }
+.qalqon-splash .qs-chips span { background: #ffffffd9; border: 1px solid #fff; color: #0f2a4a; font-weight: 800; font-size: 12.5px; padding: 7px 11px; border-radius: 999px; box-shadow: 0 6px 16px -10px rgba(15,42,74,.4); }
+.qalqon-splash .qs-wolf { position: absolute; right: -70px; bottom: -10px; height: 50%; max-height: 420px; filter: drop-shadow(0 18px 24px rgba(15,42,74,.3)); animation: qsWolf 6s ease both; }
+@keyframes qsWolf { 0%,66%{opacity:0;transform:translateY(60px)} 78%{opacity:1;transform:none} 100%{opacity:1} }
+.qalqon-splash .qs-brand { position: absolute; z-index: 4; left: 24px; bottom: 15%; width: 210px; animation: qsBrand 6s ease both; }
+@keyframes qsBrand { 0%,70%{opacity:0;transform:translateX(-16px)} 82%{opacity:1;transform:none} 100%{opacity:1} }
 .qalqon-splash .qs-logo { display: flex; align-items: center; gap: 9px; color: #0f2a4a; font-weight: 900; font-size: 24px; }
 .qalqon-splash .qs-logo span, .qalqon-splash .qs-mini span { width: 38px; height: 38px; border-radius: 11px; background: #0f2a4a; display: grid; place-items: center; color: #fff; font-size: 19px; }
-.qalqon-splash h1 { margin-top: 12px; color: #0f2a4a; font-size: 25px; line-height: 1.15; font-weight: 900; }
+.qalqon-splash .qs-brand p { margin-top: 10px; color: #3d5675; font-size: 14px; font-weight: 800; line-height: 1.35; }
+.qalqon-splash h1 { margin-top: 8px; color: #0f2a4a; font-size: 24px; line-height: 1.15; font-weight: 900; }
 .qalqon-splash h1 em { font-style: normal; color: #1d6fe0; }
 .qalqon-splash .qs-bar { position: absolute; z-index: 4; left: 24px; right: 24px; bottom: calc(40px + env(safe-area-inset-bottom, 0px)); height: 5px; border-radius: 9px; background: #0f2a4a1a; overflow: hidden; }
-.qalqon-splash .qs-bar i { display: block; height: 100%; background: #1d6fe0; transform-origin: left; animation: qsBar 4.6s linear both; }
+.qalqon-splash .qs-bar i { display: block; height: 100%; background: #1d6fe0; transform-origin: left; animation: qsBar 6s linear both; }
 @keyframes qsBar { from{transform:scaleX(0)} to{transform:scaleX(1)} }
 /* Kunning keyingi ochilishlari: 1 soniyalik logotip. */
 .qalqon-splash.qs-qisqa { display: grid; place-items: center; }
