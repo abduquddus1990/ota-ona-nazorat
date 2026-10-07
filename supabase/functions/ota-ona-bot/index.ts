@@ -6508,7 +6508,7 @@ async function handleRequest(req: Request): Promise<Response> {
 
       await notifyFamilyParents(
         familyCode,
-        `ℹ️ <b>${pairing[0].child_name || "Farzandingiz"} ulanishni to'xtatdi.</b>\n\n` +
+        `ℹ️ <b>${tgEsc(pairing[0].child_name || "Farzandingiz")} ulanishni to'xtatdi.</b>\n\n` +
           `Uning joylashuvi va ekran vaqti endi ko'rinmaydi. Farzandingiz bilan gaplashib ko'ring — ` +
           `qayta ulanish uchun unga yangi taklif havolasi yuborishingiz mumkin.`
       );
@@ -8690,18 +8690,21 @@ async function handleRequest(req: Request): Promise<Response> {
 
     if (payload.type === "list_devices") {
       if (actor!.kind !== "telegram") return unauthorized("Faqat ota-ona");
-      // Telegram'dagi farzand ham "telegram" turida keladi va resolveActorFamily
-      // uni haqiqiy oilasiga olib boradi — ilgari u o'z kuzatuvini (qurilmani)
-      // o'zi uzib qo'ya olardi.
-      if (await isPairedChild(actor!.telegramId)) return unauthorized("Faqat ota-ona");
+      // Farzand ham ko'ra oladi — lekin FAQAT o'z qurilmasini. Kuzatuv
+      // farzandning roziligi bilan bo'ladi: u o'z telefonini uza oladi
+      // (revoke_device), ota-onaga esa bu haqda darhol xabar boradi.
+      // Aka-ukasi yoki opa-singlisining qurilmasiga tega olmaydi.
+      const farzandMi = await isPairedChild(actor!.telegramId);
       if (!db) return jsonRes({ ok: true, devices: [] });
 
       const familyCode = await resolveActorFamily(actor!);
-      const { data, error } = await db
+      let qurilmaQ = db
         .from("device_tokens")
         .select("id, child_id, device_label, device_model, created_at, last_used_at")
         .eq("family_code", familyCode)
-        .eq("is_active", true)
+        .eq("is_active", true);
+      if (farzandMi) qurilmaQ = qurilmaQ.eq("child_id", "tg_" + actor!.telegramId);
+      const { data, error } = await qurilmaQ
         .order("created_at", { ascending: false })
         .limit(50);
 
@@ -8738,10 +8741,9 @@ async function handleRequest(req: Request): Promise<Response> {
     // faqat is_active = true kalitlarni qabul qiladi.
     if (payload.type === "revoke_device") {
       if (actor!.kind !== "telegram") return unauthorized("Faqat ota-ona");
-      // Telegram'dagi farzand ham "telegram" turida keladi va resolveActorFamily
-      // uni haqiqiy oilasiga olib boradi — ilgari u o'z kuzatuvini (qurilmani)
-      // o'zi uzib qo'ya olardi.
-      if (await isPairedChild(actor!.telegramId)) return unauthorized("Faqat ota-ona");
+      // Farzand O'Z qurilmasini uza oladi — kuzatuv uning roziligi bilan.
+      // Ota-onaga darhol xabar boradi (pastda).
+      const farzandUzdi = await isPairedChild(actor!.telegramId);
       if (!db) return jsonRes({ ok: false, error: "Baza ulanmagan" }, 500);
 
       const id = String(payload.deviceId || "").trim();
@@ -8755,11 +8757,11 @@ async function handleRequest(req: Request): Promise<Response> {
       // shunda "topilmadi" va "sizniki emas" farqlanmasdi.
       const { data: own } = await db
         .from("device_tokens")
-        .select("id, child_id")
+        .select("id, child_id, device_model")
         .eq("id", id)
         .eq("family_code", familyCode)
         .limit(1);
-      if (!own || !own[0]) {
+      if (!own || !own[0] || (farzandUzdi && own[0].child_id !== "tg_" + actor!.telegramId)) {
         return jsonRes({ ok: false, error: "Bunday qurilma topilmadi" }, 404);
       }
 
@@ -8777,6 +8779,20 @@ async function handleRequest(req: Request): Promise<Response> {
       // Farzandga xabar beramiz. Jimgina uzib qo'yish ishonchni buzadi va
       // bola nima uchun ilova ishlamay qolganini bilmay qoladi.
       const childId = own[0].child_id;
+      if (farzandUzdi) {
+        // Farzand o'zi uzdi — ota-ona buni bilishi SHART: jimgina to'xtagan
+        // kuzatuv "hammasi joyida" degan yolg'on xotirjamlik beradi.
+        const { data: kp } = await db.from("child_pairings").select("child_name")
+          .eq("family_code", familyCode).eq("child_id", childId).limit(1);
+        const ism = (kp && kp[0] && kp[0].child_name) || "Farzandingiz";
+        await notifyFamilyParents(
+          familyCode,
+          `⚠️ <b>${tgEsc(ism)} o'z telefonida kuzatuvni o'chirdi</b> (${tgEsc(own[0].device_model || "Android")}).\n\n` +
+            `Endi bu telefondan joylashuv va ekran vaqti kelmaydi. Bu farzandingizning huquqi — ` +
+            `sababini u bilan xotirjam gaplashib bilib oling. Qayta ulash uchun yangi kod kerak bo'ladi.`
+        );
+        return jsonRes({ ok: true, parentsNotified: true });
+      }
       if (childId && childId.startsWith("tg_")) {
         const tgId = Number(childId.slice(3));
         if (Number.isFinite(tgId) && tgId > 0) {
