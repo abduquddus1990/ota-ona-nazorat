@@ -579,15 +579,16 @@ const PRO_LIVE_HOURS = 8;
 
 // AI do'st uchun kunlik savollar soni.
 //
-// Bepul chegara ataylab raqobatchilardan baland: ChatGPT bepul tarifida
-// kuchli model uchun taxminan 10 ta / 5 soat beradi. Bizda kuniga 30 ta —
-// ya'ni bola darsini yechib tugatadi va "limit tugadi" devoriga urilmaydi.
+// 2026-10-06: 30 dan 20 ga tushirildi. Hisob ko'rsatdiki, gemini-3.6-flash
+// da bitta savol ~$0.004 turadi (model "o'ylash" tokenlari chiqish narxida
+// hisoblanadi), ya'ni kuniga 30 ta savol beradigan bola oyiga ~$3.4 —
+// hozirgi Pro narxidan qimmat. Arzonroq model (3.1 Flash-Lite) sinovdan
+// o'tguncha chegara vaqtincha 20 ta. Haqiqiy sarf "AI_USAGE" log qatorlarida
+// o'lchanadi (pastda, ai_tutor_chat).
 //
-// Xarajat shundan ham boshqarilib turadi: bitta savol-javob taxminan 2-3
-// ming token (tarix + savol + javob). 30 ta savol — kuniga ~80 ming token,
-// ya'ni bir faol bola uchun oyiga bir necha AQSh senti. Chegarasiz qoldirsak,
-// bitta yozilgan skript bir kechada butun byudjetni yeb qo'yishi mumkin edi.
-const AI_FREE_DAILY = 30;
+// Chegarasiz qoldirib bo'lmaydi: bitta yozilgan skript bir kechada butun
+// byudjetni yeb qo'yishi mumkin.
+const AI_FREE_DAILY = 20;
 // 200 ta amalda hech kim ishlatmaydigan va xarajatni oshiradigan son edi.
 const AI_PRO_DAILY = 60;
 
@@ -4848,6 +4849,95 @@ function getFeedbackText(lang: string = "uz"): string {
   return `💡 <b>TAKLIF VA FIKR-MULOHAZALAR:</b>\n\nDasturni yanada yaxshilash bo'yicha takliflaringizni to'g'ridan-to'g'ri ishlab chiquvchilarga yuboring:\n\n📬 <b>Rasmiy qabul pochtasi:</b> <code>alhamdulillah@tmail.ton</code>\n\n👉 <a href="https://mail.google.com/mail/?view=cm&fs=1&to=alhamdulillah@tmail.ton&su=Shield+Parental+Guard+Taklif+va+Mulohaza">Gmail orqali xat yozish</a>`;
 }
 
+// ---------------------------------------------------------------- statistika
+let appStatsCache: { until: number; data: any } | null = null;
+
+// Viloyat markazlari. Oilaning viloyati uy hududi (yoki oxirgi joylashuv)
+// eng yaqin markaz bo'yicha aniqlanadi — chegaraga yaqin joylarda xato
+// bo'lishi mumkin, shuning uchun ilovada "taxminiy" deb yoziladi.
+// Toshkent shahri alohida: markazdan 18 km ichida bo'lsa.
+const VILOYATLAR: Array<[string, number, number]> = [
+  ["Toshkent viloyati", 41.0, 69.36],
+  ["Andijon", 40.78, 72.34],
+  ["Farg'ona", 40.39, 71.78],
+  ["Namangan", 41.0, 71.67],
+  ["Sirdaryo", 40.49, 68.78],
+  ["Jizzax", 40.12, 67.84],
+  ["Samarqand", 39.65, 66.96],
+  ["Qashqadaryo", 38.86, 65.79],
+  ["Surxondaryo", 37.22, 67.28],
+  ["Buxoro", 39.77, 64.42],
+  ["Navoiy", 40.1, 65.38],
+  ["Xorazm", 41.55, 60.63],
+  ["Qoraqalpog'iston", 42.46, 59.6],
+];
+
+function viloyatOf(lat: number, lng: number): string | null {
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  // O'zbekistondan tashqaridagi nuqtalar (sinov, xorij) hisobga olinmaydi.
+  if (lat < 37 || lat > 45.7 || lng < 55.9 || lng > 73.2) return null;
+  if (distanceMeters(lat, lng, 41.31, 69.28) <= 18000) return "Toshkent shahri";
+  let best = "", bd = Infinity;
+  for (const [nom, la, lo] of VILOYATLAR) {
+    const d = distanceMeters(lat, lng, la, lo);
+    if (d < bd) { bd = d; best = nom; }
+  }
+  return best;
+}
+
+async function buildAppStats(): Promise<any> {
+  const [{ data: regs }, { data: kids }, { count: coParents }, { data: zones }] = await Promise.all([
+    db!.from("parent_registrations").select("family_code, created_at, status").limit(50000),
+    db!.from("child_pairings").select("family_code, paired_at, is_active").limit(50000),
+    db!.from("family_parents").select("telegram_id", { count: "exact", head: true }),
+    db!.from("geofence_zones").select("family_code, name, center_lat, center_lng").limit(50000),
+  ]);
+  const families = (regs || []).filter((r: any) => r.status !== "rejected");
+  const activeKids = (kids || []).filter((k: any) => k.is_active !== false);
+
+  // Oxirgi 6 oy: har oyda qo'shilgan oilalar va farzandlar.
+  const oylar: Array<{ key: string; families: number; children: number }> = [];
+  const now = new Date(Date.now() + 5 * 3600 * 1000);
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1));
+    oylar.push({ key: d.toISOString().slice(0, 7), families: 0, children: 0 });
+  }
+  const oyKey = (iso: string) => new Date(new Date(iso).getTime() + 5 * 3600 * 1000).toISOString().slice(0, 7);
+  for (const r of families) { const m = oylar.find((o) => o.key === oyKey(r.created_at)); if (m) m.families++; }
+  for (const k of activeKids) { const m = oylar.find((o) => o.key === oyKey(k.paired_at)); if (m) m.children++; }
+
+  // Viloyat: avval "Uy" hududi, bo'lmasa istalgan hudud, bo'lmasa oxirgi joylashuv.
+  const famPoint = new Map<string, [number, number]>();
+  for (const z of zones || []) {
+    const isHome = /^uy/i.test(String(z.name || ""));
+    if (!famPoint.has(z.family_code) || isHome) famPoint.set(z.family_code, [Number(z.center_lat), Number(z.center_lng)]);
+  }
+  const missing = families.map((r: any) => r.family_code).filter((c: string) => c && !famPoint.has(c));
+  for (const code of missing.slice(0, 500)) {
+    const { data: p } = await db!.from("location_pings").select("lat, lng")
+      .eq("family_code", code).order("recorded_at", { ascending: false }).limit(1);
+    if (p && p[0]) famPoint.set(code, [Number(p[0].lat), Number(p[0].lng)]);
+  }
+  const regions: Record<string, number> = {};
+  let unknown = 0;
+  for (const r of families) {
+    const pt = famPoint.get(r.family_code);
+    const v = pt ? viloyatOf(pt[0], pt[1]) : null;
+    if (v) regions[v] = (regions[v] || 0) + 1; else unknown++;
+  }
+
+  return {
+    ok: true,
+    parents: families.length + (coParents || 0),
+    families: families.length,
+    children: activeKids.length,
+    months: oylar,
+    regions: Object.entries(regions).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count),
+    regionUnknown: unknown,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
 async function handleRequest(req: Request): Promise<Response> {
   await ensureBotCommands();
   if (req.method === "GET") {
@@ -6830,6 +6920,19 @@ async function handleRequest(req: Request): Promise<Response> {
           gRes = await callGemini();
         }
         const gJson = await gRes.json();
+        // Haqiqiy sarf: kirish, javob va "o'ylash" tokenlari. Xarajat
+        // hisobi shu qatorlardan olinadi (Supabase loglari, "AI_USAGE").
+        const u = gJson?.usageMetadata;
+        if (u) {
+          console.log("AI_USAGE " + JSON.stringify({
+            kind: payload.audience === "parent" ? "parent_chat" : "tutor",
+            model,
+            in: u.promptTokenCount || 0,
+            out: u.candidatesTokenCount || 0,
+            think: u.thoughtsTokenCount || 0,
+            img: !!imagePart,
+          }));
+        }
         // "O'ylash" bo'laklari javob emas — ular qo'shilsa, bolaga modelning
         // ichki mulohazasi ko'rinib qolardi.
         const answer = (gJson?.candidates?.[0]?.content?.parts || [])
@@ -7865,6 +7968,21 @@ async function handleRequest(req: Request): Promise<Response> {
     // Bitta so'rovda hammasi: har bir farzandning jonli holati, oxirgi ma'lum
     // nuqtasi va bugungi "kirdi/chiqdi" hodisalari. Alohida uchta so'rov bilan
     // qilinsa, panel uch xil paytdagi holatni aralash ko'rsatib qo'yardi.
+    // Ilova statistikasi — "Dastur statistikasi" oynasi uchun.
+    //
+    // Ilgari bu oynadagi raqamlar ("14 820 ota-ona", "+18.4% o'sish", oylar
+    // grafigi) index.html ga qo'lda yozib qo'yilgan to'qima edi. Endi hammasi
+    // bazadan. Faqat jami sonlar va viloyat darajasidagi taqsimot qaytadi —
+    // hech qanday oila, ism yoki nuqta emas. Natija 10 daqiqa keshlanadi.
+    if (payload.type === "app_stats") {
+      if (!actor) return unauthorized("Kirish kerak");
+      if (!db) return jsonRes({ ok: false, error: "Baza ulanmagan" }, 500);
+      if (appStatsCache && appStatsCache.until > Date.now()) return jsonRes(appStatsCache.data);
+      const data = await buildAppStats();
+      appStatsCache = { until: Date.now() + 10 * 60 * 1000, data };
+      return jsonRes(data);
+    }
+
     if (payload.type === "radar_status") {
       if (actor!.kind !== "telegram") return unauthorized("Faqat ota-ona");
       if (!db) {
