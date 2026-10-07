@@ -622,8 +622,10 @@ async function getPlan(familyCode: string): Promise<"free" | "pro"> {
   if (!row) return "free";
 
   // Ro'yxatdagi hisoblar uchun tarif va muddatga umuman qaralmaydi.
-  // Oiladagi ISTALGAN a'zo ro'yxatda bo'lsa yetarli: ota, ona yoki farzand.
-  const names = [row.parent_username, row.mother_username, row.child_username];
+  // FAQAT ota-onaning username'i — u Telegram imzosidan olinadi. Ona va
+  // farzand username'ini forma to'ldirgan odam o'zi yozadi: ilgari shu
+  // yerga "superman_uzb" yozib, umrbod bepul Pro olish mumkin edi.
+  const names = [row.parent_username];
   for (const n of names) {
     if (!n) continue;
     if (ALWAYS_PRO_USERNAMES.has(String(n).trim().toLowerCase().replace(/^@/, ""))) {
@@ -1111,8 +1113,17 @@ async function ensureBotCommands() {
   }
 }
 
-// Dynamic Admin IDs Store & Known Admin Usernames (Sheriklar ro'yxati)
-const ADMIN_USERNAMES = new Set<string>(["ai_loyihachi"]);
+// ADMIN — FAQAT raqamli Telegram ID bo'yicha (ADMIN_CHAT_IDS siri).
+//
+// Xavfsizlik tekshiruvi (2026-10-07) ikki teshik topdi:
+//  1) botga "/admin" deb yozgan HAR QANDAY odam xotiradagi admin ro'yxatiga
+//     qo'shilardi va yangi oilalarning ismi, telefoni, farzandi haqidagi
+//     xabarlarni hamda yetkazilmagan SOS'larni olardi;
+//  2) admin Telegram USERNAME bo'yicha aniqlanardi — username o'zgartirilsa
+//     yoki bo'shab qolsa, uni olgan begona odam to'liq admin bo'lardi.
+// Endi admin ro'yxati faqat sirdan o'qiladi va kod hech qachon unga
+// qo'shmaydi. Sir bo'sh bo'lsa (birinchi sozlash) — vaqtincha username.
+const ADMIN_BOOTSTRAP_USERNAME = "ai_loyihachi";
 // Admin chat ID'lari ADMIN_CHAT_IDS sirida saqlanadi (vergul bilan).
 //
 // Ilgari bu bo'sh Set edi va faqat admin botga yozganda to'lardi. Bu
@@ -1133,6 +1144,17 @@ if (ADMIN_CHAT_IDS.size === 0) {
   );
 }
 const USER_LANG: Record<string | number, string> = {};
+
+/** Bu chat admin'nikimi. Username faqat ADMIN_CHAT_IDS umuman yo'q bo'lsa. */
+function isAdminChat(chatId: number | string, username: string): boolean {
+  if (ADMIN_CHAT_IDS.size > 0) return ADMIN_CHAT_IDS.has(String(chatId));
+  return username === ADMIN_BOOTSTRAP_USERNAME;
+}
+
+/** Foydalanuvchi yozgan matnni Telegram HTML xabariga xavfsiz qo'yish. */
+function tgEsc(v: unknown): string {
+  return String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
 
 function generateFamilyCode(userId: string | number): string {
   // 6 raqam, chiziqsiz (masalan 6 raqam)
@@ -1162,7 +1184,7 @@ async function familyCodeFor(userId: string | number): Promise<string> {
   const cached = familyCodeCache.get(id);
   if (cached) return cached;
   const yaqinda = familyCodeMiss.get(id);
-  if (yaqinda && yaqinda > Date.now()) return derived;
+  if (yaqinda && yaqinda.until > Date.now()) return yaqinda.code;
 
   const { data } = await db
     .from("family_code_overrides")
@@ -1181,14 +1203,30 @@ async function familyCodeFor(userId: string | number): Promise<string> {
   const ikkinchi = await coParentFamily(id);
   if (ikkinchi) return ikkinchi;
 
-  // "Hech narsa topilmadi" ham qisqa muddat eslab qolinadi, aks holda har
-  // bir so'rov ikkita qo'shimcha so'rov qilardi. Muddat qisqa: ona havolani
-  // bosgandan keyin panelini darhol o'z oilasi bilan ochishi kerak.
-  familyCodeMiss.set(id, Date.now() + 30_000);
-  return derived;
+  // Hisoblangan kod BOSHQA odamning oilasiga tegishli bo'lsa (900 000
+  // variant — oilalar ko'payganda to'qnashuv muqarrar), uni bu odamga
+  // bermaymiz: aks holda tasodifan mos kelgan begona Telegram foydalanuvchisi
+  // o'sha oilaning "ota-onasi" bo'lib, farzandning joylashuvini ko'rardi.
+  // Bunday odam hech qaysi oilaga kirmaydi; ro'yxatdan o'tsa,
+  // claimFamilyCode() unga o'z, bo'sh kodini beradi.
+  let natija = derived;
+  const { data: egasi } = await db
+    .from("parent_registrations")
+    .select("parent_telegram_id")
+    .eq("family_code", derived)
+    .limit(1);
+  if (egasi && egasi[0] && Number(egasi[0].parent_telegram_id) !== id) {
+    natija = "x" + id; // hech qaysi oila kodiga mos kelmaydi
+  }
+
+  // Natija qisqa muddat eslab qolinadi (aks holda har so'rov uch qo'shimcha
+  // so'rov qilardi). Muddat qisqa: ona havolani bosgach, panelini darhol
+  // o'z oilasi bilan ochishi kerak.
+  familyCodeMiss.set(id, { until: Date.now() + 30_000, code: natija });
+  return natija;
 }
 
-const familyCodeMiss = new Map<number, number>();
+const familyCodeMiss = new Map<number, { until: number; code: string }>();
 
 /** Shu Telegram hisobi qaysi oilaning IKKINCHI ota-onasi (database/29). */
 async function coParentFamily(telegramId: number): Promise<string | null> {
@@ -5021,8 +5059,12 @@ async function handleRequest(req: Request): Promise<Response> {
         ? await claimFamilyCode(actor!.telegramId)
         : "";
       if (!familyCode) return unauthorized("Faqat Mini App orqali");
+      // Username Telegram imzosidan olinadi — formadagi qiymatga ishonilmaydi.
+      // Ilgari forma yozgan har qanday username saqlanardi: kimdir "doimiy Pro"
+      // ro'yxatidagi username'ni yozib, umrbod bepul Pro olardi, admin
+      // xabarida esa begona username ko'rinardi. Veb-kirish logini ham shu.
       const parentUsername = normalizeUsername(
-        payload.parentUsername || payload.username
+        actor!.kind === "telegram" && actor!.username ? actor!.username : ""
       );
       const gradeNum = Number(payload.childGrade);
 
@@ -5147,7 +5189,7 @@ async function handleRequest(req: Request): Promise<Response> {
       }
 
       const line = (label: string, value: unknown) =>
-        value ? `\n${label} ${value}` : "";
+        value ? `\n${label} ${tgEsc(value)}` : "";
 
       const adminNotice =
         `✅ <b>YANGI OILA QO'SHILDI</b> (avtomatik tasdiqlandi)` +
@@ -7154,6 +7196,26 @@ async function handleRequest(req: Request): Promise<Response> {
       const password = String(payload.password || "");
       const failMsg = "Login yoki parol noto'g'ri.";
 
+      // Telegram username qoidasi: 5-32 belgi, lotin harf, raqam, "_".
+      // Ilgari tekshirilmasdi va ilike'da "%" — "istalgan" degani edi:
+      // username bilmasdan istalgan hisobga parol sinab ko'rish mumkin edi.
+      if (!/^[a-z0-9_]{3,32}$/.test(username)) {
+        await recordJoinAttempt(actorKey, "", false);
+        return new Response(JSON.stringify({ ok: false, error: failMsg }), {
+          status: 401, headers: { "Content-Type": "application/json" },
+        });
+      }
+      // Hisob bo'yicha cheklov. IP bo'yicha cheklov yetarli emas: IP
+      // sarlavhasini so'rov yuboruvchi o'zi yozadi va har urinishda
+      // almashtirib, uni aylanib o'tadi. Hisob bo'yicha esa — yo'q.
+      const accountKey = `weblogin-user:${username}`;
+      if (await joinRateLimited(accountKey)) {
+        return new Response(
+          JSON.stringify({ ok: false, error: "Bu hisobga juda ko'p urinish bo'ldi. 1 soatdan keyin urinib ko'ring." }),
+          { status: 429, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
       if (!username || !password) {
         await recordJoinAttempt(actorKey, "", false);
         return new Response(JSON.stringify({ ok: false, error: failMsg }), {
@@ -7164,12 +7226,13 @@ async function handleRequest(req: Request): Promise<Response> {
       const { data } = await db
         .from("parent_registrations")
         .select("family_code, parent_telegram_id, password_hash, status")
-        .ilike("parent_username", username)
+        .eq("parent_username", username)
         .limit(1);
 
       const row = data && data[0];
       const ok = !!(row && row.password_hash && (await verifyPassword(password, row.password_hash)));
       await recordJoinAttempt(actorKey, row ? row.family_code : "", ok);
+      await recordJoinAttempt(accountKey, row ? row.family_code : "", ok);
 
       if (!ok) {
         return new Response(JSON.stringify({ ok: false, error: failMsg }), {
@@ -8450,6 +8513,10 @@ async function handleRequest(req: Request): Promise<Response> {
     // havolani bosadi, bot esa o'z Telegram ID'sini shu oilaga yozadi.
     if (payload.type === "link_telegram_start") {
       if (actor!.kind !== "telegram") return unauthorized("Faqat ota-ona");
+      // Telegram'dagi farzand ham "telegram" turida keladi va resolveActorFamily
+      // uni haqiqiy oilasiga olib boradi — ilgari u o'z kuzatuvini (qurilmani)
+      // o'zi uzib qo'ya olardi.
+      if (await isPairedChild(actor!.telegramId)) return unauthorized("Faqat ota-ona");
       if (!db) return jsonRes({ ok: false, error: "Baza ulanmagan" }, 500);
 
       const familyCode = await resolveActorFamily(actor!);
@@ -8604,6 +8671,10 @@ async function handleRequest(req: Request): Promise<Response> {
     // Telegram bog'landimi — panel shuni so'rab turadi.
     if (payload.type === "link_telegram_status") {
       if (actor!.kind !== "telegram") return unauthorized("Faqat ota-ona");
+      // Telegram'dagi farzand ham "telegram" turida keladi va resolveActorFamily
+      // uni haqiqiy oilasiga olib boradi — ilgari u o'z kuzatuvini (qurilmani)
+      // o'zi uzib qo'ya olardi.
+      if (await isPairedChild(actor!.telegramId)) return unauthorized("Faqat ota-ona");
       if (!db) return jsonRes({ ok: true, linked: false });
       const familyCode = await resolveActorFamily(actor!);
       const { data } = await db
@@ -8619,6 +8690,10 @@ async function handleRequest(req: Request): Promise<Response> {
 
     if (payload.type === "list_devices") {
       if (actor!.kind !== "telegram") return unauthorized("Faqat ota-ona");
+      // Telegram'dagi farzand ham "telegram" turida keladi va resolveActorFamily
+      // uni haqiqiy oilasiga olib boradi — ilgari u o'z kuzatuvini (qurilmani)
+      // o'zi uzib qo'ya olardi.
+      if (await isPairedChild(actor!.telegramId)) return unauthorized("Faqat ota-ona");
       if (!db) return jsonRes({ ok: true, devices: [] });
 
       const familyCode = await resolveActorFamily(actor!);
@@ -8663,6 +8738,10 @@ async function handleRequest(req: Request): Promise<Response> {
     // faqat is_active = true kalitlarni qabul qiladi.
     if (payload.type === "revoke_device") {
       if (actor!.kind !== "telegram") return unauthorized("Faqat ota-ona");
+      // Telegram'dagi farzand ham "telegram" turida keladi va resolveActorFamily
+      // uni haqiqiy oilasiga olib boradi — ilgari u o'z kuzatuvini (qurilmani)
+      // o'zi uzib qo'ya olardi.
+      if (await isPairedChild(actor!.telegramId)) return unauthorized("Faqat ota-ona");
       if (!db) return jsonRes({ ok: false, error: "Baza ulanmagan" }, 500);
 
       const id = String(payload.deviceId || "").trim();
@@ -9493,7 +9572,7 @@ async function handleRequest(req: Request): Promise<Response> {
           ? actor!.familyCode
           : String(payload.familyCode || "").replace(/\D/g, "");
 
-      const alertMsg = `🎉 <b>FARZAND ULANDI!</b>\n\n👦 <b>Farzand:</b> ${childName}\n🔑 <b>Oila Kodi:</b> <code>${shownCode}</code>\n📅 <b>Vaqt:</b> ${tashkentVaqt(new Date().toISOString())}`;
+      const alertMsg = `🎉 <b>FARZAND ULANDI!</b>\n\n👦 <b>Farzand:</b> ${tgEsc(childName)}\n🔑 <b>Oila Kodi:</b> <code>${tgEsc(shownCode)}</code>\n📅 <b>Vaqt:</b> ${tashkentVaqt(new Date().toISOString())}`;
 
       await notifyAdmins(alertMsg);
       return new Response(JSON.stringify({ ok: true }), { status: 200 });
@@ -9794,8 +9873,7 @@ async function handleRequest(req: Request): Promise<Response> {
       const data = cb.data || "";
       const lang = USER_LANG[chatId] || "uz";
       const rawUsername = (cb.from.username || "").toLowerCase().replace("@", "");
-      const isAdmin = ADMIN_USERNAMES.has(rawUsername);
-      if (isAdmin) ADMIN_CHAT_IDS.add(chatId);
+      const isAdmin = isAdminChat(chatId, rawUsername);
 
       const userKey = `@${cb.from.username || cb.from.id}`;
       const isApproved = isAdmin || (await isFamilyApproved(chatId));
@@ -9989,56 +10067,23 @@ async function handleRequest(req: Request): Promise<Response> {
       let text = (msg.text || "").trim();
       const lang = USER_LANG[chatId] || "uz";
       const rawUsername = (msg.from.username || "").toLowerCase().replace("@", "");
-      const isAdmin = ADMIN_USERNAMES.has(rawUsername);
-      if (isAdmin) ADMIN_CHAT_IDS.add(chatId);
+      const isAdmin = isAdminChat(chatId, rawUsername);
 
       const userKey = `@${msg.from.username || msg.from.id}`;
       const isApproved = isAdmin || (await isFamilyApproved(chatId));
 
-      // Sherik qo'shish komandasi: /addadmin @username
-      if (text.startsWith("/addadmin")) {
-        if (!isAdmin) {
-          await sendMessage(chatId, "⚠️ Bu buyruq faqat bosh administratorlar uchun!");
-          return new Response(JSON.stringify({ ok: true }), { status: 200 });
-        }
-        const parts = text.split(" ");
-        if (parts.length > 1) {
-          const target = parts[1].replace("@", "").toLowerCase().trim();
-          ADMIN_USERNAMES.add(target);
-          await sendMessage(chatId, `👑 <b>Yangi Hamkor / Admin qo'shildi:</b> @${target}\nEndi @${target} ham loyihani to'liq boshqarishi va so'rovlarni tasdiqlashi mumkin!`);
-        } else {
-          await sendMessage(chatId, "⚠️ Foydalanish: <code>/addadmin @sherik_username</code>");
-        }
+      // Adminlar endi ADMIN_CHAT_IDS siri orqali boshqariladi (raqamli ID).
+      // Ilgari /addadmin va /removeadmin xotiradagi ro'yxatni o'zgartirardi —
+      // funksiya qayta ishga tushishi bilan bu o'zgarish yo'qolardi, "/admin"
+      // esa istalgan odamni admin xabarlariga ulab qo'yardi.
+      if (/^\/(addadmin|removeadmin|admins|admin|setadmin)\b/.test(text)) {
+        await sendMessage(
+          chatId,
+          isAdmin
+            ? "ℹ️ Adminlar Supabase'dagi <b>ADMIN_CHAT_IDS</b> sozlamasida (raqamli Telegram ID, vergul bilan) boshqariladi. Hozir: <b>" + ADMIN_CHAT_IDS.size + "</b> ta."
+            : "⚠️ Bu buyruq mavjud emas."
+        );
         return new Response(JSON.stringify({ ok: true }), { status: 200 });
-      }
-
-      // Sherikni o'chirish: /removeadmin @username
-      if (text.startsWith("/removeadmin")) {
-        if (!isAdmin) {
-          await sendMessage(chatId, "⚠️ Bu buyruq faqat bosh administratorlar uchun!");
-          return new Response(JSON.stringify({ ok: true }), { status: 200 });
-        }
-        const parts = text.split(" ");
-        if (parts.length > 1) {
-          const target = parts[1].replace("@", "").toLowerCase().trim();
-          ADMIN_USERNAMES.delete(target);
-          await sendMessage(chatId, `❌ <b>Admin huquqi olib tashlandi:</b> @${target}`);
-        } else {
-          await sendMessage(chatId, "⚠️ Foydalanish: <code>/removeadmin @sherik_username</code>");
-        }
-        return new Response(JSON.stringify({ ok: true }), { status: 200 });
-      }
-
-      // Barcha adminlar ro'yxati: /admins
-      if (text === "/admins") {
-        const list = Array.from(ADMIN_USERNAMES).map(u => `• @${u}`).join("\n");
-        await sendMessage(chatId, `👑 <b>Loyihani Boshqaruvchi Administratorlar va Sheriklar:</b>\n\n${list}\n\n<i>Yangi sherik qo'shish: /addadmin @username</i>`);
-        return new Response(JSON.stringify({ ok: true }), { status: 200 });
-      }
-
-      // Admin tayinlash buyrug'i (/admin yoki /setadmin)
-      if (text === "/admin" || text === "/setadmin" || isAdmin) {
-        ADMIN_CHAT_IDS.add(chatId);
       }
 
       // /start [payload] komandasi
