@@ -1080,8 +1080,8 @@ async function requestChildLocation() {
                     addr.textContent = coords;
                 }
             }
-            if (typeof mapInstance !== 'undefined' && mapInstance && childMarker) {
-                childMarker.setLatLng([data.location.lat, data.location.lng]);
+            if (typeof mapInstance !== 'undefined' && mapInstance) {
+                farzandBelgisiniQoy(data.location.lat, data.location.lng, data.location.accuracy_m);
                 mapInstance.setView([data.location.lat, data.location.lng], 15);
             }
         } else {
@@ -1117,6 +1117,7 @@ async function loadGeofences() {
 
         const zones = data.zones || [];
         const alerts = data.alerts || [];
+        hududlarniChiz(zones, alerts);
 
         if (zones.length === 0) {
             list.innerHTML = data.plan === 'pro'
@@ -1959,7 +1960,6 @@ let authStatus = localStorage.getItem('auth_status') || (currentAuthUser ? curre
 
 let mapInstance = null;
 let childMarker = null;
-let parentMarker = null;
 
 let pomodoroSeconds = 25 * 60;
 let pomodoroInterval = null;
@@ -5422,7 +5422,7 @@ async function renderDayRoute() {
             tl.innerHTML = rows.join('');
         }
 
-        drawRouteOnMap(pts, d.events || []);
+        drawRouteOnMap(pts, d.events || [], d.imprecise || []);
     } catch (e) {
         console.error('day_route error:', e);
     }
@@ -5431,42 +5431,113 @@ async function renderDayRoute() {
 /** Marshrutni Leaflet xaritasiga chizadi. Xarita hali yaratilmagan bo'lsa,
  *  uni shu yerda birinchi nuqta bo'yicha ochamiz — initRadarMap mijozdagi
  *  namunaviy ma'lumotga bog'liq, u esa haqiqiy oilada bo'lmasligi mumkin. */
-function drawRouteOnMap(points, events) {
+function drawRouteOnMap(points, events, imprecise) {
     const mapEl = document.getElementById('map');
     if (!mapEl || typeof L === 'undefined') return;
 
     if (!mapInstance) {
         mapInstance = L.map('map', { zoomControl: false, attributionControl: false })
             .setView([points[0].lat, points[0].lng], 14);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(mapInstance);
+        qalqonXaritaQatlami(mapInstance);
+        if (zonaKutmoqda) hududlarniChiz(zonaKutmoqda.zones, zonaKutmoqda.alerts);
     }
 
     if (routeLayer) { mapInstance.removeLayer(routeLayer); routeLayer = null; }
     routeLayer = L.layerGroup().addTo(mapInstance);
 
+    const vaqt = (iso) => new Date(iso).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' });
     const latlngs = points.map(p => [p.lat, p.lng]);
-    L.polyline(latlngs, { color: '#22d3ee', weight: 4, opacity: 0.85 }).addTo(routeLayer);
+    // Yo'l — ingichka nuqtali chiziq: asosiy ma'lumot nuqtalarning o'zida.
+    L.polyline(latlngs, { color: '#1d6fe0', weight: 3, opacity: 0.45, dashArray: '1 8', lineCap: 'round' }).addTo(routeLayer);
 
-    const dot = (color, size) => L.divIcon({
-        className: '',
-        html: `<div style="width:${size}px;height:${size}px;background:${color};border:2px solid #0f172a;border-radius:50%"></div>`,
-        iconSize: [size, size], iconAnchor: [size / 2, size / 2]
+    // Aniq nuqtalar — to'la ko'k; eskisi xiraroq, yangisi to'qroq.
+    const n = Math.max(1, points.length - 1);
+    points.forEach((p, i) => {
+        L.circleMarker([p.lat, p.lng], {
+            radius: 5, color: '#ffffff', weight: 2,
+            fillColor: '#1d6fe0', fillOpacity: 0.35 + 0.65 * (i / n)
+        }).bindPopup(vaqt(p.recorded_at) + (p.accuracy_m ? ' · ±' + Math.round(p.accuracy_m) + ' m' : '')).addTo(routeLayer);
     });
 
-    L.marker(latlngs[0], { icon: dot('#34d399', 14) })
-        .bindPopup('Boshlanish · ' + new Date(points[0].recorded_at).toLocaleTimeString('uz-UZ'))
-        .addTo(routeLayer);
-    L.marker(latlngs[latlngs.length - 1], { icon: dot('#f472b6', 16) })
-        .bindPopup('Oxirgi · ' + new Date(points[points.length - 1].recorded_at).toLocaleTimeString('uz-UZ'))
-        .addTo(routeLayer);
+    // Noaniq nuqtalar (bino ichi, xato > 100 m) — ichi bo'sh kulrang halqa.
+    // Ular chiziqqa qo'shilmaydi: ota-ona ularni "yo'l" deb o'ylamasin.
+    (imprecise || []).forEach(p => {
+        L.circleMarker([p.lat, p.lng], {
+            radius: 6, color: '#64748b', weight: 2, opacity: 0.8,
+            fill: true, fillColor: '#ffffff', fillOpacity: 1
+        }).bindPopup(vaqt(p.recorded_at) + ' · noaniq, ±' + Math.round(p.accuracy_m) + ' m').addTo(routeLayer);
+    });
 
-    for (let i = 1; i < latlngs.length - 1; i++) {
-        L.marker(latlngs[i], { icon: dot('#38bdf8', 8) })
-            .bindPopup(new Date(points[i].recorded_at).toLocaleTimeString('uz-UZ'))
-            .addTo(routeLayer);
+    const oxirgi = points[points.length - 1];
+    farzandBelgisiniQoy(oxirgi.lat, oxirgi.lng, oxirgi.accuracy_m);
+
+    try { mapInstance.fitBounds(L.polyline(latlngs).getBounds(), { padding: [40, 40] }); } catch (e) {}
+}
+
+// ============================================================================
+// XARITA USLUBI (2026-10 da tasdiqlangan: "Qalqon ko'k" fon + B — faol hudud)
+// ============================================================================
+
+/** OpenStreetMap fon qatlami va majburiy mualliflik yozuvi. Ilgari yozuv
+ *  o'chirib qo'yilgan edi — OSM uni talab qiladi. Ko'k tus "Tinch tong"da
+ *  CSS filtr bilan beriladi (styles.css), boshqa xizmat kerak emas. */
+function qalqonXaritaQatlami(map) {
+    L.control.attribution({ prefix: false, position: 'bottomright' }).addTo(map);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>'
+    }).addTo(map);
+}
+
+let farzandAniqlikDoirasi = null;
+
+/** Farzand belgisi: oq halqali ko'k nuqta va atrofida HAQIQIY aniqlik doirasi
+ *  (±12 m — kichik, ±150 m — katta). Doira ota-onaga nuqtaga qanchalik
+ *  ishonish mumkinligini ko'rsatadi. */
+function farzandBelgisiniQoy(lat, lng, aniqlik) {
+    if (!mapInstance || typeof L === 'undefined') return;
+    const icon = L.divIcon({ className: '', html: '<div class="qk-farzand"></div>', iconSize: [20, 20], iconAnchor: [10, 10] });
+    if (!childMarker) childMarker = L.marker([lat, lng], { icon, zIndexOffset: 1000 }).addTo(mapInstance);
+    else { childMarker.setLatLng([lat, lng]); childMarker.setIcon(icon); }
+    const r = Number(aniqlik) > 0 ? Number(aniqlik) : 0;
+    if (!r) { if (farzandAniqlikDoirasi) { mapInstance.removeLayer(farzandAniqlikDoirasi); farzandAniqlikDoirasi = null; } return; }
+    if (!farzandAniqlikDoirasi) {
+        farzandAniqlikDoirasi = L.circle([lat, lng], { radius: r, color: '#1d6fe0', weight: 1, opacity: 0.3, fillColor: '#1d6fe0', fillOpacity: 0.12, interactive: false }).addTo(mapInstance);
+    } else {
+        farzandAniqlikDoirasi.setLatLng([lat, lng]);
+        farzandAniqlikDoirasi.setRadius(r);
     }
+}
 
-    try { mapInstance.fitBounds(L.polyline(latlngs).getBounds(), { padding: [30, 30] }); } catch (e) {}
+let hududQatlami = null;
+let zonaKutmoqda = null;
+
+/** Hududlar (B uslubi): farzand HOZIR turgan hudud — ko'k, yonib turadi va
+ *  nomi yonida "· hozir"; qolganlari — kulrang, uzuq chiziqli. "Hozir" —
+ *  shu hudud bo'yicha oxirgi hodisa "kirdi" bo'lsa. */
+function hududlarniChiz(zones, alerts) {
+    zonaKutmoqda = { zones: zones || [], alerts: alerts || [] };
+    if (!mapInstance || typeof L === 'undefined') return;
+    if (hududQatlami) { mapInstance.removeLayer(hududQatlami); hududQatlami = null; }
+    hududQatlami = L.layerGroup().addTo(mapInstance);
+    const belgi = (nom) => /^uy/i.test(nom) ? '🏠' : /maktab|школ/i.test(nom) ? '🏫' : /to.?garak|kurs|sport/i.test(nom) ? '🎨' : '📍';
+    for (const z of zonaKutmoqda.zones) {
+        const lat = Number(z.center_lat), lng = Number(z.center_lng), r = Number(z.radius_m) || 150;
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+        const oxirgi = zonaKutmoqda.alerts.find(a => a.zone_name === z.name);
+        const faol = !!(oxirgi && oxirgi.alert_type === 'enter');
+        if (faol) {
+            L.circle([lat, lng], { radius: r * 1.18, color: '#1d6fe0', weight: 1, opacity: 0.25, fill: false, interactive: false }).addTo(hududQatlami);
+            L.circle([lat, lng], { radius: r, color: '#1d6fe0', weight: 3, fillColor: '#1d6fe0', fillOpacity: 0.16, interactive: false }).addTo(hududQatlami);
+        } else {
+            L.circle([lat, lng], { radius: r, color: '#64748b', weight: 2, dashArray: '6 7', fillColor: '#94a3b8', fillOpacity: 0.08, interactive: false }).addTo(hududQatlami);
+        }
+        // Nom — doiraning yuqori chetida, farzand nuqtasini to'smasin.
+        const tepa = [lat + r / 111000, lng];
+        const html = '<div class="qk-hudud' + (faol ? '' : ' qk-xira') + '"><em>' + belgi(z.name) + '</em>' +
+            escapeHtml(z.name) + (faol ? ' · hozir' : '') + '</div>';
+        L.marker(tepa, { icon: L.divIcon({ className: '', html, iconSize: null, iconAnchor: [0, 14] }), interactive: false }).addTo(hududQatlami);
+    }
 }
 
 function openSubpage(subpageId) {
@@ -5626,29 +5697,19 @@ function initRadarMap() {
     const child = childrenDatabase[currentChildKey];
     if (!child || !child.location) return;
     mapInstance = L.map('map', { zoomControl: false, attributionControl: false }).setView([child.location.lat, child.location.lng], 14);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(mapInstance);
+    qalqonXaritaQatlami(mapInstance);
 
-    const childIcon = L.divIcon({
-        className: 'custom-radar-icon',
-        html: '<div class="radar-pin"></div>',
-        iconSize: [14, 14],
-        iconAnchor: [7, 7]
-    });
-    childMarker = L.marker([child.location.lat, child.location.lng], { icon: childIcon }).addTo(mapInstance);
-
-    const parentIcon = L.divIcon({
-        className: 'parent-pin-icon',
-        html: '<div style="width:12px;height:12px;background:#38bdf8;border:2px solid #fff;border-radius:50%;"></div>',
-        iconSize: [12, 12],
-        iconAnchor: [6, 6]
-    });
-    parentMarker = L.marker([child.location.lat - 0.008, child.location.lng - 0.006], { icon: parentIcon }).addTo(mapInstance);
+    farzandBelgisiniQoy(child.location.lat, child.location.lng, child.location.accuracy_m);
+    // Ilgari bu yerda "ota-ona" nuqtasi ham chizilardi — farzanddan doimiy
+    // masofaga surilgan, ya'ni ota-onaning HAQIQIY joyi emas edi. Xaritada
+    // to'qima nuqta bo'lmasligi kerak, shuning uchun olib tashlandi.
+    if (zonaKutmoqda) hududlarniChiz(zonaKutmoqda.zones, zonaKutmoqda.alerts);
 }
 
 function updateMapCoordinates() {
     const child = childrenDatabase[currentChildKey];
-    if (mapInstance && childMarker && child && child.location) {
-        childMarker.setLatLng([child.location.lat, child.location.lng]);
+    if (mapInstance && child && child.location) {
+        farzandBelgisiniQoy(child.location.lat, child.location.lng, child.location.accuracy_m);
         mapInstance.setView([child.location.lat, child.location.lng], 14);
     }
 }
@@ -6054,7 +6115,7 @@ function initZoneMap() {
         // Toshkent markazi — boshlang'ich nuqta sifatida.
         zoneMap = L.map('zoneMap', { zoomControl: true, attributionControl: false })
             .setView([41.3111, 69.2797], 13);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(zoneMap);
+        qalqonXaritaQatlami(zoneMap);
         zoneMap.on('click', (e) => setZonePoint(e.latlng.lat, e.latlng.lng));
     }
     zoneMap.invalidateSize();
@@ -6075,7 +6136,7 @@ function setZonePoint(lat, lng) {
     }
 
     if (!zoneCircle) {
-        zoneCircle = L.circle([lat, lng], { radius: r, color: '#22d3ee', fillColor: '#22d3ee', fillOpacity: 0.15 }).addTo(zoneMap);
+        zoneCircle = L.circle([lat, lng], { radius: r, color: '#1d6fe0', weight: 3, fillColor: '#1d6fe0', fillOpacity: 0.16 }).addTo(zoneMap);
     } else {
         zoneCircle.setLatLng([lat, lng]);
         zoneCircle.setRadius(r);

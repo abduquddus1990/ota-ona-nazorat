@@ -8361,6 +8361,15 @@ async function handleRequest(req: Request): Promise<Response> {
           dayOffset,
           date: dayStart.toISOString().slice(0, 10),
           points,
+          // Noaniq nuqtalar (xato > 100 m) chiziqqa kirmaydi, lekin xaritada
+          // kulrang halqa bo'lib ko'rinadi — ota-ona ularni ko'rsin, ammo
+          // "yo'l" deb o'ylamasin. Ko'rsatilayotgan vaqt oralig'idagilari xolos.
+          imprecise: aniqlari.length && points.length
+            ? (raw || [])
+                .filter((p: any) => Number(p.accuracy_m) > 100 && p.recorded_at >= points[0].recorded_at)
+                .slice(-60)
+                .map((p: any) => ({ lat: p.lat, lng: p.lng, accuracy_m: p.accuracy_m, recorded_at: p.recorded_at }))
+            : [],
           events: events || [],
           totalPoints: thinned.length,
           distanceKm: Math.round(meters / 100) / 10,

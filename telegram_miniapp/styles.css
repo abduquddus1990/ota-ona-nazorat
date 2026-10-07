@@ -743,7 +743,10 @@ body[data-theme="tong"] input, body[data-theme="tong"] textarea, body[data-theme
 body[data-theme="tong"] input::placeholder, body[data-theme="tong"] textarea::placeholder { color: #94a3b8; }
 
 /* Leaflet xarita ustidagi qorong'i filtrlar (tungi xarita) olib tashlanadi. */
-body[data-theme="tong"] .leaflet-tile-pane { filter: none !important; }
+/* "Qalqon ko'k" xarita: OpenStreetMap ustiga rang filtri (tasdiqlangan 4-variant).
+   Faqat fon qatlamiga — hududlar va belgilar o'z rangida qoladi. */
+body[data-theme="tong"] .leaflet-tile-pane { filter: grayscale(1) sepia(.35) hue-rotate(170deg) saturate(1.7) brightness(1.08) contrast(.85); }
+body[data-theme="tong"] .leaflet-container { background: #e3eef7; }
 
 /* Suzuvchi ⚙️ tugma "Tinch tong"da kerak emas: Sozlamalar — profil
    doirasida, uning barcha bandlari Sozlamalar va "Farzand" bo'limida bor.
@@ -836,3 +839,14 @@ body[data-theme="tong"] #parentRolePillContainer { display: none !important; }
 .st-row-track { height: 12px; }
 .st-row-bar { height: 100%; background: #1d6fe0; border-radius: 0 4px 4px 0; }
 .st-row-val { font-size: 12px; font-weight: 800; color: var(--text-primary); text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ==========================================================================
+   XARITA BELGILARI — B uslubi ("Faol hudud")
+   ========================================================================== */
+.qk-farzand { width: 20px; height: 20px; border-radius: 50%; background: #1d6fe0; border: 4px solid #fff; box-shadow: 0 6px 14px rgba(15,42,74,.4); }
+.qk-hudud { display: inline-flex; align-items: center; gap: 5px; transform: translateX(-50%); background: #fff; color: #0f2a4a;
+    font: 900 12px/1 'Nunito', 'Outfit', sans-serif; padding: 4px 9px 4px 4px; border-radius: 999px; box-shadow: 0 6px 14px -6px rgba(15,42,74,.5); white-space: nowrap; }
+.qk-hudud em { font-style: normal; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; background: rgba(29,111,224,.13); }
+.qk-hudud.qk-xira { opacity: .78; }
+.qk-hudud.qk-xira em { background: #e2e8f0; }
+.leaflet-control-attribution { font-size: 9px !important; background: rgba(255,255,255,.75) !important; }
