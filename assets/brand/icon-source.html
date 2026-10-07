@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8">
+<style>html,body{margin:0;background:transparent}svg{display:block}</style></head>
+<body>
+<svg id="s" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <radialGradient id="bg" cx=".5" cy=".32" r=".85"><stop offset="0" stop-color="#2f86f2"/><stop offset=".55" stop-color="#1a5bc4"/><stop offset="1" stop-color="#0f2a4a"/></radialGradient>
+    <linearGradient id="fur" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#e3eefb"/></linearGradient>
+  </defs>
+  <g id="layerBg"><rect width="512" height="512" fill="url(#bg)"/></g>
+  <g id="layerFg">
+    <!-- qalqon -->
+    <path d="M256 92 l146 53 v100 c0 96 -63 159 -146 194 c-83 -35 -146 -98 -146 -194 v-100 z" fill="#0f2a4a" fill-opacity=".22" stroke="#9fd2ff" stroke-width="15" stroke-linejoin="round"/>
+    <!-- quloqlar -->
+    <path d="M174 222 l14 -96 q4 -10 13 -2 l54 58 z" fill="url(#fur)"/>
+    <path d="M338 222 l-14 -96 q-4 -10 -13 -2 l-54 58 z" fill="url(#fur)"/>
+    <path d="M190 202 l9 -54 l31 35 z" fill="#ffc9d6"/>
+    <path d="M322 202 l-9 -54 l-31 35 z" fill="#ffc9d6"/>
+    <!-- bosh -->
+    <path d="M256 176 c-56 0 -94 38 -94 88 l-18 22 l28 2 l-10 22 l34 -6 c18 18 38 36 60 56 c22 -20 42 -38 60 -56 l34 6 l-10 -22 l28 -2 l-18 -22 c0 -50 -38 -88 -94 -88z" fill="url(#fur)"/>
+    <!-- yuzdagi ochroq qism -->
+    <path d="M256 258 c-22 0 -36 15 -36 34 c0 20 18 36 36 52 c18 -16 36 -32 36 -52 c0 -19 -14 -34 -36 -34z" fill="#ffffff"/>
+    <!-- ko'zlar: yumaloq, iliq -->
+    <circle cx="222" cy="252" r="15" fill="#0f2a4a"/><circle cx="290" cy="252" r="15" fill="#0f2a4a"/>
+    <circle cx="227" cy="246" r="5" fill="#ffffff"/><circle cx="295" cy="246" r="5" fill="#ffffff"/>
+    <!-- burun va tabassum -->
+    <path d="M243 290 h26 q4 0 1 4 l-11 11 q-2 2 -4 0 l-11 -11 q-3 -4 -1 -4z" fill="#0f2a4a"/>
+    <path d="M240 318 q16 12 32 0" stroke="#0f2a4a" stroke-width="6" fill="none" stroke-linecap="round"/>
+  </g>
+</svg>
+<script>
+// ?layer=fg|bg|full ; adaptive foreground uchun xavfsiz zonaga kichraytiriladi
+const p=new URLSearchParams(location.search), layer=p.get('layer')||'full';
+const s=document.getElementById('s');
+if(layer==='fg'){document.getElementById('layerBg').remove(); document.getElementById('layerFg').setAttribute('transform','translate(256 268) scale(.80) translate(-256 -268)');}
+if(layer==='bg'){document.getElementById('layerFg').remove();}
+</script>
+</body></html>
