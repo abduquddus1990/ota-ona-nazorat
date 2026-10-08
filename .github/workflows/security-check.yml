@@ -4,8 +4,8 @@
 # etilishi shart — va repoda token qolib ketmaganini tekshiradi. Teshik
 # qaytib ochilsa, GitHub qizil belgi qo'yadi va egasiga xat yuboradi.
 #
-# Qachon: har kuni ertalab (Toshkent 08:00), har server deploy'idan keyin
-# va har PR'da (repodagi sirlar uchun). Qo'lda: Actions → "Security check"
+# Qachon: har kuni ertalab (Toshkent 08:00) va har server deploy'idan keyin.
+# PR'da faqat repodagi sirlar va tests/security (jonli server emas). Qo'lda: Actions → "Security check"
 # → "Run workflow".
 #
 # PR'da server kodi deploy'dan OLDIN ham sinaladi: tests/security —
@@ -38,6 +38,7 @@ jobs:
       - name: Xavfsizlik tekshiruvi
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SKIP_LIVE: ${{ github.event_name == 'pull_request' }}
         run: node tools/security_check.mjs
 
   server-tests:
