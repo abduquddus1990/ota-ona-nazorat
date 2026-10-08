@@ -603,6 +603,31 @@ async function issueDeviceToken(o: {
   return token;
 }
 
+/**
+ * AI kaliti ishlamay qoldi (bloklangan, to'lov to'xtagan) — adminga xabar.
+ * Har bir bola savolida emas, 6 soatda bir marta: belgi join_attempts'da
+ * saqlanadi, chunki funksiya nusxalari tez-tez qayta ishga tushadi va
+ * xotiradagi belgi yo'qolib, admin xabar bilan ko'milib ketardi.
+ */
+async function aiDownAlert(model: string, reason: string): Promise<void> {
+  if (!db) return;
+  const kalit = "ai-down-alert";
+  const { data } = await db.from("join_attempts").select("id")
+    .eq("actor_key", kalit)
+    .gte("created_at", new Date(Date.now() - 6 * 3600000).toISOString())
+    .limit(1);
+  if (data && data.length) return;
+  await recordJoinAttempt(kalit, "", true);
+  await notifyAdmins(
+    `🚨 <b>AI do'st ishlamayapti</b>\n\n` +
+      `<b>Model:</b> ${tgEsc(model)}\n` +
+      `<b>Google javobi:</b> <code>${tgEsc(reason.slice(0, 200))}</code>\n\n` +
+      `Bolalar savol bersa, "vaqtincha ishlamayapti" xabarini ko'rmoqda. ` +
+      `Odatda sabab — Gemini kalitining to'lov hisobi (aistudio.google.com → Billing). ` +
+      `Keyingi eslatma 6 soatdan keyin.`
+  );
+}
+
 function unauthorized(detail: string): Response {
   return new Response(
     JSON.stringify({ ok: false, error: "Autentifikatsiya kerak", detail }),
@@ -7198,10 +7223,20 @@ async function handleRequest(req: Request): Promise<Response> {
           // chegarasi tugagan (429). Ikkalasi bir xil xabar bo'lsa, nima
           // qilish kerakligi noma'lum bo'lib qolardi.
           const quotaOut = /quota|rate limit|RESOURCE_EXHAUSTED/i.test(String(upstream));
+          // Kalit yoki Google hisobi bloklangan / to'lov to'xtagan. Bu "band"
+          // EMAS va bir daqiqada o'tmaydi: 2026-10-08 da Google loyihaning
+          // to'lov hisobini prepay'ga o'tkazdi, har bir so'rov 403 oldi, bola
+          // esa "AI band, keyinroq urinib ko'ring" ni ko'rib qayta-qayta
+          // urinardi. Endi to'g'risi aytiladi va admin darhol xabar oladi.
+          const accessOut = /PERMISSION_DENIED|denied access|API_KEY_INVALID|API key not valid|billing/i
+            .test(String(upstream) + " " + String(gJson?.error?.status || ""));
+          if (accessOut) await aiDownAlert(model, String(upstream));
           return new Response(
             JSON.stringify({
               ok: false,
-              error: quotaOut
+              error: accessOut
+                ? "AI do'st vaqtincha ishlamayapti — texnik sabab, sening aybing emas. Tez orada tiklaymiz."
+                : quotaOut
                 ? "AI xizmatining bugungi chegarasi tugadi. Ertaga yana ochiladi."
                 : "AI hozir band. Bir daqiqadan keyin qayta urinib ko'ring.",
               detail: String(upstream).slice(0, 200),
