@@ -103,8 +103,9 @@ Bu loyihada "bajarildi" xabari bir necha marta haqiqatga mos kelmagan.
   `#0f2a4a`, ko'k `#1d6fe0`, zangori `#22b8e6`. Bosh ekran "Madina hozir
   maktabda" kabi bitta javobdan boshlanadi: holat, xarita, bitta asosiy
   tugma, bugungi voqealar. Reklama banneri yo'q.
-- Pastki panel: **suzuvchi "tabletka"**, 3 bo'lim (Asosiy · Xarita ·
-  Farzand), Sozlamalar — o'ng yuqoridagi profil doirasida. Farzand paneli:
+- Pastki panel: **suzuvchi "tabletka"**, 4 bo'lim (Asosiy · Xarita ·
+  Farzand · Sozlamalar). 2026-10-08 gacha Sozlamalar faqat profil doirasida
+  edi — ota-onalar uni topa olmadi. Farzand paneli:
   Asosiy · O'qish · O'yinlar.
 - Maskot: **3D qalqonli bo'ri** (`site/assets/qalqon-qoriqchi.webp`, fonsiz).
   Realistik va multfilm bo'rilarni aralashtirmang.
