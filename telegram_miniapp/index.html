@@ -1448,6 +1448,21 @@
             <span class="text-slate-500 text-sm font-bold">›</span>
         </div>
 
+        <!-- 7b. Kirishlar va xavfsizlik: hisobga kim, qaysi qurilmadan kirgan,
+             uzish va voqealar jurnali (server: security_overview). -->
+        <div onclick="openSubpage('modal-security')" class="glass-panel p-3.5 flex items-center justify-between cursor-pointer hover:border-cyan-500/50 transition">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center text-indigo-400 text-lg">
+                    🔐
+                </div>
+                <div>
+                    <div class="text-xs font-bold text-white">Kirishlar va xavfsizlik</div>
+                    <div class="text-[10px] text-slate-400">Hisobingizga kim kirgan, parol, voqealar</div>
+                </div>
+            </div>
+            <span class="text-slate-500 text-sm font-bold">›</span>
+        </div>
+
         <!-- 8. Takliflar va Fikr-mulohazalar (alhamdulillah@tmail.ton) -->
         <div onclick="openSubpage('modal-feedback')" class="glass-panel p-3.5 flex items-center justify-between cursor-pointer hover:border-cyan-500/50 transition">
             <div class="flex items-center gap-3">
@@ -2569,6 +2584,62 @@
         </div>
     </div>
 
+    <!-- 🔐 MODAL: KIRISHLAR VA XAVFSIZLIK
+         Ota-ona hisobiga Telegramdan tashqarida (brauzer, Android ilova)
+         kirganlarni ko'rmasdi va uza olmasdi. Bu yerda: ro'yxat, bitta yoki
+         barcha boshqa kirishlarni uzish, parol va voqealar jurnali. -->
+    <div id="modal-security" class="subpage-modal space-y-4">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+            <button onclick="closeSubpage()" class="text-xs font-bold text-emerald-400" data-i18n="backBtn">← Orqaga</button>
+            <h2 class="text-xs font-bold text-white">Kirishlar va xavfsizlik</h2>
+            <span class="w-8"></span>
+        </div>
+
+        <div class="glass-card p-4 space-y-3">
+            <div class="flex items-center justify-between">
+                <h3 class="text-xs font-bold text-white">💻 Hisobingizga kirganlar</h3>
+                <button onclick="renderSecurity()" class="text-[10px] text-cyan-400 font-bold hover:underline">Yangilash</button>
+            </div>
+            <p class="text-[10px] text-slate-400 leading-relaxed">
+                Telegramdan tashqarida — brauzer va Android ilovada — ochilgan
+                kirishlar. Tanimaganingizni darhol uzing.
+            </p>
+            <div id="securitySessions" class="space-y-2">
+                <div class="text-[10px] text-slate-500">Yuklanmoqda...</div>
+            </div>
+            <button id="securityRevokeOthersBtn" onclick="revokeOtherSessions()" class="hidden w-full py-2.5 rounded-xl bg-rose-500/15 border border-rose-500/40 text-rose-300 font-bold text-[11px] hover:bg-rose-500/25 transition">
+                🚫 Boshqa barcha kirishlarni uzish
+            </button>
+        </div>
+
+        <div class="glass-card p-4 space-y-3">
+            <h3 class="text-xs font-bold text-white">🔑 Parol</h3>
+            <p id="securityPasswordInfo" class="text-[10px] text-slate-400 leading-relaxed">
+                Parol faqat Telegramdan tashqarida kirish uchun kerak.
+            </p>
+            <button onclick="openPasswordChange()" class="w-full py-2.5 rounded-xl bg-cyan-500/15 border border-cyan-500/40 text-cyan-300 font-bold text-[11px] hover:bg-cyan-500/25 transition">
+                Parolni almashtirish
+            </button>
+        </div>
+
+        <div class="glass-card p-4 space-y-2">
+            <h3 class="text-xs font-bold text-white">🛡️ Hisobingiz qanday himoyalangan</h3>
+            <ul class="text-[10px] text-slate-400 leading-relaxed space-y-1.5">
+                <li>✅ Parol bilan kirish har safar <b class="text-slate-200">Telegramda tasdiqlanadi</b> — parol sizib chiqsa ham, begona kira olmaydi.</li>
+                <li>✅ Har bir yangi kirish va yangi telefon ulanganda <b class="text-slate-200">darhol xabar</b> keladi, «Bu men emasman» tugmasi bilan.</li>
+                <li>✅ Parol bilan ko'p xato urinish bo'lsa, ogohlantiramiz va hisobni 1 soatga yopamiz.</li>
+                <li>✅ Kirish kalitlari bazada faqat shifrlangan (hash) holda saqlanadi.</li>
+            </ul>
+        </div>
+
+        <div class="glass-card p-4 space-y-3">
+            <h3 class="text-xs font-bold text-white">📜 So'nggi voqealar</h3>
+            <div id="securityEvents" class="space-y-1.5">
+                <div class="text-[10px] text-slate-500">Yuklanmoqda...</div>
+            </div>
+        </div>
+    </div>
+
     <!-- 🛡️ MODAL: JUFTLASH VA ANDROID ILOVA (AUTO-ONBOARDING) -->
     <div id="modal-pairing" class="subpage-modal space-y-4">
         <div class="flex items-center justify-between pb-3 border-b border-slate-800">
@@ -2800,7 +2871,7 @@
 
     <!-- Custom JavaScript -->
     <script src="splash.js?v=2"></script>
-    <script src="app.js?v=9.9"></script>
+    <script src="app.js?v=10.0"></script>
     <!-- O'yinlar alohida faylda: app.js allaqachon katta, va o'yin kontenti
          (savollar, kartalar) o'sib boradi. Alohida fayl brauzerda alohida
          keshlanadi — o'yin qo'shilsa, butun ilova qayta yuklanmaydi. -->

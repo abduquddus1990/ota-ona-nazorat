@@ -77,8 +77,21 @@ object AppAuthApi {
         status to session
     }
 
-    /** Login va parol bilan kirish (Telegramsiz). */
-    fun loginWithPassword(login: String, password: String): Result<Session> = runCatching {
+    /** Parol bilan kirish natijasi: darhol seans yoki Telegramdagi tasdiqni kutish. */
+    sealed class PasswordLoginResult {
+        data class Done(val session: Session) : PasswordLoginResult()
+        /** Ota-onaga botda "Ha, bu men" tugmasi ketdi — pollTelegramLogin bilan kutiladi. */
+        data class NeedsConfirm(val pollToken: String) : PasswordLoginResult()
+    }
+
+    /**
+     * Login va parol bilan kirish (Telegramsiz).
+     *
+     * Oilaning Telegrami bo'lsa, to'g'ri parol HALI kirish emas: server
+     * ota-onaga tasdiq tugmalarini yuboradi va pollToken qaytaradi. Parol
+     * sizib chiqsa ham begona odam kira olmasligi uchun.
+     */
+    fun loginWithPassword(login: String, password: String): Result<PasswordLoginResult> = runCatching {
         val j = post(
             JSONObject()
                 .put("type", "web_login")
@@ -86,7 +99,11 @@ object AppAuthApi {
                 .put("password", password)
         )
         if (!j.optBoolean("ok")) error(j.optString("error", "login_failed"))
-        Session(j.getString("sessionToken"), j.optString("familyCode"))
+        if (j.optBoolean("pending") && j.optString("pollToken").isNotBlank()) {
+            PasswordLoginResult.NeedsConfirm(j.getString("pollToken"))
+        } else {
+            PasswordLoginResult.Done(Session(j.getString("sessionToken"), j.optString("familyCode")))
+        }
     }
 
     /**
