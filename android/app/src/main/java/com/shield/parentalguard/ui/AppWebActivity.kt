@@ -99,6 +99,14 @@ class AppWebActivity : AppCompatActivity() {
         web.addJavascriptInterface(Bridge(), "QalqonNative")
 
         web.webViewClient = object : WebViewClient() {
+            // Ko'prik (QalqonNative) kalitlarni FAQAT o'z sahifalarimizga beradi.
+            // Sahifa almashganda bayroq yangilanadi; @JavascriptInterface boshqa
+            // oqimda ishlaydi va web.url ni u yerdan o'qib bo'lmaydi.
+            override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
+                ishonchliSahifa = ishonchliHost(android.net.Uri.parse(url ?: "").host.orEmpty())
+                super.onPageStarted(view, url, favicon)
+            }
+
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                 val url = request?.url ?: return false
                 // Telegram havolalari (do'stni chaqirish, o'yin taklifi) va
@@ -108,8 +116,7 @@ class AppWebActivity : AppCompatActivity() {
                 // github.io'dan shu domenga ko'chiriladi va github.io unga
                 // yo'naltiradi; shu qatorsiz o'rnatilgan ilova yo'naltirishni
                 // tashqi brauzerga chiqarib yuborardi va panel ochilmay qolardi.
-                val ichki = host.contains("github.io") ||
-                    host == "qalqonai.uz" || host.endsWith(".qalqonai.uz")
+                val ichki = ishonchliHost(host)
                 return if (ichki) {
                     false
                 } else {
@@ -193,6 +200,20 @@ class AppWebActivity : AppCompatActivity() {
      * Sahifa ilova bilan shu orqali gaplashadi. Faqat kerakli narsa ochiladi:
      * hisob ma'lumoti, rol va ilova versiyasi.
      */
+    /**
+     * Ilova ichida ochiladigan sahifalar — ANIQ ro'yxat.
+     *
+     * Ilgari `host.contains("github.io")` edi: istalgan odamning
+     * github.io sahifasi, hatto "github.io.soxta-sayt.com" ham ilova ichida
+     * ochilardi va QalqonNative ko'prigi unga ota-onaning seans tokenini
+     * hamda farzand qurilmasining tokenini berardi (xavfsizlik tekshiruvi,
+     * 2026-10-07).
+     */
+    private fun ishonchliHost(host: String): Boolean =
+        host == "abduquddus1990.github.io" || host == "qalqonai.uz" || host == "www.qalqonai.uz"
+
+    @Volatile private var ishonchliSahifa = false
+
     inner class Bridge {
 
         @JavascriptInterface
@@ -200,11 +221,11 @@ class AppWebActivity : AppCompatActivity() {
 
         /** Ota-ona seansi (web_sessions). Farzandda bo'sh bo'ladi. */
         @JavascriptInterface
-        fun sessionToken(): String = AppAuthApi.readSession(this@AppWebActivity) ?: ""
+        fun sessionToken(): String = if (ishonchliSahifa) (AppAuthApi.readSession(this@AppWebActivity) ?: "") else ""
 
         /** Farzand qurilmasining tokeni. Ota-onada bo'sh bo'ladi. */
         @JavascriptInterface
-        fun deviceToken(): String = DeviceCredentials.readDeviceToken(this@AppWebActivity) ?: ""
+        fun deviceToken(): String = if (ishonchliSahifa) (DeviceCredentials.readDeviceToken(this@AppWebActivity) ?: "") else ""
 
         @JavascriptInterface
         fun appVersion(): String = try {
