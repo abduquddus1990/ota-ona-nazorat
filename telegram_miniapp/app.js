@@ -876,8 +876,15 @@ async function handleWebLogin() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ type: 'web_login', username, password })
         });
-        const data = await resp.json();
+        let data = await resp.json();
         if (!data.ok) return fail(data.error || "Kirish amalga oshmadi.");
+
+        // Parol to'g'ri, lekin kirish Telegram'da tasdiqlanishi kerak:
+        // ota-onaga "Ha, bu men / Yo'q" tugmalari ketdi, javobni kutamiz.
+        if (data.pending && data.pollToken) {
+            data = await webLoginTasdiqKut(data);
+            if (!data) return;
+        }
 
         try {
             localStorage.setItem('web_session_token', data.sessionToken);
@@ -891,6 +898,51 @@ async function handleWebLogin() {
     } finally {
         if (btn) { btn.disabled = false; btn.innerText = '🔐 Kirish'; }
     }
+}
+
+/**
+ * Parol bilan kirishning ikkinchi qadami: ota-ona Telegram'da «✅ Ha, bu men»
+ * ni bosguncha kutadi. Parol yolg'iz o'zi yetarli emas — u sizib chiqsa,
+ * begona odam farzandning joylashuvini ko'rib qolardi.
+ * Natija: { sessionToken, familyCode } yoki null (rad etildi / muddat o'tdi).
+ */
+async function webLoginTasdiqKut(start) {
+    const errEl = document.getElementById('webLoginError');
+    const btn = document.getElementById('webLoginBtn');
+    const holat = (matn, xato) => {
+        if (!errEl) return;
+        errEl.innerText = matn;
+        errEl.classList.remove('hidden');
+        errEl.classList.toggle('text-rose-400', !!xato);
+        errEl.classList.toggle('text-cyan-300', !xato);
+    };
+    holat("📨 Telegram'ga tasdiq so'rovi yuborildi.\nBotdagi «✅ Ha, bu men» tugmasini bosing — panel o'zi ochiladi.", false);
+    if (btn) btn.innerText = '⏳ Telegram\'da tasdiqlang...';
+
+    const tugash = Date.now() + (Number(start.expiresInSec) || 600) * 1000;
+    while (Date.now() < tugash) {
+        await new Promise(r => setTimeout(r, 2500));
+        let d = null;
+        try {
+            const resp = await fetch(QALQON_BOT_FN, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ type: 'app_login_poll', token: start.pollToken })
+            });
+            d = await resp.json();
+        } catch (e) {
+            continue; // internet bir lahza uzilgan bo'lishi mumkin — kutishda davom etamiz
+        }
+        if (!d || !d.ok) continue;
+        if (d.status === 'approved' && d.sessionToken) return d;
+        if (d.status === 'rejected') {
+            holat("🛑 Kirish Telegram'da rad etildi.", true);
+            return null;
+        }
+        if (d.status === 'expired' || d.status === 'used') break;
+    }
+    holat("⌛️ Tasdiq kelmadi. Qaytadan «Kirish» ni bosing.", true);
+    return null;
 }
 
 // Parol allaqachon qo'yilganmi (serverdan). Parolning o'zi hech qachon
@@ -5264,6 +5316,155 @@ async function revokeDevice(deviceId, childName) {
     else davom(confirm(savol));
 }
 
+// ============================================================================
+// KIRISHLAR VA XAVFSIZLIK — server: security_overview / revoke_session /
+// revoke_other_sessions. Jurnal yozuvlari serverda faqat "tur + maydonlar"
+// ko'rinishida keladi, matnga shu yerda aylantiriladi.
+// ============================================================================
+
+const KIRISH_USULI = {
+    password: 'Login va parol',
+    google: 'Google hisobi',
+    app_code: 'Botdagi ilova kodi',
+    app_telegram: 'Telegram tasdig\'i',
+    app: 'Android ilova',
+    web: 'Brauzer',
+};
+
+function xavfsizlikVoqeaMatni(e) {
+    const usul = KIRISH_USULI[e.method] || '';
+    const q = (v) => escapeHtml(v || '');
+    switch (e.kind) {
+        case 'login': return '🔐 Kirish: ' + q(usul) + (e.device ? ' · ' + q(e.device) : '');
+        case 'login_rejected': return '🛑 Kirish rad etildi' + (e.device ? ': ' + q(e.device) : '');
+        case 'login_failed_many': return '⚠️ Parol bilan ' + (Number(e.count) || 5) + ' marta xato urinish';
+        case 'session_revoked': return '🚫 Kirish uzildi' + (e.via === 'alert' ? ' (xabardagi tugma bilan)' : '');
+        case 'sessions_revoked_all': return '🚫 ' + (Number(e.count) || 0) + ' ta kirish uzildi';
+        case 'device_paired': return '📱 ' + q(e.childName || 'Farzand') + ' telefoni ulandi' + (e.model ? ': ' + q(e.model) : '');
+        case 'device_revoked': return e.byChild
+            ? '⚠️ Farzand o\'z telefonida kuzatuvni o\'chirdi' + (e.model ? ': ' + q(e.model) : '')
+            : '📴 Telefon uzildi' + (e.model ? ': ' + q(e.model) : '');
+        case 'password_set': return '🔑 Parol o\'zgartirildi';
+        case 'coparent_added': return '👩 ' + q(e.name || 'Ota-ona') + ' oilaga qo\'shildi';
+        case 'coparent_removed': return '👤 Ota-ona oiladan olib tashlandi';
+        default: return q(e.kind);
+    }
+}
+
+async function securityCall(body) {
+    try {
+        const resp = await fetch(QALQON_BOT_FN, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        return await resp.json();
+    } catch (e) {
+        return null;
+    }
+}
+
+async function renderSecurity() {
+    const box = document.getElementById('securitySessions');
+    const jurnal = document.getElementById('securityEvents');
+    const hammasiBtn = document.getElementById('securityRevokeOthersBtn');
+    const parolInfo = document.getElementById('securityPasswordInfo');
+    if (!box || !jurnal) return;
+    if (currentAppRole !== 'parent') return;
+    box.innerHTML = jurnal.innerHTML = '<div class="text-[10px] text-slate-500">Yuklanmoqda...</div>';
+
+    const d = await securityCall({ type: 'security_overview' });
+    if (!d || !d.ok) {
+        const x = '<div class="text-[10px] text-slate-500">Ma\'lumotni olib bo\'lmadi. Keyinroq «Yangilash» ni bosing.</div>';
+        box.innerHTML = jurnal.innerHTML = x;
+        if (hammasiBtn) hammasiBtn.classList.add('hidden');
+        return;
+    }
+
+    const list = Array.isArray(d.sessions) ? d.sessions : [];
+    const telegramQatori =
+        '<div class="p-2.5 rounded-xl bg-slate-900/60 border border-slate-800">' +
+            '<div class="text-[11px] font-bold text-white">✈️ Telegram' +
+                (d.insideTelegram ? ' <span class="text-cyan-300">(siz hozir shu yerdasiz)</span>' : '') + '</div>' +
+            '<div class="text-[10px] text-slate-400">Telegram o\'zi himoya qiladi — bu yerdan uzilmaydi.</div>' +
+        '</div>';
+
+    box.innerHTML = telegramQatori + (list.length ? list.map(s => {
+        const usul = KIRISH_USULI[s.method] || 'Kirish';
+        const faol = s.lastUsedAt ? qachonBoldi(s.lastUsedAt) : null;
+        const kirgan = s.createdAt ? qachonBoldi(s.createdAt) : null;
+        const tugma = s.current
+            ? '<span class="shrink-0 text-[10px] font-bold text-emerald-300">shu qurilma</span>'
+            : '<button onclick="revokeSession(\'' + escapeHtml(s.id) + '\')" ' +
+              'class="shrink-0 px-2.5 py-1.5 rounded-lg bg-rose-500/15 border border-rose-500/40 text-rose-300 text-[10px] font-bold hover:bg-rose-500/25 transition">Uzish</button>';
+        return '' +
+        '<div class="p-2.5 rounded-xl bg-slate-900/60 border ' + (s.current ? 'border-emerald-500/40' : 'border-slate-800') + ' space-y-1">' +
+            '<div class="flex items-center justify-between gap-2">' +
+                '<div class="min-w-0">' +
+                    '<div class="text-[11px] font-bold text-white truncate">' + escapeHtml(s.device) + '</div>' +
+                    '<div class="text-[10px] text-slate-400 truncate">' + escapeHtml(usul) + '</div>' +
+                '</div>' + tugma +
+            '</div>' +
+            '<div class="text-[10px] text-slate-500">' +
+                (kirgan ? 'Kirgan: ' + kirgan : '') + (faol ? ' · faol: ' + faol : '') +
+            '</div>' +
+        '</div>';
+    }).join('') : '<div class="text-[10px] text-slate-400">Telegramdan tashqarida hech kim kirmagan.</div>');
+
+    if (hammasiBtn) hammasiBtn.classList.toggle('hidden', !list.some(s => !s.current));
+
+    if (parolInfo) {
+        parolInfo.textContent = d.passwordSetAt
+            ? 'Parol ' + qachonBoldi(d.passwordSetAt) + ' o\'rnatilgan. U bilan kirish har safar Telegramda tasdiqlanadi.'
+            : 'Parol o\'rnatilmagan — Telegramdan tashqarida faqat Google yoki botdagi kod bilan kirish mumkin.';
+    }
+
+    const ev = Array.isArray(d.events) ? d.events : [];
+    jurnal.innerHTML = ev.length ? ev.map(e =>
+        '<div class="flex items-start justify-between gap-2 text-[10px]">' +
+            '<span class="text-slate-300 min-w-0">' + xavfsizlikVoqeaMatni(e) + '</span>' +
+            '<span class="shrink-0 text-slate-500">' + escapeHtml(qachonBoldi(e.at) || '') + '</span>' +
+        '</div>'
+    ).join('') : '<div class="text-[10px] text-slate-400">Hozircha voqea yo\'q.</div>';
+}
+
+function revokeSession(sessionId) {
+    const savol = 'Bu kirishni uzasizmi?\n\nO\'sha brauzer yoki telefon darhol hisobingizdan chiqadi.';
+    const davom = async (ha) => {
+        if (!ha) return;
+        const d = await securityCall({ type: 'revoke_session', sessionId: sessionId });
+        const x = (d && d.ok) ? '✅ Kirish uzildi.' : '❌ Bo\'lmadi: ' + ((d && d.error) || 'aloqa yo\'q');
+        if (tg && tg.showAlert) tg.showAlert(x); else alert(x);
+        renderSecurity();
+    };
+    if (tg && tg.showConfirm) tg.showConfirm(savol, davom);
+    else davom(confirm(savol));
+}
+
+function revokeOtherSessions() {
+    const savol = 'Boshqa barcha kirishlar uzilsinmi?\n\nSiz hozir turgan joydan tashqari hamma brauzer va ilovalar hisobingizdan chiqadi. Parolingiz begonaga ma\'lum deb o\'ylasangiz, keyin uni ham almashtiring.';
+    const davom = async (ha) => {
+        if (!ha) return;
+        const d = await securityCall({ type: 'revoke_other_sessions' });
+        const x = (d && d.ok) ? '✅ ' + (d.revoked || 0) + ' ta kirish uzildi.' : '❌ Bo\'lmadi: ' + ((d && d.error) || 'aloqa yo\'q');
+        if (tg && tg.showAlert) tg.showAlert(x); else alert(x);
+        renderSecurity();
+    };
+    if (tg && tg.showConfirm) tg.showConfirm(savol, davom);
+    else davom(confirm(savol));
+}
+
+/** Parol "Oila ma'lumotlari" formasida turadi — o'sha maydonga olib boradi. */
+function openPasswordChange() {
+    openSubpage('modal-parent-onboarding');
+    setTimeout(() => {
+        const el = document.getElementById('onboardPassword');
+        if (!el) return;
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.focus();
+    }, 250);
+}
+
 async function renderRadarStatus() {
     if (currentAppRole !== 'parent') return;
     const list = document.getElementById('radarChildList');
@@ -5548,6 +5749,7 @@ function openSubpage(subpageId) {
     // orasida yangi farzand qo'shilgan bo'lishi mumkin.
     if (subpageId === 'modal-add-child') fillAndroidChildPicker();
     if (subpageId === 'modal-app-stats') renderAppStats();
+    if (subpageId === 'modal-security') renderSecurity();
 }
 
 // ============================================================================

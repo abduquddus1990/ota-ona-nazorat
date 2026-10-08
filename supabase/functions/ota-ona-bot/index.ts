@@ -419,6 +419,190 @@ async function verifyWebSession(
   };
 }
 
+// ============================================================================
+// XAVFSIZLIK JURNALI VA OGOHLANTIRISHLAR (database/31_security_events.sql)
+//
+// Ota-onaning hisobiga kirish va farzand telefonini ulash — oiladagi eng
+// qimmat ikki amal. Ilgari ikkalasi ham jim bo'lardi: kimdir parolni topib
+// kirsa yoki begona telefon ulansa, ota-ona buni hech qachon bilmasdi.
+// Endi har biri SHU YERDAGI bitta funksiyadan o'tadi, jurnalga yoziladi va
+// barcha ota-onalarga "bu men emasman" tugmasi bilan xabar boradi.
+// ============================================================================
+
+/** Kirish usullari — ota-ona ko'radigan nomlar. */
+const LOGIN_METHOD_NAMES: Record<string, string> = {
+  password: "login va parol",
+  google: "Google hisobi",
+  app_code: "botdagi ilova kodi",
+  app_telegram: "Telegram orqali tasdiq",
+};
+
+/** "Chrome · Windows" — ota-ona kirishni tanishi uchun yetarli, ortig'i shart emas. */
+function describeUserAgent(ua: string): string {
+  const s = String(ua || "");
+  if (!s) return "Noma'lum qurilma";
+  if (s === "android-app" || /Dalvik|okhttp/i.test(s)) return "Qalqon Android ilovasi";
+  const brauzer =
+    /YaBrowser\//.test(s) ? "Yandex Browser" :
+    /Edg\//.test(s) ? "Edge" :
+    /OPR\/|Opera/.test(s) ? "Opera" :
+    /SamsungBrowser\//.test(s) ? "Samsung Internet" :
+    /Firefox\//.test(s) ? "Firefox" :
+    /Chrome\//.test(s) ? "Chrome" :
+    /Safari\//.test(s) ? "Safari" : "Brauzer";
+  const tizim =
+    /Android/.test(s) ? "Android" :
+    /iPhone|iPad/.test(s) ? "iPhone" :
+    /Windows/.test(s) ? "Windows" :
+    /Macintosh|Mac OS X/.test(s) ? "Mac" :
+    /Linux/.test(s) ? "Linux" : "";
+  return tizim ? `${brauzer} · ${tizim}` : brauzer;
+}
+
+/** Jurnalga yozish. Jurnal xatosi asosiy amalni HECH QACHON to'xtatmaydi. */
+async function logSecurityEvent(
+  familyCode: string,
+  kind: string,
+  actor: string,
+  detail: Record<string, unknown> = {}
+): Promise<void> {
+  if (!db || !familyCode) return;
+  const { error } = await db.from("security_events").insert({
+    family_code: familyCode,
+    kind,
+    actor,
+    detail,
+  });
+  if (error) console.error("security_events:", kind, error.message);
+}
+
+/**
+ * Ota-ona seansini ochadi. BARCHA kirish yo'llari (parol, Google, bot kodi,
+ * Telegram tasdig'i) shu yerdan o'tadi — ilgari har biri o'z nusxasini
+ * yozardi va birortasida ham ogohlantirish yo'q edi.
+ *
+ * notify: ota-onaga "yangi kirish" xabari. Ota-ona kirishni o'zi Telegram'da
+ * hozirgina tasdiqlagan bo'lsa, qayta xabar berish shovqin bo'ladi.
+ */
+async function issueWebSession(o: {
+  familyCode: string;
+  telegramId: number | null;
+  method: string;
+  userAgent: string;
+  notify: boolean;
+}): Promise<{ token: string; expiresAt: string } | null> {
+  if (!db) return null;
+  const token = toHex(crypto.getRandomValues(new Uint8Array(32)));
+  const expiresAt = new Date(Date.now() + WEB_SESSION_DAYS * 86400000).toISOString();
+  const asos = {
+    token_hash: await sha256Hex(token),
+    family_code: o.familyCode,
+    telegram_id: o.telegramId,
+    user_agent: (o.userAgent || "").slice(0, 200),
+    expires_at: expiresAt,
+  };
+  let ins = await db.from("web_sessions")
+    .insert({ ...asos, login_method: o.method }).select("id").single();
+  if (ins.error && /login_method/.test(ins.error.message || "")) {
+    // 31-migratsiya hali qo'llanmagan bo'lsa ham kirish ishlashi kerak.
+    ins = await db.from("web_sessions").insert(asos).select("id").single();
+  }
+  if (ins.error || !ins.data) {
+    console.error("web_sessions insert xatosi:", ins.error?.message);
+    return null;
+  }
+
+  const qurilma = describeUserAgent(o.userAgent);
+  await logSecurityEvent(o.familyCode, "login", o.telegramId ? `tg:${o.telegramId}` : "web", {
+    method: o.method,
+    device: qurilma,
+    sessionId: ins.data.id,
+  });
+
+  if (o.notify) {
+    await notifyFamilyParents(
+      o.familyCode,
+      `🔐 <b>Hisobingizga yangi kirish</b>\n\n` +
+        `<b>Usul:</b> ${tgEsc(LOGIN_METHOD_NAMES[o.method] || o.method)}\n` +
+        `<b>Qurilma:</b> ${tgEsc(qurilma)}\n` +
+        `<b>Vaqt:</b> ${tashkentVaqt(new Date().toISOString())}\n\n` +
+        `<i>Bu siz bo'lsangiz, hech narsa qilish shart emas. Siz bo'lmasangiz — ` +
+        `pastdagi tugmani bosing: shu kirish darhol uziladi.</i>`,
+      { inline_keyboard: [[{ text: "🚫 Bu men emasman — uzish", callback_data: "sec_kill_" + ins.data.id }]] }
+    );
+  }
+  return { token, expiresAt };
+}
+
+/**
+ * Farzand telefoniga qurilma kalitini beradi. device_pair va parent_pair
+ * (farzand kodi kiritilganda) shu yerdan o'tadi.
+ *
+ * Ilgari ikki nusxa bor edi va ular farqlanib ketgan: parent_pair'dagisi
+ * shu farzandning ESKI kalitini bekor qilmasdi — o'chirilgan ilovaning
+ * kaliti faol qolib, o'sha telefon hali ham farzand nomidan yozishi
+ * mumkin edi.
+ */
+async function issueDeviceToken(o: {
+  familyCode: string;
+  childId: string;
+  childName: string | null;
+  linkedChild: boolean;
+  deviceModel: string;
+}): Promise<string | null> {
+  if (!db) return null;
+  const model = (o.deviceModel || "android").slice(0, 60);
+
+  // Bitta farzand — bitta telefon: yangisi ulanishi bilan eskilari bekor.
+  const { error: revErr } = await db
+    .from("device_tokens")
+    .update({ is_active: false, revoked_at: new Date().toISOString() })
+    .eq("family_code", o.familyCode)
+    .eq("child_id", o.childId)
+    .eq("is_active", true);
+  if (revErr) console.error("issueDeviceToken: eski kalitlar bekor qilinmadi:", revErr.message);
+
+  const token = toHex(crypto.getRandomValues(new Uint8Array(32)));
+  const { data: ins, error } = await db.from("device_tokens").insert({
+    token_hash: await sha256Hex(token),
+    family_code: o.familyCode,
+    child_id: o.childId,
+    device_label: o.childName || model,
+    device_model: model,
+  }).select("id").single();
+  if (error || !ins) {
+    console.error("device_tokens insert failed:", error?.message);
+    return null;
+  }
+
+  await upsertPairing(o.familyCode, o.childId, {
+    // Mavjud farzandga bog'langanda ismini telefon modeliga almashtirmaymiz.
+    childName: (o.childName || (o.linkedChild ? undefined : model)) as string,
+    deviceLabel: model,
+    source: "android_parental_guard",
+  });
+
+  const ism = o.childName || "Farzand";
+  await logSecurityEvent(o.familyCode, "device_paired", `child:${o.childId}`, {
+    childName: ism,
+    model,
+    deviceId: ins.id,
+  });
+  // Kod ota-onaning o'zidan chiqqan — lekin u boshqa qo'lga tushgan bo'lsa,
+  // begona telefon farzand nomidan "joylashuv" yubora boshlaydi. Ota-ona
+  // buni darhol bilishi va bitta tugma bilan uzishi kerak.
+  await notifyFamilyParents(
+    o.familyCode,
+    `📱 <b>Yangi qurilma ulandi</b>\n\n` +
+      `<b>Farzand:</b> ${tgEsc(ism)}\n` +
+      `<b>Telefon:</b> ${tgEsc(model)}\n` +
+      `<b>Vaqt:</b> ${tashkentVaqt(new Date().toISOString())}\n\n` +
+      `<i>Bu telefonni siz ulamagan bo'lsangiz — pastdagi tugmani bosing.</i>`,
+    { inline_keyboard: [[{ text: "🚫 Men ulamaganman — uzish", callback_data: "dev_kill_" + ins.id }]] }
+  );
+  return token;
+}
+
 function unauthorized(detail: string): Response {
   return new Response(
     JSON.stringify({ ok: false, error: "Autentifikatsiya kerak", detail }),
@@ -1518,6 +1702,9 @@ async function purgeOldRows(): Promise<Record<string, string>> {
     { jadval: "location_requests", ustun: "created_at", kun: 90 },
     { jadval: "ai_chat_messages", ustun: "created_at", kun: 30 },
     { jadval: "join_attempts", ustun: "created_at", kun: 7 },
+    // Xavfsizlik jurnali yarim yil — "kim qachon kirgan" savoliga javob
+    // berish uchun yetarli, undan uzog'i shaxsiy ma'lumotni ortiqcha saqlash.
+    { jadval: "security_events", ustun: "created_at", kun: 180 },
     { jadval: "app_login_requests", ustun: "created_at", kun: 2 },
     { jadval: "device_pair_codes", ustun: "created_at", kun: 2 },
     { jadval: "parent_pair_codes", ustun: "created_at", kun: 2 },
@@ -3570,6 +3757,18 @@ async function handleCoParentJoin(chatId: number, code: string, firstName: strin
   }
 
   if (!mavjud) {
+    // Havolani AVVAL kuydiramiz va faqat birinchi bosgan yutadi: havola
+    // 24 soat yashaydi va guruhga tushib qolsa, ilgari uni bir vaqtda
+    // bosgan bir necha odam oilaga qo'shilib ketishi mumkin edi.
+    const { data: kuydi } = await db.from("parent_pair_codes")
+      .update({ used_at: new Date().toISOString() })
+      .eq("code", code)
+      .is("used_at", null)
+      .select("code");
+    if (!kuydi || !kuydi.length) {
+      await sendMessage(chatId, "⌛️ <b>Bu havola allaqachon ishlatilgan.</b>\n\nOila egasidan yangi taklif havolasini so'rang.");
+      return;
+    }
     const { error } = await db.from("family_parents").insert({
       telegram_id: chatId,
       family_code: row.family_code,
@@ -3579,13 +3778,17 @@ async function handleCoParentJoin(chatId: number, code: string, firstName: strin
     });
     if (error) {
       console.error("family_parents insert:", error.message);
+      // Havola qaytadan ishlashi uchun kuydirishni bekor qilamiz.
+      await db.from("parent_pair_codes").update({ used_at: null }).eq("code", code);
       await sendMessage(chatId, "⚠️ Server xatosi. Birozdan keyin havolani qayta bosing.");
       return;
     }
+    await logSecurityEvent(row.family_code, "coparent_added", `tg:${chatId}`, { name: firstName || "Ona" });
+  } else {
+    await db.from("parent_pair_codes")
+      .update({ used_at: new Date().toISOString() })
+      .eq("code", code);
   }
-  await db.from("parent_pair_codes")
-    .update({ used_at: new Date().toISOString() })
-    .eq("code", code);
   familyCodeMiss.delete(chatId);
 
   await sendMessage(
@@ -6309,7 +6512,7 @@ async function handleRequest(req: Request): Promise<Response> {
         // o'chirilgandan keyin yangi oila ochilganda ham panelda eski
         // "41% batareya" va eski ogohlantirishlar ko'rinib turdi.
         "device_health", "app_login_requests", "push_tokens",
-        "parent_pair_codes", "family_code_overrides",
+        "parent_pair_codes", "family_code_overrides", "security_events",
       ];
 
       const failed: string[] = [];
@@ -7148,19 +7351,17 @@ async function handleRequest(req: Request): Promise<Response> {
 
       await recordJoinAttempt(actorKey, row.family_code, true);
 
-      const token = toHex(crypto.getRandomValues(new Uint8Array(32)));
-      const expiresAt = new Date(Date.now() + WEB_SESSION_DAYS * 86400000).toISOString();
-      const { error: sErr } = await db.from("web_sessions").insert({
-        token_hash: await sha256Hex(token),
-        family_code: row.family_code,
-        telegram_id: row.parent_telegram_id,
-        user_agent: (req.headers.get("user-agent") || "").slice(0, 200),
-        expires_at: expiresAt,
+      // Yangi oilada xabar beradigan Telegram yo'q; mavjud oilada esa ota-ona
+      // "Hisobingizga Google orqali kirildi" xabarini oladi.
+      const seans = await issueWebSession({
+        familyCode: row.family_code,
+        telegramId: row.parent_telegram_id ? Number(row.parent_telegram_id) : null,
+        method: "google",
+        userAgent: req.headers.get("user-agent") || "",
+        notify: !yangi,
       });
-      if (sErr) {
-        console.error("google_login: seans ochilmadi:", sErr.message);
-        return jsonRes({ ok: false, error: sErr.message }, 500);
-      }
+      if (!seans) return jsonRes({ ok: false, error: "Seans ochilmadi" }, 500);
+      const { token, expiresAt } = seans;
 
       return jsonRes({
         ok: true,
@@ -7235,23 +7436,94 @@ async function handleRequest(req: Request): Promise<Response> {
       await recordJoinAttempt(accountKey, row ? row.family_code : "", ok);
 
       if (!ok) {
+        // Kimdir parolni terib ko'ryapti — ota-ona buni bilishi kerak. Faqat
+        // 5-urinishda bir marta: har birida xabar yuborsak, hujumchi
+        // ota-onaning Telegramini xabar bilan ko'mib tashlay oladi.
+        if (row) {
+          const { data: xatolar } = await db.from("join_attempts").select("id")
+            .eq("actor_key", accountKey).eq("succeeded", false)
+            .gte("created_at", new Date(Date.now() - 3600000).toISOString()).limit(6);
+          if ((xatolar || []).length === 5) {
+            await logSecurityEvent(row.family_code, "login_failed_many", "web", { count: 5 });
+            await notifyFamilyParents(
+              row.family_code,
+              `⚠️ <b>Hisobingizga parol bilan 5 marta noto'g'ri kirishga urinildi</b>\n\n` +
+                `Bu siz bo'lmasangiz — kimdir parolingizni topishga harakat qilyapti. ` +
+                `Xavotir olmang: parol topilsa ham, kirish baribir shu Telegram orqali ` +
+                `sizning tasdig'ingizni so'raydi. 10 ta xato urinishdan keyin hisob 1 soatga yopiladi.\n\n` +
+                `<i>Ishonch uchun: panel → Sozlamalar → «Kirishlar va xavfsizlik» → «Parolni almashtirish».</i>`
+            );
+          }
+        }
         return new Response(JSON.stringify({ ok: false, error: failMsg }), {
           status: 401, headers: { "Content-Type": "application/json" },
         });
       }
 
-      const token = toHex(crypto.getRandomValues(new Uint8Array(32)));
-      const expiresAt = new Date(Date.now() + WEB_SESSION_DAYS * 86400000).toISOString();
-      const { error: sErr } = await db.from("web_sessions").insert({
-        token_hash: await sha256Hex(token),
-        family_code: row.family_code,
-        telegram_id: row.parent_telegram_id,
-        user_agent: (req.headers.get("user-agent") || "").slice(0, 200),
-        expires_at: expiresAt,
+      const ua = req.headers.get("user-agent") || "";
+
+      // PAROL TO'G'RI — LEKIN BU HALI KIRISH EMAS.
+      //
+      // Parol yagona to'siq bo'lsa, u sizib chiqqan zahoti (boshqa saytdan,
+      // yelka orqali ko'rib, oddiy parol) begona odam farzandning
+      // joylashuvini ko'ra boshlaydi. Oilaning Telegrami bor ekan, kirish
+      // o'sha yerda tasdiqlanadi: ota-onaga "Ha, bu men / Yo'q" tugmalari
+      // keladi, brauzer esa javobni kutadi (app_login_poll — Android'ning
+      // "Telegram bilan kirish" oqimi bilan bir xil). Telegram ulanmagan
+      // oilada (faqat Google bilan ochilgan) tasdiqlaydigan joy yo'q.
+      const tasdiqlovchilar = await familyParentIds(row.family_code);
+      if (tasdiqlovchilar.length) {
+        const pollToken = randomHex(32);
+        const code = randomCode(8);
+        const qurilma = describeUserAgent(ua);
+        const { error: rErr } = await db.from("app_login_requests").insert({
+          token_hash: await sha256Hex(pollToken),
+          code,
+          device_label: qurilma.slice(0, 60),
+          family_code: row.family_code,
+          login_method: "password",
+          user_agent: ua.slice(0, 200),
+          expires_at: new Date(Date.now() + APP_LOGIN_TTL_MIN * 60000).toISOString(),
+        });
+        if (rErr) {
+          console.error("web_login: tasdiq so'rovi yozilmadi:", rErr.message);
+          return new Response(JSON.stringify({ ok: false, error: "Server xatosi. Keyinroq urinib ko'ring." }), {
+            status: 500, headers: { "Content-Type": "application/json" },
+          });
+        }
+        await notifyFamilyParents(
+          row.family_code,
+          `🔐 <b>Parolingiz bilan kirishga urinish</b>\n\n` +
+            `<b>Qurilma:</b> ${tgEsc(qurilma)}\n` +
+            `<b>Vaqt:</b> ${tashkentVaqt(new Date().toISOString())}\n\n` +
+            `Bu siz bo'lsangiz — «✅ Ha, bu men» ni bosing.\n` +
+            `Siz bo'lmasangiz — «❌ Yo'q» ni bosing va parolni almashtiring: u begonaga ma'lum bo'lib qolgan.`,
+          { inline_keyboard: [[
+            { text: "✅ Ha, bu men", callback_data: "applogin_ok_" + code },
+            { text: "❌ Yo'q", callback_data: "applogin_no_" + code },
+          ]] }
+        );
+        return new Response(
+          JSON.stringify({
+            ok: true,
+            pending: true,
+            pollToken,
+            expiresInSec: APP_LOGIN_TTL_MIN * 60,
+            message: "Telegram'ga tasdiq so'rovi yuborildi. Botdagi «✅ Ha, bu men» tugmasini bosing.",
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      const seans = await issueWebSession({
+        familyCode: row.family_code,
+        telegramId: row.parent_telegram_id ? Number(row.parent_telegram_id) : null,
+        method: "password",
+        userAgent: ua,
+        notify: true,
       });
-      if (sErr) {
-        console.error("web_sessions insert xatosi:", sErr.message);
-        return new Response(JSON.stringify({ ok: false, error: sErr.message }), {
+      if (!seans) {
+        return new Response(JSON.stringify({ ok: false, error: "Seans ochilmadi" }), {
           status: 500, headers: { "Content-Type": "application/json" },
         });
       }
@@ -7260,10 +7532,10 @@ async function handleRequest(req: Request): Promise<Response> {
       return new Response(
         JSON.stringify({
           ok: true,
-          sessionToken: token,
+          sessionToken: seans.token,
           familyCode: row.family_code,
           registrationStatus: row.status,
-          expiresAt,
+          expiresAt: seans.expiresAt,
         }),
         { status: 200, headers: { "Content-Type": "application/json" } }
       );
@@ -7319,12 +7591,30 @@ async function handleRequest(req: Request): Promise<Response> {
         });
       }
 
-      // Parol almashtirilganda eski brauzer seanslari bekor qilinadi.
-      await db
+      // Parol almashtirilganda eski brauzer seanslari bekor qilinadi —
+      // o'zi turgan seansdan tashqari: aks holda brauzerdan parolni
+      // almashtirgan ota-ona shu zahoti paneldan chiqib ketardi.
+      const joriy = typeof payload.sessionToken === "string" && payload.sessionToken.trim()
+        ? await sha256Hex(payload.sessionToken.trim())
+        : "";
+      let bekorQ = db
         .from("web_sessions")
         .update({ revoked_at: new Date().toISOString() })
         .eq("family_code", actor!.familyCode)
         .is("revoked_at", null);
+      if (joriy) bekorQ = bekorQ.neq("token_hash", joriy);
+      await bekorQ;
+
+      // Parolni o'g'irlangan seans orqali ham almashtirish mumkin — shu
+      // sababli ota-onalar buni albatta bilishi kerak.
+      await logSecurityEvent(actor!.familyCode, "password_set", `tg:${actor!.telegramId}`, {});
+      await notifyFamilyParents(
+        actor!.familyCode,
+        `🔑 <b>Hisobingiz paroli o'zgartirildi</b>\n\n` +
+          `<b>Vaqt:</b> ${tashkentVaqt(new Date().toISOString())}\n` +
+          `Eski parol bilan ochilgan barcha brauzerlar uzildi.\n\n` +
+          `<i>Buni siz qilmagan bo'lsangiz: panel → Sozlamalar → «Kirishlar va xavfsizlik» → «Boshqa barcha kirishlarni uzish», keyin yangi parol qo'ying.</i>`
+      );
 
       return new Response(
         JSON.stringify({ ok: true, login: reg[0].parent_username }),
@@ -8659,6 +8949,7 @@ async function handleRequest(req: Request): Promise<Response> {
         .eq("family_code", familyCode).eq("telegram_id", target).select("telegram_id");
       if (error) return jsonRes({ ok: false, error: error.message }, 500);
       if (!del || !del.length) return jsonRes({ ok: false, error: "Topilmadi" }, 404);
+      await logSecurityEvent(familyCode, "coparent_removed", `tg:${actor!.telegramId}`, { telegramId: target });
 
       // Olib tashlangan odamga ochiq aytamiz — u xabarlar nega to'xtaganini bilsin.
       await sendMessage(
@@ -8685,6 +8976,95 @@ async function handleRequest(req: Request): Promise<Response> {
       return jsonRes({
         ok: true,
         linked: !!(data && data[0] && Number(data[0].parent_telegram_id) > 0),
+      });
+    }
+
+    // KIRISHLAR VA XAVFSIZLIK (ota-ona paneli → Sozlamalar).
+    //
+    // Ota-ona hisobiga qaysi brauzer va telefonlar kirib turganini ko'ra
+    // olmasdi va ularni uza olmasdi: yagona yo'l parolni almashtirish edi,
+    // Android ilova va Google kirishiga esa u ham ta'sir qilmasdi.
+    // Telegram ichidagi panel bu ro'yxatda yo'q — u seans emas, har safar
+    // Telegram imzosi bilan tekshiriladi.
+    if (payload.type === "security_overview" || payload.type === "revoke_session" || payload.type === "revoke_other_sessions") {
+      if (actor!.kind !== "telegram") return unauthorized("Faqat ota-ona");
+      if (await isPairedChild(actor!.telegramId)) return unauthorized("Faqat ota-ona");
+      if (!db) return jsonRes({ ok: false, error: "Baza ulanmagan" }, 500);
+
+      const familyCode = await resolveActorFamily(actor!);
+      const joriyHash = typeof payload.sessionToken === "string" && payload.sessionToken.trim()
+        ? await sha256Hex(payload.sessionToken.trim())
+        : "";
+      const kim = `tg:${actor!.telegramId}`;
+
+      if (payload.type === "revoke_session") {
+        const sid = String(payload.sessionId || "");
+        if (!/^[0-9a-f-]{36}$/i.test(sid)) return jsonRes({ ok: false, error: "sessionId kerak" }, 400);
+        const { data: rows, error } = await db.from("web_sessions")
+          .update({ revoked_at: new Date().toISOString() })
+          .eq("id", sid).eq("family_code", familyCode).is("revoked_at", null)
+          .select("id");
+        if (error) return jsonRes({ ok: false, error: error.message }, 500);
+        if (!rows || !rows.length) return jsonRes({ ok: false, error: "Bunday kirish topilmadi" }, 404);
+        await logSecurityEvent(familyCode, "session_revoked", kim, { sessionId: sid, via: "panel" });
+        return jsonRes({ ok: true });
+      }
+
+      if (payload.type === "revoke_other_sessions") {
+        let q = db.from("web_sessions")
+          .update({ revoked_at: new Date().toISOString() })
+          .eq("family_code", familyCode).is("revoked_at", null);
+        // O'zi turgan seansni uzmaymiz — aks holda tugmani bosgan zahoti
+        // paneldan chiqib ketardi.
+        if (joriyHash) q = q.neq("token_hash", joriyHash);
+        const { data: rows, error } = await q.select("id");
+        if (error) return jsonRes({ ok: false, error: error.message }, 500);
+        const n = (rows || []).length;
+        if (n) await logSecurityEvent(familyCode, "sessions_revoked_all", kim, { count: n });
+        return jsonRes({ ok: true, revoked: n });
+      }
+
+      const [{ data: seanslar }, { data: voqealar }, { data: reg }] = await Promise.all([
+        db.from("web_sessions")
+          .select("id, token_hash, telegram_id, user_agent, login_method, created_at, last_used_at, expires_at")
+          .eq("family_code", familyCode).is("revoked_at", null)
+          .gt("expires_at", new Date().toISOString())
+          .order("created_at", { ascending: false }).limit(30),
+        db.from("security_events")
+          .select("kind, actor, detail, created_at")
+          .eq("family_code", familyCode)
+          .order("created_at", { ascending: false }).limit(30),
+        db.from("parent_registrations").select("password_set_at, parent_telegram_id")
+          .eq("family_code", familyCode).limit(1),
+      ]);
+
+      return jsonRes({
+        ok: true,
+        sessions: (seanslar || []).map((x: any) => ({
+          id: x.id,
+          method: x.login_method || (x.user_agent === "android-app" ? "app" : "web"),
+          device: describeUserAgent(x.user_agent || ""),
+          createdAt: x.created_at,
+          lastUsedAt: x.last_used_at,
+          current: !!joriyHash && x.token_hash === joriyHash,
+        })),
+        // Jurnalda faqat ko'rsatish uchun kerakli maydonlar — ichki
+        // identifikatorlar (sessionId, deviceId) mijozga chiqmaydi.
+        events: (voqealar || []).map((e: any) => ({
+          kind: e.kind,
+          at: e.created_at,
+          byChild: String(e.actor || "").startsWith("child:"),
+          method: e.detail?.method || null,
+          device: e.detail?.device || null,
+          childName: e.detail?.childName || null,
+          model: e.detail?.model || null,
+          name: e.detail?.name || null,
+          count: e.detail?.count || null,
+          via: e.detail?.via || null,
+        })),
+        passwordSetAt: (reg && reg[0] && reg[0].password_set_at) || null,
+        telegramLinked: !!(reg && reg[0] && Number(reg[0].parent_telegram_id) > 0),
+        insideTelegram: !joriyHash,
       });
     }
 
@@ -8775,6 +9155,10 @@ async function handleRequest(req: Request): Promise<Response> {
         console.error("revoke_device:", error.message);
         return jsonRes({ ok: false, error: error.message }, 500);
       }
+
+      await logSecurityEvent(familyCode, "device_revoked",
+        farzandUzdi ? `child:${own[0].child_id}` : `tg:${actor!.telegramId}`,
+        { deviceId: id, childId: own[0].child_id, model: own[0].device_model, via: "panel" });
 
       // Farzandga xabar beramiz. Jimgina uzib qo'yish ishonchni buzadi va
       // bola nima uchun ilova ishlamay qolganini bilmay qoladi.
@@ -9379,59 +9763,42 @@ async function handleRequest(req: Request): Promise<Response> {
       }
 
       // Kodni darhol kuydiramiz — ikkinchi qurilma o'sha kod bilan ulanmasin.
-      await db
+      // "used_at IS NULL" sharti shart: bir kod bilan bir vaqtda kelgan ikki
+      // so'rovning ikkalasi ham o'tib ketmasligi uchun faqat birinchisi yutadi.
+      const { data: kuydi } = await db
         .from("device_pair_codes")
         .update({ used_at: new Date().toISOString() })
-        .eq("code", code);
+        .eq("code", code)
+        .is("used_at", null)
+        .select("code");
+      if (!kuydi || !kuydi.length) {
+        return new Response(
+          JSON.stringify({ ok: false, error: "Kod yaroqsiz, muddati o'tgan yoki ishlatilgan" }),
+          { status: 403, headers: { "Content-Type": "application/json" } }
+        );
+      }
 
-      const tokenBytes = crypto.getRandomValues(new Uint8Array(32));
-      const token = toHex(tokenBytes);
       // Kod bir farzandga bog'langan bo'lsa — telefon o'sha yozuvga ulanadi;
       // bog'lanmagan bo'lsa (masalan, faqat Android ishlatadigan farzand)
       // yangi yozuv ochiladi.
       const childId = row.child_id ||
         `android_${row.family_code}_${deviceModel}`.replace(/\s+/g, "_");
 
-      // Tokenning O'ZI saqlanmaydi — faqat hash'i.
-      // Bitta farzand — bitta telefon.
-      //
-      // Ilgari har juftlash YANGI kalit qo'shardi, eskisi esa faol qolardi.
-      // Jonli bazada shu ko'rindi: farzandning 27-sentabrda O'CHIRIB
-      // TASHLANGAN ilovasining kaliti hali ham faol turardi — ya'ni o'sha
-      // telefon xotirasi tiklansa, u hali ham uning nomidan joylashuv
-      // yubora olardi. Endi yangi qurilma ulanishi bilan eskilari bekor
-      // qilinadi.
-      const { error: revErr } = await db
-        .from("device_tokens")
-        .update({ is_active: false, revoked_at: new Date().toISOString() })
-        .eq("family_code", row.family_code)
-        .eq("child_id", childId)
-        .eq("is_active", true);
-      if (revErr) console.error("device_pair: eski kalitlar bekor qilinmadi:", revErr.message);
-
-      const { error: tokErr } = await db.from("device_tokens").insert({
-        token_hash: await sha256Hex(token),
-        family_code: row.family_code,
-        child_id: childId,
-        device_label: row.child_name || deviceModel,
-        device_model: deviceModel,
+      // Tokenning O'ZI saqlanmaydi — faqat hash'i. Eski kalitlar bekor
+      // qilinadi va ota-onaga "yangi qurilma ulandi" xabari boradi.
+      const token = await issueDeviceToken({
+        familyCode: row.family_code,
+        childId,
+        childName: row.child_name,
+        linkedChild: !!row.child_id,
+        deviceModel,
       });
-
-      if (tokErr) {
-        console.error("device_tokens insert failed:", tokErr.message);
-        return new Response(JSON.stringify({ ok: false, error: tokErr.message }), {
+      if (!token) {
+        return new Response(JSON.stringify({ ok: false, error: "Qurilma kaliti yaratilmadi" }), {
           status: 500,
           headers: { "Content-Type": "application/json" },
         });
       }
-
-      await upsertPairing(row.family_code, childId, {
-        // Mavjud farzandga bog'langanda ismini telefon modeliga
-        // almashtirmaymiz.
-        childName: row.child_name || (row.child_id ? undefined : deviceModel),
-        deviceLabel: deviceModel,
-        source: "android_parental_guard",
-      });
 
       // Token faqat SHU javobda ko'rinadi, boshqa hech qachon.
       return new Response(
@@ -9500,34 +9867,34 @@ async function handleRequest(req: Request): Promise<Response> {
 
         if (devValid) {
           const deviceModel = String(payload.deviceModel || "android").trim();
-          await db
+          const { data: kuydi } = await db
             .from("device_pair_codes")
             .update({ used_at: new Date().toISOString() })
-            .eq("code", code);
+            .eq("code", code)
+            .is("used_at", null)
+            .select("code");
+          if (!kuydi || !kuydi.length) {
+            return new Response(
+              JSON.stringify({ ok: false, error: "Kod yaroqsiz, muddati o'tgan yoki ishlatilgan" }),
+              { status: 403, headers: { "Content-Type": "application/json" } }
+            );
+          }
 
-          const devToken = toHex(crypto.getRandomValues(new Uint8Array(32)));
           const childId = dev.child_id ||
             `android_${dev.family_code}_${deviceModel}`.replace(/\s+/g, "_");
 
-          const { error: devErr } = await db.from("device_tokens").insert({
-            token_hash: await sha256Hex(devToken),
-            family_code: dev.family_code,
-            child_id: childId,
-            device_label: dev.child_name || deviceModel,
-            device_model: deviceModel,
+          const devToken = await issueDeviceToken({
+            familyCode: dev.family_code,
+            childId,
+            childName: dev.child_name,
+            linkedChild: !!dev.child_id,
+            deviceModel,
           });
-          if (devErr) {
-            console.error("device_tokens insert failed (parent_pair):", devErr.message);
-            return new Response(JSON.stringify({ ok: false, error: devErr.message }), {
+          if (!devToken) {
+            return new Response(JSON.stringify({ ok: false, error: "Qurilma kaliti yaratilmadi" }), {
               status: 500, headers: { "Content-Type": "application/json" },
             });
           }
-
-          await upsertPairing(dev.family_code, childId, {
-            childName: dev.child_name || (dev.child_id ? undefined : deviceModel),
-            deviceLabel: deviceModel,
-            source: "android_parental_guard",
-          });
 
           return new Response(
             JSON.stringify({
@@ -9550,26 +9917,32 @@ async function handleRequest(req: Request): Promise<Response> {
       await recordJoinAttempt(actorKey, row.family_code, true);
 
       // Kodni darhol kuydiramiz — ikkinchi qurilma o'sha kod bilan kirmasin.
-      await db
+      const { data: kuydi } = await db
         .from("parent_pair_codes")
         .update({ used_at: new Date().toISOString() })
-        .eq("code", code);
+        .eq("code", code)
+        .is("used_at", null)
+        .select("code");
+      if (!kuydi || !kuydi.length) {
+        return new Response(
+          JSON.stringify({ ok: false, error: "Kod yaroqsiz, muddati o'tgan yoki ishlatilgan" }),
+          { status: 403, headers: { "Content-Type": "application/json" } }
+        );
+      }
 
-      const token = toHex(crypto.getRandomValues(new Uint8Array(32)));
-      const expiresAt = new Date(Date.now() + WEB_SESSION_DAYS * 86400000).toISOString();
-      const { error: sErr } = await db.from("web_sessions").insert({
-        token_hash: await sha256Hex(token),
-        family_code: row.family_code,
-        telegram_id: row.parent_telegram_id,
-        user_agent: "android-app",
-        expires_at: expiresAt,
+      const seans = await issueWebSession({
+        familyCode: row.family_code,
+        telegramId: row.parent_telegram_id ? Number(row.parent_telegram_id) : null,
+        method: "app_code",
+        userAgent: "android-app",
+        notify: true,
       });
-      if (sErr) {
-        console.error("web_sessions insert failed (parent_pair):", sErr.message);
-        return new Response(JSON.stringify({ ok: false, error: sErr.message }), {
+      if (!seans) {
+        return new Response(JSON.stringify({ ok: false, error: "Seans ochilmadi" }), {
           status: 500, headers: { "Content-Type": "application/json" },
         });
       }
+      const token = seans.token;
 
       // Token faqat SHU javobda ko'rinadi.
       return new Response(
@@ -9916,33 +10289,116 @@ async function handleRequest(req: Request): Promise<Response> {
         if (!db) return new Response(JSON.stringify({ ok: true }), { status: 200 });
         const fam = await registeredParentFamily(chatId);
         const { data: rows } = await db.from("app_login_requests")
-          .select("id, status, expires_at").eq("code", appCode).limit(1);
+          .select("id, status, expires_at, family_code, login_method, user_agent").eq("code", appCode).limit(1);
         const req = rows && rows[0];
         if (!req || !fam || new Date(req.expires_at).getTime() < Date.now() || req.status !== "pending") {
           await sendMessage(chatId, "⌛️ Bu so'rov eskirgan. Ilovada qaytadan urinib ko'ring.");
           return new Response(JSON.stringify({ ok: true }), { status: 200 });
         }
-        if (!approve) {
-          await db.from("app_login_requests").update({ status: "rejected" }).eq("id", req.id).eq("status", "pending");
-          await sendMessage(chatId, "✅ Rad etildi. Ilova kira olmaydi.");
+        // Parol bilan kirish so'rovi aniq bir oilaga tegishli: uni faqat
+        // o'sha oilaning ota-onasi tasdiqlay oladi. Aks holda boshqa oila
+        // ota-onasi tugmani bosib, o'z oilasiga begona brauzerni kiritardi.
+        if (req.family_code && req.family_code !== fam) {
+          await sendMessage(chatId, "⛔️ Bu so'rov sizning oilangizga tegishli emas.");
           return new Response(JSON.stringify({ ok: true }), { status: 200 });
         }
-        const sessionToken = randomHex(32);
-        await db.from("web_sessions").insert({
-          token_hash: await sha256Hex(sessionToken),
-          family_code: fam,
-          telegram_id: chatId,
-          user_agent: "android-app",
-          expires_at: new Date(Date.now() + WEB_SESSION_DAYS * 86400000).toISOString(),
+        const parolBilan = req.login_method === "password";
+        if (!approve) {
+          const { data: radd } = await db.from("app_login_requests").update({ status: "rejected" })
+            .eq("id", req.id).eq("status", "pending").select("id");
+          if (radd && radd[0]) {
+            await logSecurityEvent(fam, "login_rejected", `tg:${chatId}`, {
+              method: req.login_method || "app_telegram",
+              device: describeUserAgent(req.user_agent || "android-app"),
+            });
+          }
+          await sendMessage(
+            chatId,
+            parolBilan
+              ? "🛑 <b>Rad etildi — u kira olmaydi.</b>\n\nParolingiz begonaga ma'lum bo'lib qolgan. Hoziroq almashtiring: ota-ona paneli → Sozlamalar → «Kirishlar va xavfsizlik» → «Parolni almashtirish»."
+              : "✅ Rad etildi. Ilova kira olmaydi."
+          );
+          return new Response(JSON.stringify({ ok: true }), { status: 200 });
+        }
+        const seans = await issueWebSession({
+          familyCode: fam,
+          telegramId: chatId,
+          method: req.login_method || "app_telegram",
+          userAgent: req.user_agent || "android-app",
+          // Ota-ona hozirgina o'zi tasdiqladi — qayta "yangi kirish" xabari shovqin.
+          notify: false,
         });
+        if (!seans) {
+          await sendMessage(chatId, "⚠️ Server xatosi. Qaytadan urinib ko'ring.");
+          return new Response(JSON.stringify({ ok: true }), { status: 200 });
+        }
         const { data: claimed } = await db.from("app_login_requests")
-          .update({ status: "approved", approved_by: chatId, family_code: fam, session_token: sessionToken })
+          .update({ status: "approved", approved_by: chatId, family_code: fam, session_token: seans.token })
           .eq("id", req.id).eq("status", "pending").select("id");
         if (!claimed || !claimed[0]) {
           await sendMessage(chatId, "⌛️ Bu so'rov allaqachon ishlatilgan.");
           return new Response(JSON.stringify({ ok: true }), { status: 200 });
         }
-        await sendMessage(chatId, "✅ <b>Kirish tasdiqlandi.</b>\n\nIlovaga qayting — u o'zi ochiladi.");
+        await sendMessage(
+          chatId,
+          parolBilan
+            ? "✅ <b>Kirish tasdiqlandi.</b>\n\nBrauzerga qayting — panel o'zi ochiladi."
+            : "✅ <b>Kirish tasdiqlandi.</b>\n\nIlovaga qayting — u o'zi ochiladi."
+        );
+        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      }
+
+      // "Bu men emasman" — yangi kirish haqidagi xabardagi tugma.
+      if (data.startsWith("sec_kill_") && db) {
+        const sid = data.slice("sec_kill_".length);
+        const fam = await registeredParentFamily(chatId);
+        let uzildi = false;
+        if (fam && /^[0-9a-f-]{36}$/i.test(sid)) {
+          const { data: rows } = await db.from("web_sessions")
+            .update({ revoked_at: new Date().toISOString() })
+            .eq("id", sid).eq("family_code", fam).is("revoked_at", null)
+            .select("id, login_method");
+          uzildi = !!(rows && rows[0]);
+          if (uzildi) {
+            await logSecurityEvent(fam, "session_revoked", `tg:${chatId}`, { sessionId: sid, via: "alert", method: rows![0].login_method || null });
+          }
+          if (uzildi && rows![0].login_method === "password") {
+            await sendMessage(chatId, "🛑 <b>Kirish uzildi.</b>\n\nU parol bilan kirgan edi — demak parolingiz begonaga ma'lum. Hoziroq almashtiring: ota-ona paneli → Sozlamalar → «Kirishlar va xavfsizlik» → «Parolni almashtirish».");
+            return new Response(JSON.stringify({ ok: true }), { status: 200 });
+          }
+        }
+        await sendMessage(
+          chatId,
+          uzildi
+            ? "🛑 <b>Kirish uzildi.</b>\n\nU qurilma endi oilangiz ma'lumotlarini ko'ra olmaydi. Barcha kirishlarni panelda ko'rishingiz mumkin: Sozlamalar → «Kirishlar va xavfsizlik»."
+            : "ℹ️ Bu kirish allaqachon uzilgan yoki topilmadi."
+        );
+        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      }
+
+      // "Men ulamaganman" — yangi qurilma haqidagi xabardagi tugma.
+      if (data.startsWith("dev_kill_") && db) {
+        const did = data.slice("dev_kill_".length);
+        const fam = await registeredParentFamily(chatId);
+        let uzildi = false;
+        if (fam && /^[0-9a-f-]{36}$/i.test(did)) {
+          const { data: rows } = await db.from("device_tokens")
+            .update({ is_active: false, revoked_at: new Date().toISOString() })
+            .eq("id", did).eq("family_code", fam).eq("is_active", true)
+            .select("id, child_id, device_model");
+          uzildi = !!(rows && rows[0]);
+          if (uzildi) {
+            await logSecurityEvent(fam, "device_revoked", `tg:${chatId}`, {
+              deviceId: did, childId: rows![0].child_id, model: rows![0].device_model, via: "alert",
+            });
+          }
+        }
+        await sendMessage(
+          chatId,
+          uzildi
+            ? "🛑 <b>Qurilma uzildi.</b>\n\nU endi farzandingiz nomidan hech narsa yubora olmaydi. Ulash kodini begonaga bermaganingizni tekshiring — kodlar faqat botda va panelda chiqadi."
+            : "ℹ️ Bu qurilma allaqachon uzilgan yoki topilmadi."
+        );
         return new Response(JSON.stringify({ ok: true }), { status: 200 });
       }
 
@@ -10098,6 +10554,18 @@ async function handleRequest(req: Request): Promise<Response> {
           isAdmin
             ? "ℹ️ Adminlar Supabase'dagi <b>ADMIN_CHAT_IDS</b> sozlamasida (raqamli Telegram ID, vergul bilan) boshqariladi. Hozir: <b>" + ADMIN_CHAT_IDS.size + "</b> ta."
             : "⚠️ Bu buyruq mavjud emas."
+        );
+        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      }
+
+      // O'z raqamli Telegram ID'sini bilish — ADMIN_CHAT_IDS sozlamasiga
+      // yozish uchun kerak. ID sir emas (Telegram uni botlarga baribir
+      // beradi), faqat egasining o'ziga ko'rsatiladi.
+      if (/^\/myid\b/.test(text)) {
+        await sendMessage(
+          chatId,
+          `🆔 <b>Sizning Telegram ID'ingiz:</b> <code>${tgEsc(msg.from.id)}</code>\n\n` +
+            (isAdmin ? "✅ Siz administrator sifatida tanilgansiz." : "Siz administrator ro'yxatida emassiz.")
         );
         return new Response(JSON.stringify({ ok: true }), { status: 200 });
       }
@@ -10308,7 +10776,9 @@ async function handleRequest(req: Request): Promise<Response> {
             await sendMessage(
               chatId,
               `📱 <b>Ilovaga kirishni tasdiqlaysizmi?</b>\n\n` +
-                (req.device_label ? `<b>Qurilma:</b> ${req.device_label}\n` : "") +
+                // device_label'ni so'rov yuboruvchi o'zi yozadi — tozalanmasa,
+                // u tasdiq xabariga soxta matn yoki havola qo'sha olardi.
+                (req.device_label ? `<b>Qurilma:</b> ${tgEsc(req.device_label)}\n` : "") +
                 `<b>Oila kodi:</b> <code>${famOfParent}</code>\n\n` +
                 `<i>Bu so'rovni siz boshlamagan bo'lsangiz — «Yo'q» ni bosing.</i>`,
               { inline_keyboard: [[

@@ -1,0 +1,52 @@
+# Avtomatik xavfsizlik tekshiruvi (tools/security_check.mjs).
+#
+# Jonli serverga "hujumchi" sifatida kirishga urinadi — har biri rad
+# etilishi shart — va repoda token qolib ketmaganini tekshiradi. Teshik
+# qaytib ochilsa, GitHub qizil belgi qo'yadi va egasiga xat yuboradi.
+#
+# Qachon: har kuni ertalab (Toshkent 08:00), har server deploy'idan keyin
+# va har PR'da (repodagi sirlar uchun). Qo'lda: Actions → "Security check"
+# → "Run workflow".
+#
+# PR'da server kodi deploy'dan OLDIN ham sinaladi: tests/security —
+# haqiqiy index.ts soxta baza bilan, hujum ssenariylari bilan.
+#
+# SUPABASE_ACCESS_TOKEN sekreti bo'lsa, bazadagi har bir jadvalda RLS
+# yoqilgani ham tekshiriladi; bo'lmasa bu qadam o'tkazib yuboriladi.
+name: Security check
+
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_run:
+    workflows: ["Deploy ota-ona-bot"]
+    types: [completed]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Xavfsizlik tekshiruvi
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: node tools/security_check.mjs
+
+  server-tests:
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Server xavfsizlik sinovlari
+        run: deno run -A --no-check tests/security/security_test.ts

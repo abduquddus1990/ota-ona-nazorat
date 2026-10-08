@@ -209,9 +209,19 @@ class LoginActivity : AppCompatActivity() {
         setBusy(true, getString(R.string.login_checking))
         lifecycleScope.launch {
             val result = withContext(Dispatchers.IO) { AppAuthApi.loginWithPassword(login, pass) }
-            result.onSuccess {
-                AppAuthApi.saveSession(this@LoginActivity, it)
-                openApp()
+            result.onSuccess { natija ->
+                when (natija) {
+                    is AppAuthApi.PasswordLoginResult.Done -> {
+                        AppAuthApi.saveSession(this@LoginActivity, natija.session)
+                        openApp()
+                    }
+                    // Parol to'g'ri — endi ota-ona Telegramda tasdiqlaydi.
+                    // Telegram tugmasi bilan kirishdagi kutish oqimining o'zi.
+                    is AppAuthApi.PasswordLoginResult.NeedsConfirm -> {
+                        pendingToken = natija.pollToken
+                        pollUntilApproved(natija.pollToken)
+                    }
+                }
             }.onFailure {
                 setBusy(false, getString(R.string.login_bad_password))
             }
