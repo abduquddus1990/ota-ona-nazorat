@@ -41,7 +41,7 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <!-- Custom Stitch Styles -->
-    <link rel="stylesheet" href="styles.css?v=7.4">
+    <link rel="stylesheet" href="styles.css?v=7.5">
     <link rel="stylesheet" href="theme-tong.css?v=1">
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;600;700;800;900&display=swap" rel="stylesheet"/>
 </head>
@@ -257,9 +257,11 @@
         </div>
 
         <div class="flex items-center gap-2">
-            <!-- Silver Wolf Mascot Avatar -->
-            <div onclick="openSettings()" role="button" aria-label="Sozlamalar" title="Sozlamalar" class="qalqon-me cursor-pointer w-8 h-8 rounded-full border-2 border-[#22D3EE]/80 bg-[#22D3EE]/20 flex items-center justify-center overflow-hidden relative shadow-[0_0_10px_rgba(34,211,238,0.35)]">
-                <img src="assets/wolf_mascot.png" onerror="this.src='https://lh3.googleusercontent.com/aida-public/AB6AXuD4KD1uqMogxlSUh4XTwFZ6O8CcikpLzeXyE_AoKP5Bb7hfxrK_rDplyKX2s0KI3Kf-D2TRnanZtUX21nyuflU3WUny5Q3xGqSOAFplw0NaQNtSmIFXg_tVGW1h8CU70IPksptF26DN2hbF2nFN9sZOKWou2ZiNFaEl1s9UvWP8vjflsQwQWMt_BttzLNQBBJHpzrSqvqz-wwxaNui-4J52Xz6TfF8kqKuSIoBQubAXZiw9_QUtaSOjOw'" alt="Kumush Bo'ri" class="w-full h-full object-cover">
+            <!-- "Mening oilam": ota-onaning shaxsiy sahifasi (farzand uchun —
+                 uning sozlamalari). Ilgari bu yerda bo'richa surati turardi va
+                 Sozlamalarni ochardi — Sozlamalar endi pastki panelda. -->
+            <div onclick="openMyFamily()" role="button" aria-label="Mening oilam" title="Mening oilam" class="qalqon-me cursor-pointer w-8 h-8 rounded-full border-2 border-[#22D3EE]/80 bg-[#22D3EE]/20 flex items-center justify-center overflow-hidden relative">
+                <span class="material-symbols-outlined text-[22px] text-cyan-300">person</span>
             </div>
             <!-- Plan Badge -->
             <button onclick="openSubpage('modal-plans')" class="px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-300 text-[10px] font-bold">
@@ -2584,6 +2586,113 @@
         </div>
     </div>
 
+    <!-- 👤 MODAL: MENING OILAM — "men va oilam" bir joyda: ota-ona, farzandlar,
+         ota-onalar, tarif va hisobga oid amallar. Ilova sozlamalari (til, fon,
+         ovoz) esa pastki paneldagi Sozlamalarda. -->
+    <div id="modal-my-family" class="subpage-modal space-y-4">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+            <button onclick="closeSubpage()" class="text-xs font-bold text-emerald-400" data-i18n="backBtn">← Orqaga</button>
+            <h2 class="text-xs font-bold text-white">Mening oilam</h2>
+            <span class="w-8"></span>
+        </div>
+
+        <div class="glass-card p-4 flex items-center gap-3">
+            <div class="w-14 h-14 shrink-0 rounded-full bg-cyan-500/15 border border-cyan-500/40 flex items-center justify-center">
+                <span class="material-symbols-outlined text-[34px] text-cyan-300">person</span>
+            </div>
+            <div class="min-w-0 space-y-0.5">
+                <div id="myFamilyName" class="text-sm font-black text-white truncate">—</div>
+                <div id="myFamilySub" class="text-[10px] text-slate-400 truncate"></div>
+                <div id="myFamilyTg" class="text-[10px] font-bold"></div>
+            </div>
+        </div>
+
+        <div class="glass-card p-4 space-y-3">
+            <div class="flex items-center justify-between">
+                <h3 class="text-xs font-bold text-white">👧 Farzandlarim</h3>
+                <button onclick="openSubpage('modal-add-child')" class="text-[10px] text-cyan-400 font-bold hover:underline">+ Qo'shish</button>
+            </div>
+            <div id="myFamilyKids" class="space-y-2"></div>
+        </div>
+
+        <!-- Ota-onalar: onani (ikkinchi ota-onani) oilaga qo'shish.
+             Ilgari oila faqat ro'yxatdan o'tgan bitta ota-onaga bog'langan
+             edi — ona panelga kira olmasdi va SOS ham, "maktabga yetdi" ham
+             unga bormasdi. Endi bitta tugma: havola Telegramda onaga
+             yuboriladi, u bosgan zahoti oilaga qo'shiladi. -->
+        <div class="glass-card p-4 space-y-3">
+            <div class="flex items-center justify-between">
+                <h3 class="text-xs font-bold text-white">👨‍👩‍👧 Ota-onalar</h3>
+                <button onclick="renderCoParents()" class="text-[10px] text-cyan-400 font-bold hover:underline">Yangilash</button>
+            </div>
+            <p class="text-[10px] text-slate-400 leading-relaxed">
+                Onani (yoki ikkinchi ota-onani) qo'shing — u ham panelni ko'radi,
+                SOS, "maktabga yetdi" va kunlik xulosani oladi.
+            </p>
+            <div id="coParentList" class="space-y-2">
+                <div class="text-[10px] text-slate-500">Yuklanmoqda...</div>
+            </div>
+            <button id="coParentInviteBtn" onclick="inviteCoParent()" class="hidden w-full py-2.5 rounded-xl bg-pink-500/15 border border-pink-500/40 text-pink-300 font-bold text-[11px] hover:bg-pink-500/25 transition">
+                👩 Onani qo'shish
+            </button>
+        </div>
+
+        <div onclick="openSubpage('modal-plans')" class="glass-panel p-3.5 flex items-center justify-between cursor-pointer hover:border-cyan-500/50 transition">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-lg">💎</div>
+                <div>
+                    <div class="text-xs font-bold text-white">Tarif</div>
+                    <div id="myFamilyPlan" class="text-[10px] text-slate-400">—</div>
+                </div>
+            </div>
+            <span class="text-slate-500 text-sm font-bold">›</span>
+        </div>
+
+        <div onclick="openSubpage('modal-parent-onboarding')" class="glass-panel p-3.5 flex items-center justify-between cursor-pointer hover:border-cyan-500/50 transition">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-sky-500/15 border border-sky-500/30 flex items-center justify-center text-lg">✏️</div>
+                <div>
+                    <div class="text-xs font-bold text-white">Oila ma'lumotlari va parol</div>
+                    <div class="text-[10px] text-slate-400">Ism, telefon, Telegram username, parol</div>
+                </div>
+            </div>
+            <span class="text-slate-500 text-sm font-bold">›</span>
+        </div>
+
+        <div onclick="openSubpage('modal-security')" class="glass-panel p-3.5 flex items-center justify-between cursor-pointer hover:border-cyan-500/50 transition">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center text-lg">🔐</div>
+                <div>
+                    <div class="text-xs font-bold text-white">Kirishlar va xavfsizlik</div>
+                    <div class="text-[10px] text-slate-400">Hisobingizga kim kirgan, voqealar</div>
+                </div>
+            </div>
+            <span class="text-slate-500 text-sm font-bold">›</span>
+        </div>
+
+        <div onclick="shareReferralLink()" class="glass-panel p-3.5 flex items-center justify-between cursor-pointer hover:border-cyan-500/50 transition">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-lg">🎁</div>
+                <div>
+                    <div class="text-xs font-bold text-white">Do'stni taklif qilish</div>
+                    <div class="text-[10px] text-slate-400">Do'stingiz qo'shilsa, sizga Pro kunlari</div>
+                </div>
+            </div>
+            <span class="text-slate-500 text-sm font-bold">›</span>
+        </div>
+
+        <div onclick="openSubpage('modal-delete-account')" class="glass-panel p-3.5 flex items-center justify-between cursor-pointer hover:border-rose-500/50 transition">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center text-lg">🗑</div>
+                <div>
+                    <div class="text-xs font-bold text-rose-300">Hisobni o'chirish</div>
+                    <div class="text-[10px] text-slate-400">Barcha ma'lumotlar darhol o'chiriladi</div>
+                </div>
+            </div>
+            <span class="text-slate-500 text-sm font-bold">›</span>
+        </div>
+    </div>
+
     <!-- 🔐 MODAL: KIRISHLAR VA XAVFSIZLIK
          Ota-ona hisobiga Telegramdan tashqarida (brauzer, Android ilova)
          kirganlarni ko'rmasdi va uza olmasdi. Bu yerda: ro'yxat, bitta yoki
@@ -2659,28 +2768,6 @@
             </button>
             <button onclick="openSubpage('modal-child-profile')" class="py-2.5 rounded-xl bg-sky-500/15 border border-sky-500/40 text-sky-300 font-bold text-[11px] hover:bg-sky-500/25 transition">
                 &#128100; Ma'lumotlari va sinfi
-            </button>
-        </div>
-
-        <!-- Ota-onalar: onani (ikkinchi ota-onani) oilaga qo'shish.
-             Ilgari oila faqat ro'yxatdan o'tgan bitta ota-onaga bog'langan
-             edi — ona panelga kira olmasdi va SOS ham, "maktabga yetdi" ham
-             unga bormasdi. Endi bitta tugma: havola Telegramda onaga
-             yuboriladi, u bosgan zahoti oilaga qo'shiladi. -->
-        <div class="glass-card p-4 space-y-3">
-            <div class="flex items-center justify-between">
-                <h3 class="text-xs font-bold text-white">👨‍👩‍👧 Ota-onalar</h3>
-                <button onclick="renderCoParents()" class="text-[10px] text-cyan-400 font-bold hover:underline">Yangilash</button>
-            </div>
-            <p class="text-[10px] text-slate-400 leading-relaxed">
-                Onani (yoki ikkinchi ota-onani) qo'shing — u ham panelni ko'radi,
-                SOS, "maktabga yetdi" va kunlik xulosani oladi.
-            </p>
-            <div id="coParentList" class="space-y-2">
-                <div class="text-[10px] text-slate-500">Yuklanmoqda...</div>
-            </div>
-            <button id="coParentInviteBtn" onclick="inviteCoParent()" class="hidden w-full py-2.5 rounded-xl bg-pink-500/15 border border-pink-500/40 text-pink-300 font-bold text-[11px] hover:bg-pink-500/25 transition">
-                👩 Onani qo'shish
             </button>
         </div>
 
@@ -2873,7 +2960,7 @@
 
     <!-- Custom JavaScript -->
     <script src="splash.js?v=2"></script>
-    <script src="app.js?v=10.0"></script>
+    <script src="app.js?v=10.1"></script>
     <!-- O'yinlar alohida faylda: app.js allaqachon katta, va o'yin kontenti
          (savollar, kartalar) o'sib boradi. Alohida fayl brauzerda alohida
          keshlanadi — o'yin qo'shilsa, butun ilova qayta yuklanmaydi. -->

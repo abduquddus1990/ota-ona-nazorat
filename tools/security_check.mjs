@@ -27,8 +27,24 @@ function tekshir(ok, nomi, tafsilot) {
   console.log(`${ok ? "✅" : "❌"} ${nomi}${ok || tafsilot === undefined ? "" : "\n     → " + String(tafsilot).slice(0, 300)}`);
 }
 
+// Tarmoq bir lahza uzilsa (GitHub serverlarida ham bo'ladi) tekshiruv
+// "teshik topildi" deb yolg'on qizil bo'lmasligi uchun: 20 soniya kutish
+// va 3 marta urinish. Javob kelsa — u qanday bo'lsa, shunday baholanadi.
+async function fetchQayta(url, opts = {}) {
+  let oxirgi;
+  for (let i = 0; i < 3; i++) {
+    try {
+      return await fetch(url, { ...opts, signal: AbortSignal.timeout(20000) });
+    } catch (e) {
+      oxirgi = e;
+      await new Promise((r) => setTimeout(r, 3000));
+    }
+  }
+  throw oxirgi;
+}
+
 async function post(body, headers = {}) {
-  const r = await fetch(FN, {
+  const r = await fetchQayta(FN, {
     method: "POST",
     headers: { "content-type": "application/json", origin: ORIGIN, ...headers },
     body: JSON.stringify(body),
@@ -39,10 +55,16 @@ async function post(body, headers = {}) {
   return { status: r.status, json, text, headers: r.headers };
 }
 
+// PR'da jonli server tekshirilmaydi: u PR kodini emas, allaqachon ishlab
+// turgan serverni sinaydi va tarmoq uzilishi PR'ni bekorga qizil qilardi.
+// PR kodi tests/security da sinaladi.
+const JONLI = process.env.SKIP_LIVE !== "true";
+
 // ---------------------------------------------------------------- server
+if (JONLI) {
 console.log("— Server (ota-ona-bot)");
 
-const tirik = await fetch(FN);
+const tirik = await fetchQayta(FN);
 tekshir(tirik.status === 200, "Funksiya ishlayapti", tirik.status);
 
 // Telegram webhook maxfiy tokensiz — soxta "tugma bosildi" yuborib bo'lmasligi kerak.
@@ -103,15 +125,19 @@ r = await post({ type: "list_devices" });
 tekshir(!!r.headers.get("access-control-allow-origin"), "CORS sarlavhasi bor (xato javobda ham)", [...r.headers].join("; "));
 
 // Xato javoblari ichki tafsilot (stack, SQL) chiqarmasligi kerak.
-const buzuq = await fetch(FN, { method: "POST", headers: { "content-type": "application/json", origin: ORIGIN }, body: "{buzuq json" });
+const buzuq = await fetchQayta(FN, { method: "POST", headers: { "content-type": "application/json", origin: ORIGIN }, body: "{buzuq json" });
 r = { status: buzuq.status, text: await buzuq.text() };
 tekshir(!/at\s+\S+\s+\(|stack|postgres|PGRST|relation\s+"/i.test(r.text), "Buzuq so'rovga javobda ichki tafsilot yo'q", r.text);
 
+} else {
+  console.log("— Jonli server: PR'da o'tkazib yuborildi (har kuni va deploy'dan keyin tekshiriladi)");
+}
+
 // ------------------------------------------------------------------ baza
-const PAT = process.env.SUPABASE_ACCESS_TOKEN || "";
+const PAT = JONLI ? process.env.SUPABASE_ACCESS_TOKEN || "" : "";
 if (PAT) {
   console.log("\n— Baza");
-  const q = await fetch(`https://api.supabase.com/v1/projects/${PROJECT_REF}/database/query`, {
+  const q = await fetchQayta(`https://api.supabase.com/v1/projects/${PROJECT_REF}/database/query`, {
     method: "POST",
     headers: { authorization: `Bearer ${PAT}`, "content-type": "application/json" },
     body: JSON.stringify({

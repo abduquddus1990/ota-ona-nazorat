@@ -708,15 +708,9 @@ body[data-theme="tong"] .bottom-nav .nav-btn.active { background: rgba(255, 255,
 body[data-theme="tong"] .bottom-nav .nav-btn.active > span:not(.material-symbols-outlined) { display: inline; }
 body[data-theme="tong"] .bottom-nav .nav-btn .material-symbols-outlined { font-size: 22px; }
 
-/* Profil doirasi = Sozlamalar. Kichik tishli belgi buni ko'rsatadi. */
+/* Profil doirasi = "Mening oilam" (standart profil belgisi). */
 body[data-theme="tong"] .qalqon-me { position: relative; border-color: rgba(15, 42, 74, 0.12) !important; background: #ffffff !important; box-shadow: 0 4px 12px -4px rgba(15, 42, 74, 0.3) !important; }
-.qalqon-me::after {
-    content: "settings";
-    font-family: 'Material Symbols Outlined';
-    position: absolute; right: -4px; bottom: -4px;
-    width: 16px; height: 16px; border-radius: 50%;
-    background: #0f2a4a; color: #ffffff; font-size: 11px; line-height: 16px; text-align: center;
-}
+body[data-theme="tong"] .qalqon-me .material-symbols-outlined { color: #0f2a4a; }
 
 /* Modal oynalar va pastki sahifalar */
 body[data-theme="tong"] .subpage-modal { background: var(--bg-primary); background-image: var(--wallpaper-gradient); }
