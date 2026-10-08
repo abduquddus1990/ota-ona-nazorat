@@ -5750,6 +5750,7 @@ function openSubpage(subpageId) {
     if (subpageId === 'modal-add-child') fillAndroidChildPicker();
     if (subpageId === 'modal-app-stats') renderAppStats();
     if (subpageId === 'modal-security') renderSecurity();
+    if (subpageId === 'modal-my-family') renderMyFamily();
 }
 
 // ============================================================================
@@ -6597,10 +6598,64 @@ function moveNode(id, hostId) {
     return true;
 }
 
-/** Sozlamalar — pastki paneldan sarlavhadagi profil doirasiga ko'chdi. */
+/** Sozlamalar — ota-onada pastki paneldagi 4-bo'lim. */
 function openSettings() {
     if (currentAppRole === 'child') switchChildTab('child-tab-settings');
     else switchTab('tab-settings');
+}
+
+/** Sarlavhadagi profil doirasi: ota-onaga "Mening oilam", farzandga o'z sozlamalari. */
+function openMyFamily() {
+    if (currentAppRole === 'child') { openSettings(); return; }
+    openSubpage('modal-my-family');
+}
+
+async function renderMyFamily() {
+    if (currentAppRole !== 'parent') return;
+    const q = (type) => fetch(QALQON_BOT_FN, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type })
+    }).then(r => r.json()).catch(() => null);
+
+    // Farzandlar ro'yxati telefonda allaqachon bor (serverdan sinxronlangan).
+    const kidsBox = document.getElementById('myFamilyKids');
+    if (kidsBox) {
+        const kids = Object.values(childrenDatabase || {});
+        kidsBox.innerHTML = kids.length ? kids.map(c =>
+            '<div class="p-2.5 rounded-xl bg-slate-900/60 border border-slate-800 flex items-center justify-between gap-2">' +
+                '<div class="text-[11px] font-bold text-white truncate">👦 ' + escapeHtml(c.name || 'Farzand') + '</div>' +
+                '<div class="text-[10px] text-slate-400 shrink-0">' + (c.grade ? escapeHtml(c.grade) + '-sinf' : '') + '</div>' +
+            '</div>'
+        ).join('') : '<div class="text-[10px] text-slate-400">Hali farzand qo\'shilmagan.</div>';
+    }
+    renderCoParents();
+
+    const [fam, plan, tgHolat] = await Promise.all([q('my_family'), q('plan_status'), q('link_telegram_status')]);
+    const p = (fam && fam.profile) || {};
+    const ism = document.getElementById('myFamilyName');
+    const sub = document.getElementById('myFamilySub');
+    const tgEl = document.getElementById('myFamilyTg');
+    const planEl = document.getElementById('myFamilyPlan');
+    if (ism) ism.textContent = p.parent_name || 'Ota-ona';
+    if (sub) {
+        const qism = [];
+        if (p.family_name) qism.push(p.family_name);
+        if (fam && fam.familyCode) qism.push('Oila kodi: ' + fam.familyCode);
+        sub.textContent = qism.join(' · ');
+    }
+    if (tgEl) {
+        const ulangan = !!(tgHolat && tgHolat.linked);
+        tgEl.textContent = ulangan ? '✅ Telegram ulangan — SOS va xabarlar keladi' : '⚠️ Telegram ulanmagan — SOS kelmaydi';
+        tgEl.className = 'text-[10px] font-bold ' + (ulangan ? 'text-emerald-300' : 'text-amber-300');
+    }
+    if (planEl && plan && plan.ok) {
+        planEl.textContent = plan.plan === 'pro'
+            ? 'Pro — cheklovsiz'
+            : 'Bepul' + (typeof plan.remaining === 'number' && plan.remaining >= 0
+                ? ' · ' + plan.remaining + ' ta joylashuv so\'rovi qoldi' + (plan.windowHours ? ' (' + plan.windowHours + ' soat ichida)' : '')
+                : '');
+    }
 }
 
 /** Ota-ona: "Farzand" bo'limi kataklari. */

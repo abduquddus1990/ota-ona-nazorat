@@ -105,7 +105,9 @@ Bu loyihada "bajarildi" xabari bir necha marta haqiqatga mos kelmagan.
   tugma, bugungi voqealar. Reklama banneri yo'q.
 - Pastki panel: **suzuvchi "tabletka"**, 4 bo'lim (Asosiy · Xarita ·
   Farzand · Sozlamalar). 2026-10-08 gacha Sozlamalar faqat profil doirasida
-  edi — ota-onalar uni topa olmadi. Farzand paneli:
+  edi — ota-onalar uni topa olmadi. O'ng yuqoridagi profil doirasi
+  (standart "person" belgisi) — **"Mening oilam"**: ota-ona, farzandlar,
+  ota-onalar, tarif, parol, xavfsizlik, hisobni o'chirish. Farzand paneli:
   Asosiy · O'qish · O'yinlar.
 - Maskot: **3D qalqonli bo'ri** (`site/assets/qalqon-qoriqchi.webp`, fonsiz).
   Realistik va multfilm bo'rilarni aralashtirmang.
