@@ -30,6 +30,31 @@ object PairingApi {
         val familyCode: String
     )
 
+    data class PairPreview(val parentName: String?, val childName: String?)
+
+    /**
+     * Kod kimning oilasiga tegishli — ulashdan OLDIN ko'rsatish uchun
+     * (server: device_pair_preview). shield://pair havolasi kodni o'zi
+     * yozib qo'yadi; begona odam o'z kodi bilan havola yuborsa, bola
+     * telefonini bilmasdan begona oilaga ulab qo'ymasligi kerak.
+     */
+    fun previewPair(pairCode: String): Result<PairPreview> = runCatching {
+        val body = JSONObject()
+            .put("type", "device_pair_preview")
+            .put("pairCode", pairCode.trim().uppercase())
+            .toString()
+            .toRequestBody("application/json; charset=utf-8".toMediaType())
+        val req = Request.Builder().url(OTA_ONA_BOT_URL).post(body).build()
+        EncryptedNetworkClient.client.newCall(req).execute().use { resp ->
+            val json = JSONObject(resp.body?.string().orEmpty().ifBlank { "{}" })
+            if (!json.optBoolean("ok", false)) error(json.optString("error", "preview_http_${resp.code}"))
+            PairPreview(
+                json.optString("parentName").takeIf { it.isNotBlank() && it != "null" },
+                json.optString("childName").takeIf { it.isNotBlank() && it != "null" }
+            )
+        }
+    }
+
     /**
      * Redeem a one-time [pairCode] (from the parent's Mini App) for a
      * long-lived device token. This is the one unauthenticated call in the

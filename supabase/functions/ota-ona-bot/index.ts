@@ -75,8 +75,10 @@ async function upsertPairing(
   const row: Record<string, unknown> = {
     family_code: familyCode,
     child_id: childId,
-    child_name: info.childName,
-    device_label: info.deviceLabel,
+    // undefined qolishi kerak (mavjud ismni o'chirmaslik uchun), shuning
+    // uchun faqat berilgan qiymat tozalanadi.
+    child_name: info.childName === undefined ? undefined : cleanName(info.childName),
+    device_label: info.deviceLabel == null ? info.deviceLabel : cleanName(info.deviceLabel),
     source: info.source,
     is_active: true,
     last_seen_at: new Date().toISOString(),
@@ -551,7 +553,7 @@ async function issueDeviceToken(o: {
   deviceModel: string;
 }): Promise<string | null> {
   if (!db) return null;
-  const model = (o.deviceModel || "android").slice(0, 60);
+  const model = cleanName(o.deviceModel || "android") || "android";
 
   // Bitta farzand — bitta telefon: yangisi ulanishi bilan eskilari bekor.
   const { error: revErr } = await db
@@ -1331,8 +1333,8 @@ async function ensureBotCommands() {
 //  2) admin Telegram USERNAME bo'yicha aniqlanardi — username o'zgartirilsa
 //     yoki bo'shab qolsa, uni olgan begona odam to'liq admin bo'lardi.
 // Endi admin ro'yxati faqat sirdan o'qiladi va kod hech qachon unga
-// qo'shmaydi. Sir bo'sh bo'lsa (birinchi sozlash) — vaqtincha username.
-const ADMIN_BOOTSTRAP_USERNAME = "ai_loyihachi";
+// qo'shmaydi. Sir bo'sh bo'lsa — admin YO'Q (ilgari bunda username bo'yicha
+// tanilardi; sir 2026-10-08 da o'rnatildi, zaxira yo'l olib tashlandi).
 // Admin chat ID'lari ADMIN_CHAT_IDS sirida saqlanadi (vergul bilan).
 //
 // Ilgari bu bo'sh Set edi va faqat admin botga yozganda to'lardi. Bu
@@ -1354,10 +1356,20 @@ if (ADMIN_CHAT_IDS.size === 0) {
 }
 const USER_LANG: Record<string | number, string> = {};
 
-/** Bu chat admin'nikimi. Username faqat ADMIN_CHAT_IDS umuman yo'q bo'lsa. */
-function isAdminChat(chatId: number | string, username: string): boolean {
-  if (ADMIN_CHAT_IDS.size > 0) return ADMIN_CHAT_IDS.has(String(chatId));
-  return username === ADMIN_BOOTSTRAP_USERNAME;
+/** Bu chat admin'nikimi — faqat raqamli ID, username hech qachon. */
+function isAdminChat(chatId: number | string, _username: string): boolean {
+  return ADMIN_CHAT_IDS.has(String(chatId));
+}
+
+/**
+ * Boshqa odam yozadigan NOM (farzand ismi, telefon modeli, hudud nomi) —
+ * saqlashdan oldin HTML belgilarisiz. Bu nomlar Mini App'ning o'nlab
+ * joyida ko'rsatiladi; bittasida tozalash unutilsa, farzand yoki ulash
+ * kodini olgan begona telefon o'z "ismiga" kod yozib, uni ota-onaning
+ * panelida ishga tushirardi (xavfsizlik tekshiruvi, 2026-10-12).
+ */
+function cleanName(v: unknown, max = 60): string {
+  return String(v ?? "").replace(/[<>"'`\\]/g, "").replace(/[\u0000-\u001f]/g, " ").trim().slice(0, max);
 }
 
 /** Foydalanuvchi yozgan matnni Telegram HTML xabariga xavfsiz qo'yish. */
@@ -1786,7 +1798,21 @@ async function sendMessage(chatId: number | string, htmlText: string, replyMarku
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
-    const result = await res.json();
+    let result = await res.json();
+    // Matnda tozalanmagan belgi qolgan bo'lsa, Telegram butun xabarni rad
+    // etadi. SOS kabi xabar shu sabab yo'qolmasligi uchun teglarsiz qayta
+    // yuboramiz: ko'rinishi oddiyroq, lekin xabar YETADI.
+    if (!result.ok && /can't parse entities/i.test(String(result.description || ""))) {
+      console.error(`Telegram HTML rad etdi, oddiy matn bilan qayta [Chat: ${chatId}]:`, result.description);
+      const oddiy = { ...payload, text: plainText(htmlText).replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&") };
+      delete oddiy.parse_mode;
+      const res2 = await fetch(`${TELEGRAM_API}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(oddiy),
+      });
+      result = await res2.json();
+    }
     if (!result.ok) {
       console.error(`Telegram sendMessage xatolik [Chat: ${chatId}]:`, result);
     }
@@ -5242,7 +5268,7 @@ async function handleRequest(req: Request): Promise<Response> {
     // web_login / web_logout — brauzerda Telegram imzosi yo'q; web_login o'zi
     //   login/parolni tekshiradi va urinishlar soni cheklangan.
     const NO_ACTOR_TYPES = [
-      "device_pair", "parent_pair", "cron_daily_digest", "cron_live_reminder",
+      "device_pair", "device_pair_preview", "parent_pair", "cron_daily_digest", "cron_live_reminder",
       "cron_evening_check", "web_login", "web_logout", "google_login",
       "app_login_start", "app_login_poll",
     ];
@@ -5728,7 +5754,7 @@ async function handleRequest(req: Request): Promise<Response> {
 
       await notifyAdmins(
         "\u{1F389} <b>FARZAND ULANDI</b>\n\n\u{1F466} <b>Farzand:</b> " +
-          (inv.child_name || "Farzand") +
+          tgEsc(inv.child_name || "Farzand") +
           "\n\u{1F511} <b>Oila:</b> <code>" +
           inv.family_code +
           "</code>"
@@ -8178,7 +8204,7 @@ async function handleRequest(req: Request): Promise<Response> {
 
       const plan = await getPlan(actor!.familyCode);
       const childId = String(payload.childId || "").trim();
-      const name = String(payload.name || "").trim();
+      const name = cleanName(payload.name);
       const lat = Number(payload.lat);
       const lng = Number(payload.lng);
       if (!childId || !name || !Number.isFinite(lat) || !Number.isFinite(lng)) {
@@ -9760,6 +9786,36 @@ async function handleRequest(req: Request): Promise<Response> {
     // Bu YAGONA autentifikatsiyasiz endpoint — qurilmada hali hech qanday
     // hisob ma'lumoti yo'q. Shuning uchun kod bir martalik, 15 daqiqalik va
     // urinishlar soni cheklangan.
+    // Ulashdan OLDIN: bu kod kimning oilasiga tegishli. Telefon ulanishdan
+    // oldin "Bu telefon Quddusxon oilasiga «Madina» sifatida ulanadi" deb
+    // so'raydi. Sabab: shield://pair?code=... havolasi kodni o'zi yozib
+    // qo'yadi. Begona odam bolaga "ilovani yangila" deb O'Z kodi bilan havola
+    // yuborsa, bola bitta tugma bosib telefonini begona oilaga ulab qo'yardi
+    // va u bolani kuzata boshlardi. Kod kuydirilmaydi; urinishlar device_pair
+    // bilan BIR XIL kalitda sanaladi — kodlarni taxmin qilish uchun ishlatib
+    // bo'lmaydi.
+    if (payload.type === "device_pair_preview") {
+      if (!db) return jsonRes({ ok: false, error: "Baza ulanmagan" }, 500);
+      const code = String(payload.pairCode || "").trim().toUpperCase();
+      const actorKey = `devpair:${clientKey(req)}`;
+      if (await joinRateLimited(actorKey)) {
+        return jsonRes({ ok: false, error: "Juda ko'p urinish. Keyinroq qayta urinib ko'ring." }, 429);
+      }
+      const { data } = await db.from("device_pair_codes")
+        .select("family_code, child_name, expires_at, used_at").eq("code", code).limit(1);
+      const row = data && data[0];
+      const valid = !!(row && !row.used_at && new Date(row.expires_at).getTime() > Date.now());
+      if (!valid) {
+        await recordJoinAttempt(actorKey, "", false);
+        return jsonRes({ ok: false, error: "Kod yaroqsiz, muddati o'tgan yoki ishlatilgan" }, 403);
+      }
+      const { data: reg } = await db.from("parent_registrations")
+        .select("parent_name, family_name").eq("family_code", row.family_code).limit(1);
+      // Faqat ism (familiyasiz) — kodni bilgan odamga ortiqcha ma'lumot bermaymiz.
+      const ota = cleanName(String((reg && reg[0] && reg[0].parent_name) || "").split(/\s+/)[0], 30);
+      return jsonRes({ ok: true, parentName: ota || null, childName: cleanName(row.child_name || "", 40) || null });
+    }
+
     if (payload.type === "device_pair") {
       const code = String(payload.pairCode || "").trim().toUpperCase();
       const deviceModel = String(payload.deviceModel || "android").trim();
@@ -10081,7 +10137,10 @@ async function handleRequest(req: Request): Promise<Response> {
     // ILOVA ADMINIGA ketardi — ota-ona uni umuman olmasdi. Endi to'g'ri
     // manzilga: farzandning o'z ota-onasiga, so'nggi ma'lum joyi bilan.
     if (payload.type === "child_status_alert") {
-      const statusText = payload.statusText || "Xabar keldi";
+      // Farzand yozgan matn. Tozalanmasa, birgina "<" belgisi (masalan "3<5"
+      // yoki "<3") Telegram'ning HTML tekshiruvidan o'tmay, SOS ota-onaga
+      // UMUMAN yetib bormasdi.
+      const statusText = tgEsc(String(payload.statusText || "Xabar keldi").slice(0, 500));
       // Oila kodi mijozdan emas — lekin farzand uchun uni formuladan emas,
       // child_pairings dagi HAQIQIY juftlikdan olamiz (qarang: resolveActorFamily).
       const familyCode = await resolveActorFamily(actor!);
@@ -10092,7 +10151,7 @@ async function handleRequest(req: Request): Promise<Response> {
       // "Aliyor Valijonov: Maktabga yetib keldi" degan begona ismni ko'rardi.
       const { data: kidName } = await db!.from("child_pairings").select("child_name")
         .eq("family_code", familyCode).eq("child_id", childId).limit(1);
-      const childName = (kidName && kidName[0]?.child_name) || payload.childName || "Farzand";
+      const childName = tgEsc((kidName && kidName[0]?.child_name) || payload.childName || "Farzand");
       const loc = await lastKnownLocation(familyCode, childId);
       const locLine = loc
         ? `\n📍 <b>So'nggi joyi:</b> <a href="https://maps.google.com/?q=${loc.lat},${loc.lng}">xaritada ochish</a>` +
