@@ -6,7 +6,7 @@
 //   deno run -A --no-check tests/security/security_test.ts
 //
 // Haqiqiy baza ham, Telegram ham ishlatilmaydi.
-import { DB, TG, installFetch, STRICT_COLS } from "./fake.ts";
+import { DB, TG, TG_REJECTED, installFetch, STRICT_COLS } from "./fake.ts";
 
 const BOT = "123456:TESTTOKEN";
 const SUPA = "http://fake.supabase";
@@ -250,6 +250,43 @@ check((DB.security_events || []).some((e) => e.kind === "coparent_added"), "19b.
 // 20. Telegram ichidan ro'yxat (seanssiz)
 r = await api({ type: "security_overview", initData: await initData(1001) });
 check(r.ok && r.insideTelegram && r.sessions.every((s: any) => !s.current), "20. Telegram ichidan ochilganda ham ro'yxat chiqadi", r);
+
+// 21. SOS matnida "<" bo'lsa ham ota-onaga YETADI
+t0 = TG.length;
+const rad0 = TG_REJECTED.length;
+r = await api({ type: "child_status_alert", sos: true, statusText: "3<5 yordam kerak <3", initData: await initData(3001) });
+const sos = tgSince(t0).filter((m) => /SHOSHILINCH/.test(m.text || ""));
+check(sos.length >= 2 && TG_REJECTED.length === rad0, "21. '<' belgili SOS barcha ota-onalarga yetdi", { sos: sos.length, rad: TG_REJECTED.slice(rad0) });
+
+// 22. Telefon nomi orqali kod yozib bo'lmaydi
+DB.device_pair_codes.push({ code: "DEVCODE3", family_code: fam1, child_id: null, child_name: null, expires_at: future() });
+r = await api({ type: "device_pair", pairCode: "DEVCODE3", deviceModel: "<img src=x onerror=alert(1)>" }, "10.10.0.1");
+const yangi = (DB.child_pairings || []).find((c) => c.child_id === r.childId);
+check(r.ok && yangi && !/[<>"']/.test(String(yangi.child_name) + String(yangi.device_label)), "22. telefon nomidagi HTML saqlanmaydi", yangi);
+
+// 23. Farzand o'z ismini kodga aylantira olmaydi (qurilma kaliti bilan)
+await api({ type: "child_consent", childName: "<svg onload=alert(1)>Madina", deviceToken: r.deviceToken });
+const ism = (DB.child_pairings || []).find((c) => c.child_id === r.childId)?.child_name;
+check(!/[<>]/.test(String(ism)), "23. farzand ismidagi HTML saqlanmaydi", ism);
+
+// 24. Hudud nomi tozalanadi
+r = await api({ type: "save_geofence_zone", childId: "tg_3001", name: 'Maktab"><img src=x>', lat: 41.3, lng: 69.2, radius: 150, initData: await initData(1001) });
+const zona = (DB.geofence_zones || []).at(-1);
+check(zona && !/[<>"']/.test(String(zona.name)), "24. hudud nomidagi HTML saqlanmaydi", { r, zona });
+
+// 25. Admin faqat ID bilan: "ai_loyihachi" username'i boshqa odamga admin bermaydi
+t0 = TG.length;
+await hook({ message: { message_id: 1, chat: { id: 5555, type: "private" }, from: { id: 5555, username: "ai_loyihachi", first_name: "X" }, text: "/myid" } });
+check(tgSince(t0).some((m) => /ro'yxatida emas/.test(m.text || "")), "25. admin username'i bilan admin bo'lib bo'lmaydi");
+
+// 26. Ulashdan oldingi ko'rinish: kod egasini aytadi, kodni kuydirmaydi
+DB.parent_registrations[0].parent_name = "Quddusxon Ismoilov";
+DB.device_pair_codes.push({ code: "DEVCODE4", family_code: fam1, child_id: "tg_3001", child_name: "Madina", expires_at: future() });
+r = await api({ type: "device_pair_preview", pairCode: "DEVCODE4" }, "10.11.0.1");
+check(r.ok && r.parentName === "Quddusxon" && r.childName === "Madina", "26. kod egasi ko'rinadi (faqat ism)", r);
+check(!DB.device_pair_codes.find((c) => c.code === "DEVCODE4").used_at, "26b. ko'rish kodni kuydirmaydi");
+r = await api({ type: "device_pair_preview", pairCode: "ZZZZZZZZ" }, "10.11.0.1");
+check(r.status === 403 && !r.parentName, "26c. noto'g'ri kod hech narsa aytmaydi", r);
 
 const fail = results.filter(([ok]) => !ok).length;
 console.log(`\n${results.length - fail}/${results.length} o'tdi`);

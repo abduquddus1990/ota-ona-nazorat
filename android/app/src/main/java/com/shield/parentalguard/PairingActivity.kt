@@ -132,7 +132,43 @@ class PairingActivity : Activity() {
         tvPairError.visibility = View.GONE
     }
 
+    /**
+     * Ulashdan oldin: "Bu telefon X oilasiga «Y» sifatida ulanadi" — tasdiq.
+     * Kod havola orqali o'zi yozilgan bo'lishi mumkin; bola kimga
+     * ulanayotganini ko'rmasdan tugma bossa, begona odam uni kuzatib qolardi.
+     */
     private fun bindWithServer(code: String) {
+        clearPairError()
+        btnPair.isEnabled = false
+        btnPair.text = "Tekshirilmoqda... / Проверка..."
+        ioExecutor.execute {
+            val preview = PairingApi.previewPair(code)
+            runOnUiThread {
+                btnPair.isEnabled = true
+                btnPair.text = getString(R.string.btn_pair_label)
+                preview.onSuccess { p ->
+                    val kim = p.parentName?.let { "$it oilasiga" } ?: "ota-onangiz oilasiga"
+                    val sifatida = p.childName?.let { " «$it» sifatida" } ?: ""
+                    AlertDialog.Builder(this)
+                        .setTitle("Kimga ulanyapsiz?")
+                        .setMessage(
+                            "Bu telefon $kim$sifatida ulanadi. Ular telefoningiz joylashuvini ko'ra oladi.\n\n" +
+                                "Kodni faqat o'z ota-onangiz bergan bo'lsa, davom eting. Notanish odam yuborgan havola bo'lsa — rad eting."
+                        )
+                        .setPositiveButton("Ha, ota-onam") { _, _ -> pairNow(code) }
+                        .setNegativeButton("Yo'q") { _, _ -> etPairingCode.setText("") }
+                        .show()
+                }.onFailure {
+                    showPairError(
+                        "Ulanish muvaffaqiyatsiz. Kod noto'g'ri, eskirgan yoki allaqachon ishlatilgan. / " +
+                            "Не удалось подключиться. Код неверный, устарел или уже использован."
+                    )
+                }
+            }
+        }
+    }
+
+    private fun pairNow(code: String) {
         clearPairError()
         btnPair.isEnabled = false
         btnPair.text = "Ulanmoqda... / Подключение..."

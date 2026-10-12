@@ -2,6 +2,18 @@
 // supabase-js yuboradigan so'rovlarning faqat server ishlatadigan qismi.
 export const DB: Record<string, any[]> = {};
 export const TG: any[] = [];
+export const TG_REJECTED: any[] = [];
+
+function htmlOk(t: string): boolean {
+  const re = /<\/?([a-z-]+)(\s[^<>]*)?>/gi;
+  const ruxsat = new Set(["b", "strong", "i", "em", "u", "s", "a", "code", "pre", "blockquote", "tg-spoiler", "span"]);
+  let qoldiq = t;
+  for (const m of t.matchAll(re)) {
+    if (!ruxsat.has(m[1].toLowerCase())) return false;
+    qoldiq = qoldiq.replace(m[0], "");
+  }
+  return !/[<>]/.test(qoldiq);
+}
 
 const DEFAULTS: Record<string, Record<string, unknown>> = {
   device_tokens: { is_active: true },
@@ -179,6 +191,11 @@ export function installFetch(supabaseUrl: string) {
       const method = href.split("/").pop();
       let body: any = {};
       try { body = init.body ? JSON.parse(String(init.body)) : {}; } catch { body = { raw: String(init.body) }; }
+      // Haqiqiy Telegram kabi: HTML'da ruxsat etilmagan "<" bo'lsa xabar rad etiladi.
+      if (body.parse_mode === "HTML" && typeof body.text === "string" && !htmlOk(body.text)) {
+        TG_REJECTED.push(body);
+        return json({ ok: false, error_code: 400, description: "Bad Request: can't parse entities: unsupported start tag" }, 400);
+      }
       TG.push({ method, ...body });
       return json({ ok: true, result: method === "getChat" ? { id: body.chat_id } : { message_id: TG.length } });
     }

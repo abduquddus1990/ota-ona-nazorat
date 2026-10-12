@@ -143,6 +143,18 @@ function shareOrDownloadPage() {
 const DTS_KNOWLEDGE_BASE = [{"grade": 1, "subject": "Matematika", "chapter": "20 ichida qo'shish va ayirish", "page": 35, "rule": "Sonlarni qo'shishda o'nlik hosil qilish: masalan, 8 + 5 ni hisoblash uchun 5 soni 2 va 3 ga ajratiladi. 8 + 2 = 10, 10 + 3 = 13.", "formula": "a + b = c (Qo'shiluvchi + Qo'shiluvchi = Yig'indi)", "keywords": ["qo'shish", "ayirish", "1-sinf", "yig'indi", "ayirma", "sanoq"]}, {"grade": 2, "subject": "Matematika", "chapter": "Ko'paytirish va Bo'lish jadvali", "page": 48, "rule": "Ko'paytirish — bir xil qo'shiluvchilar yig'indisidir. Masalan: 3 * 4 = 3 + 3 + 3 + 3 = 12. Ko'paytuvchilar o'rni almashgani bilan ko'paytma o'zgarmaydi (a * b = b * a).", "formula": "a * b = c (Ko'paytuvchi * Ko'paytuvchi = Ko'paytma)", "keywords": ["ko'paytirish", "bo'lish", "jadval", "2-sinf", "ko'paytma"]}, {"grade": 3, "subject": "Ona tili va O'qish", "chapter": "So'z turkumlari: Ot, Sifat, Fe'l", "page": 56, "rule": "Shaxs va narsa nomini bildirgan so'zlar Ot (Kim? Nima?), belgisini bildirgan so'zlar Sifat (Qanday? Qanaqa?), harakatini bildirgan so'zlar Fe'l (Nima qildi? Nima qilyapti?) deyiladi.", "formula": "Ot: Kim? Nima? | Sifat: Qanday? | Fe'l: Nima qildi?", "keywords": ["ot", "sifat", "fe'l", "ona tili", "3-sinf", "so'z turkumi"]}, {"grade": 4, "subject": "Matematika", "chapter": "Ko'p xonali sonlar va Geometrik shakllar", "page": 74, "rule": "To'g'ri to'rtburchakning perimetri barcha tomonlari yig'indisiga teng: P = 2 * (a + b). Yuzi esa bo'yi va eni ko'paytmasiga teng: S = a * b.", "formula": "P = 2(a + b); S = a * b", "keywords": ["perimetr", "yuza", "to'g'ri to'rtburchak", "4-sinf", "geometriya"]}, {"grade": 5, "subject": "Matematika", "chapter": "Oddiy va O'nli Kasrlar", "page": 42, "rule": "Har xil maxrajli oddiy kasrlarni qo'shish yoki ayirish uchun avval ularni eng kichik umumiy maxrajga (EKUK) keltirish, so'ng suratlarni qo'shish yoki ayirish kerak. Kasrlarni ko'paytirishda surat suratga, maxraj maxrajga ko'paytiriladi.", "formula": "a/b + c/d = (a*d + c*b)/(b*d); (a/b) * (c/d) = (a*c)/(b*d)", "keywords": ["kasr", "oddiy kasr", "o'nli kasr", "maxraj", "surat", "5-sinf", "ekuk", "ekub"]}, {"grade": 5, "subject": "Ingliz tili", "chapter": "Present Simple Tense (Hozirgi oddiy zamon)", "page": 28, "rule": "Doimiy takrorlanadigan odatlar va faktlar uchun Present Simple ishlatiladi. He/She/It olmoshlaridan so'ng fe'lga -s yoki -es qo'shimchasi qo'shiladi. Inkor shakli: don't / doesn't + V1.", "formula": "Subject + Verb(s/es) | I work, He works | Do/Does + Subject + Verb?", "keywords": ["present simple", "ingliz tili", "5-sinf", "grammar", "verb", "tenses"]}, {"grade": 6, "subject": "Matematika", "chapter": "Nisbat, Proporsiya va Foizlar", "page": 64, "rule": "Ikki nisbatning tengligi proporsiya deyiladi: a/b = c/d. Proporsiyaning asosiy xossasi: chetki hadlar ko'paytmasi o'rta hadlar ko'paytmasiga teng (a * d = b * c). Sonning foizini topish uchun sonni foizga ko'paytirib 100 ga bo'linadi.", "formula": "a/b = c/d => a*d = b*c; A sonining p% = (A * p) / 100", "keywords": ["proporsiya", "foiz", "nisbat", "6-sinf", "matematika", "tenglama"]}, {"grade": 6, "subject": "Botanika", "chapter": "O'simlik hujayrasi va Fotosintez", "page": 38, "rule": "O'simliklar quyosh nuri, suv va karbonat angidrid (CO2) yordamida xlorofill orqali organik moddalar va kislorod (O2) ishlab chiqaradi. Bu jarayon fotosintez deyiladi.", "formula": "6CO2 + 6H2O + Quyosh nuri => C6H12O6 (Glyukoza) + 6O2", "keywords": ["fotosintez", "botanika", "hujayra", "xlorofill", "kislorod", "6-sinf"]}, {"grade": 7, "subject": "Algebra", "chapter": "Chiziqli tenglamalar va Qisqa ko'paytirish formulalari", "page": 55, "rule": "Qisqa ko'paytirish formulalari hisoblashni osonlashtiradi: Yig'indining kvadrati (a+b)^2 = a^2 + 2ab + b^2. Kvadratlar ayirmasi: a^2 - b^2 = (a-b)(a+b).", "formula": "(a + b)^2 = a^2 + 2ab + b^2; a^2 - b^2 = (a - b)(a + b)", "keywords": ["algebra", "qisqa ko'paytirish", "7-sinf", "kvadrat", "tenglama", "ko'phad"]}, {"grade": 7, "subject": "Fizika", "chapter": "Tezlik, Zichlik va Nyutonning 1-qonuni", "page": 40, "rule": "Tezlik — bosib o'tilgan yo'lning ketgan vaqtga nisbatidir: v = S / t. Jismning zichligi esa massaning hajmga nisbatidir: rho = m / V. Nyuton 1-qonuni: Jismga tashqi kuch ta'sir etmasa, u tinch turadi yoki to'g'ri chiziqli tekis harakatlanadi.", "formula": "v = S / t; rho = m / V; F = m * a", "keywords": ["fizika", "tezlik", "zichlik", "nyuton", "massa", "7-sinf", "kuch"]}, {"grade": 8, "subject": "Geometriya", "chapter": "Pifagor Teoremasi va To'g'ri burchakli uchburchak", "page": 78, "rule": "To'g'ri burchakli uchburchakda gipotenuza kvadratining qiymati katetlar kvadratlari yig'indisiga teng: c^2 = a^2 + b^2. Uchburchak ichki burchaklari yig'indisi har doim 180 gradusga teng.", "formula": "c^2 = a^2 + b^2; alpha + beta + gamma = 180°", "keywords": ["pifagor", "gipotenuza", "katet", "uchburchak", "geometriya", "8-sinf"]}, {"grade": 8, "subject": "Fizika", "chapter": "Elektr toki, Kuchlanish va Om qonuni", "page": 92, "rule": "Zanjir qismidagi tok kuchi (I) kuchlanishga (U) to'g'ri proporsional va qarshilikka (R) teskari proporsionaldir: I = U / R. Elektr toki zaryadlangan zarrachalarning tartibli harakatidir.", "formula": "I = U / R; P = U * I (Elektr quvvati)", "keywords": ["om qonuni", "tok kuchi", "kuchlanish", "qarshilik", "fizika", "8-sinf", "elektr"]}, {"grade": 8, "subject": "Kimyo", "chapter": "Mendeleyev davriy jadvali va Kimyoviy bog'lanish", "page": 62, "rule": "Elementlarning xossalari ularning atom yadrosi zaryadiga davriy bog'liqdir. Valentlik — atomning boshqa atomlarni biriktirib olish qobiliyati. Suv molekulasi H2O kovalent qutbli bog'lanishga ega.", "formula": "M(H2O) = 1*2 + 16 = 18 g/mol; n = m / M", "keywords": ["kimyo", "mendeleyev", "valentlik", "atom", "molekula", "8-sinf", "davriy qonun"]}, {"grade": 9, "subject": "Algebra", "chapter": "Kvadrat tenglamalar va Viyet Teoremasi", "page": 85, "rule": "ax^2 + bx + c = 0 kvadrat tenglama diskriminant D = b^2 - 4ac orqali yechiladi. D > 0 bo'lsa 2 ta ildiz, D = 0 bo'lsa 1 ta ildiz, D < 0 bo'lsa haqiqiy ildiz yo'q. Viyet teoremasi: x1 + x2 = -b/a, x1 * x2 = c/a.", "formula": "D = b^2 - 4ac; x = (-b +- sqrt(D)) / (2a); x1+x2 = -b/a, x1*x2 = c/a", "keywords": ["kvadrat tenglama", "diskriminant", "viyet", "ildiz", "algebra", "9-sinf"]}, {"grade": 10, "subject": "Algebra va Analiz", "chapter": "Trigonometrik funksiyalar va Asosiy ayniyatlar", "page": 110, "rule": "Asosiy trigonometrik ayniyat: sin^2(x) + cos^2(x) = 1. Tangens tg(x) = sin(x) / cos(x). Ikkilangan burchak formulasi: sin(2x) = 2*sin(x)*cos(x).", "formula": "sin^2(alpha) + cos^2(alpha) = 1; tg(alpha) = sin(alpha)/cos(alpha)", "keywords": ["trigonometriya", "sinus", "kosinus", "tangens", "10-sinf", "analiz"]}, {"grade": 10, "subject": "Fizika", "chapter": "Molekulyar fizika va Termodinamika qonunlari", "page": 95, "rule": "Ideal gaz holat tenglamasi (Mendeleyev-Klapeyron): P * V = (m/M) * R * T. Termodinamikaning 1-qonuni: Tizimga berilgan issiqlik miqdori uning ichki energiyasini oshirishga va tashqi kuchlarga qarshi ish bajarishga sarflanadi (Q = deltaU + A).", "formula": "P * V = nu * R * T; Q = deltaU + A", "keywords": ["termodinamika", "ideal gaz", "issiqlik", "fizika", "10-sinf", "klapeyron"]}, {"grade": 11, "subject": "Algebra va Analiz", "chapter": "Hosilalar va Integrallar (Matematik analiz)", "page": 130, "rule": "Hosila — funksiyaning o'zgarish tezligini ifodalaydi. (x^n)' = n * x^(n-1). Boshlang'ich funksiya (aniqmas integral) esa differensiallashning teskarisidir: integral(x^n dx) = (x^(n+1))/(n+1) + C.", "formula": "(x^n)' = n * x^(n-1); (sin x)' = cos x; integral(x^n dx) = x^(n+1)/(n+1) + C", "keywords": ["hosila", "integral", "differensial", "11-sinf", "analiz", "matematika"]}, {"grade": 11, "subject": "Fizika", "chapter": "Optika, Kvant fizikasi va Eynshteyn formulasi", "page": 145, "rule": "Yorug'lik ham to'lqin, ham zarracha (foton) tabiatiga ega (korpuskulyar-to'lqin dualizmi). Foton energiyasi E = h * nu ga teng. Eynshteynning mashhur massa va energiya ekvivalentligi formulasi: E = m * c^2.", "formula": "E = h * nu; E = m * c^2; lambda = c / nu", "keywords": ["kvant", "foton", "eynshteyn", "optika", "fizika", "11-sinf", "yorug'lik"]}, {"grade": 11, "subject": "Informatika", "chapter": "Python Dasturlash & Sun'iy Intellekt Asoslari", "page": 80, "rule": "Pythonda ma'lumotlar turlari (int, float, str, list, dict). Shart operatorlari (if-elif-else) va sikllar (for, while). Sun'iy intellekt (Machine Learning) ma'lumotlar to'plami (dataset) orqali naqshlarni o'rganadi.", "formula": "def calculate_dts(score): return 'A' if score >= 86 else 'B'", "keywords": ["python", "dasturlash", "informatika", "11-sinf", "ai", "algoritm"]}];
 
 
+/**
+ * Boshqa odam yozgan NOM (farzand ismi, telefon nomi, hudud nomi) — HTML
+ * belgilarisiz. Bu nomlar sahifaning o'nlab joyida ko'rsatiladi va har
+ * birida escapeHtml'ni eslab qolish ishonchsiz: bittasi unutilsa, farzand
+ * (yoki ulash kodini olgan begona telefon) o'z ismiga kod yozib, uni
+ * ota-onaning panelida ishga tushirardi. Shuning uchun nom serverdan
+ * kelishi bilan bir marta tozalanadi. Ismga bu belgilar kerak emas.
+ */
+function tozaNom(v, max) {
+    return String(v == null ? '' : v).replace(/[<>"'`\\]/g, '').slice(0, max || 60);
+}
+
 function escapeHtml(str) {
     if (str == null) return '';
     return String(str)
@@ -653,7 +665,14 @@ function loadChildrenDatabase() {
         const saved = localStorage.getItem('qalqon_children_database');
         if (saved) {
             const parsed = JSON.parse(saved);
-            if (parsed && Object.keys(parsed).length > 0) return parsed;
+            if (parsed && Object.keys(parsed).length > 0) {
+                Object.values(parsed).forEach(c => {
+                    if (!c) return;
+                    c.name = tozaNom(c.name); c.name_ru = tozaNom(c.name_ru || c.name);
+                    if (c.username) c.username = tozaNom(c.username);
+                });
+                return parsed;
+            }
         }
     } catch(e) {}
     // Demo farzand yo'q: ro'yxat serverdan (syncChildrenFromServer) keladi.
@@ -705,13 +724,13 @@ function buildChildRecord(serverChild, existing) {
     // joylashuv serverdan (child_overview) keladi, mahalliy namunadan emas.
     const base = existing || JSON.parse(JSON.stringify(EMPTY_CHILD_TEMPLATE));
     base.id = serverChild.child_id;
-    base.name = serverChild.child_name || base.name;
+    base.name = tozaNom(serverChild.child_name || base.name);
     base.name_ru = base.name;
     if (serverChild.grade) base.grade = serverChild.grade;
     base.schoolShift = serverChild.school_shift || null;
     base.schoolArriveBy = serverChild.school_arrive_by || null;
-    if (serverChild.telegram_username) base.username = '@' + serverChild.telegram_username;
-    else if (serverChild.device_label) base.username = serverChild.device_label;
+    if (serverChild.telegram_username) base.username = '@' + tozaNom(serverChild.telegram_username, 40);
+    else if (serverChild.device_label) base.username = tozaNom(serverChild.device_label);
     // Ota-ona qo'shgan, lekin farzand hali rozilik bermagan yozuv.
     base.pending = (serverChild.source === 'parent_invite');
     return base;
@@ -1167,8 +1186,8 @@ async function loadGeofences() {
         const data = await resp.json();
         if (!data || !data.ok) return;
 
-        const zones = data.zones || [];
-        const alerts = data.alerts || [];
+        const zones = (data.zones || []).map(z => Object.assign({}, z, { name: tozaNom(z.name) }));
+        const alerts = (data.alerts || []).map(a => Object.assign({}, a, { zone_name: tozaNom(a.zone_name) }));
         hududlarniChiz(zones, alerts);
 
         if (zones.length === 0) {
@@ -3800,7 +3819,7 @@ function renderActiveChild() {
     if (geofenceList && child.location && Array.isArray(child.location.geofences)) {
         geofenceList.innerHTML = child.location.geofences.map(geo => `
             <div class="flex items-center justify-between p-2 rounded-lg bg-slate-900/60 border border-slate-800">
-                <span class="text-xs font-semibold text-slate-300">${geo.name}</span>
+                <span class="text-xs font-semibold text-slate-300">${escapeHtml(geo.name)}</span>
                 <span class="text-[10px] font-bold ${geo.color}">${geo.status}</span>
             </div>
         `).join('');
@@ -4057,7 +4076,7 @@ function appendUserMessage(text, imageBase64) {
     msg.innerHTML = `
         <div class="bg-emerald-500 text-white rounded-2xl rounded-tr-sm p-3 max-w-[85%] text-xs shadow-md">
             ${imgHtml}
-            ${text ? `<div>${text}</div>` : ""}
+            ${text ? `<div>${escapeHtml(text)}</div>` : ""}
         </div>
     `;
     chat.appendChild(msg);
@@ -6424,14 +6443,15 @@ async function loadZoneList() {
             body: JSON.stringify({ type: 'list_geofences', childId: currentChildKey })
         });
         const d = await resp.json();
-        const zones = d.zones || [];
+        const zones = (d.zones || []).map(z => Object.assign({}, z, { name: tozaNom(z.name) }));
+        zonaRoyxati = zones;
 
         if (!zones.length) {
             list.innerHTML = '<div class="text-[10px] text-slate-500 p-2.5 rounded-xl bg-slate-900/50 border border-slate-800">Hali hudud qo\'shilmagan.</div>';
             return;
         }
 
-        list.innerHTML = zones.map(z =>
+        list.innerHTML = zones.map((z, i) =>
             '<div class="flex items-center justify-between p-2.5 rounded-xl bg-slate-900/70 border border-slate-800">' +
                 '<div class="min-w-0">' +
                     '<div class="text-[11px] font-bold text-white">' + escapeHtml(z.name) + '</div>' +
@@ -6439,8 +6459,10 @@ async function loadZoneList() {
                         (z.arrive_by ? ' · kelish: ' + z.arrive_by : '') + '</div>' +
                 '</div>' +
                 '<div class="flex gap-1.5">' +
-                    '<button onclick="editZone(' + JSON.stringify(JSON.stringify(z)) + ')" class="px-2 py-1 rounded-lg bg-slate-800 border border-slate-700 text-[10px] text-slate-200">✏️</button>' +
-                    '<button onclick="deleteZone(' + JSON.stringify(z.name) + ')" class="px-2 py-1 rounded-lg bg-rose-500/15 border border-rose-500/40 text-[10px] text-rose-300">🗑</button>' +
+                    // Ilgari onclick="deleteZone("Maktab")" chiqardi: ichki qo'shtirnoq
+                    // atributni yopib, ✏️ va 🗑 umuman ishlamasdi. Endi faqat raqam.
+                    '<button onclick="editZone(zonaRoyxati[' + i + '])" class="px-2 py-1 rounded-lg bg-slate-800 border border-slate-700 text-[10px] text-slate-200">✏️</button>' +
+                    '<button onclick="deleteZone(zonaRoyxati[' + i + '].name)" class="px-2 py-1 rounded-lg bg-rose-500/15 border border-rose-500/40 text-[10px] text-rose-300">🗑</button>' +
                 '</div>' +
             '</div>').join('');
     } catch (e) {
@@ -6448,9 +6470,11 @@ async function loadZoneList() {
     }
 }
 
-function editZone(json) {
-    let z;
-    try { z = JSON.parse(json); } catch (e) { return; }
+// Hudud ro'yxatidagi tugmalar shu massivdagi tartib raqami bilan ishlaydi.
+let zonaRoyxati = [];
+
+function editZone(z) {
+    if (!z) return;
     document.getElementById('zoneName').value = z.name || '';
     document.getElementById('zoneRadius').value = z.radius_m || 150;
     document.getElementById('zoneArriveBy').value = z.arrive_by || '';
