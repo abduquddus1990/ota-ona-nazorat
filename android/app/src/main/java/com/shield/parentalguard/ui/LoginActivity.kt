@@ -8,12 +8,14 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.shield.parentalguard.PairingActivity
 import com.shield.parentalguard.R
 import com.shield.parentalguard.network.AppAuthApi
 import com.shield.parentalguard.network.DeviceCredentials
+import com.shield.parentalguard.network.PairingApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -114,6 +116,28 @@ class LoginActivity : AppCompatActivity() {
             tvStatus.text = getString(R.string.login_code_fill)
             return
         }
+        setBusy(true, getString(R.string.login_checking))
+        lifecycleScope.launch {
+            // Farzand kodi bo'lsa — kimga ulanayotganini ko'rsatib so'raymiz:
+            // begona odam bolaga "shu kodni kirit" deb O'Z kodini bersa, telefon
+            // uning oilasiga ulanib, u bolani kuzatib qolardi. Ota-ona kodi
+            // bo'lsa (ko'rinish 403 qaytaradi) — avvalgidek darhol kiradi.
+            val preview = withContext(Dispatchers.IO) { PairingApi.previewPair(code) }.getOrNull()
+            if (preview != null) {
+                setBusy(false, "")
+                AlertDialog.Builder(this@LoginActivity)
+                    .setTitle("Kimga ulanyapsiz?")
+                    .setMessage(preview.confirmMessage())
+                    .setPositiveButton("Ha, ota-onam") { _, _ -> redeemCode(code) }
+                    .setNegativeButton("Yo'q") { _, _ -> etParentCode.setText("") }
+                    .show()
+            } else {
+                redeemCode(code)
+            }
+        }
+    }
+
+    private fun redeemCode(code: String) {
         setBusy(true, getString(R.string.login_checking))
         lifecycleScope.launch {
             val result = withContext(Dispatchers.IO) { AppAuthApi.loginWithCode(code) }

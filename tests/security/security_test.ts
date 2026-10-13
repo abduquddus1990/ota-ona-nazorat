@@ -262,7 +262,7 @@ check(sos.length >= 2 && TG_REJECTED.length === rad0, "21. '<' belgili SOS barch
 DB.device_pair_codes.push({ code: "DEVCODE3", family_code: fam1, child_id: null, child_name: null, expires_at: future() });
 r = await api({ type: "device_pair", pairCode: "DEVCODE3", deviceModel: "<img src=x onerror=alert(1)>" }, "10.10.0.1");
 const yangi = (DB.child_pairings || []).find((c) => c.child_id === r.childId);
-check(r.ok && yangi && !/[<>"']/.test(String(yangi.child_name) + String(yangi.device_label)), "22. telefon nomidagi HTML saqlanmaydi", yangi);
+check(r.ok && yangi && !/[<>"]/.test(String(yangi.child_name) + String(yangi.device_label)), "22. telefon nomidagi HTML saqlanmaydi", yangi);
 
 // 23. Farzand o'z ismini kodga aylantira olmaydi (qurilma kaliti bilan)
 await api({ type: "child_consent", childName: "<svg onload=alert(1)>Madina", deviceToken: r.deviceToken });
@@ -272,7 +272,7 @@ check(!/[<>]/.test(String(ism)), "23. farzand ismidagi HTML saqlanmaydi", ism);
 // 24. Hudud nomi tozalanadi
 r = await api({ type: "save_geofence_zone", childId: "tg_3001", name: 'Maktab"><img src=x>', lat: 41.3, lng: 69.2, radius: 150, initData: await initData(1001) });
 const zona = (DB.geofence_zones || []).at(-1);
-check(zona && !/[<>"']/.test(String(zona.name)), "24. hudud nomidagi HTML saqlanmaydi", { r, zona });
+check(zona && !/[<>"]/.test(String(zona.name)), "24. hudud nomidagi HTML saqlanmaydi", { r, zona });
 
 // 25. Admin faqat ID bilan: "ai_loyihachi" username'i boshqa odamga admin bermaydi
 t0 = TG.length;
@@ -287,6 +287,12 @@ check(r.ok && r.parentName === "Quddusxon" && r.childName === "Madina", "26. kod
 check(!DB.device_pair_codes.find((c) => c.code === "DEVCODE4").used_at, "26b. ko'rish kodni kuydirmaydi");
 r = await api({ type: "device_pair_preview", pairCode: "ZZZZZZZZ" }, "10.11.0.1");
 check(r.status === 403 && !r.parentName, "26c. noto'g'ri kod hech narsa aytmaydi", r);
+
+// 27. O'zbekcha apostrofli ism buzilmaydi
+DB.device_pair_codes.push({ code: "DEVCODE5", family_code: fam1, child_id: null, child_name: null, expires_at: future() });
+r = await api({ type: "device_pair", pairCode: "DEVCODE5", deviceModel: "Redmi" }, "10.12.0.1");
+await api({ type: "child_consent", childName: "O'g'iloy", deviceToken: r.deviceToken });
+check((DB.child_pairings || []).find((c) => c.child_id === r.childId)?.child_name === "O'g'iloy", "27. apostrofli ism (O'g'iloy) o'zgarmay saqlanadi");
 
 const fail = results.filter(([ok]) => !ok).length;
 console.log(`\n${results.length - fail}/${results.length} o'tdi`);
