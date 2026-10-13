@@ -30,7 +30,15 @@ object PairingApi {
         val familyCode: String
     )
 
-    data class PairPreview(val parentName: String?, val childName: String?)
+    data class PairPreview(val parentName: String?, val childName: String?) {
+        /** Ulashdan oldingi savol — PairingActivity va LoginActivity'da bir xil. */
+        fun confirmMessage(): String {
+            val kim = parentName?.let { "$it oilasiga" } ?: "ota-onangiz oilasiga"
+            val sifatida = childName?.let { " «$it» sifatida" } ?: ""
+            return "Bu telefon $kim$sifatida ulanadi. Ular telefoningiz joylashuvini ko'ra oladi.\n\n" +
+                "Kodni faqat o'z ota-onangiz bergan bo'lsa, davom eting. Notanish odam yuborgan kod yoki havola bo'lsa — rad eting."
+        }
+    }
 
     /**
      * Kod kimning oilasiga tegishli — ulashdan OLDIN ko'rsatish uchun

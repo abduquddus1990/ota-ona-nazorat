@@ -149,10 +149,12 @@ const DTS_KNOWLEDGE_BASE = [{"grade": 1, "subject": "Matematika", "chapter": "20
  * birida escapeHtml'ni eslab qolish ishonchsiz: bittasi unutilsa, farzand
  * (yoki ulash kodini olgan begona telefon) o'z ismiga kod yozib, uni
  * ota-onaning panelida ishga tushirardi. Shuning uchun nom serverdan
- * kelishi bilan bir marta tozalanadi. Ismga bu belgilar kerak emas.
+ * kelishi bilan bir marta tozalanadi. Apostrof QOLADI: o'zbekcha ismlarda
+ * u kerak (G'ayrat, O'g'iloy). Shu sabab ismni onclick ichiga qo'yish
+ * taqiqlangan — tugmalar ro'yxatdagi tartib raqami bilan ishlaydi.
  */
 function tozaNom(v, max) {
-    return String(v == null ? '' : v).replace(/[<>"'`\\]/g, '').slice(0, max || 60);
+    return String(v == null ? '' : v).replace(/[<>"`\\]/g, '').slice(0, max || 60);
 }
 
 function escapeHtml(str) {
@@ -5153,6 +5155,10 @@ async function startTelegramLink() {
     }, 6000);
 }
 
+// Ro'yxat tugmalari shu massivlardagi tartib raqami bilan ishlaydi.
+let qurilmaRoyxati = [];
+let otaOnaRoyxati = [];
+
 async function renderDevices() {
     const box = document.getElementById('devicesList');
     if (!box) return;
@@ -5178,6 +5184,7 @@ async function renderDevices() {
     }
 
     const list = Array.isArray(d.devices) ? d.devices : [];
+    qurilmaRoyxati = list;
     if (!list.length) {
         box.innerHTML = '<div class="text-[10px] text-slate-400 leading-relaxed">' +
             'Hali birorta qurilma ulanmagan.<br>' +
@@ -5186,7 +5193,7 @@ async function renderDevices() {
         return;
     }
 
-    box.innerHTML = list.map(dev => {
+    box.innerHTML = list.map((dev, i) => {
         const oxirgi = dev.lastSeenAt ? qachonBoldi(dev.lastSeenAt) : null;
         const ulangan = dev.pairedAt ? qachonBoldi(dev.pairedAt) : null;
         // Uzoq jim turgan qurilmani ajratib ko'rsatamiz: aynan shunday
@@ -5204,7 +5211,10 @@ async function renderDevices() {
                     '<div class="text-[11px] font-bold text-white truncate">' + escapeHtml(dev.childName) + '</div>' +
                     '<div class="text-[10px] text-slate-400 truncate">' + escapeHtml(dev.model) + '</div>' +
                 '</div>' +
-                '<button onclick="revokeDevice(\'' + dev.id + '\', \'' + escapeHtml(dev.childName).replace(/'/g, "\\'") + '\')" ' +
+                // Ism onclick ichiga qo'yilmaydi: escapeHtml apostrofni &#39; qiladi,
+                // brauzer esa uni qaytadan ' ga aylantirib, JS satrini sindirardi —
+                // "O'g'iloy" ning tugmasi ishlamas, maxsus ism esa kod ishga tushirardi.
+                '<button onclick="revokeDevice(qurilmaRoyxati[' + i + '].id, qurilmaRoyxati[' + i + '].childName)" ' +
                     'class="shrink-0 px-2.5 py-1.5 rounded-lg bg-rose-500/15 border border-rose-500/40 text-rose-300 text-[10px] font-bold hover:bg-rose-500/25 transition">Uzish</button>' +
             '</div>' +
             '<div class="text-[10px] text-slate-500">' + holat +
@@ -5246,12 +5256,13 @@ async function renderCoParents() {
     }
 
     const list = Array.isArray(d.parents) ? d.parents : [];
+    otaOnaRoyxati = list;
     const menAsosiy = list.some(p => p.main && p.me);
-    box.innerHTML = list.map(p => {
+    box.innerHTML = list.map((p, i) => {
         const belgi = p.main ? '👨 Oila egasi' : '👩 Qo\'shilgan';
         const men = p.me ? ' <span class="text-cyan-300">(siz)</span>' : '';
         const olib = (menAsosiy && !p.main && p.id)
-            ? '<button onclick="removeCoParent(' + Number(p.id) + ', \'' + escapeHtml(p.name).replace(/'/g, "\\'") + '\')" ' +
+            ? '<button onclick="removeCoParent(otaOnaRoyxati[' + i + '].id, otaOnaRoyxati[' + i + '].name)" ' +
               'class="shrink-0 px-2.5 py-1.5 rounded-lg bg-rose-500/15 border border-rose-500/40 text-rose-300 text-[10px] font-bold hover:bg-rose-500/25 transition">Olib tashlash</button>'
             : '';
         return '' +

@@ -147,14 +147,9 @@ class PairingActivity : Activity() {
                 btnPair.isEnabled = true
                 btnPair.text = getString(R.string.btn_pair_label)
                 preview.onSuccess { p ->
-                    val kim = p.parentName?.let { "$it oilasiga" } ?: "ota-onangiz oilasiga"
-                    val sifatida = p.childName?.let { " «$it» sifatida" } ?: ""
                     AlertDialog.Builder(this)
                         .setTitle("Kimga ulanyapsiz?")
-                        .setMessage(
-                            "Bu telefon $kim$sifatida ulanadi. Ular telefoningiz joylashuvini ko'ra oladi.\n\n" +
-                                "Kodni faqat o'z ota-onangiz bergan bo'lsa, davom eting. Notanish odam yuborgan havola bo'lsa — rad eting."
-                        )
+                        .setMessage(p.confirmMessage())
                         .setPositiveButton("Ha, ota-onam") { _, _ -> pairNow(code) }
                         .setNegativeButton("Yo'q") { _, _ -> etPairingCode.setText("") }
                         .show()
