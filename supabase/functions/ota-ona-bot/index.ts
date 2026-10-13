@@ -1367,9 +1367,10 @@ function isAdminChat(chatId: number | string, _username: string): boolean {
  * joyida ko'rsatiladi; bittasida tozalash unutilsa, farzand yoki ulash
  * kodini olgan begona telefon o'z "ismiga" kod yozib, uni ota-onaning
  * panelida ishga tushirardi (xavfsizlik tekshiruvi, 2026-10-12).
+ * Apostrof qoladi — o'zbekcha ismlarda kerak (G'ayrat, Bog'cha).
  */
 function cleanName(v: unknown, max = 60): string {
-  return String(v ?? "").replace(/[<>"'`\\]/g, "").replace(/[\u0000-\u001f]/g, " ").trim().slice(0, max);
+  return String(v ?? "").replace(/[<>"`\\]/g, "").replace(/[\u0000-\u001f]/g, " ").trim().slice(0, max);
 }
 
 /** Foydalanuvchi yozgan matnni Telegram HTML xabariga xavfsiz qo'yish. */
