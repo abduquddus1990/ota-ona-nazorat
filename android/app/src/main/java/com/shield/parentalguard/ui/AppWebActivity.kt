@@ -3,6 +3,10 @@ package com.shield.parentalguard.ui
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.os.SystemClock
+import android.view.ViewGroup
 import android.webkit.JavascriptInterface
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
@@ -32,6 +36,23 @@ class AppWebActivity : AppCompatActivity() {
 
     private lateinit var web: WebView
     private var filePicker: ValueCallback<Array<Uri>>? = null
+
+    // ----------------------------------------------------- kirish animatsiyasi
+    //
+    // Mini App internetdan yuklanadi va bunga bir necha soniya ketadi. Ilgari
+    // shu vaqt davomida to'q, bo'sh ekran turardi, animatsiya esa sahifa
+    // yuklangandan KEYIN boshlanardi — ya'ni u yuklanishni yashirmasdi.
+    // Endi animatsiya ilovaning o'z fayllaridan (assets/splash) darhol
+    // o'ynaydi, panel esa orqada yuklanadi. Sahifa "tayyorman" deganda
+    // (QalqonNative.panelReady) va animatsiya kamida o'z vaqtini o'ynagach,
+    // u silliq yo'qoladi. Yuklanish uzoq cho'zilsa, animatsiya oxirgi kadrda
+    // kutib turadi.
+    private var splashView: WebView? = null
+    private val handler = Handler(Looper.getMainLooper())
+    private var splashBoshi = 0L
+    private var splashKamida = 0L
+    private var panelYuklandi = false
+    private var otkazishSoraldi = false
 
     private val pickFiles = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         val data = result.data
@@ -81,6 +102,7 @@ class AppWebActivity : AppCompatActivity() {
         setContentView(R.layout.activity_app_web)
         web = findViewById(R.id.webView)
         tizimPanellariUchunJoyAjrat(findViewById(R.id.webRoot))
+        splashniBoshla(role)
 
         web.settings.apply {
             javaScriptEnabled = true
@@ -105,6 +127,25 @@ class AppWebActivity : AppCompatActivity() {
             override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
                 ishonchliSahifa = ishonchliHost(android.net.Uri.parse(url ?: "").host.orEmpty())
                 super.onPageStarted(view, url, favicon)
+            }
+
+            // Zaxira: sahifa yuklandi-yu, "tayyorman" demadi (masalan, eski
+            // keshdagi versiya) — animatsiya abadiy turib qolmasin.
+            override fun onPageFinished(view: WebView?, url: String?) {
+                super.onPageFinished(view, url)
+                handler.postDelayed({ panelTayyor() }, 10_000)
+            }
+
+            // Internet yo'q yoki server javob bermadi — xato sahifasini
+            // animatsiya ortida yashirmaymiz.
+            override fun onReceivedError(
+                view: WebView?, request: WebResourceRequest?, error: android.webkit.WebResourceError?,
+            ) {
+                super.onReceivedError(view, request, error)
+                if (request?.isForMainFrame == true) {
+                    otkazishSoraldi = true
+                    panelTayyor()
+                }
             }
 
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
@@ -193,7 +234,80 @@ class AppWebActivity : AppCompatActivity() {
         })
 
         val roleParam = if (role == "child") "&role=child" else ""
-        web.loadUrl("https://abduquddus1990.github.io/ota-ona-nazorat/?app=1&lang=uz$roleParam")
+        // nativeSplash=1 — sahifa o'z animatsiyasini qaytarmaydi, faqat
+        // tayyorligini aytadi (app.js: nativePanelReady).
+        web.loadUrl("https://abduquddus1990.github.io/ota-ona-nazorat/?app=1&lang=uz&nativeSplash=1$roleParam")
+    }
+
+    /**
+     * Ota-onaga kunning birinchi ochilishida to'liq sahna (6 s), keyingi
+     * ochilishlarida va farzandga — qisqa logotip. Mini App'dagi qoida bilan
+     * bir xil (splash.js).
+     */
+    private fun splashniBoshla(role: String) {
+        val sv = findViewById<WebView>(R.id.splashView)
+        splashView = sv
+        val prefs = getSharedPreferences(PREFS, MODE_PRIVATE)
+        val bugun = java.time.LocalDate.now(java.time.ZoneId.of("Asia/Tashkent")).toString()
+        val toliq = role == "parent" && prefs.getString("splash_kun", null) != bugun
+        if (toliq) prefs.edit().putString("splash_kun", bugun).apply()
+        val ovoz = prefs.getBoolean("splash_ovoz", true)
+        splashKamida = if (toliq) 6_300L else 1_200L
+        splashBoshi = SystemClock.elapsedRealtime()
+
+        sv.setBackgroundColor(android.graphics.Color.parseColor("#e4f1fb"))
+        sv.settings.apply {
+            javaScriptEnabled = true
+            domStorageEnabled = true
+            mediaPlaybackRequiresUserGesture = false
+        }
+        sv.addJavascriptInterface(SplashBridge(), "QalqonSplash")
+        // Animatsiya sahifasi hech qayerga o'tmaydi.
+        sv.webViewClient = object : WebViewClient() {
+            override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?) = true
+        }
+        sv.loadUrl("file:///android_asset/splash/index.html#" +
+            (if (toliq) "full" else "short") + "," + (if (ovoz) "on" else "off"))
+
+        // Oxirgi zaxira: nima bo'lsa ham 25 soniyadan keyin panel ochiladi.
+        handler.postDelayed({ otkazishSoraldi = true; panelTayyor() }, 25_000)
+    }
+
+    private fun panelTayyor() {
+        panelYuklandi = true
+        splashniYopTekshir()
+    }
+
+    private fun splashniYopTekshir() {
+        if (!panelYuklandi || splashView == null) return
+        val qoldi = splashKamida - (SystemClock.elapsedRealtime() - splashBoshi)
+        if (otkazishSoraldi || qoldi <= 0) splashniYop()
+        else handler.postDelayed({ splashniYopTekshir() }, qoldi)
+    }
+
+    private fun splashniYop() {
+        val sv = splashView ?: return
+        splashView = null
+        sv.animate().alpha(0f).setDuration(450).withEndAction {
+            (sv.parent as? ViewGroup)?.removeView(sv)
+            sv.destroy()
+        }.start()
+    }
+
+    override fun onDestroy() {
+        handler.removeCallbacksAndMessages(null)
+        super.onDestroy()
+    }
+
+    /** Animatsiya sahifasining "O'tkazib yuborish" tugmasi. */
+    inner class SplashBridge {
+        @JavascriptInterface
+        fun skip() {
+            runOnUiThread {
+                otkazishSoraldi = true
+                splashniYopTekshir()
+            }
+        }
     }
 
     /**
@@ -213,6 +327,10 @@ class AppWebActivity : AppCompatActivity() {
         host == "abduquddus1990.github.io" || host == "qalqonai.uz" || host == "www.qalqonai.uz"
 
     @Volatile private var ishonchliSahifa = false
+
+    private companion object {
+        const val PREFS = "shield_guard_prefs"
+    }
 
     inner class Bridge {
 
@@ -240,6 +358,18 @@ class AppWebActivity : AppCompatActivity() {
             runOnUiThread {
                 try { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) } catch (_: Exception) {}
             }
+        }
+
+        /** Mini App panelni chizib bo'ldi — kirish animatsiyasini olib tashlash mumkin. */
+        @JavascriptInterface
+        fun panelReady() {
+            if (ishonchliSahifa) runOnUiThread { panelTayyor() }
+        }
+
+        /** Sozlamalardagi ovoz kaliti — ilovadagi animatsiya ham unga bo'ysunadi. */
+        @JavascriptInterface
+        fun setSound(on: Boolean) {
+            getSharedPreferences(PREFS, MODE_PRIVATE).edit().putBoolean("splash_ovoz", on).apply()
         }
 
         @JavascriptInterface

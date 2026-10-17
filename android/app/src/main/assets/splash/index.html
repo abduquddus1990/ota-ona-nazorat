@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<!-- AVTOMATIK YARATILGAN — tools/sync_android_splash.py. Tahrir qilmang. -->
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="splash.css">
+<style>html,body{margin:0;height:100%;background:#e4f1fb;-webkit-user-select:none;user-select:none}</style>
+</head>
+<body>
+<script>
+  var q = (location.hash || '').slice(1).split(',');
+  window.QALQON_SPLASH_HOLD = true;
+  window.QALQON_SPLASH_MODE = q[0] === 'short' ? 'short' : 'full';
+  window.QALQON_SPLASH_OVOZ = q[1] !== 'off';
+</script>
+<script src="splash.js"></script>
+<script>showPanelSplash(null);</script>
+</body>
+</html>
