@@ -24,6 +24,17 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      # Tailwind CSS chiqarishdan oldin har safar qayta yig'iladi
+      # (tools/tailwind/build.sh): yangi klass qo'shilib, yig'ish unutilgan
+      # bo'lsa ham saytda uslub yo'qolmaydi.
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Tailwind CSS
+        run: bash tools/tailwind/build.sh
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
