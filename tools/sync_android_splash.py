@@ -64,7 +64,13 @@ def main():
     farq = []
     for name, data in kerakli().items():
         target = DST / name
-        if target.exists() and target.read_bytes() == data:
+        # Windows'da git matnli fayllarni CRLF bilan yozadi — bu farq emas.
+        bir_xil = lambda a, b: a.replace(b"
+", b"
+") == b.replace(b"
+", b"
+")
+        if target.exists() and bir_xil(target.read_bytes(), data):
             continue
         farq.append(name)
         if not check:
