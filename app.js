@@ -9,10 +9,22 @@
 //
 // Faqat shu bitta URL'ga tegadi; boshqa so'rovlar o'z holicha ketadi.
 // ============================================================================
+// Bot funksiyasi manzili — fayl boshida, chunki pastdagi o'ram va panel_bootstrap
+// skript yuklanishi bilanoq ishlaydi.
+const QALQON_BOT_FN = 'https://wfrclcwjeeqeqchmdhzw.supabase.co/functions/v1/ota-ona-bot';
+
 (function attachInitDataToBotCalls() {
     const BOT_FN = 'https://wfrclcwjeeqeqchmdhzw.supabase.co/functions/v1/ota-ona-bot';
     const nativeFetch = window.fetch.bind(window);
     window.fetch = function (input, init) {
+        // Panel ochilishidagi so'rovlar bitta panel_bootstrap bilan oldindan
+        // so'ralgan bo'lsa — javob o'shandan olinadi (pastga qarang).
+        const tayyor = qalqonBootOl(input, init);
+        if (tayyor) {
+            return tayyor.then(r => r
+                ? new Response(r.body, { status: r.status, headers: { 'Content-Type': 'application/json' } })
+                : window.fetch(input, Object.assign({}, init, { qalqonBootsiz: true })));
+        }
         try {
             const url = (typeof input === 'string') ? input : (input && input.url) || '';
             if (url.indexOf(BOT_FN) === 0 && init && typeof init.body === 'string') {
@@ -77,6 +89,73 @@
         });
         return attempt(0);
     };
+})();
+
+// ============================================================================
+// PANEL OCHILISHI — BITTA SO'ROV (server: panel_bootstrap)
+//
+// Panel ochilganda ~10 ta so'rov ketardi, ular esa avval check_role javobini
+// kutardi. Server uzoqda (har murojaat ~0,5 s), shuning uchun ular panelni
+// sekunlab kechiktirardi. Endi skript yuklanishi bilanoq bitta so'rov
+// ketadi, server ishlarni bir vaqtda bajaradi. Qolgan kod O'ZGARMAGAN: u
+// odatdagidek fetch qiladi va javob shu keshdan olinadi. Ma'lumot
+// mos kelmasa (boshqa farzand, boshqa til) — oddiy so'rov ketadi.
+// ============================================================================
+const QALQON_BOOT = new Map();     // kalit -> Promise<{status, body} | null>
+const QALQON_BOOT_MUDDAT = 30000;  // keyinroq so'ralsa — eskirgan, yangisi so'raladi
+let qalqonBootVaqti = 0;
+
+function qalqonBootKalit(p) {
+    const k = {};
+    Object.keys(p).sort().forEach(x => {
+        if (x !== 'initData' && x !== 'sessionToken' && x !== 'deviceToken') k[x] = p[x];
+    });
+    return JSON.stringify(k);
+}
+
+function qalqonBootOl(input, init) {
+    if (!QALQON_BOOT.size || !init || init.qalqonBootsiz || typeof init.body !== 'string') return null;
+    const url = (typeof input === 'string') ? input : (input && input.url) || '';
+    if (url.indexOf(QALQON_BOT_FN) !== 0) return null;
+    if (Date.now() - qalqonBootVaqti > QALQON_BOOT_MUDDAT) { QALQON_BOOT.clear(); return null; }
+    let kalit;
+    try { kalit = qalqonBootKalit(JSON.parse(init.body)); } catch (e) { return null; }
+    const v = QALQON_BOOT.get(kalit);
+    if (!v) return null;
+    QALQON_BOOT.delete(kalit);  // bir martalik: keyingi yangilash serverdan
+    return v;
+}
+
+(function qalqonBootBoshla() {
+    try {
+        const native = window.QalqonNative;
+        const urlRol = new URLSearchParams(location.search).get('role');
+        const rol = (native && native.role && native.role()) || urlRol || localStorage.getItem('app_role') || 'parent';
+        if (rol !== 'parent') return;
+        const kod = localStorage.getItem('parent_family_code') || '';
+        let bola = '';
+        try { bola = Object.keys(JSON.parse(localStorage.getItem('qalqon_children_database') || '{}'))[0] || ''; } catch (e) {}
+        const til = new URLSearchParams(location.search).get('lang') || localStorage.getItem('app_lang') || 'uz';
+        const sorovlar = [
+            { type: 'check_role' }, { type: 'my_family' }, { type: 'link_telegram_status' },
+            { type: 'plan_status' }, { type: 'referral_status' }, { type: 'radar_status' }, { type: 'chat_unread' },
+        ];
+        if (kod.length === 6) sorovlar.push({ type: 'list_children', familyCode: kod });
+        if (bola) {
+            sorovlar.push({ type: 'child_overview', childId: bola, lang: til });
+            sorovlar.push({ type: 'list_geofences', childId: bola });
+        }
+        const javob = fetch(QALQON_BOT_FN, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'panel_bootstrap', requests: sorovlar }),
+        }).then(r => r.ok ? r.json() : null).catch(() => null);
+        qalqonBootVaqti = Date.now();
+        sorovlar.forEach((s, i) => {
+            QALQON_BOOT.set(qalqonBootKalit(s), javob.then(d =>
+                (d && d.ok && Array.isArray(d.results) && d.results[i]) ? d.results[i] : null));
+        });
+    } catch (e) {}
 })();
 
 let currentChildSubject = "Matematika";
@@ -719,7 +798,6 @@ function renderChildSelectDropdown() {
 // So'rov backend'ning /api/v1/parent/children endpointiga emas, bot Edge
 // Function'iga boradi: backend Render'ning bepul tarifida sovuq startda
 // ~50 soniya javob bermaydi, Edge Function esa doim issiq.
-const QALQON_BOT_FN = 'https://wfrclcwjeeqeqchmdhzw.supabase.co/functions/v1/ota-ona-bot';
 
 function buildChildRecord(serverChild, existing) {
     // Bo'sh shablondan boshlanadi: ekran vaqti, ilovalar, batareya va

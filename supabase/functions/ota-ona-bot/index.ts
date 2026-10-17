@@ -1291,7 +1291,14 @@ async function evaluateGeofences(
   return fired;
 }
 
+// Bot menyusini o'rnatish. Ilgari HAR BIR so'rov boshida chaqirilib, Telegram'ga
+// 5 ta ketma-ket so'rov yuborardi va shular tugaguncha javob ham boshlanmasdi —
+// Mini App'ning har bir so'rovi shu sabab ~0,5–1 s sekin edi. Endi funksiya
+// nusxasi ishga tushganda bir marta va javobni kutdirmasdan.
+let botCommandsDone = false;
 async function ensureBotCommands() {
+  if (botCommandsDone) return;
+  botCommandsDone = true;
   try {
     await fetch(`${TELEGRAM_API}/deleteMyCommands`, {
       method: "POST",
@@ -5232,7 +5239,8 @@ async function buildAppStats(): Promise<any> {
 }
 
 async function handleRequest(req: Request): Promise<Response> {
-  await ensureBotCommands();
+  const menyu = ensureBotCommands();
+  (globalThis as any).EdgeRuntime?.waitUntil?.(menyu);
   if (req.method === "GET") {
     return new Response(JSON.stringify({ status: "OK", service: "Qalqon AI Bot" }), {
       headers: { "Content-Type": "application/json" },
@@ -5281,6 +5289,49 @@ async function handleRequest(req: Request): Promise<Response> {
           "initData (Mini App) yoki deviceToken (Android) yuborilishi kerak"
         );
       }
+    }
+
+    // PANEL OCHILISHI — BITTA SO'ROV.
+    //
+    // Panel ochilganda ~10 ta so'rov ketardi: avval check_role kutilib, keyin
+    // qolganlari. Baza uzoqda (har murojaat ~0,5 s), shuning uchun har bir
+    // alohida so'rov o'z ulanishi, autentifikatsiyasi va kutishi bilan
+    // panelni sekunlab kechiktirardi. Endi Mini App skript yuklanishi bilan
+    // bitta so'rov yuboradi; bu yerda har bir ish O'Z handler'i orqali (xuddi
+    // alohida kelgandek, o'sha ruxsat tekshiruvlari bilan) BIR VAQTDA
+    // bajariladi. Faqat o'qish amallari — ro'yxatdan tashqarisi rad etiladi.
+    if (payload.type === "panel_bootstrap") {
+      const RUXSAT = new Set([
+        "check_role", "my_family", "list_children", "plan_status", "link_telegram_status",
+        "chat_unread", "referral_status", "radar_status", "list_geofences", "child_overview",
+        "list_devices", "coparent_list",
+      ]);
+      const royxat = Array.isArray(payload.requests) ? payload.requests.slice(0, 12) : [];
+      const kalit = {
+        initData: payload.initData,
+        sessionToken: payload.sessionToken,
+        deviceToken: payload.deviceToken,
+      };
+      const sarlavha = new Headers(req.headers);
+      sarlavha.delete("content-length");
+      const results = await Promise.all(royxat.map(async (r: any) => {
+        if (!r || typeof r !== "object" || !RUXSAT.has(String(r.type))) {
+          return { status: 400, body: JSON.stringify({ ok: false, error: "Bu amal bu yerda ruxsat etilmagan" }) };
+        }
+        try {
+          const ichki = new Request(req.url, {
+            method: "POST",
+            headers: sarlavha,
+            body: JSON.stringify({ ...r, ...kalit }),
+          });
+          const res = await handleRequest(ichki);
+          return { status: res.status, body: await res.text() };
+        } catch (e) {
+          console.error("panel_bootstrap:", r.type, e);
+          return { status: 500, body: JSON.stringify({ ok: false, error: "Ichki xato" }) };
+        }
+      }));
+      return jsonRes({ ok: true, results });
     }
 
     // 0. Mini App'dan to'g'ridan-to'g'ri ro'yxatdan o'tish so'rovi kelganda

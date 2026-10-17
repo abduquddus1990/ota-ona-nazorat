@@ -294,6 +294,22 @@ r = await api({ type: "device_pair", pairCode: "DEVCODE5", deviceModel: "Redmi" 
 await api({ type: "child_consent", childName: "O'g'iloy", deviceToken: r.deviceToken });
 check((DB.child_pairings || []).find((c) => c.child_id === r.childId)?.child_name === "O'g'iloy", "27. apostrofli ism (O'g'iloy) o'zgarmay saqlanadi");
 
+// 28. panel_bootstrap: bitta so'rovda bir nechta o'qish amali
+r = await api({ type: "panel_bootstrap", requests: [{ type: "security_overview" }] });
+check(r.status === 401, "28. panel_bootstrap kirishsiz ishlamaydi", r);
+r = await api({ type: "panel_bootstrap", sessionToken: S, requests: [
+  { type: "check_role" }, { type: "plan_status" }, { type: "set_password", password: "Buzgunchi#1" }, { type: "panel_bootstrap", requests: [] },
+] });
+check(r.ok && r.results?.length === 4, "28b. natijalar soni so'rovlar soniga teng", r);
+check(r.results?.[2]?.status === 400 && r.results?.[3]?.status === 400, "28c. yozuvchi va ichma-ich amallar rad etiladi", r.results);
+const yakka = await api({ type: "plan_status", sessionToken: S });
+const ichida = JSON.parse(r.results?.[1]?.body || "{}");
+check(ichida.ok && ichida.plan === yakka.plan, "28d. ichidagi javob alohida so'rov bilan bir xil", { ichida, yakka });
+r = await api({ type: "panel_bootstrap", initData: await initData(3001), requests: [{ type: "list_devices" }] });
+const farzandJavob = JSON.parse(r.results?.[0]?.body || "{}");
+check(r.ok && farzandJavob.ok && Array.isArray(farzandJavob.devices) && farzandJavob.devices.every((d: any) => d.childId === "tg_3001"),
+  "28e. ichida ham o'sha ruxsat qoidalari (farzand faqat o'z qurilmasini ko'radi)", farzandJavob);
+
 const fail = results.filter(([ok]) => !ok).length;
 console.log(`\n${results.length - fail}/${results.length} o'tdi`);
 Deno.exit(fail ? 1 : 0);
