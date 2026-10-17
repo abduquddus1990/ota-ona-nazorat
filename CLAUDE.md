@@ -111,6 +111,12 @@ Bu loyihada "bajarildi" xabari bir necha marta haqiqatga mos kelmagan.
   Asosiy · O'qish · O'yinlar.
 - Maskot: **3D qalqonli bo'ri** (`site/assets/qalqon-qoriqchi.webp`, fonsiz).
   Realistik va multfilm bo'rilarni aralashtirmang.
+- Ilova ikonkasi: ilovadagi ota bo'rining (`assets/wolf_adult_hero.png`)
+  yuzi, **o'zgartirilmasdan** kesilgan — chizilgan/multfilm ikonka rad etilgan.
+- Panelga kirish animatsiyasi (`splash.js` + `splash.css`) Android ilovada
+  **ilovaning o'z fayllaridan** darhol o'ynaydi va Mini App yuklanishini
+  yashiradi. Animatsiya o'zgarsa: `python tools/sync_android_splash.py`
+  (CI farqni tekshiradi).
 - Sayt: **"Studiya tongi"** — yorug' ko'k studiya foni, 3D burchakda
   suzuvchi ilova ekranlari, bo'ri.
 - Bot: "Start" oldidan 6 soniyalik video (BotFather → Edit Description

@@ -6086,6 +6086,19 @@ function setupKeyboardHandling() {
     });
 }
 
+// Android ilova animatsiyani o'zi, sahifa yuklanmasdan OLDIN ko'rsatadi
+// (?nativeSplash=1). Bu holda sahifa o'z animatsiyasini qaytarmaydi, faqat
+// tayyor bo'lganini aytadi — ilova shunda animatsiyani olib tashlaydi.
+const NATIVE_SPLASH = new URLSearchParams(location.search).get('nativeSplash') === '1';
+let nativeReadySent = false;
+function nativePanelReady() {
+    if (nativeReadySent) return;
+    nativeReadySent = true;
+    try {
+        if (window.QalqonNative && window.QalqonNative.panelReady) window.QalqonNative.panelReady();
+    } catch (e) {}
+}
+
 // DOM Init
 document.addEventListener('DOMContentLoaded', async () => {
     setupKeyboardHandling();
@@ -6099,7 +6112,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderSchoolCurriculum();
     initRadarMap();
     // Telegramdan tashqarida va seanssiz bo'lsa — avval kirish oynasi.
-    if (checkWebLoginNeeded()) return;
+    if (checkWebLoginNeeded()) { nativePanelReady(); return; }
     checkChildConsentStatus();
     prefillInviteCodeFromUrl();
     // Farzandlar ro'yxatini serverdan yangilaymiz. Fon rejimida:
@@ -6118,7 +6131,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (currentAppRole === 'parent') {
         // Kirish animatsiyasi: kunning birinchi ochilishida to'liq sahna,
         // kartada farzandning haqiqiy holati (splash.js).
-        if (typeof showPanelSplash === 'function') {
+        if (typeof showPanelSplash === 'function' && !NATIVE_SPLASH) {
             showPanelSplash(
                 fetch(QALQON_BOT_FN, {
                     method: 'POST',
@@ -6143,7 +6156,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // ya'ni normal holatda bu ikkisi hech qachon ko'rinmasdi.
                 renderReferral();
                 renderRadarStatus();
-            });
+            })
+            // Farzandlar va oila ma'lumoti joyida — panelni ko'rsatsa bo'ladi.
+            .finally(nativePanelReady);
+    } else {
+        nativePanelReady();
     }
 });
 

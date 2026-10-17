@@ -1,12 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Fon animatsiyaning fon rangi bilan bir xil: ilova ochilishi bilan
+     to'q ekran emas, animatsiya ko'rinadi. -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/webRoot"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#0f172a">
+    android:background="#e4f1fb">
 
     <WebView
         android:id="@+id/webView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <!-- Panelga kirish animatsiyasi (assets/splash). Mini App yuklanguncha
+         uning ustida turadi, tayyor bo'lgach olib tashlanadi. -->
+    <WebView
+        android:id="@+id/splashView"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 </FrameLayout>

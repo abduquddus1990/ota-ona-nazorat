@@ -24,9 +24,16 @@
   var OVOZ_KALIT = 'qalqon_ovoz';
   var KUN_KALIT = 'qalqon_splash_kun';
 
+  // Android ilova ichidagi nusxa (assets/splash/index.html) shu ikkisini
+  // o'rnatadi: animatsiya o'zi yopilmaydi — panel tayyor bo'lgach ilova
+  // uni olib tashlaydi. Rejim (to'liq/qisqa) va ovoz ilovadan keladi.
+  var TUTIB = !!window.QALQON_SPLASH_HOLD;
+  var REJIM = window.QALQON_SPLASH_MODE || '';
+
   // ------------------------------------------------------------------ ovoz
   var ovozlar = {};
   function ovozYoqmi() {
+    if (window.QALQON_SPLASH_OVOZ === false) return false;
     try { return localStorage.getItem(OVOZ_KALIT) !== 'off'; } catch (e) { return true; }
   }
   function ovozChal(nom) {
@@ -50,6 +57,9 @@
     if (el) el.textContent = ovozYoqmi() ? 'Yoqilgan' : "O'chirilgan";
     var k = document.getElementById('ovozKalit');
     if (k) k.classList.toggle('on', ovozYoqmi());
+    // Ilovadagi animatsiya Mini App'dan OLDIN o'ynaydi va bu sozlamani
+    // o'qiy olmaydi — shuning uchun ilovaga eslatib qo'yamiz.
+    try { if (window.QalqonNative && QalqonNative.setSound) QalqonNative.setSound(ovozYoqmi()); } catch (e) {}
   }
   window.qalqonOvoz = { chal: ovozChal, almashtir: ovozniAlmashtir, chiz: ovozKalitiniChiz };
   document.addEventListener('DOMContentLoaded', ovozKalitiniChiz);
@@ -145,7 +155,8 @@
   window.showPanelSplash = function (holatOl) {
     if (document.getElementById('qalqonSplash')) return;
     var qisqa = false;
-    try { qisqa = localStorage.getItem(KUN_KALIT) === bugun(); } catch (e) {}
+    if (REJIM) qisqa = REJIM === 'short';
+    else try { qisqa = localStorage.getItem(KUN_KALIT) === bugun(); } catch (e) {}
     var harakatsiz = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     var el = document.createElement('div');
@@ -156,12 +167,17 @@
     document.body.appendChild(el);
 
     if (qisqa || harakatsiz) {
-      setTimeout(function () { yop(el); }, 1000);
+      if (TUTIB) el.classList.add('qs-tutib');
+      else setTimeout(function () { yop(el); }, 1000);
       return;
     }
-    try { localStorage.setItem(KUN_KALIT, bugun()); } catch (e) {}
+    if (!REJIM) try { localStorage.setItem(KUN_KALIT, bugun()); } catch (e) {}
 
-    el.querySelector('.qs-skip').addEventListener('click', function () { yop(el); });
+    el.querySelector('.qs-skip').addEventListener('click', function () {
+      // Ilovada: panel tayyor bo'lsa darhol, bo'lmasa tayyor bo'lishi bilan.
+      if (TUTIB) { try { QalqonSplash.skip(); } catch (e) {} return; }
+      yop(el);
+    });
     ovozChal('kirish');
 
     // Xavfsizlik kartasi ~0,7 s da paydo bo'lib, 3,8 s gacha turadi —
@@ -182,6 +198,9 @@
       if (s && s.textContent === 'Holat yuklanmoqda…') s.textContent = 'Qalqon AI';
     }, 3600);
     setTimeout(function () { ovozChal('xabar'); }, 4100);
-    setTimeout(function () { yop(el); }, 6300);
+    setTimeout(function () {
+      if (TUTIB) el.classList.add('qs-kutish');
+      else yop(el);
+    }, 6300);
   };
 })();
