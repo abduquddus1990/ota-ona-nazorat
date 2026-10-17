@@ -6140,9 +6140,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }).then(r => r.json()).catch(() => null)
             );
         }
+        // Oila kodi telefonda saqlangan bo'lsa, farzandlar ro'yxati oila
+        // ma'lumoti bilan BIR VAQTDA so'raladi. Server uzoqda (har so'rov
+        // ~1 s) va ketma-ket kutish panelni shuncha kechiktirardi. Server
+        // oilani so'rovchidan o'zi aniqlaydi; kod o'zgargan bo'lsa (eski
+        // telefon kodi) — ro'yxat yangi kod bilan qayta so'raladi.
+        const oldingiKod = familyCode;
+        const bolalarParallel = (oldingiKod && String(oldingiKod).length === 6) ? syncChildrenFromServer() : null;
         syncFamilyFromServer()
             .then((ok) => { if (!ok) checkParentOnboarding(); })
-            .then(() => syncChildrenFromServer())
+            .then(() => (bolalarParallel && familyCode === oldingiKod) ? bolalarParallel : syncChildrenFromServer())
             .then(() => {
                 // Farzandlar ro'yxati kelgandan KEYIN: undan oldin chaqirsak
                 // ro'yxat hali bo'sh bo'lib, "farzand qo'shing" qadami

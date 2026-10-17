@@ -80,3 +80,6 @@ knowledge_base_dts.json
 # Pages'da (telegram_miniapp/), bu esa uning eskirgan ikkinchi nusxasi edi.
 supabase/functions/ota-ona-app/
 darsliklar/
+
+# Tailwind yig'ish vositalari (tools/tailwind/build.sh)
+tools/tailwind/node_modules/

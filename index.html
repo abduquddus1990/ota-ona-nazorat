@@ -6,45 +6,33 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Qalqon AI — Ota-Ona Nazorati & Farzand Xavfsizligi</title>
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <!--
-        Qalqon AI brend dizayni (Stitch AI, 2026-09): mavjud slate/cyan/amber
-        Tailwind ranglarini rasmiy palitraga qayta belgilaydi. Butun ilova
-        (app.js chiqargan minglab bg-slate-900, border-cyan-500 kabi
-        klasslar) shu orqali BITTA joydan qayta ranglanadi — har bir
-        ekranni alohida qayta yozish shart emas. Faqat DESIGN.md'da
-        nomlangan xonalar o'zgartirilgan; qolganlari Tailwind standarti
-        (masalan slate-400/700 — bu ikkisi tasodifan aynan Stitch
-        palitrasiga to'g'ri kelib qoladi, shuning uchun tegilmagan).
+        TEZ OCHILISH (2026-10-17). Ilgari bu yerda cdn.tailwindcss.com turardi:
+        u har bir ochilishda telefonning O'ZIDA butun CSS'ni noldan yasardi va
+        sahifa shuni kutardi. Endi CSS oldindan yig'iladi (tools/tailwind,
+        rang palitrasi ham o'sha yerda). Ikonka shriftidan faqat ishlatiladigan
+        19 ta belgi olinadi (ilgari 3000+), ishlatilmaydigan Inter/Geist/
+        Plus Jakarta olib tashlandi. Yangi ikonka qo'shilsa — icon_names ga
+        ham qo'shing (alifbo tartibida), aks holda u so'z bo'lib ko'rinadi.
     -->
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: { sans: ['Outfit', 'Plus Jakarta Sans', 'sans-serif'] },
-                    colors: {
-                        slate: { 950: '#0a0e17', 900: '#111827', 800: '#1c2742' },
-                        cyan: { 300: '#7df9ff', 400: '#59d8de', 500: '#00dbe9', 600: '#04a9af' },
-                        amber: { 300: '#fde68a', 400: '#ffb020' },
-                    },
-                },
-            },
-        };
-    </script>
-    <!-- Material Symbols & Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@400;600;700;800&family=Geist:wght@500&display=swap" rel="stylesheet"/>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&icon_names=apps,battery_charging_full,child_care,distance,family_restroom,home,location_on,map,menu_book,military_tech,person,psychology,school,settings,shield,shield_person,smart_toy,stadia_controller,timer&display=block" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;600;700;800;900&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
     <!-- Telegram WebApp SDK -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <!-- Leaflet OpenStreetMap CSS & JS -->
+    <!-- Xarita: sahifa chizilishini to'xtatmaydi (defer). L faqat funksiyalar
+         ichida ishlatiladi, defer skriptlar esa DOMContentLoaded'dan oldin tugaydi. -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <!-- Custom Stitch Styles -->
-    <link rel="stylesheet" href="styles.css?v=7.6">
+    <link rel="stylesheet" href="styles.css?v=7.7">
     <link rel="stylesheet" href="splash.css?v=1">
     <link rel="stylesheet" href="theme-tong.css?v=1">
-    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;600;700;800;900&display=swap" rel="stylesheet"/>
+    <!-- Tailwind ENG OXIRIDA: CDN versiyasi ham o'z CSS'ini shu yerga qo'shardi
+         va styles.css'dan ustun turardi (masalan, .hidden .nav-btn'ni yashiradi).
+         Tartib o'zgarsa, yashirin tugmalar ko'rinib qoladi. -->
+    <link rel="stylesheet" href="tailwind.css?v=1">
 </head>
 <body data-theme="tong" class="p-3 max-w-md mx-auto relative antialiased text-slate-200">
     <!-- ==================================================================== -->
@@ -150,12 +138,12 @@
 <!-- ==================================================================== -->
     <!-- 🤝 TO'LIQ EKRANLI FARZAND ROZILIK & ULANISH MODALI -->
     <!-- ==================================================================== -->
-    <div id="childConsentOverlay" class="fixed inset-0 z-[100001] bg-[#13131b] flex flex-col justify-between p-4 md:p-6 overflow-y-auto hidden" style="background-image: linear-gradient(rgba(19,19,27,0.94), rgba(19,19,27,0.98)), url('assets/wolf_pup_hero.png'); background-size: 360px auto; background-position: center 50px; background-repeat: no-repeat;">
+    <div id="childConsentOverlay" class="fixed inset-0 z-[100001] bg-[#13131b] flex flex-col justify-between p-4 md:p-6 overflow-y-auto hidden" style="background-image: linear-gradient(rgba(19,19,27,0.94), rgba(19,19,27,0.98)), url('assets/wolf_pup_hero.webp'); background-size: 360px auto; background-position: center 50px; background-repeat: no-repeat;">
         <div class="space-y-3.5 pt-2">
             <!-- Mascot & Brand -->
             <div class="flex items-center justify-center gap-2.5">
                 <div class="w-12 h-12 rounded-2xl bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center shadow-[0_0_20px_rgba(129,140,248,0.4)]">
-                    <img src="assets/wolf_pup_hero.png" alt="Qalqon AI Bo'ri" class="w-10 h-10 object-contain">
+                    <img src="assets/wolf_pup_hero.webp" alt="Qalqon AI Bo'ri" class="w-10 h-10 object-contain">
                 </div>
                 <div>
                     <h1 class="font-display-brand text-base text-indigo-300 font-black tracking-wider leading-none">QALQON AI</h1>
@@ -382,7 +370,7 @@
 
                 <!-- 3D Kichik Bo'ri Render Figurasi -->
                 <div class="w-28 h-36 md:w-34 md:h-40 relative flex-shrink-0 flex items-center justify-center">
-                    <img src="assets/wolf_pup_hero.png" alt="Qalqon AI Kichik Bo'ri" class="w-full h-full object-contain filter drop-shadow-[0_0_24px_rgba(129,140,248,0.65)] transform hover:scale-105 transition duration-300">
+                    <img src="assets/wolf_pup_hero.webp" alt="Qalqon AI Kichik Bo'ri" class="w-full h-full object-contain filter drop-shadow-[0_0_24px_rgba(129,140,248,0.65)] transform hover:scale-105 transition duration-300">
                 </div>
             </div>
 
@@ -403,7 +391,7 @@
             </div>
 
             <!-- Orqa Fon Suv Belgisi (Watermark) -->
-            <div class="absolute -right-8 -bottom-10 w-56 h-56 opacity-15 pointer-events-none bg-center bg-no-repeat bg-contain" style="background-image: url('assets/wolf_pup_hero.png');"></div>
+            <div class="absolute -right-8 -bottom-10 w-56 h-56 opacity-15 pointer-events-none bg-center bg-no-repeat bg-contain" style="background-image: url('assets/wolf_pup_hero.webp');"></div>
         </section>
 
         <!-- 📍 BO'LIMOSTI 1: TEZKOR XABARLAR (OTAN-ONAGA 1 SONIYADA) -->
@@ -1012,7 +1000,7 @@
 
                 <!-- 3D Bo'ri Render Figurasi -->
                 <div class="w-28 h-36 md:w-34 md:h-40 relative flex-shrink-0 flex items-center justify-center">
-                    <img src="assets/wolf_adult_hero.png" alt="Qalqon AI Bo'ri Himoyachi" class="w-full h-full object-contain filter drop-shadow-[0_0_24px_rgba(34,211,238,0.65)] transform hover:scale-105 transition duration-300">
+                    <img src="assets/wolf_adult_hero.webp" alt="Qalqon AI Bo'ri Himoyachi" class="w-full h-full object-contain filter drop-shadow-[0_0_24px_rgba(34,211,238,0.65)] transform hover:scale-105 transition duration-300">
                 </div>
             </div>
 
@@ -1033,7 +1021,7 @@
             </div>
 
             <!-- Orqa Fon Suv Belgisi (Watermark) -->
-            <div class="absolute -right-8 -bottom-10 w-56 h-56 opacity-15 pointer-events-none bg-center bg-no-repeat bg-contain" style="background-image: url('assets/wolf_adult_hero.png');"></div>
+            <div class="absolute -right-8 -bottom-10 w-56 h-56 opacity-15 pointer-events-none bg-center bg-no-repeat bg-contain" style="background-image: url('assets/wolf_adult_hero.webp');"></div>
         </section>
 
         <!-- 1. Stitch Status Card (Level 1 Surface with Glow) -->
@@ -2961,7 +2949,7 @@
 
     <!-- Custom JavaScript -->
     <script src="splash.js?v=3"></script>
-    <script src="app.js?v=10.4"></script>
+    <script src="app.js?v=10.5"></script>
     <!-- O'yinlar alohida faylda: app.js allaqachon katta, va o'yin kontenti
          (savollar, kartalar) o'sib boradi. Alohida fayl brauzerda alohida
          keshlanadi — o'yin qo'shilsa, butun ilova qayta yuklanmaydi. -->
