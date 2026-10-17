@@ -65,11 +65,7 @@ def main():
     for name, data in kerakli().items():
         target = DST / name
         # Windows'da git matnli fayllarni CRLF bilan yozadi — bu farq emas.
-        bir_xil = lambda a, b: a.replace(b"
-", b"
-") == b.replace(b"
-", b"
-")
+        bir_xil = lambda a, b: a.replace(b"\r\n", b"\n") == b.replace(b"\r\n", b"\n")
         if target.exists() and bir_xil(target.read_bytes(), data):
             continue
         farq.append(name)

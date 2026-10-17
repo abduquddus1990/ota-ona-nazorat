@@ -34,6 +34,19 @@ telefondan topshiriq beradi va natijani telefonda ko'radi.
 Pages `telegram_miniapp/` ni chiqaradi. `app.js` o'zgarsa, `index.html` dagi
 `app.js?v=` raqamini oshiring — aks holda Telegram eski faylni keshdan oladi.
 
+**Tezlik (2026-10-17):** Tailwind CDN emas, oldindan yig'ilgan `tailwind.css`
+(`bash tools/tailwind/build.sh`; Pages'ga chiqarishda o'zi qayta yig'iladi).
+U `<head>` ning ENG OXIRIDA turishi shart — aks holda `.hidden` styles.css'dan
+yutqazib, yashirin tugmalar ko'rinadi. Ikonka shriftida faqat ishlatiladigan
+belgilar (`icon_names=`, alifbo tartibida) — yangi ikonka qo'shsangiz, o'sha
+ro'yxatga ham qo'shing. Katta rasmlar — WebP (PNG faqat manba sifatida).
+Ma'lumotlar bazasi `ap-southeast-2` (Sidney): har bir baza murojaati
+Toshkentdan ~0,5 s — panel ochilishidagi qolgan kutishning asosiy sababi.
+
+**Fayl tahrirlash:** Windows'dagi bash heredoc ichidagi `\n`, `\r\n` ni
+haqiqiy qator ko'chishiga aylantirib yuboradi (bir necha marta buzilgan).
+Kod ichidagi escape'li matnlarni Edit vositasi yoki .py fayl orqali yozing.
+
 ## Deploy
 
 - **Server:** `main` ga `supabase/functions/**` o'zgarishi tushganda
