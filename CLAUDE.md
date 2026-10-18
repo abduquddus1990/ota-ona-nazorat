@@ -40,8 +40,8 @@ U `<head>` ning ENG OXIRIDA turishi shart — aks holda `.hidden` styles.css'dan
 yutqazib, yashirin tugmalar ko'rinadi. Ikonka shriftida faqat ishlatiladigan
 belgilar (`icon_names=`, alifbo tartibida) — yangi ikonka qo'shsangiz, o'sha
 ro'yxatga ham qo'shing. Katta rasmlar — WebP (PNG faqat manba sifatida).
-Ma'lumotlar bazasi `ap-southeast-2` (Sidney): har bir baza murojaati
-Toshkentdan ~0,5 s — panel ochilishidagi qolgan kutishning asosiy sababi.
+Server va baza 2026-10 da Sidneydan **Frankfurtga** (`eu-central-1`) ko'chdi:
+baza murojaati Toshkentdan ~0,5 s dan ~0,05 s ga tushdi.
 
 **Fayl tahrirlash:** Windows'dagi bash heredoc ichidagi `\n`, `\r\n` ni
 haqiqiy qator ko'chishiga aylantirib yuboradi (bir necha marta buzilgan).
@@ -52,9 +52,13 @@ Kod ichidagi escape'li matnlarni Edit vositasi yoki .py fayl orqali yozing.
 - **Server:** `main` ga `supabase/functions/**` o'zgarishi tushganda
   `.github/workflows/deploy-function.yml` uni avtomatik deploy qiladi
   (GitHub sekreti `SUPABASE_ACCESS_TOKEN`). Qo'lda:
-  `npx -y supabase@latest functions deploy ota-ona-bot --project-ref wfrclcwjeeqeqchmdhzw --no-verify-jwt --use-api`.
+  `npx -y supabase@latest functions deploy ota-ona-bot --project-ref ytjvmmcpmpnaivtzymtq --no-verify-jwt --use-api`.
   `--no-verify-jwt` **majburiy** — Telegram webhook JWT yubormaydi.
-  Supabase loyihasining nomi chalg'itadi: "xodim-intizom", lekin aynan shu.
+  Supabase loyihasi: **`qalqon-ai` (`ytjvmmcpmpnaivtzymtq`, Frankfurt)**.
+  Eski `xodim-intizom` (`wfrclcwjeeqeqchmdhzw`, Sidney) — endi faqat "Xodim
+  intizom" botiniki; u yerdagi `ota-ona-bot` faqat eski Android ilovalar uchun
+  yo'naltiruvchi (`tools/migration/old-proxy`). Unga Qalqon kodini deploy
+  QILMANG.
 - **Baza migratsiyasi** avtomatik emas. Yangi `database/NN_*.sql` faylni
   foydalanuvchidan aniq ruxsat olib, Supabase Management API orqali
   (`POST /v1/projects/{ref}/database/query`) qo'llang. Server kodi yangi

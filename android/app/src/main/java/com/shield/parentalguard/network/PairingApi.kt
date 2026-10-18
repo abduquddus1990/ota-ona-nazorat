@@ -19,7 +19,7 @@ import org.json.JSONObject
 object PairingApi {
 
     const val OTA_ONA_BOT_URL =
-        "https://wfrclcwjeeqeqchmdhzw.supabase.co/functions/v1/ota-ona-bot"
+        "https://ytjvmmcpmpnaivtzymtq.supabase.co/functions/v1/ota-ona-bot"
 
     val deviceModel: String
         get() = Build.MODEL?.takeIf { it.isNotBlank() } ?: "android"
