@@ -5278,7 +5278,7 @@ async function handleRequest(req: Request): Promise<Response> {
     //   login/parolni tekshiradi va urinishlar soni cheklangan.
     const NO_ACTOR_TYPES = [
       "device_pair", "device_pair_preview", "parent_pair", "cron_daily_digest", "cron_live_reminder",
-      "cron_evening_check", "web_login", "web_logout", "google_login",
+      "cron_evening_check", "web_login", "web_logout", "google_login", "setup_webhook",
       "app_login_start", "app_login_poll",
     ];
     let actor: Actor | null = null;
@@ -5289,6 +5289,46 @@ async function handleRequest(req: Request): Promise<Response> {
           "initData (Mini App) yoki deviceToken (Android) yuborilishi kerak"
         );
       }
+    }
+
+    // BOTNI SHU SERVERGA ULASH (Telegram webhook).
+    //
+    // Server boshqa loyihaga ko'chirilganda (2026-10, Sidney -> Frankfurt)
+    // bot yangi manzilga ulanishi kerak. Buning uchun bot tokeni kerak —
+    // uni hech kimga ko'rsatmaslik uchun ulashni serverning o'zi bajaradi.
+    // Faqat webhook maxfiy kaliti bilan; {check:true} — faqat holatni ko'rish.
+    // Telegram'dagi ruxsat etilgan yangilanish turlari saqlanadi.
+    if (payload.type === "setup_webhook") {
+      if (!WEBHOOK_SECRET || req.headers.get("x-telegram-bot-api-secret-token") !== WEBHOOK_SECRET) {
+        return jsonRes({ ok: false, error: "forbidden" }, 403);
+      }
+      if (!BOT_TOKEN) return jsonRes({ ok: false, error: "BOT_TOKEN sozlanmagan" }, 503);
+      const info = await (await fetch(`${TELEGRAM_API}/getWebhookInfo`)).json();
+      const r = info?.result || {};
+      const manzil = `${SUPABASE_URL}/functions/v1/ota-ona-bot`;
+      const holat = {
+        hozirgi: r.url || null,
+        kutilmoqda: r.pending_update_count ?? null,
+        oxirgiXato: r.last_error_message || null,
+        turlar: r.allowed_updates || null,
+      };
+      if (payload.check) {
+        // Qaysi bot ekani — noto'g'ri token kiritilgan bo'lsa, boshqa botni
+        // ko'chirib yubormaslik uchun.
+        const men = await (await fetch(`${TELEGRAM_API}/getMe`)).json();
+        return jsonRes({ ok: true, bot: men?.result?.username || null, holat, kerakli: manzil });
+      }
+      const set = await (await fetch(`${TELEGRAM_API}/setWebhook`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url: manzil,
+          secret_token: WEBHOOK_SECRET,
+          ...(r.allowed_updates ? { allowed_updates: r.allowed_updates } : {}),
+          ...(r.max_connections ? { max_connections: r.max_connections } : {}),
+        }),
+      })).json();
+      return jsonRes({ ok: !!set.ok, oldin: holat.hozirgi, endi: manzil, telegram: set.description || null });
     }
 
     // PANEL OCHILISHI — BITTA SO'ROV.

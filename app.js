@@ -11,10 +11,10 @@
 // ============================================================================
 // Bot funksiyasi manzili — fayl boshida, chunki pastdagi o'ram va panel_bootstrap
 // skript yuklanishi bilanoq ishlaydi.
-const QALQON_BOT_FN = 'https://wfrclcwjeeqeqchmdhzw.supabase.co/functions/v1/ota-ona-bot';
+const QALQON_BOT_FN = 'https://ytjvmmcpmpnaivtzymtq.supabase.co/functions/v1/ota-ona-bot';
 
 (function attachInitDataToBotCalls() {
-    const BOT_FN = 'https://wfrclcwjeeqeqchmdhzw.supabase.co/functions/v1/ota-ona-bot';
+    const BOT_FN = 'https://ytjvmmcpmpnaivtzymtq.supabase.co/functions/v1/ota-ona-bot';
     const nativeFetch = window.fetch.bind(window);
     window.fetch = function (input, init) {
         // Panel ochilishidagi so'rovlar bitta panel_bootstrap bilan oldindan

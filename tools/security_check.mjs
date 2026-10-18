@@ -17,8 +17,8 @@
 import { execSync } from "node:child_process";
 import { readFileSync, statSync } from "node:fs";
 
-const FN = "https://wfrclcwjeeqeqchmdhzw.supabase.co/functions/v1/ota-ona-bot";
-const PROJECT_REF = "wfrclcwjeeqeqchmdhzw";
+const FN = "https://ytjvmmcpmpnaivtzymtq.supabase.co/functions/v1/ota-ona-bot";
+const PROJECT_REF = "ytjvmmcpmpnaivtzymtq";
 const ORIGIN = "https://abduquddus1990.github.io";
 
 const natijalar = [];
