@@ -5312,7 +5312,12 @@ async function handleRequest(req: Request): Promise<Response> {
         oxirgiXato: r.last_error_message || null,
         turlar: r.allowed_updates || null,
       };
-      if (payload.check) return jsonRes({ ok: true, holat, kerakli: manzil });
+      if (payload.check) {
+        // Qaysi bot ekani — noto'g'ri token kiritilgan bo'lsa, boshqa botni
+        // ko'chirib yubormaslik uchun.
+        const men = await (await fetch(`${TELEGRAM_API}/getMe`)).json();
+        return jsonRes({ ok: true, bot: men?.result?.username || null, holat, kerakli: manzil });
+      }
       const set = await (await fetch(`${TELEGRAM_API}/setWebhook`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
