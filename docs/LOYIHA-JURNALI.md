@@ -26,10 +26,15 @@ Suhbatlarning to'liq matni (tokenlar yashirilgan) faqat egasining kompyuterida:
 - Javoblar o'zbekcha, sodda; dizayn o'zgarishi — avval JPEG.
 - Farzand o'z telefonidagi kuzatuvni o'zi uza oladi (rozilik) — ota-onaga xabar boradi.
 - AI do'st Pro tarifga o'tadi (tariflar keyin). Kunlik narx emas — 30 savol/kun ≈ **3 400 so'm OYIGA** (gemini-3.1-flash-lite).
-- Tariflar 50 000 so'mdan oshmasin; Pro va Max taklif qilingan, qaror kutilmoqda.
+- Tariflar (2026-10-19 taklif, egasi "tushunarli" dedi): **Bepul** — 1 farzand, SOS, maktab/uy xabari, 2 hudud, kuniga 2 joylashuv; **Pro 14 900 so'm/oy** — 1 farzand (+9 900 har qo'shimcha), jonli xarita + 90 kun tarix, cheksiz hudud, ekran vaqti, AI 20/kun, 2 ota-ona; **Max 39 900 so'm/oy** — 4 farzand, AI 50/kun + rasmli mashq, haftalik AI tahlil, 4 ota-ona. Yillik: 149 000 / 399 000. 31-dekabrgacha AI'dan boshqasi bepul, erta obunachiga narx qotadi. Chegaralarni koddan joriy qilish — keyingi ishlardan.
 - AI qoidalari: din — rad; O'zbekiston siyosati — rad; jahon geosiyosati — faqat ilmiy, betaraf.
 - Ijtimoiy tarmoqlar: Telegram **@aibotqalqon**, Instagram va YouTube **@qalqon_ai**. Aloqa: **quddusxon90@gmail.com**.
 - Ikonka: ilovadagi ota bo'rining yuzi, o'zgarishsiz. Multfilm ikonka rad etilgan.
+
+## Keyingi ishlar (2026-10-19)
+
+Egasi: PR merge · GitHub sekretlari (yangi SUPABASE_ACCESS_TOKEN, QALQON_UPLOAD_KEY_B64/_PASSWORD), eski Supabase tokenini o'chirish · qalqon-site Run workflow (/ulash sahifasi) · Google Cloud Android OAuth mijozi · Play yopiq test + 12 tester · skrinshot, banner, ruxsat videosi · Firebase loyiha (google-services.json) · pullik Gemini kaliti · YaTT.
+Agent: merge'dan keyin deploy/log tekshiruvi · imzolangan AAB · Firebase push · pullik kalit bilan AI sinovi va ko'rsatma tuzatishlari · tarif chegaralari (Bepul/Pro/Max) · Play Billing + Telegram Stars (Paynet faqat saytda) · telefon markalari uchun fon yo'riqnomasi · YouTube ssenariylari · @aibotqalqon ni bot menyusiga ulash.
 
 ## Ochiq masalalar (ustuvorlik bo'yicha)
 
