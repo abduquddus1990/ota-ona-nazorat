@@ -1855,9 +1855,11 @@ async function handleCreateDeviceCode() {
         }
 
         if (resultBox) {
-            const deepLink = 'shield://pair?code=' + encodeURIComponent(data.pairCode);
+            // shield:// havolasi Telegramda bosilmaydi — https sahifa yuboriladi,
+            // u ilovani kod yozilgan holda ochadi (site/ulash).
+            const deepLink = 'https://qalqonai.uz/ulash/?code=' + encodeURIComponent(data.pairCode);
             const shareText = encodeURIComponent(
-                (name || 'Farzand') + " uchun Qalqon AI qurilma kodi: " + data.pairCode
+                (name || 'Farzand') + ", telefoningni Qalqon AI'ga ulash uchun havolani bos:"
             );
             resultBox.classList.remove('hidden');
             resultBox.innerHTML =
@@ -1867,10 +1869,11 @@ async function handleCreateDeviceCode() {
                     '<div class="text-lg font-black text-indigo-400 tracking-widest font-mono">' + data.pairCode + '</div>' +
                     '<div class="text-[9px] text-slate-500">' + Math.round((data.expiresInSec || 900) / 60) + ' daqiqa amal qiladi, bir marta ishlatiladi</div>' +
                 '</div>' +
-                '<a href="https://t.me/share/url?url=' + encodeURIComponent(deepLink) + '&text=' + shareText + '" target="_blank" ' +
-                   'class="block w-full text-center py-2 rounded-xl bg-sky-500/20 border border-sky-500/50 text-sky-200 font-bold text-[11px]">' +
-                    '📤 Telegram orqali yuborish' +
-                '</a>';
+                '<a href="https://t.me/share/url?url=' + encodeURIComponent(deepLink) + '&text=' + shareText + '" target="_blank" onclick="return tashqiHavola(this.href)" ' +
+                   'class="block w-full text-center py-2.5 rounded-xl bg-sky-500/20 border border-sky-500/50 text-sky-200 font-bold text-[11px]">' +
+                    '📤 Farzandga havola yuborish (Telegram)' +
+                '</a>' +
+                '<div class="text-[9px] text-slate-500 text-center">Farzand havolani bosadi — ilova kod bilan o\'zi ochiladi, terish shart emas.</div>';
         }
         if (nameInput) nameInput.value = '';
     } catch (e) {

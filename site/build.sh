@@ -13,6 +13,9 @@ OUT="${1:?chiqish papkasini bering}"
 mkdir -p "$OUT/assets"
 cp "$ROOT/site/index.html" "$ROOT/site/CNAME" "$OUT/"
 cp "$ROOT/site/assets/"* "$OUT/assets/"
+# Farzand telefonini ulash sahifasi (Mini App "Farzandga havola yuborish").
+mkdir -p "$OUT/ulash"
+cp "$ROOT/site/ulash/index.html" "$OUT/ulash/"
 for f in about.html privacy-policy.html terms.html account-deletion.html; do
   cp "$ROOT/$f" "$OUT/"
 done
