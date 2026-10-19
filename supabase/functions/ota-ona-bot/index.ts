@@ -5184,9 +5184,9 @@ async function getAppUsageReportText(familyCode: string, lang: string = "uz"): P
 
 function getFeedbackText(lang: string = "uz"): string {
   if (lang === "ru") {
-    return `💡 <b>ОТЗЫВЫ И ПРЕДЛОЖЕНИЯ:</b>\n\nВаше мнение очень важно для нас! Отправьте свои предложения по улучшению программы разработчикам:\n\n📬 <b>Официальная почта:</b> <code>alhamdulillah@tmail.ton</code>\n\n👉 <a href="https://mail.google.com/mail/?view=cm&fs=1&to=alhamdulillah@tmail.ton&su=Shield+Parental+Guard+Taklif+va+Mulohaza">Написать письмо через Gmail</a>`;
+    return `💡 <b>ОТЗЫВЫ И ПРЕДЛОЖЕНИЯ:</b>\n\nВаше мнение очень важно для нас! Отправьте свои предложения по улучшению программы разработчикам:\n\n📬 <b>Официальная почта:</b> <code>quddusxon90@gmail.com</code>\n\n👉 <a href="https://mail.google.com/mail/?view=cm&fs=1&to=quddusxon90@gmail.com&su=Qalqon+AI+taklif">Написать письмо через Gmail</a>`;
   }
-  return `💡 <b>TAKLIF VA FIKR-MULOHAZALAR:</b>\n\nDasturni yanada yaxshilash bo'yicha takliflaringizni to'g'ridan-to'g'ri ishlab chiquvchilarga yuboring:\n\n📬 <b>Rasmiy qabul pochtasi:</b> <code>alhamdulillah@tmail.ton</code>\n\n👉 <a href="https://mail.google.com/mail/?view=cm&fs=1&to=alhamdulillah@tmail.ton&su=Shield+Parental+Guard+Taklif+va+Mulohaza">Gmail orqali xat yozish</a>`;
+  return `💡 <b>TAKLIF VA FIKR-MULOHAZALAR:</b>\n\nDasturni yanada yaxshilash bo'yicha takliflaringizni to'g'ridan-to'g'ri ishlab chiquvchilarga yuboring:\n\n📬 <b>Rasmiy qabul pochtasi:</b> <code>quddusxon90@gmail.com</code>\n\n👉 <a href="https://mail.google.com/mail/?view=cm&fs=1&to=quddusxon90@gmail.com&su=Qalqon+AI+taklif">Gmail orqali xat yozish</a>`;
 }
 
 // ---------------------------------------------------------------- statistika

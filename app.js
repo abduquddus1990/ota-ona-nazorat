@@ -455,7 +455,7 @@ const I18N = {
         pairingSelect: "Farzandni Ulash & Android Ilova",
         pairingSub: "Oila kodi va avtomatik juftlash",
         feedbackTitle: "Taklif va Mulohazalar",
-        feedbackSub: "alhamdulillah@tmail.ton orqali fikr yuborish",
+        feedbackSub: "quddusxon90@gmail.com orqali fikr yuborish",
         feedbackHeader: "Fikringiz biz uchun muhim!",
         feedbackDesc: "Dasturni yanada takomillashtirish, yangi darsliklar yoki qulayliklar bo'yicha takliflaringizni to'g'ridan-to'g'ri ishlab chiquvchilarga yuboring.",
         feedbackEmailLabel: "Rasmiy qabul pochtasi:",
@@ -603,7 +603,7 @@ const I18N = {
         pairingSelect: "Подключение Ребёнка и Android App",
         pairingSub: "Код семьи и авто-привязка",
         feedbackTitle: "Предложения и Отзывы",
-        feedbackSub: "Отправить отзыв на alhamdulillah@tmail.ton",
+        feedbackSub: "Отправить отзыв на quddusxon90@gmail.com",
         feedbackHeader: "Ваше мнение важно для нас!",
         feedbackDesc: "Отправьте свои предложения по улучшению программы, новым предметам или удобствам напрямую разработчикам.",
         feedbackEmailLabel: "Официальная почта для приёма:",
@@ -6779,6 +6779,21 @@ function moveNode(id, hostId) {
     if (!el || !host) return false;
     if (el.parentElement !== host) host.appendChild(el);
     el.classList.remove('hidden');
+    return true;
+}
+
+/**
+ * Ijtimoiy tarmoq havolalari: Telegram ichida t.me — Telegramning o'zida,
+ * boshqalari tashqi brauzerda; Android ilovada — tashqi ilovada (WebView
+ * ichida Instagram/YouTube ochilsa, foydalanuvchi ilovaga qaytolmay qoladi).
+ * false qaytsa — havolani o'zimiz ochdik.
+ */
+function tashqiHavola(url) {
+    try {
+        if (window.QalqonNative && window.QalqonNative.openExternal) { window.QalqonNative.openExternal(url); return false; }
+        if (tg && /^https:\/\/t\.me\//.test(url) && tg.openTelegramLink) { tg.openTelegramLink(url); return false; }
+        if (tg && tg.openLink && tg.initData) { tg.openLink(url); return false; }
+    } catch (e) {}
     return true;
 }
 
