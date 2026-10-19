@@ -1,5 +1,8 @@
 # Qalqon AI — agent uchun yo'riqnoma
 
+> **Avval `docs/LOYIHA-JURNALI.md` ni o'qing** — hozirgi holat, egasining
+> qarorlari va ochiq masalalar. Katta qadamdan keyin uni yangilang.
+
 Bu fayl har bir Claude Code sessiyasida (noutbukda ham, bulutda ham)
 birinchi o'qiladi. Egasi — Quddusxon (GitHub: `abduquddus1990`). U ko'pincha
 telefondan topshiriq beradi va natijani telefonda ko'radi.
