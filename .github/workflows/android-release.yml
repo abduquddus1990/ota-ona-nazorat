@@ -66,7 +66,16 @@ jobs:
 
       - name: Imzolangan AAB yig'ish
         working-directory: android
-        run: gradle --no-daemon --stacktrace bundleRelease
+        run: |
+          set -o pipefail
+          gradle --no-daemon --stacktrace bundleRelease 2>&1 | tee "$GITHUB_WORKSPACE/build.log"
+
+      # Log tashqaridan o'qilmaydi (403) — xato matni annotatsiya bo'lib chiqadi.
+      - name: Xato matnini ko'rsatish
+        if: failure()
+        run: |
+          grep -nE "^e: |error:|ERROR:|Missing class|R8|FAILURE|What went wrong|Caused by|Could not|> Task .* FAILED" build.log | tail -n 40 | while IFS= read -r line; do echo "::error::$line"; done
+          tail -n 25 build.log | while IFS= read -r line; do echo "::error::TAIL $line"; done
 
       - name: Kalitni o'chirish
         if: always()
