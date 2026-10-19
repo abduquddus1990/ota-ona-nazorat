@@ -310,6 +310,17 @@ const farzandJavob = JSON.parse(r.results?.[0]?.body || "{}");
 check(r.ok && farzandJavob.ok && Array.isArray(farzandJavob.devices) && farzandJavob.devices.every((d: any) => d.childId === "tg_3001"),
   "28e. ichida ham o'sha ruxsat qoidalari (farzand faqat o'z qurilmasini ko'radi)", farzandJavob);
 
+// 29. AI javobiga shikoyat (Play talabi)
+t0 = TG.length;
+r = await api({ type: "ai_report", savol: "2+2?", javob: "<b>5</b> <a href='x'>bos</a>", initData: await initData(3001) });
+const shikoyat = tgSince(t0).find((m) => /AI javobiga shikoyat/.test(m.text || ""));
+check(r.ok && String(shikoyat?.chat_id) === "9999", "29. farzandning shikoyati adminga yetdi", { r, shikoyat });
+check(!!shikoyat && shikoyat.text.includes("&lt;b&gt;5") && !shikoyat.text.includes("<a href"), "29b. shikoyat matni tozalangan", shikoyat?.text);
+for (let i = 0; i < 10; i++) r = await api({ type: "ai_report", savol: "x", javob: "y", initData: await initData(3001) });
+check(r.status === 429, "29c. ko'p shikoyat cheklanadi", r);
+r = await api({ type: "ai_report", savol: "x", javob: "y" });
+check(r.status === 401, "29d. kirishsiz shikoyat qabul qilinmaydi", r);
+
 const fail = results.filter(([ok]) => !ok).length;
 console.log(`\n${results.length - fail}/${results.length} o'tdi`);
 Deno.exit(fail ? 1 : 0);

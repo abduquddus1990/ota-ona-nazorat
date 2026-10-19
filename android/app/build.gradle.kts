@@ -29,8 +29,8 @@ android {
         applicationId = "com.shield.parentalguard"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.0.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -63,6 +63,8 @@ android {
                 storePassword = keystoreProperties["storePassword"] as String
                 keyAlias = keystoreProperties["keyAlias"] as String
                 keyPassword = keystoreProperties["keyPassword"] as String
+                // Yuklash kaliti PKCS12 (.p12) formatida (qalqon-maxfiy, 2026-10-19).
+                keystoreProperties["storeType"]?.let { storeType = it as String }
             }
         }
     }
@@ -120,6 +122,11 @@ dependencies {
 
     // Security & EncryptedSharedPreferences (Hardware Keystore)
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
+
+    // Google bilan kirish (Credential Manager). Server: google_login.
+    implementation("androidx.credentials:credentials:1.3.0")
+    implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
+    implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
 
     // Network & OkHttp (TLS 1.3 & Certificate Pinning)
     implementation("com.squareup.okhttp3:okhttp:4.12.0")

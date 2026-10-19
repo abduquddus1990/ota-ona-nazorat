@@ -455,7 +455,7 @@ const I18N = {
         pairingSelect: "Farzandni Ulash & Android Ilova",
         pairingSub: "Oila kodi va avtomatik juftlash",
         feedbackTitle: "Taklif va Mulohazalar",
-        feedbackSub: "alhamdulillah@tmail.ton orqali fikr yuborish",
+        feedbackSub: "quddusxon90@gmail.com orqali fikr yuborish",
         feedbackHeader: "Fikringiz biz uchun muhim!",
         feedbackDesc: "Dasturni yanada takomillashtirish, yangi darsliklar yoki qulayliklar bo'yicha takliflaringizni to'g'ridan-to'g'ri ishlab chiquvchilarga yuboring.",
         feedbackEmailLabel: "Rasmiy qabul pochtasi:",
@@ -603,7 +603,7 @@ const I18N = {
         pairingSelect: "Подключение Ребёнка и Android App",
         pairingSub: "Код семьи и авто-привязка",
         feedbackTitle: "Предложения и Отзывы",
-        feedbackSub: "Отправить отзыв на alhamdulillah@tmail.ton",
+        feedbackSub: "Отправить отзыв на quddusxon90@gmail.com",
         feedbackHeader: "Ваше мнение важно для нас!",
         feedbackDesc: "Отправьте свои предложения по улучшению программы, новым предметам или удобствам напрямую разработчикам.",
         feedbackEmailLabel: "Официальная почта для приёма:",
@@ -1855,9 +1855,11 @@ async function handleCreateDeviceCode() {
         }
 
         if (resultBox) {
-            const deepLink = 'shield://pair?code=' + encodeURIComponent(data.pairCode);
+            // shield:// havolasi Telegramda bosilmaydi — https sahifa yuboriladi,
+            // u ilovani kod yozilgan holda ochadi (site/ulash).
+            const deepLink = 'https://qalqonai.uz/ulash/?code=' + encodeURIComponent(data.pairCode);
             const shareText = encodeURIComponent(
-                (name || 'Farzand') + " uchun Qalqon AI qurilma kodi: " + data.pairCode
+                (name || 'Farzand') + ", telefoningni Qalqon AI'ga ulash uchun havolani bos:"
             );
             resultBox.classList.remove('hidden');
             resultBox.innerHTML =
@@ -1867,10 +1869,11 @@ async function handleCreateDeviceCode() {
                     '<div class="text-lg font-black text-indigo-400 tracking-widest font-mono">' + data.pairCode + '</div>' +
                     '<div class="text-[9px] text-slate-500">' + Math.round((data.expiresInSec || 900) / 60) + ' daqiqa amal qiladi, bir marta ishlatiladi</div>' +
                 '</div>' +
-                '<a href="https://t.me/share/url?url=' + encodeURIComponent(deepLink) + '&text=' + shareText + '" target="_blank" ' +
-                   'class="block w-full text-center py-2 rounded-xl bg-sky-500/20 border border-sky-500/50 text-sky-200 font-bold text-[11px]">' +
-                    '📤 Telegram orqali yuborish' +
-                '</a>';
+                '<a href="https://t.me/share/url?url=' + encodeURIComponent(deepLink) + '&text=' + shareText + '" target="_blank" onclick="return tashqiHavola(this.href)" ' +
+                   'class="block w-full text-center py-2.5 rounded-xl bg-sky-500/20 border border-sky-500/50 text-sky-200 font-bold text-[11px]">' +
+                    '📤 Farzandga havola yuborish (Telegram)' +
+                '</a>' +
+                '<div class="text-[9px] text-slate-500 text-center">Farzand havolani bosadi — ilova kod bilan o\'zi ochiladi, terish shart emas.</div>';
         }
         if (nameInput) nameInput.value = '';
     } catch (e) {
@@ -2217,6 +2220,11 @@ function switchAppRole(role) {
     if (quickMenuFab) {
         quickMenuFab.classList.toggle('hidden', !isParent);
     }
+    // Farzand panelida "💎 Pro" (sotuv taklifi) ko'rinmaydi.
+    ['headerProBtn', 'headerPlanBadge'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.toggle('hidden', !isParent);
+    });
     const authBannerBtnRole = document.getElementById('authBannerBtn');
     if (authBannerBtnRole) {
         authBannerBtnRole.classList.toggle('hidden', !isParent);
@@ -2461,7 +2469,7 @@ function appendChildUserMessage(text) {
     thread.scrollTop = thread.scrollHeight;
 }
 
-function appendChildAiMessage(htmlContent) {
+function appendChildAiMessage(htmlContent, hisobot) {
     const thread = document.getElementById('childAiChatThread');
     if (!thread) return;
     const msg = document.createElement('div');
@@ -2472,8 +2480,43 @@ function appendChildAiMessage(htmlContent) {
             ${htmlContent}
         </div>
     `;
+    if (hisobot) aiShikoyatQosh(msg.lastElementChild, hisobot);
     thread.appendChild(msg);
     thread.scrollTop = thread.scrollHeight;
+    return msg;
+}
+
+// ============================================================================
+// AI JAVOBIGA SHIKOYAT (Google Play talabi: "AI yaratgan kontentli ilovalarda
+// foydalanuvchi nomaqbul javob haqida ilovadan chiqmasdan xabar bera olishi
+// SHART"). Shikoyat adminga Telegramda keladi (server: ai_report).
+// ============================================================================
+function aiShikoyatQosh(pufak, hisobot) {
+    const tugma = document.createElement('button');
+    tugma.type = 'button';
+    tugma.className = 'ai-shikoyat block mt-2 text-[10px] font-bold text-slate-400 hover:text-rose-300';
+    tugma.textContent = "⚑ Javobda xato yoki nomaqbul gap bormi?";
+    tugma.addEventListener('click', () => {
+        const savol = "Bu javob haqida xabar beramizmi?\n\nJavob va savolingiz Qalqon jamoasiga yuboriladi — biz uni tekshirib, AI'ni tuzatamiz.";
+        const yubor = async (ha) => {
+            if (!ha) return;
+            tugma.disabled = true;
+            tugma.textContent = '⏳ Yuborilmoqda...';
+            let ok = false;
+            try {
+                const r = await fetch(QALQON_BOT_FN, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ type: 'ai_report', savol: String(hisobot.savol || '').slice(0, 1000), javob: String(hisobot.javob || '').slice(0, 3000) })
+                });
+                ok = !!(await r.json()).ok;
+            } catch (e) {}
+            tugma.textContent = ok ? '✅ Rahmat, xabaringiz yuborildi' : '❌ Yuborilmadi, keyinroq urinib ko\'ring';
+            if (!ok) tugma.disabled = false;
+        };
+        if (tg && tg.showConfirm) tg.showConfirm(savol, yubor); else yubor(confirm(savol));
+    });
+    pufak.appendChild(tugma);
 }
 
 let uploadedChildImageBase64 = null;
@@ -2549,7 +2592,10 @@ function aiRemainingNote(data) {
 async function callRealTextBackendForChild(message) {
     const child = childrenDatabase[currentChildKey];
     const isRu = (currentLang === 'ru');
-    appendChildAiMessage(isRu ? '⏳ Думаю…' : '⏳ O\'ylayapman…');
+    // Javob yoki xato kelgach olib tashlanadi — ilgari har savoldan keyin
+    // chatda bittadan "O'ylayapman…" qolib ketardi.
+    const kutish = appendChildAiMessage(isRu ? '⏳ Думаю…' : '⏳ O\'ylayapman…');
+    const kutishniOlib = () => { if (kutish) kutish.remove(); };
     try {
         const childRealName = realChildProfile?.childName || realChildProfile?.fullName
             || (typeof tg !== 'undefined' && tg?.initDataUnsafe?.user?.first_name) || '';
@@ -2566,14 +2612,16 @@ async function callRealTextBackendForChild(message) {
             })
         });
         const data = await resp.json();
+        kutishniOlib();
         if (data.ok && data.answer) {
-            appendChildAiMessage(safeAiHtml(data.answer) + aiRemainingNote(data));
+            appendChildAiMessage(safeAiHtml(data.answer) + aiRemainingNote(data), { savol: message || '', javob: data.answer });
         } else {
             appendChildAiMessage(safeAiHtml(data.error ||
                 (isRu ? 'Ошибка. Попробуйте ещё раз.' : 'Xatolik. Qayta urinib ko\'ring.')) + aiRemainingNote(data));
         }
     } catch (e) {
         console.error('Child text backend error:', e);
+        kutishniOlib();
         appendChildAiMessage(isRu ? '⚠️ Сервер временно недоступен.' : '⚠️ Server vaqtincha javob bermayapti.');
     }
 }
@@ -2602,7 +2650,7 @@ async function callRealVisionBackendForChild(query, imageBase64) {
         });
         const data = await resp.json();
         if (data.ok && data.answer) {
-            appendChildAiMessage(safeAiHtml(data.answer) + aiRemainingNote(data));
+            appendChildAiMessage(safeAiHtml(data.answer) + aiRemainingNote(data), { savol: query || '', javob: data.answer });
         } else {
             appendChildAiMessage(safeAiHtml(data.error ||
                 (isRu ? 'Ошибка анализа. Попробуйте ещё раз.' : 'Tahlilda xatolik yuz berdi. Qayta urinib ko\'ring.')) + aiRemainingNote(data));
@@ -3964,7 +4012,10 @@ function sendQuickPrompt(promptText) {
 async function callRealTextBackend(message) {
     const child = childrenDatabase[currentChildKey];
     const isRu = (currentLang === 'ru');
-    appendAIMessage(isRu ? '⏳ Думаю…' : '⏳ O\'ylayapman…');
+    // Javob yoki xato kelgach olib tashlanadi — ilgari har savoldan keyin
+    // chatda bittadan "O'ylayapman…" qolib ketardi.
+    const kutish = appendAIMessage(isRu ? '⏳ Думаю…' : '⏳ O\'ylayapman…');
+    const kutishniOlib = () => { if (kutish) kutish.remove(); };
     try {
         const resp = await fetch(QALQON_BOT_FN, {
             method: 'POST',
@@ -3979,13 +4030,15 @@ async function callRealTextBackend(message) {
             })
         });
         const data = await resp.json();
+        kutishniOlib();
         if (data.ok && data.answer) {
-            appendAIMessage(safeAiHtml(data.answer) + aiRemainingNote(data));
+            appendAIMessage(safeAiHtml(data.answer) + aiRemainingNote(data), { savol: message || '', javob: data.answer });
         } else {
             appendAIMessage(safeAiHtml(data.error || (isRu ? 'Ошибка анализа.' : 'Tahlilda xatolik.')) + aiRemainingNote(data));
         }
     } catch (e) {
         console.error('Text backend error:', e);
+        kutishniOlib();
         appendAIMessage(isRu ? '⚠️ Сервер временно недоступен.' : '⚠️ Server vaqtincha javob bermayapti.');
     }
 }
@@ -4013,7 +4066,7 @@ async function callRealVisionBackend(query, imageBase64) {
         });
         const data = await resp.json();
         if (data.ok && data.answer) {
-            appendAIMessage(safeAiHtml(data.answer) + aiRemainingNote(data));
+            appendAIMessage(safeAiHtml(data.answer) + aiRemainingNote(data), { savol: query || '', javob: data.answer });
         } else {
             appendAIMessage(safeAiHtml(data.error || (isRu ? 'Извините, произошла ошибка при анализе. Попробуйте ещё раз.' : 'Kechirasiz, tahlil qilishda xatolik yuz berdi. Qayta urinib ko\'ring.')) + aiRemainingNote(data));
         }
@@ -4163,7 +4216,7 @@ function appendUserMessage(text, imageBase64) {
     chat.scrollTop = chat.scrollHeight;
 }
 
-function appendAIMessage(htmlContent) {
+function appendAIMessage(htmlContent, hisobot) {
     const chat = document.getElementById('aiChatContainer') || document.getElementById('aiChatThread');
     if (!chat) return;
     const msg = document.createElement('div');
@@ -4176,8 +4229,10 @@ function appendAIMessage(htmlContent) {
             ${htmlContent}
         </div>
     `;
+    if (hisobot) aiShikoyatQosh(msg.lastElementChild, hisobot);
     chat.appendChild(msg);
     chat.scrollTop = chat.scrollHeight;
+    return msg;
 }
 
 // ============================================================================
@@ -6732,6 +6787,21 @@ function moveNode(id, hostId) {
     if (!el || !host) return false;
     if (el.parentElement !== host) host.appendChild(el);
     el.classList.remove('hidden');
+    return true;
+}
+
+/**
+ * Ijtimoiy tarmoq havolalari: Telegram ichida t.me — Telegramning o'zida,
+ * boshqalari tashqi brauzerda; Android ilovada — tashqi ilovada (WebView
+ * ichida Instagram/YouTube ochilsa, foydalanuvchi ilovaga qaytolmay qoladi).
+ * false qaytsa — havolani o'zimiz ochdik.
+ */
+function tashqiHavola(url) {
+    try {
+        if (window.QalqonNative && window.QalqonNative.openExternal) { window.QalqonNative.openExternal(url); return false; }
+        if (tg && /^https:\/\/t\.me\//.test(url) && tg.openTelegramLink) { tg.openTelegramLink(url); return false; }
+        if (tg && tg.openLink && tg.initData) { tg.openLink(url); return false; }
+    } catch (e) {}
     return true;
 }
 

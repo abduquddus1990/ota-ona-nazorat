@@ -77,6 +77,17 @@ object AppAuthApi {
         status to session
     }
 
+    /**
+     * Google bilan kirish: Credential Manager bergan ID tokenni server
+     * tekshiradi (google_login) va seans beradi. Yangi odam bo'lsa — oila
+     * o'zi ochiladi, ya'ni ro'yxatdan o'tish ham shu.
+     */
+    fun loginWithGoogle(idToken: String, nonce: String): Result<Session> = runCatching {
+        val j = post(JSONObject().put("type", "google_login").put("idToken", idToken).put("nonce", nonce))
+        if (!j.optBoolean("ok")) error(j.optString("error", "google_failed"))
+        Session(j.getString("sessionToken"), j.optString("familyCode"))
+    }
+
     /** Parol bilan kirish natijasi: darhol seans yoki Telegramdagi tasdiqni kutish. */
     sealed class PasswordLoginResult {
         data class Done(val session: Session) : PasswordLoginResult()
