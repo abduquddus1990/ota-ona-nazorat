@@ -9,6 +9,13 @@ import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
+import androidx.credentials.CredentialManager
+import androidx.credentials.CustomCredential
+import androidx.credentials.GetCredentialRequest
+import androidx.credentials.exceptions.GetCredentialCancellationException
+import androidx.credentials.exceptions.GetCredentialException
+import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.shield.parentalguard.PairingActivity
@@ -44,7 +51,7 @@ class LoginActivity : AppCompatActivity() {
     private lateinit var btnCodeSubmit: Button
     private lateinit var otherWaysToggle: TextView
     private lateinit var otherWaysBox: View
-    private lateinit var btnRegister: Button
+    private lateinit var btnGoogle: Button
 
     /** Telegramdan qaytgach, tasdiqlashni shu token bo'yicha so'raymiz. */
     private var pendingToken: String? = null
@@ -71,7 +78,7 @@ class LoginActivity : AppCompatActivity() {
         btnCodeSubmit = findViewById(R.id.btnCodeSubmit)
         otherWaysToggle = findViewById(R.id.btnOtherWaysToggle)
         otherWaysBox = findViewById(R.id.otherWaysBox)
-        btnRegister = findViewById(R.id.btnRegister)
+        btnGoogle = findViewById(R.id.btnGoogleLogin)
 
         val openBot = {
             try {
@@ -81,11 +88,9 @@ class LoginActivity : AppCompatActivity() {
             }
         }
         btnOpenBot.setOnClickListener { openBot() }
-        // Oila hali ro'yxatdan o'tmagan bo'lsa, bot o'zi tanib, ro'yg'atdan
-        // o'tish formasini (Mini App) taklif qiladi — allaqachon ro'yxatdan
-        // o'tgan bo'lsa, bot to'g'ridan-to'g'ri asosiy menyuni ko'rsatadi.
-        // Ikkala holatda ham ochish nuqtasi bitta: botning o'zi.
-        btnRegister.setOnClickListener { openBot() }
+        // Google — hisob yo'q bo'lsa o'zi ochadi, ya'ni alohida "ro'yxatdan
+        // o'tish" tugmasi kerak emas.
+        btnGoogle.setOnClickListener { startGoogleLogin() }
         btnCodeSubmit.setOnClickListener { submitParentCode() }
         otherWaysToggle.setOnClickListener {
             otherWaysBox.visibility = if (otherWaysBox.visibility == View.VISIBLE) View.GONE else View.VISIBLE
@@ -168,6 +173,40 @@ class LoginActivity : AppCompatActivity() {
         super.onResume()
         // Telegramdan qaytdi — tasdiqlanganini tekshiramiz.
         pendingToken?.let { if (!polling) pollUntilApproved(it) }
+    }
+
+    /**
+     * Google'ning tizim oynasi orqali kirish. Sozlash: Google Cloud'da Android
+     * OAuth mijozi (paket + imzo SHA-1) bo'lishi shart, aks holda oyna
+     * ochilmaydi — shunda foydalanuvchiga Telegram yo'li taklif qilinadi.
+     */
+    private fun startGoogleLogin() {
+        setBusy(true, getString(R.string.login_checking))
+        val nonce = java.util.UUID.randomUUID().toString()
+        val option = GetSignInWithGoogleOption.Builder(GOOGLE_WEB_CLIENT_ID).setNonce(nonce).build()
+        val request = GetCredentialRequest.Builder().addCredentialOption(option).build()
+        lifecycleScope.launch {
+            try {
+                val cred = CredentialManager.create(this@LoginActivity)
+                    .getCredential(this@LoginActivity, request).credential
+                if (cred !is CustomCredential || cred.type != GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
+                    setBusy(false, getString(R.string.login_google_failed))
+                    return@launch
+                }
+                val idToken = GoogleIdTokenCredential.createFrom(cred.data).idToken
+                val result = withContext(Dispatchers.IO) { AppAuthApi.loginWithGoogle(idToken, nonce) }
+                result.onSuccess {
+                    AppAuthApi.saveSession(this@LoginActivity, it)
+                    openApp()
+                }.onFailure {
+                    setBusy(false, it.message ?: getString(R.string.login_google_failed))
+                }
+            } catch (_: GetCredentialCancellationException) {
+                setBusy(false, "")
+            } catch (e: GetCredentialException) {
+                setBusy(false, getString(R.string.login_google_failed))
+            }
+        }
     }
 
     private fun startTelegramLogin() {
@@ -254,6 +293,7 @@ class LoginActivity : AppCompatActivity() {
 
     private fun setBusy(busy: Boolean, message: String) {
         tvStatus.text = message
+        btnGoogle.isEnabled = !busy
         btnTelegram.isEnabled = !busy
         btnPasswordSubmit.isEnabled = !busy
         btnCodeSubmit.isEnabled = !busy
@@ -291,4 +331,9 @@ class LoginActivity : AppCompatActivity() {
         androidx.core.view.ViewCompat.requestApplyInsets(root)
     }
 
+
+    private companion object {
+        /** Server tekshiradigan Google "Web" mijoz ID'si (GOOGLE_CLIENT_ID sekreti bilan bir xil, maxfiy emas). */
+        const val GOOGLE_WEB_CLIENT_ID = "167850690503-rpllk27r3pku2s1l5gq2fql2tl4j4tk0.apps.googleusercontent.com"
+    }
 }

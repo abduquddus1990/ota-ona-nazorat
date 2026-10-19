@@ -20,6 +20,7 @@ ENV/
 *.apk
 *.aab
 *.jks
+*.p12
 *.keystore
 android/keystore.properties
 # Debug keystore SIR EMAS (parollari standart "android") — CI har safar

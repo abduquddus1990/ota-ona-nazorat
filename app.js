@@ -2217,6 +2217,11 @@ function switchAppRole(role) {
     if (quickMenuFab) {
         quickMenuFab.classList.toggle('hidden', !isParent);
     }
+    // Farzand panelida "💎 Pro" (sotuv taklifi) ko'rinmaydi.
+    ['headerProBtn', 'headerPlanBadge'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.toggle('hidden', !isParent);
+    });
     const authBannerBtnRole = document.getElementById('authBannerBtn');
     if (authBannerBtnRole) {
         authBannerBtnRole.classList.toggle('hidden', !isParent);

@@ -33,56 +33,40 @@
             android:textSize="13sp" />
 
         <!--
-            ENG SODDA yo'l — birinchi va eng ko'zga tashlanadigan: botda
-            bitta tugma bosiladi, chiqqan kodni shu yerga kiritadi. Parol
-            eslab qolish yoki ilovalar orasida almashish shart emas.
+            Ota-ona: KODSIZ, bitta tugma (2026-10-19). Ilgari ekran 8 xonali
+            kod bilan boshlanardi: botga o'tish, kod olish, qaytib kiritish.
+            Google — hisobni o'zi ochadi (yangi oila ham shu yerda); Telegram —
+            botda "Ha, bu men" ni bosish yetarli. Kod va parol — pastda.
         -->
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center"
-            android:text="@string/login_code_hint"
-            android:textColor="@color/qalqon_text_secondary"
-            android:textSize="13sp" />
-
         <Button
-            android:id="@+id/btnOpenBot"
-            android:layout_width="match_parent"
-            android:layout_height="44dp"
-            android:layout_marginTop="10dp"
-            android:backgroundTint="@color/qalqon_surface_high"
-            android:text="@string/login_open_bot"
-            android:textAllCaps="false"
-            android:textColor="@color/qalqon_secondary"
-            android:textSize="13sp" />
-
-        <EditText
-            android:id="@+id/etParentCode"
+            android:id="@+id/btnGoogleLogin"
             android:layout_width="match_parent"
             android:layout_height="52dp"
-            android:layout_marginTop="12dp"
-            android:background="@color/qalqon_surface"
-            android:gravity="center"
-            android:hint="@string/login_code_field_hint"
-            android:inputType="textCapCharacters"
-            android:letterSpacing="0.2"
-            android:maxLength="8"
-            android:padding="12dp"
-            android:textColor="@color/qalqon_text_primary"
-            android:textColorHint="@color/qalqon_text_secondary"
-            android:textSize="18sp"
-            android:textStyle="bold" />
-
-        <Button
-            android:id="@+id/btnCodeSubmit"
-            android:layout_width="match_parent"
-            android:layout_height="52dp"
-            android:layout_marginTop="10dp"
             android:backgroundTint="@color/qalqon_primary"
-            android:text="@string/login_code_submit"
+            android:text="@string/login_google"
             android:textAllCaps="false"
             android:textColor="@color/qalqon_bg"
             android:textSize="15sp" />
+
+        <Button
+            android:id="@+id/btnTelegramLogin"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginTop="10dp"
+            android:backgroundTint="@color/qalqon_surface_high"
+            android:text="@string/login_telegram"
+            android:textAllCaps="false"
+            android:textColor="@color/qalqon_secondary"
+            android:textSize="15sp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:gravity="center"
+            android:text="@string/login_new_hint"
+            android:textColor="@color/qalqon_text_secondary"
+            android:textSize="12sp" />
 
         <TextView
             android:id="@+id/tvLoginStatus"
@@ -98,7 +82,7 @@
             android:id="@+id/btnOtherWaysToggle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
+            android:layout_marginTop="16dp"
             android:gravity="center"
             android:text="@string/login_other_ways_toggle"
             android:textColor="@color/qalqon_text_secondary"
@@ -112,21 +96,58 @@
             android:orientation="vertical"
             android:visibility="gone">
 
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:text="@string/login_code_hint"
+                android:textColor="@color/qalqon_text_secondary"
+                android:textSize="12sp" />
+
             <Button
-                android:id="@+id/btnTelegramLogin"
+                android:id="@+id/btnOpenBot"
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
+                android:layout_marginTop="8dp"
+                android:backgroundTint="@color/qalqon_surface_high"
+                android:text="@string/login_open_bot"
+                android:textAllCaps="false"
+                android:textColor="@color/qalqon_secondary"
+                android:textSize="13sp" />
+
+            <EditText
+                android:id="@+id/etParentCode"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:layout_marginTop="10dp"
+                android:background="@color/qalqon_surface"
+                android:gravity="center"
+                android:hint="@string/login_code_field_hint"
+                android:inputType="textCapCharacters"
+                android:letterSpacing="0.2"
+                android:maxLength="8"
+                android:padding="12dp"
+                android:textColor="@color/qalqon_text_primary"
+                android:textColorHint="@color/qalqon_text_secondary"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+
+            <Button
+                android:id="@+id/btnCodeSubmit"
                 android:layout_width="match_parent"
                 android:layout_height="48dp"
-                android:backgroundTint="@color/qalqon_surface_high"
-                android:text="@string/login_telegram"
+                android:layout_marginTop="8dp"
+                android:backgroundTint="@color/qalqon_secondary"
+                android:text="@string/login_code_submit"
                 android:textAllCaps="false"
-                android:textColor="@color/qalqon_text_secondary"
+                android:textColor="@color/qalqon_bg"
                 android:textSize="14sp" />
 
             <Button
                 android:id="@+id/btnPasswordLogin"
                 android:layout_width="match_parent"
                 android:layout_height="48dp"
-                android:layout_marginTop="10dp"
+                android:layout_marginTop="14dp"
                 android:backgroundTint="@color/qalqon_surface_high"
                 android:text="@string/login_password_toggle"
                 android:textAllCaps="false"
@@ -184,6 +205,7 @@
             android:layout_marginTop="28dp"
             android:background="@color/qalqon_outline" />
 
+        <!-- Farzand: ota-onasi yuborgan havolani bosadi yoki kodni kiritadi. -->
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -198,37 +220,11 @@
             android:layout_width="match_parent"
             android:layout_height="48dp"
             android:layout_marginTop="8dp"
+            android:layout_marginBottom="24dp"
             android:backgroundTint="@color/qalqon_outline"
             android:text="@string/login_child"
             android:textAllCaps="false"
             android:textColor="@color/qalqon_text_primary"
-            android:textSize="14sp" />
-
-        <!--
-            Oila kodi Telegram ID'dan hisoblanadi, shuning uchun ro'yxatdan
-            o'tishning o'zi Telegramsiz bo'lolmaydi — lekin bu yerdan
-            botga BIR marta o'tish yetarli, qolgan hammasi (forma, tasdiq,
-            keyin ilova kodi) allaqachon ishlaydigan yo'llar.
-        -->
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
-            android:gravity="center"
-            android:text="@string/login_register_hint"
-            android:textColor="@color/qalqon_text_secondary"
-            android:textSize="12sp" />
-
-        <Button
-            android:id="@+id/btnRegister"
-            android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:layout_marginTop="8dp"
-            android:layout_marginBottom="24dp"
-            android:backgroundTint="@color/qalqon_surface_high"
-            android:text="@string/login_register"
-            android:textAllCaps="false"
-            android:textColor="@color/qalqon_success"
             android:textSize="14sp" />
     </LinearLayout>
 </ScrollView>
