@@ -70,6 +70,23 @@ jobs:
           grep -nE "^e: |error:|FAILURE|What went wrong|Caused by|Could not|> Task .* FAILED" build.log | tail -n 40 | while IFS= read -r line; do echo "::error::$line"; done
           tail -n 25 build.log | while IFS= read -r line; do echo "::error::TAIL $line"; done
 
+      # Release yig'ilishi (kod siqiladi — R8). Play AAB aynan shu bilan
+      # yig'iladi; xatosi faqat Play kalitini qo'shgandan keyin chiqmasligi
+      # uchun har PR'da kalitsiz sinab ko'riladi (imzo debug kalit bilan).
+      - name: Release (R8) sinovi
+        if: github.event_name == 'pull_request'
+        working-directory: android
+        run: |
+          set -o pipefail
+          gradle --no-daemon --stacktrace assembleRelease 2>&1 | tee "$GITHUB_WORKSPACE/build.log"
+
+      # Log tashqaridan o'qilmaydi (403) — xato matni annotatsiya bo'lib chiqadi.
+      - name: Release xato matni
+        if: failure()
+        run: |
+          grep -nE "^e: |error:|ERROR:|Missing class|R8|FAILURE|What went wrong|Caused by|Could not|> Task .* FAILED" build.log | tail -n 40 | while IFS= read -r line; do echo "::error::$line"; done
+          tail -n 25 build.log | while IFS= read -r line; do echo "::error::TAIL $line"; done
+
       - name: APK'ni saqlash
         uses: actions/upload-artifact@v4
         with:
