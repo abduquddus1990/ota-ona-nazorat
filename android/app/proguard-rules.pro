@@ -23,3 +23,23 @@
 
 # Kotlin coroutines ichki sinflari.
 -dontwarn kotlinx.coroutines.**
+
+# Mini App <-> ilova ko'prigi (QalqonNative, QalqonSplash). Usiz R8 release'da
+# @JavascriptInterface metodlarini o'chiradi yoki nomini o'zgartiradi — sahifa
+# seans tokenini ololmaydi va Play versiyasida KIRISH BUTUNLAY ISHLAMAYDI
+# (debug'da R8 yo'q, shuning uchun sezilmagan; 2026-10-19).
+-keepattributes JavascriptInterface
+-keepclassmembers class * {
+    @android.webkit.JavascriptInterface <methods>;
+}
+
+# security-crypto (Tink) faqat kompilyatsiyada ishlatadigan annotatsiyalar —
+# ularsiz R8 "Missing class" bilan to'xtaydi.
+-dontwarn com.google.errorprone.annotations.**
+-dontwarn javax.annotation.**
+-dontwarn com.google.api.client.http.**
+-dontwarn org.joda.time.**
+
+# Google bilan kirish (Credential Manager + googleid).
+-keep class com.google.android.libraries.identity.googleid.** { *; }
+-keep class androidx.credentials.playservices.** { *; }
