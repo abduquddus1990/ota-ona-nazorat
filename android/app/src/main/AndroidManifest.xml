@@ -63,9 +63,13 @@
             Qolgan ikki shartni ham bajaramiz: doimiy bildirishnoma
             (PersistentGuardService) va yashirilmaydigan, aniq nomli ikonka.
         -->
+        <!-- Google Play talabi aynan shu yozuv: name="isMonitoringTool",
+             qiymati "child_monitoring" (support.google.com/googleplay/
+             android-developer/answer/12955211). Ilgari
+             "android.app.isMonitoringTool"="true" edi — Play uni tanimaydi. -->
         <meta-data
-            android:name="android.app.isMonitoringTool"
-            android:value="true" />
+            android:name="isMonitoringTool"
+            android:value="child_monitoring" />
 
         <!-- Asosiy Juftlash va Ruxsatlar Oynasi (Pairing Activity) -->
         <!-- Kirish ekrani — ilova shu yerdan boshlanadi. -->

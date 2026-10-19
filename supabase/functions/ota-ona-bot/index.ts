@@ -5291,6 +5291,25 @@ async function handleRequest(req: Request): Promise<Response> {
       }
     }
 
+    // AI JAVOBIGA SHIKOYAT — Google Play'ning AI kontenti siyosati talabi.
+    // Adminga Telegramda keladi; soatiga 10 tadan ko'p emas (kimdir adminni
+    // xabar bilan ko'mib tashlamasligi uchun).
+    if (payload.type === "ai_report") {
+      const kim = actor!.kind === "telegram" ? `tg:${actor!.telegramId}` : `child:${actor!.childId}`;
+      const kalit = `aireport:${kim}`;
+      if (await joinRateLimited(kalit)) return jsonRes({ ok: false, error: "Juda ko'p xabar. Keyinroq urinib ko'ring." }, 429);
+      await recordJoinAttempt(kalit, "", true);
+      const oila = await resolveActorFamily(actor!);
+      const farzandmi = actor!.kind === "device" || (actor!.kind === "telegram" && (await isPairedChild(actor!.telegramId)));
+      await notifyAdmins(
+        `⚑ <b>AI javobiga shikoyat</b>\n\n` +
+          `<b>Kimdan:</b> ${farzandmi ? "farzand" : "ota-ona"} · oila <code>${tgEsc(oila)}</code>\n\n` +
+          `<b>Savol:</b>\n${tgEsc(String(payload.savol || "").slice(0, 1000)) || "—"}\n\n` +
+          `<b>AI javobi:</b>\n${tgEsc(String(payload.javob || "").slice(0, 2500)) || "—"}`
+      );
+      return jsonRes({ ok: true });
+    }
+
     // BOTNI SHU SERVERGA ULASH (Telegram webhook).
     //
     // Server boshqa loyihaga ko'chirilganda (2026-10, Sidney -> Frankfurt)

@@ -2461,7 +2461,7 @@ function appendChildUserMessage(text) {
     thread.scrollTop = thread.scrollHeight;
 }
 
-function appendChildAiMessage(htmlContent) {
+function appendChildAiMessage(htmlContent, hisobot) {
     const thread = document.getElementById('childAiChatThread');
     if (!thread) return;
     const msg = document.createElement('div');
@@ -2472,8 +2472,43 @@ function appendChildAiMessage(htmlContent) {
             ${htmlContent}
         </div>
     `;
+    if (hisobot) aiShikoyatQosh(msg.lastElementChild, hisobot);
     thread.appendChild(msg);
     thread.scrollTop = thread.scrollHeight;
+    return msg;
+}
+
+// ============================================================================
+// AI JAVOBIGA SHIKOYAT (Google Play talabi: "AI yaratgan kontentli ilovalarda
+// foydalanuvchi nomaqbul javob haqida ilovadan chiqmasdan xabar bera olishi
+// SHART"). Shikoyat adminga Telegramda keladi (server: ai_report).
+// ============================================================================
+function aiShikoyatQosh(pufak, hisobot) {
+    const tugma = document.createElement('button');
+    tugma.type = 'button';
+    tugma.className = 'ai-shikoyat block mt-2 text-[10px] font-bold text-slate-400 hover:text-rose-300';
+    tugma.textContent = "⚑ Javobda xato yoki nomaqbul gap bormi?";
+    tugma.addEventListener('click', () => {
+        const savol = "Bu javob haqida xabar beramizmi?\n\nJavob va savolingiz Qalqon jamoasiga yuboriladi — biz uni tekshirib, AI'ni tuzatamiz.";
+        const yubor = async (ha) => {
+            if (!ha) return;
+            tugma.disabled = true;
+            tugma.textContent = '⏳ Yuborilmoqda...';
+            let ok = false;
+            try {
+                const r = await fetch(QALQON_BOT_FN, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ type: 'ai_report', savol: String(hisobot.savol || '').slice(0, 1000), javob: String(hisobot.javob || '').slice(0, 3000) })
+                });
+                ok = !!(await r.json()).ok;
+            } catch (e) {}
+            tugma.textContent = ok ? '✅ Rahmat, xabaringiz yuborildi' : '❌ Yuborilmadi, keyinroq urinib ko\'ring';
+            if (!ok) tugma.disabled = false;
+        };
+        if (tg && tg.showConfirm) tg.showConfirm(savol, yubor); else yubor(confirm(savol));
+    });
+    pufak.appendChild(tugma);
 }
 
 let uploadedChildImageBase64 = null;
@@ -2549,7 +2584,10 @@ function aiRemainingNote(data) {
 async function callRealTextBackendForChild(message) {
     const child = childrenDatabase[currentChildKey];
     const isRu = (currentLang === 'ru');
-    appendChildAiMessage(isRu ? '⏳ Думаю…' : '⏳ O\'ylayapman…');
+    // Javob yoki xato kelgach olib tashlanadi — ilgari har savoldan keyin
+    // chatda bittadan "O'ylayapman…" qolib ketardi.
+    const kutish = appendChildAiMessage(isRu ? '⏳ Думаю…' : '⏳ O\'ylayapman…');
+    const kutishniOlib = () => { if (kutish) kutish.remove(); };
     try {
         const childRealName = realChildProfile?.childName || realChildProfile?.fullName
             || (typeof tg !== 'undefined' && tg?.initDataUnsafe?.user?.first_name) || '';
@@ -2566,14 +2604,16 @@ async function callRealTextBackendForChild(message) {
             })
         });
         const data = await resp.json();
+        kutishniOlib();
         if (data.ok && data.answer) {
-            appendChildAiMessage(safeAiHtml(data.answer) + aiRemainingNote(data));
+            appendChildAiMessage(safeAiHtml(data.answer) + aiRemainingNote(data), { savol: message || '', javob: data.answer });
         } else {
             appendChildAiMessage(safeAiHtml(data.error ||
                 (isRu ? 'Ошибка. Попробуйте ещё раз.' : 'Xatolik. Qayta urinib ko\'ring.')) + aiRemainingNote(data));
         }
     } catch (e) {
         console.error('Child text backend error:', e);
+        kutishniOlib();
         appendChildAiMessage(isRu ? '⚠️ Сервер временно недоступен.' : '⚠️ Server vaqtincha javob bermayapti.');
     }
 }
@@ -2602,7 +2642,7 @@ async function callRealVisionBackendForChild(query, imageBase64) {
         });
         const data = await resp.json();
         if (data.ok && data.answer) {
-            appendChildAiMessage(safeAiHtml(data.answer) + aiRemainingNote(data));
+            appendChildAiMessage(safeAiHtml(data.answer) + aiRemainingNote(data), { savol: query || '', javob: data.answer });
         } else {
             appendChildAiMessage(safeAiHtml(data.error ||
                 (isRu ? 'Ошибка анализа. Попробуйте ещё раз.' : 'Tahlilda xatolik yuz berdi. Qayta urinib ko\'ring.')) + aiRemainingNote(data));
@@ -3964,7 +4004,10 @@ function sendQuickPrompt(promptText) {
 async function callRealTextBackend(message) {
     const child = childrenDatabase[currentChildKey];
     const isRu = (currentLang === 'ru');
-    appendAIMessage(isRu ? '⏳ Думаю…' : '⏳ O\'ylayapman…');
+    // Javob yoki xato kelgach olib tashlanadi — ilgari har savoldan keyin
+    // chatda bittadan "O'ylayapman…" qolib ketardi.
+    const kutish = appendAIMessage(isRu ? '⏳ Думаю…' : '⏳ O\'ylayapman…');
+    const kutishniOlib = () => { if (kutish) kutish.remove(); };
     try {
         const resp = await fetch(QALQON_BOT_FN, {
             method: 'POST',
@@ -3979,13 +4022,15 @@ async function callRealTextBackend(message) {
             })
         });
         const data = await resp.json();
+        kutishniOlib();
         if (data.ok && data.answer) {
-            appendAIMessage(safeAiHtml(data.answer) + aiRemainingNote(data));
+            appendAIMessage(safeAiHtml(data.answer) + aiRemainingNote(data), { savol: message || '', javob: data.answer });
         } else {
             appendAIMessage(safeAiHtml(data.error || (isRu ? 'Ошибка анализа.' : 'Tahlilda xatolik.')) + aiRemainingNote(data));
         }
     } catch (e) {
         console.error('Text backend error:', e);
+        kutishniOlib();
         appendAIMessage(isRu ? '⚠️ Сервер временно недоступен.' : '⚠️ Server vaqtincha javob bermayapti.');
     }
 }
@@ -4013,7 +4058,7 @@ async function callRealVisionBackend(query, imageBase64) {
         });
         const data = await resp.json();
         if (data.ok && data.answer) {
-            appendAIMessage(safeAiHtml(data.answer) + aiRemainingNote(data));
+            appendAIMessage(safeAiHtml(data.answer) + aiRemainingNote(data), { savol: query || '', javob: data.answer });
         } else {
             appendAIMessage(safeAiHtml(data.error || (isRu ? 'Извините, произошла ошибка при анализе. Попробуйте ещё раз.' : 'Kechirasiz, tahlil qilishda xatolik yuz berdi. Qayta urinib ko\'ring.')) + aiRemainingNote(data));
         }
@@ -4163,7 +4208,7 @@ function appendUserMessage(text, imageBase64) {
     chat.scrollTop = chat.scrollHeight;
 }
 
-function appendAIMessage(htmlContent) {
+function appendAIMessage(htmlContent, hisobot) {
     const chat = document.getElementById('aiChatContainer') || document.getElementById('aiChatThread');
     if (!chat) return;
     const msg = document.createElement('div');
@@ -4176,8 +4221,10 @@ function appendAIMessage(htmlContent) {
             ${htmlContent}
         </div>
     `;
+    if (hisobot) aiShikoyatQosh(msg.lastElementChild, hisobot);
     chat.appendChild(msg);
     chat.scrollTop = chat.scrollHeight;
+    return msg;
 }
 
 // ============================================================================
