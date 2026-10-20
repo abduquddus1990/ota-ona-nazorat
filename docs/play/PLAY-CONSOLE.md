@@ -251,6 +251,36 @@ havolani nusxalab Play Console'ga qo'ying.
 
 ---
 
+## 6a. App access — ko'rib chiquvchi uchun sinov hisobi
+
+Namuna oila (`database/32_play_review_demo.sql`): 2 farzand (Madina, Sardor),
+uy/maktab/sport zali hududlari, bugungi yo'l, voqealar, ekran vaqti, chat.
+Telegram'ga bog'lanmagan — parol bilan kirish tasdiq so'ramaydi.
+
+1. Ko'rib chiqishga yuborishdan **oldin** GitHub → Actions → **Baza SQL** →
+   Run workflow → file: `32_play_review_demo.sql` (vaqtlar bugunga yangilanadi).
+2. Play Console → App content → **App access** → *All or some functionality
+   is restricted* → **Add instructions**:
+   - Name: `Parent demo account`
+   - Username: `qalqon_review`
+   - Password: `qalqon-maxfiy/play-review-MAXFIY.txt` dagi parol (repoda yo'q)
+   - Any other information:
+```
+On the login screen tap "Boshqa usul bilan kirish" (Other ways to sign in),
+then "Login va parol bilan kirish" (Sign in with login and password), enter
+the username and password above and tap "Kirish". This opens a demo family
+with two children (Madina, Sardor), their safe zones (Home, School), today's
+route, arrival/departure alerts, screen time and family chat.
+
+Child mode: in the parent panel open "Farzand" -> "Farzand qo'shish"
+(Add child) to get a one-time code, then on a second device choose
+"Kod bilan kirish (farzand)" and enter it. The child device then asks for
+location permission with a prominent disclosure and shows a persistent
+notification while location is shared.
+```
+
+---
+
 ## 7. AAB yuklash
 
 1. Har yuklashdan oldin `android/app/build.gradle.kts` dagi `versionCode` oshadi

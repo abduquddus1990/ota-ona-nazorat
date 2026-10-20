@@ -1,0 +1,57 @@
+# Bazaga database/NN_*.sql faylini qo'llash (qo'lda, egasi ishga tushiradi).
+#
+# Actions -> "Baza SQL" -> "Run workflow" -> file: masalan 32_play_review_demo.sql
+#
+# Migratsiya avtomatik emas (CLAUDE.md): "Run workflow" ni bosish — egasining
+# aniq ruxsati. Kalit — deploy bilan bir xil SUPABASE_ACCESS_TOKEN sekreti.
+name: Baza SQL
+
+on:
+  workflow_dispatch:
+    inputs:
+      file:
+        description: "database/ papkasidagi fayl nomi (masalan 32_play_review_demo.sql)"
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: db-sql
+
+jobs:
+  sql:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      PROJECT_REF: ytjvmmcpmpnaivtzymtq
+      FILE: ${{ inputs.file }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Faylni tekshirish
+        run: |
+          if ! printf '%s' "$FILE" | grep -qE '^[0-9]{2}_[A-Za-z0-9_]+\.sql$'; then
+            echo "::error::Fayl nomi NN_nom.sql ko'rinishida bo'lsin (papkasiz)."
+            exit 1
+          fi
+          test -f "database/$FILE" || { echo "::error::database/$FILE topilmadi"; exit 1; }
+          if [ -z "$SUPABASE_ACCESS_TOKEN" ]; then
+            echo "::error::SUPABASE_ACCESS_TOKEN sekreti qo'shilmagan."
+            exit 1
+          fi
+
+      - name: Bazaga qo'llash
+        run: |
+          jq -n --rawfile q "database/$FILE" '{query: $q}' > body.json
+          code=$(curl -sS -o res.json -w '%{http_code}' -X POST \
+            "https://api.supabase.com/v1/projects/$PROJECT_REF/database/query" \
+            -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+            -H "Content-Type: application/json" --data @body.json)
+          echo "HTTP $code"
+          head -c 600 res.json; echo
+          if [ "$code" -ge 300 ]; then
+            echo "::error::Baza xatosi (HTTP $code): $(head -c 300 res.json)"
+            exit 1
+          fi
+          echo "::notice::database/$FILE bazaga qo'llandi."
