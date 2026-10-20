@@ -19,6 +19,34 @@ if (hasReleaseKeystore) {
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
 
+// Push (Firebase): android/app/google-services.json dan kerakli 4 qiymat
+// BuildConfig'ga o'tadi (google-services plaginisiz). Fayl yo'q bo'lsa — bo'sh,
+// ilova push'siz ishlayveradi. Bu qiymatlar sir emas (Firebase shunday
+// ta'kidlaydi), shuning uchun fayl repoda turadi.
+fun firebaseFor(pkg: String): Map<String, String> {
+    val f = file("google-services.json")
+    if (!f.exists()) return emptyMap()
+    val j = groovy.json.JsonSlurper().parse(f) as Map<*, *>
+    val info = j["project_info"] as Map<*, *>
+    val client = (j["client"] as List<*>).map { it as Map<*, *> }.firstOrNull {
+        val ci = it["client_info"] as Map<*, *>
+        (ci["android_client_info"] as Map<*, *>)["package_name"] == pkg
+    } ?: return emptyMap()
+    return mapOf(
+        "FCM_APP_ID" to (client["client_info"] as Map<*, *>)["mobilesdk_app_id"].toString(),
+        "FCM_API_KEY" to ((client["api_key"] as List<*>)[0] as Map<*, *>)["current_key"].toString(),
+        "FCM_PROJECT_ID" to info["project_id"].toString(),
+        "FCM_SENDER_ID" to info["project_number"].toString(),
+    )
+}
+
+fun com.android.build.api.dsl.ApplicationBuildType.firebaseFields(pkg: String) {
+    val m = firebaseFor(pkg)
+    for (k in listOf("FCM_APP_ID", "FCM_API_KEY", "FCM_PROJECT_ID", "FCM_SENDER_ID")) {
+        buildConfigField("String", k, "\"" + (m[k] ?: "") + "\"")
+    }
+}
+
 android {
     namespace = "com.shield.parentalguard"
     // Google Play 2026-yil 31-avgustdan yangi ilovalardan API 36 (Android 16)
@@ -71,6 +99,7 @@ android {
 
     buildTypes {
         release {
+            firebaseFields("com.shield.parentalguard")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
@@ -94,6 +123,7 @@ android {
         debug {
             isMinifyEnabled = false
             applicationIdSuffix = ".debug"
+            firebaseFields("com.shield.parentalguard.debug")
         }
     }
 
@@ -108,6 +138,7 @@ android {
 
     buildFeatures {
         viewBinding = true
+        buildConfig = true
     }
 }
 
@@ -139,4 +170,8 @@ dependencies {
 
     // Location Services (Google Play Services / Android Location)
     implementation("com.google.android.gms:play-services-location:21.3.0")
+
+    // Push xabarlari (push/QalqonPush.kt)
+    implementation(platform("com.google.firebase:firebase-bom:33.5.1"))
+    implementation("com.google.firebase:firebase-messaging")
 }
