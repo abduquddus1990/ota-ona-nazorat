@@ -1903,10 +1903,8 @@ async function notifyFamilyParents(
   // Ota ham, ona ham: SOS yoki "maktabga yetdi" faqat bittasiga borsa,
   // ikkinchisi bundan bexabar qoladi.
   const ids = await familyParentIds(familyCode);
-  if (!ids.length) {
-    console.error("notifyFamilyParents: oila uchun parent_telegram_id yo'q:", familyCode);
-    return false;
-  }
+  // Telegram ID yo'qligi — xato emas: faqat Google bilan kirgan oilaga
+  // xabar push orqali boradi (pastda).
   let yetdi = false;
   for (const chatId of ids) {
     try {
@@ -1920,8 +1918,11 @@ async function notifyFamilyParents(
     // Ilova o'rnatgan ota-onaga push ham boradi: bot xabari Telegram
     // ochilmasa ko'rinmay qolishi mumkin, SOS esa kutib turmaydi.
     const lines = plainText(htmlText).split("\n");
-    const push = await sendPush(familyCode, ids.map((id) => "parent_" + id), lines[0].slice(0, 80) || "Qalqon AI", lines.slice(1).join(" ").trim() || lines[0]);
+    // Oilaning BARCHA ota-ona qurilmalariga — Telegramsiz (Google bilan
+    // kirgan) ota-ona ham shu yerdan oladi.
+    const push = await sendPush(familyCode, PUSH_ALL_PARENTS, lines[0].slice(0, 80) || "Qalqon AI", lines.slice(1).join(" ").trim() || lines[0]);
     if (push > 0) yetdi = true;
+    if (!yetdi && !ids.length) console.error("notifyFamilyParents: xabar hech kimga yetmadi:", familyCode);
   } catch (e) {
     console.error("notifyFamilyParents push:", e);
   }
@@ -3955,6 +3956,9 @@ async function fcmAccessToken(sa: any): Promise<string | null> {
   }
 }
 
+/** sendPush uchun: "oilaning barcha ota-onalari" (Telegram ID'si yo'qlari ham). */
+const PUSH_ALL_PARENTS: string[] = ["*parents"];
+
 /**
  * Oiladagi bir nechta a'zoga push yuboradi. Kalit yo'q bo'lsa jim qaytadi —
  * bu holda bot xabari yagona yo'l bo'lib qolaveradi.
@@ -3968,8 +3972,9 @@ async function sendPush(familyCode: string, subjectIds: string[], title: string,
   const access = await fcmAccessToken(sa);
   if (!access) return 0;
 
-  const { data: rows } = await db.from("push_tokens").select("id, token, subject_id")
-    .eq("family_code", familyCode).in("subject_id", subjectIds).limit(20);
+  let q = db.from("push_tokens").select("id, token, subject_id").eq("family_code", familyCode);
+  q = subjectIds === PUSH_ALL_PARENTS ? q.eq("role", "parent") : q.in("subject_id", subjectIds);
+  const { data: rows } = await q.limit(20);
   let sent = 0;
   for (const r of rows || []) {
     try {
@@ -4227,6 +4232,10 @@ async function notifyChatMembers(familyCode: string, author: ChatMember, preview
       inline_keyboard: [[{ text: "💬 Chatni ochish", web_app: { url: `${miniAppUrl()}&chat=1` } }]],
     });
     await sendPush(familyCode, ["parent_" + parentTg], `💬 ${author.name}`, preview, { open: "chat" });
+  }
+  // Telegramsiz (Google bilan kirgan) ota-ona: seansida Telegram ID 0.
+  if (author.memberId !== "parent_0" && !active.has("parent_0")) {
+    await sendPush(familyCode, ["parent_0"], `💬 ${author.name}`, preview, { open: "chat" });
   }
   const { data: kids } = await db.from("child_pairings").select("child_id")
     .eq("family_code", familyCode).eq("is_active", true).like("child_id", "tg\\_%").limit(10);

@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Telefon ilovani o'chirmasin — Qalqon AI</title>
+<meta name="description" content="Xiaomi, Samsung, Huawei, Honor, Oppo, Realme, Vivo, Tecno, Infinix telefonlarida Qalqon AI fonda to'xtab qolmasligi uchun sozlamalar.">
+<!--
+  "Telefon ilovani o'chirmasin" yo'riqnomasi (2026-10-20).
+
+  Ko'p telefonlar batareyani tejash uchun fondagi ilovalarni o'zi to'xtatadi —
+  ota-ona xaritada eski joyni ko'radi va "maktabga yetdi" xabari kelmaydi.
+  Android ilovasi (Avtostart.kt) shu sahifaga havola beradi, sozlamani esa
+  o'zi ochib beradi. Menyu nomlari telefon versiyasiga qarab biroz farq qiladi.
+-->
+<style>
+  :root { --navy:#0f2a4a; --blue:#1d6fe0; --cyan:#22b8e6; --muted:#5b6b80; --line:#dbe7f3; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:'Nunito',system-ui,-apple-system,'Segoe UI',sans-serif; color:var(--navy);
+         background:radial-gradient(110% 60% at 70% 0%,#fff 0%,#e4f1fb 50%,#cfe4f4 100%); padding:24px 16px 48px; }
+  main { max-width:560px; margin:0 auto; }
+  .bosh { text-align:center; margin-bottom:18px; }
+  .logo { width:52px; height:52px; border-radius:15px; background:var(--navy); color:#fff; display:grid; place-items:center; font-size:24px; margin:0 auto 10px; }
+  h1 { font-size:22px; font-weight:900; margin:0 0 6px; }
+  .bosh p { color:var(--muted); font-size:14.5px; line-height:1.5; margin:0; }
+  .umumiy { background:#fff; border-radius:18px; padding:16px 18px; margin:16px 0; box-shadow:0 10px 30px -18px rgba(15,42,74,.35); font-size:14px; line-height:1.55; }
+  .umumiy b { color:var(--blue); }
+  details { background:#fff; border-radius:16px; margin:10px 0; box-shadow:0 10px 30px -20px rgba(15,42,74,.35); overflow:hidden; }
+  summary { list-style:none; cursor:pointer; padding:15px 18px; font-weight:900; font-size:16px; display:flex; align-items:center; gap:10px; }
+  summary::-webkit-details-marker { display:none; }
+  summary::after { content:'›'; margin-left:auto; font-size:22px; color:var(--muted); transition:transform .2s; }
+  details[open] summary::after { transform:rotate(90deg); }
+  summary small { font-weight:700; color:var(--muted); font-size:12.5px; }
+  ol { margin:0; padding:0 18px 16px 38px; font-size:14px; line-height:1.6; color:#24384f; }
+  li { margin:4px 0; }
+  .yol { font-weight:800; color:var(--navy); background:#eef4fb; border-radius:6px; padding:1px 6px; }
+  .eslatma { font-size:12.5px; color:var(--muted); padding:0 18px 16px; margin:0; }
+  .tekshir { background:var(--navy); color:#fff; border-radius:18px; padding:16px 18px; margin-top:18px; font-size:14px; line-height:1.55; }
+  .tekshir b { color:var(--cyan); }
+  a { color:var(--blue); font-weight:800; }
+  footer { text-align:center; color:var(--muted); font-size:12.5px; margin-top:22px; }
+</style>
+</head>
+<body>
+<main>
+  <div class="bosh">
+    <div class="logo">🛡</div>
+    <h1>Telefon ilovani o'chirib qo'ymasin</h1>
+    <p>Ko'p telefonlar batareyani tejash uchun fondagi ilovalarni o'zi to'xtatadi. Shunda ota-ona xaritada eski joyni ko'radi va «maktabga yetdi» xabari kelmaydi. Bu sozlamalar <b>farzandning telefonida</b> bir marta qilinadi.</p>
+  </div>
+
+  <div class="umumiy">
+    Hamma telefonlar uchun ikki qoida:<br>
+    1) <b>Batareya</b> — Qalqon AI uchun «Cheklanmagan» (Unrestricted / Не ограничено).<br>
+    2) <b>Avtozapusk</b> — yoqilgan (Xiaomi, Huawei, Honor, Oppo, Realme, Vivo, Tecno, Infinix).<br>
+    Ilova sozlamani o'zi ochib beradi: farzand telefonida Qalqon'dagi <b>«Telefon ilovani o'chirmasin — sozlash»</b> tugmasi.
+  </div>
+
+  <details open>
+    <summary>Xiaomi · Redmi · POCO <small>MIUI / HyperOS</small></summary>
+    <ol>
+      <li><span class="yol">Sozlamalar → Ilovalar → Ilovalarni boshqarish → Qalqon AI</span></li>
+      <li><b>Avtozapusk</b> (Автозапуск) — yoqing.</li>
+      <li><b>Batareyani tejash</b> (Контроль активности) → <b>Cheklovsiz</b> (Нет ограничений).</li>
+      <li>Oxirgi ilovalar ro'yxatida (pastdan yuqoriga suring) Qalqon oynasini bosib turing → <b>qulf 🔒</b> belgisini bosing.</li>
+    </ol>
+  </details>
+
+  <details>
+    <summary>Samsung <small>One UI</small></summary>
+    <ol>
+      <li><span class="yol">Sozlamalar → Ilovalar → Qalqon AI → Batareya</span> → <b>Cheklanmagan</b> (Unrestricted).</li>
+      <li><span class="yol">Sozlamalar → Batareya → Fon rejimida foydalanish cheklovlari</span> → <b>Hech qachon uxlamaydigan ilovalar</b> → «+» → Qalqon AI.</li>
+      <li>Shu sahifada <b>«Foydalanilmagan ilovalarni uxlatish»</b> ni o'chiring.</li>
+    </ol>
+  </details>
+
+  <details>
+    <summary>Huawei · Honor <small>EMUI / MagicOS</small></summary>
+    <ol>
+      <li><span class="yol">Sozlamalar → Batareya → Ilovalarni ishga tushirish</span> (Запуск приложений).</li>
+      <li>Qalqon AI ni toping, tugmasini <b>o'chiring</b> (avtomatik boshqaruv) — ochilgan oynada uchala tugmani ham <b>yoqing</b>: avtomatik ishga tushish, ikkilamchi ishga tushish, fonda ishlash.</li>
+      <li>Oxirgi ilovalar ro'yxatida Qalqon oynasini pastga torting → <b>qulf 🔒</b>.</li>
+    </ol>
+  </details>
+
+  <details>
+    <summary>Oppo · Realme · OnePlus <small>ColorOS</small></summary>
+    <ol>
+      <li><span class="yol">Sozlamalar → Ilovalar → Qalqon AI → Batareyadan foydalanish</span>.</li>
+      <li><b>Fonda ishlashga ruxsat</b>, <b>Avtomatik ishga tushish</b> va <b>Boshqa ilovalar ishga tushirishi</b> — hammasini yoqing.</li>
+      <li>Oxirgi ilovalar ro'yxatida Qalqon oynasidagi «⋮» → <b>Qulflash</b>.</li>
+    </ol>
+  </details>
+
+  <details>
+    <summary>Vivo · iQOO <small>Funtouch / OriginOS</small></summary>
+    <ol>
+      <li><span class="yol">Sozlamalar → Batareya → Fondagi quvvat sarfi</span> → Qalqon AI → <b>Ruxsat berish</b>.</li>
+      <li><span class="yol">i Manager → Ilovalar boshqaruvi → Avtozapusk</span> → Qalqon AI ni yoqing.</li>
+      <li>Oxirgi ilovalar ro'yxatida Qalqon oynasini pastga torting → <b>qulf 🔒</b>.</li>
+    </ol>
+  </details>
+
+  <details>
+    <summary>Tecno · Infinix · itel <small>HiOS / XOS</small></summary>
+    <ol>
+      <li><span class="yol">Phone Master → Avtozapusk boshqaruvi</span> (Auto-start management) → Qalqon AI ni yoqing.</li>
+      <li><span class="yol">Sozlamalar → Batareya → Ilova quvvatini tejash</span> → Qalqon AI → <b>Cheklanmagan</b>.</li>
+      <li>Oxirgi ilovalar ro'yxatida Qalqon oynasini pastga torting → <b>qulf 🔒</b>.</li>
+    </ol>
+  </details>
+
+  <details>
+    <summary>Boshqa telefonlar <small>Google Pixel, Motorola, Nokia…</small></summary>
+    <ol>
+      <li><span class="yol">Sozlamalar → Ilovalar → Qalqon AI → Ilovaning batareya sarfi</span> → <b>Cheklanmagan</b>.</li>
+      <li>Bu telefonlarda odatda alohida avtozapusk yo'q — shu yetarli.</li>
+    </ol>
+  </details>
+
+  <p class="eslatma">Menyu nomlari telefon versiyasiga qarab biroz farq qilishi mumkin. Sozlamalarning qidiruv qatoriga «avtozapusk» yoki «batareya» deb yozsangiz, tez topiladi.</p>
+
+  <div class="tekshir">
+    <b>Qanday tekshiraman?</b> Farzand telefonini 30 daqiqa tinch qo'ying (ilovani ochmasdan), keyin ota-ona panelida farzandning «oxirgi marta ko'rindi» vaqtiga qarang. 15–20 daqiqadan eski bo'lmasa — hammasi joyida.
+  </div>
+
+  <footer>Savol bo'lsa: Telegram <a href="https://t.me/ai_loyihachi">@ai_loyihachi</a> · <a href="https://qalqonai.uz/">qalqonai.uz</a></footer>
+</main>
+</body>
+</html>

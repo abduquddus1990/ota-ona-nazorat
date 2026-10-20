@@ -12,6 +12,7 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import com.shield.parentalguard.push.QalqonPush
 import com.shield.parentalguard.services.PersistentGuardService
 import com.shield.parentalguard.workers.TelemetrySyncWorker
 import java.util.concurrent.TimeUnit
@@ -30,6 +31,8 @@ class ParentalGuardApp : Application() {
         if (prefs.getBoolean("is_paired", false)) {
             startMonitoring(this)
         }
+        // Kirilgan bo'lsa push manzilini yangilaymiz (kirilmagan bo'lsa jim).
+        QalqonPush.register(this)
     }
 
     companion object {

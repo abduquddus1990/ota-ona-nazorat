@@ -125,6 +125,15 @@
             android:exported="false"
             android:foregroundServiceType="location" />
 
+        <!-- Push xabarlari (SOS, hudud, chat) — push/QalqonMessagingService -->
+        <service
+            android:name=".push.QalqonMessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+
         <!-- Boot Completed Receiver (Qurilma o'chib yonganda qayta ishga tushirish) -->
         <receiver
             android:name=".receivers.BootCompletedReceiver"

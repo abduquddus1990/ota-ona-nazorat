@@ -16,6 +16,9 @@ cp "$ROOT/site/assets/"* "$OUT/assets/"
 # Farzand telefonini ulash sahifasi (Mini App "Farzandga havola yuborish").
 mkdir -p "$OUT/ulash"
 cp "$ROOT/site/ulash/index.html" "$OUT/ulash/"
+# "Telefon ilovani o'chirmasin" yo'riqnomasi (Android: Avtostart.kt havolasi).
+mkdir -p "$OUT/fon"
+cp "$ROOT/site/fon/index.html" "$OUT/fon/"
 for f in about.html privacy-policy.html terms.html account-deletion.html; do
   cp "$ROOT/$f" "$OUT/"
 done

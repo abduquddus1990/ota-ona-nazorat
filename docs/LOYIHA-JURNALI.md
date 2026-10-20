@@ -65,4 +65,5 @@ Agent: merge'dan keyin deploy/log tekshiruvi · imzolangan AAB · Firebase push 
 - **2026-10-12…13:** 3-bosqich: `<` li SOS yetmasdi, ism orqali XSS, hudud tugmalari, ulash tasdig'i, apostrof.
 - **2026-10-17:** ilova ichidagi animatsiya, real bo'ri ikonkasi; tezlik: Tailwind oldindan, shriftlar, rasmlar, panel_bootstrap.
 - **2026-10-18:** baza Sidney → **Frankfurt** (3659 qator, mos); bot webhook bo'sh edi — tiklandi.
+- **2026-10-20:** imzolangan AAB tayyor (Actions → Android Play AAB). Play hisobi (25 $) — pul topilganda. Push: Android FCM qabul qiladi, faqat Google bilan kirgan ota-onaga ham SOS boradi (Firebase loyihasi kutilmoqda). Ko'rib chiquvchi uchun namuna oila (`database/32`, login `qalqon_review`), "Baza SQL" tugmasi, avtozapusk tugmasi + qalqonai.uz/fon/, Play banneri.
 - **2026-10-19:** Play audit: monitoring belgisi, AI shikoyat tugmasi, maxfiylik siyosati, haqiqiy pochta, AI mavzu chegaralari, Android Google kirishi, farzandga ulash havolasi, Play hujjatlari, AAB ish oqimi; eski Sidney jadvallari o'chirildi.

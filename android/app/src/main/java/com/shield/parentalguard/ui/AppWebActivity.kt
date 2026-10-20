@@ -19,6 +19,7 @@ import androidx.appcompat.app.AppCompatActivity
 import com.shield.parentalguard.R
 import com.shield.parentalguard.network.AppAuthApi
 import com.shield.parentalguard.network.DeviceCredentials
+import com.shield.parentalguard.push.QalqonPush
 
 /**
  * Ilovaning asosiy ekrani.
@@ -65,6 +66,24 @@ class AppWebActivity : AppCompatActivity() {
         filePicker = null
     }
 
+    private val notifRuxsat = registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
+
+    /**
+     * Push manzilini serverga beradi va Android 13+ da bildirishnomaga ruxsat
+     * so'raydi — ruxsatsiz SOS xabari telefonda umuman ko'rinmaydi.
+     */
+    private fun pushniYoq() {
+        if (!QalqonPush.enabled()) return
+        QalqonPush.register(this)
+        if (android.os.Build.VERSION.SDK_INT >= 33 &&
+            androidx.core.content.ContextCompat.checkSelfPermission(
+                this, android.Manifest.permission.POST_NOTIFICATIONS
+            ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) {
+            notifRuxsat.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+
     /**
      * Sahifani tizim panellari ostidan chiqaradi.
      *
@@ -103,6 +122,7 @@ class AppWebActivity : AppCompatActivity() {
         web = findViewById(R.id.webView)
         tizimPanellariUchunJoyAjrat(findViewById(R.id.webRoot))
         splashniBoshla(role)
+        pushniYoq()
 
         web.settings.apply {
             javaScriptEnabled = true
