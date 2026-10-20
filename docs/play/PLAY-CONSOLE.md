@@ -124,7 +124,7 @@ Support: Telegram @aibotqalqon · quddusxon90@gmail.com
 | Element | O'lcham | Holat |
 |---|---|---|
 | App icon | 512×512 PNG | ✅ `assets/brand/play-icon-512.png` |
-| Feature graphic | 1024×500 | ❗ tayyorlash kerak (bo'ri + "Farzandingiz xavfsiz — siz xotirjam") |
+| Feature graphic | 1024×500 | ✅ `assets/brand/play-feature-graphic.png` |
 | Phone screenshots | 2–8 ta, 9:16 | ❗ telefondan: bosh ekran, xarita, hudud xabari, SOS, AI do'st, Mening oilam |
 | Promo video (ixtiyoriy) | YouTube havola | Grok/Higgsfield/Gemini bilan qilsa bo'ladi (5-bo'limga qarang) |
 
