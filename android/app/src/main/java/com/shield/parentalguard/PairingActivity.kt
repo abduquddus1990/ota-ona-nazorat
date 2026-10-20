@@ -260,6 +260,15 @@ class PairingActivity : Activity() {
             tvStatusText.text =
                 "Qurilma himoyalangan va ulangan!\nУстройство защищено и подключено!"
             startGuardService()
+            // Xiaomi va boshqalar: avtozapusk yoqilmasa ilova fonda o'chadi.
+            // Bir marta o'zimiz so'raymiz, keyin tugma qoladi.
+            if (Avtostart.kerak(this)) {
+                findViewById<Button>(R.id.btnAutostart).apply {
+                    visibility = View.VISIBLE
+                    setOnClickListener { Avtostart.korsat(this@PairingActivity) }
+                }
+                if (!Avtostart.ochilganmi(this)) { Avtostart.korsat(this); Avtostart.belgila(this) }
+            }
         }
     }
 

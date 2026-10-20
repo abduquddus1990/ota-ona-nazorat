@@ -171,6 +171,19 @@
                 android:textSize="14sp"
                 android:textStyle="bold"
                 android:textAlignment="center" />
+
+            <!-- Xiaomi/Huawei/Oppo/Vivo/Tecno: "Avtozapusk" (Avtostart.kt).
+                 Boshqa markalarda ko'rinmaydi. -->
+            <Button
+                android:id="@+id/btnAutostart"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="44dp"
+                android:text="Telefon ilovani o'chirmasin — sozlash"
+                android:textColor="#ffffff"
+                android:background="#334155"
+                android:visibility="gone"
+                android:layout_marginTop="14dp" />
         </LinearLayout>
 
     </LinearLayout>
