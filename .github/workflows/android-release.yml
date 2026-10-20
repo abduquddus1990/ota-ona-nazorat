@@ -44,7 +44,9 @@ jobs:
           KEY_B64: ${{ secrets.QALQON_UPLOAD_KEY_B64 }}
           KEY_PW: ${{ secrets.QALQON_UPLOAD_KEY_PASSWORD }}
         run: |
-          echo "$KEY_B64" | base64 -d > qalqon-upload.p12
+          # Nusxa olishda qo'shilib qolgan bo'sh joy / qator ko'chishini olib tashlaymiz.
+          KEY_PW="$(printf '%s' "$KEY_PW" | tr -d '[:space:]')"
+          printf '%s' "$KEY_B64" | tr -d '[:space:]' | base64 -d > qalqon-upload.p12
           {
             echo "storeFile=qalqon-upload.p12"
             echo "storeType=pkcs12"
@@ -58,6 +60,19 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
+
+      # Parol kalitga mos kelmasa, yig'ishdan oldin tushunarli xabar beramiz
+      # (parolning o'zi chiqarilmaydi — faqat uzunligi).
+      - name: Kalit va parol mosligi
+        working-directory: android
+        run: |
+          PW="$(sed -n 's/^storePassword=//p' keystore.properties)"
+          if ! keytool -list -keystore qalqon-upload.p12 -storetype pkcs12 -storepass "$PW" -alias upload > /dev/null 2> keytool.err; then
+            echo "::error::QALQON_UPLOAD_KEY_PASSWORD kalitga mos kelmadi (sekretdagi parol uzunligi: ${#PW}, to'g'risi 28). qalqon-upload-MAXFIY.txt dagi 'Parol' qatoridan faqat parolning o'zini qayta qo'ying."
+            sed 's/^/::error::keytool: /' keytool.err | head -n 3
+            exit 1
+          fi
+          keytool -list -v -keystore qalqon-upload.p12 -storetype pkcs12 -storepass "$PW" -alias upload | grep -E "SHA1:" | sed 's/^/Kalit /'
 
       - name: Gradle
         uses: gradle/actions/setup-gradle@v4
