@@ -5525,9 +5525,7 @@ async function handleRequest(req: Request): Promise<Response> {
         return jsonRes({ ok: false, error: "forbidden" }, 403);
       }
       const matn = await saytHisoboti(toshkentKunBoshi(1), toshkentKunBoshi(0), "qalqonai.uz — kecha");
-      const r = await notifyAdmins(matn + "
-
-<i>Istalgan payt: /sayt</i>");
+      const r = await notifyAdmins(matn + "\n\n<i>Istalgan payt: /sayt</i>");
       return jsonRes({ ok: true, sent: r.sent });
     }
 
@@ -11041,14 +11039,14 @@ async function handleRequest(req: Request): Promise<Response> {
         return new Response(JSON.stringify({ ok: true }), { status: 200 });
       }
 
-      if (/^\/(yordam|help|sayt_haqida)/.test(text)) {
+      if (/^\/(yordam|help|sayt_haqida)\b/.test(text)) {
         const y = yordamMatni(lang);
         await sendMessage(chatId, y.text, y.markup);
         return new Response(JSON.stringify({ ok: true }), { status: 200 });
       }
 
       // Sayt statistikasi — faqat admin: bugun va oxirgi 7 kun.
-      if (/^\/sayt/.test(text) && isAdmin) {
+      if (/^\/sayt\b/.test(text) && isAdmin) {
         const bugun = toshkentKunBoshi(0);
         await sendMessage(chatId, await saytHisoboti(bugun, new Date(), "qalqonai.uz — bugun"));
         await sendMessage(chatId, await saytHisoboti(toshkentKunBoshi(7), bugun, "qalqonai.uz — oxirgi 7 kun"));
