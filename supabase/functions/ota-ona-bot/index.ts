@@ -1350,7 +1350,10 @@ async function ensureBotCommands() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ scope: { type: "all_private_chats" } }),
     });
-    const commands = [{ command: "start", description: "Boshlash" }];
+    const commands = [
+      { command: "start", description: "Boshlash" },
+      { command: "yordam", description: "Yordam, sayt va aloqa" },
+    ];
     await fetch(`${TELEGRAM_API}/setMyCommands`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -1366,9 +1369,180 @@ async function ensureBotCommands() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ menu_button: { type: "commands" } }),
     });
+    // "Start" oldidagi matn va profildagi "Bot haqida" — sayt havolasi bilan.
+    await fetch(`${TELEGRAM_API}/setMyDescription`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        description:
+          "🛡 Qalqon AI — farzandingiz xavfsiz, siz xotirjam.\n\n" +
+          "📍 Farzand maktabga yetdi / uydan chiqdi — darhol xabar\n🆘 SOS tugmasi\n" +
+          "📱 Ekran vaqti\n🤖 Darslarga yordam beruvchi AI do'st\n\n" +
+          "Yashirin kuzatuv emas: farzand ulanganini biladi va rozilik beradi.\n\n" +
+          "🌐 Batafsil: qalqonai.uz",
+      }),
+    });
+    await fetch(`${TELEGRAM_API}/setMyShortDescription`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        short_description: "Farzandingiz xavfsiz — siz xotirjam. Maktabga yetdi xabari, SOS, AI do'st. qalqonai.uz",
+      }),
+    });
   } catch (e) {
     console.error("ensureBotCommands failed", e);
   }
+}
+
+// ============================================================================
+// SAYT STATISTIKASI (database/33_site_visits.sql)
+//
+// Egasi videoni ijtimoiy tarmoqlarga qo'yadi va qalqonai.uz ga necha kishi,
+// qaysi tarmoqdan kelganini bilmoqchi. Google Analytics o'rniga o'z
+// hisoblagichimiz: cookie yo'q, IP saqlanmaydi, har ertalab adminga Telegram
+// orqali hisobot (cron_site_report), istalgan payt — /sayt buyrug'i.
+//
+// Manba: qisqa havola (qalqonai.uz/ig, /yt, /tg -> ?utm_source=...), keyin
+// referrer, keyin brauzer belgisi (Instagram ichki brauzeri). Hech biri
+// bo'lmasa — manzilni o'zi terib kirgan, ya'ni ko'pincha videodan.
+// ============================================================================
+
+const SAYT_MANBA_NOMI: Record<string, string> = {
+  instagram: "📸 Instagram",
+  youtube: "▶️ YouTube",
+  telegram: "✈️ Telegram",
+  google: "🔎 Google",
+  yandex: "🔎 Yandex",
+  facebook: "📘 Facebook",
+  tiktok: "🎵 TikTok",
+  bot: "🤖 Bot (@qalqon_aibot)",
+  ilova: "📱 Ilova",
+  togridan: "⌨️ To'g'ridan (videodan / manzilni yozib)",
+};
+
+/** Manbani aniqlaydi. Natija — qisqa kalit (SAYT_MANBA_NOMI) yoki sayt nomi. */
+function saytManbasi(utm: string, referrer: string, ua: string): string {
+  const u = utm.toLowerCase().replace(/[^a-z0-9_-]/g, "").slice(0, 30);
+  if (u) {
+    if (/^(ig|insta)/.test(u)) return "instagram";
+    if (/^(yt|you)/.test(u)) return "youtube";
+    if (/^(tg|tele)/.test(u)) return "telegram";
+    return u;
+  }
+  let host = "";
+  try { host = new URL(referrer).hostname.toLowerCase().replace(/^www\./, ""); } catch { /* yo'q */ }
+  if (host && !host.endsWith("qalqonai.uz")) {
+    if (host.includes("instagram")) return "instagram";
+    if (host.includes("youtube") || host === "youtu.be") return "youtube";
+    if (host === "t.me" || host.includes("telegram")) return "telegram";
+    if (host.includes("google")) return "google";
+    if (host.includes("yandex") || host === "ya.ru") return "yandex";
+    if (host.includes("facebook") || host === "fb.com") return "facebook";
+    if (host.includes("tiktok")) return "tiktok";
+    if (host.includes("github.io")) return "ilova";
+    return host.slice(0, 40);
+  }
+  if (/Instagram/.test(ua)) return "instagram";
+  if (/FBAN|FBAV/.test(ua)) return "facebook";
+  if (/musical_ly|TikTok/i.test(ua)) return "tiktok";
+  return "togridan";
+}
+
+const saytChegara = new Map<string, number[]>();
+
+async function handleSiteVisit(payload: any, req: Request): Promise<Response> {
+  const ua = req.headers.get("user-agent") || "";
+  // Qidiruv robotlari va skriptlar odam emas.
+  if (!db || /bot|crawl|spider|preview|headless|curl|python|wget/i.test(ua)) return jsonRes({ ok: true });
+  // Bitta manzildan daqiqasiga 30 tadan ko'p emas (hisobotni sun'iy oshirib
+  // bo'lmasin). Xotirada — funksiya qayta ishga tushsa, nolga qaytadi.
+  const ip = clientKey(req);
+  const now = Date.now();
+  const izlar = (saytChegara.get(ip) || []).filter((t) => now - t < 60_000);
+  if (izlar.length >= 30) return jsonRes({ ok: true });
+  izlar.push(now);
+  saytChegara.set(ip, izlar);
+  if (saytChegara.size > 5000) saytChegara.clear();
+
+  const vid = String(payload.vid || "").replace(/[^a-z0-9]/gi, "").slice(0, 32);
+  const path = String(payload.path || "/").replace(/[^\w\-/.]/g, "").slice(0, 60) || "/";
+  const event = String(payload.event || "").replace(/[^a-z0-9_]/gi, "").slice(0, 20) || null;
+  const source = saytManbasi(String(payload.utm || ""), String(payload.ref || ""), ua);
+  const { error } = await db.from("site_visits").insert({
+    vid: vid || null,
+    path,
+    event,
+    source,
+    device: /Mobi|Android|iPhone/i.test(ua) ? "mobile" : "desktop",
+  });
+  if (error) console.error("site_visit:", error.message);
+  return jsonRes({ ok: true });
+}
+
+/** [dan, gacha) oralig'i uchun hisobot matni (HTML). */
+async function saytHisoboti(dan: Date, gacha: Date, sarlavha: string): Promise<string> {
+  if (!db) return "Baza ulanmagan";
+  const { data } = await db.from("site_visits").select("vid, path, event, source, device")
+    .gte("created_at", dan.toISOString()).lt("created_at", gacha.toISOString()).limit(50000);
+  const rows = data || [];
+  const korish = rows.filter((r: any) => !r.event);
+  const odam = new Set(korish.map((r: any) => r.vid || Math.random()));
+  // Har kishining manbasi — birinchi kelgan joyi.
+  const manba: Record<string, Set<string>> = {};
+  for (const r of korish) {
+    const k = r.source || "togridan";
+    (manba[k] = manba[k] || new Set()).add(r.vid || String(Math.random()));
+  }
+  const sahifa: Record<string, number> = {};
+  for (const r of korish) sahifa[r.path] = (sahifa[r.path] || 0) + 1;
+  const bosish: Record<string, number> = {};
+  for (const r of rows) if (r.event) bosish[r.event] = (bosish[r.event] || 0) + 1;
+  const telefon = korish.filter((r: any) => r.device === "mobile").length;
+
+  const qator = (obj: Record<string, number>, nom: (k: string) => string) =>
+    Object.entries(obj).sort((a, b) => b[1] - a[1]).slice(0, 8)
+      .map(([k, n]) => `• ${nom(k)} — <b>${n}</b>`).join("\n");
+  const manbaSon: Record<string, number> = {};
+  for (const [k, s] of Object.entries(manba)) manbaSon[k] = s.size;
+  const BOSISH_NOMI: Record<string, string> = {
+    bot: "🤖 Botga o'tdi", apk: "📥 Ilovani yukladi", play: "▶️ Play Market",
+    instagram: "📸 Instagram'ga", youtube: "▶️ YouTube'ga", telegram: "✈️ Kanalga",
+  };
+
+  if (!korish.length) return `📊 <b>${sarlavha}</b>\n\nSaytga hali hech kim kirmadi.`;
+  return `📊 <b>${sarlavha}</b>\n\n` +
+    `👥 Kishilar: <b>${odam.size}</b>\n👀 Sahifa ko'rishlar: <b>${korish.length}</b>\n` +
+    `📱 Telefondan: <b>${Math.round((telefon / korish.length) * 100)}%</b>\n\n` +
+    `<b>Qayerdan kelishdi:</b>\n${qator(manbaSon, (k) => SAYT_MANBA_NOMI[k] || "🌐 " + tgEsc(k))}\n\n` +
+    `<b>Sahifalar:</b>\n${qator(sahifa, (k) => tgEsc(k))}` +
+    (Object.keys(bosish).length ? `\n\n<b>Nima qilishdi:</b>\n${qator(bosish, (k) => BOSISH_NOMI[k] || tgEsc(k))}` : "");
+}
+
+/** Toshkent bo'yicha bugungi kun boshi (UTC Date). */
+function toshkentKunBoshi(kunOldin = 0): Date {
+  const t = new Date(Date.now() + 5 * 3600_000);
+  t.setUTCHours(0, 0, 0, 0);
+  return new Date(t.getTime() - 5 * 3600_000 - kunOldin * 86400_000);
+}
+
+/** /yordam — sayt, yo'riqnomalar, ijtimoiy tarmoqlar va aloqa. */
+function yordamMatni(lang: string): { text: string; markup: any } {
+  const ru = lang === "ru";
+  return {
+    text: ru
+      ? "ℹ️ <b>Помощь и о нас</b>\n\n🌐 Сайт: qalqonai.uz\n📱 Телефон выключает приложение? — инструкция: qalqonai.uz/fon\n💬 Вопросы: @ai_loyihachi"
+      : "ℹ️ <b>Yordam va biz haqimizda</b>\n\n🌐 Sayt: qalqonai.uz\n📱 Telefon ilovani o'chirib qo'yyaptimi? — yo'riqnoma: qalqonai.uz/fon\n💬 Savollar: @ai_loyihachi",
+    markup: {
+      inline_keyboard: [
+        [{ text: ru ? "🌐 Сайт" : "🌐 Sayt", url: "https://qalqonai.uz/?utm_source=bot" },
+          { text: ru ? "📱 Инструкция" : "📱 Yo'riqnoma", url: "https://qalqonai.uz/fon/" }],
+        [{ text: "✈️ Telegram", url: "https://t.me/aibotqalqon" },
+          { text: "📸 Instagram", url: "https://instagram.com/qalqon_ai" },
+          { text: "▶️ YouTube", url: "https://youtube.com/@qalqon_ai" }],
+        [{ text: ru ? "💬 Написать нам" : "💬 Bizga yozish", url: "https://t.me/ai_loyihachi" }],
+      ],
+    },
+  };
 }
 
 // ADMIN — FAQAT raqamli Telegram ID bo'yicha (ADMIN_CHAT_IDS siri).
@@ -2476,6 +2650,7 @@ function getStartKeyboard(userId: string | number, lang: string = "uz", isChild:
         [{ text: "📊 Время по приложениям", callback_data: "action_reels" }],
         [{ text: "👶 Подключить ребёнка", callback_data: `action_pair_${code}` }],
         [{ text: "📲 Код для входа В МОЙ телефон", callback_data: "action_app_code" }],
+        [{ text: "🌐 Сайт", url: "https://qalqonai.uz/?utm_source=bot" }, { text: "ℹ️ Помощь", callback_data: "action_yordam" }],
         [{ text: "🌐 Til / Язык (UZ/RU)", callback_data: "action_lang" }],
       ],
     };
@@ -2487,6 +2662,7 @@ function getStartKeyboard(userId: string | number, lang: string = "uz", isChild:
       [{ text: "📊 Ilovalar bo'yicha vaqt", callback_data: "action_reels" }],
       [{ text: "👶 Farzandni ulash", callback_data: `action_pair_${code}` }],
       [{ text: "📲 O'ZIM uchun ilova kodi", callback_data: "action_app_code" }],
+      [{ text: "🌐 Sayt", url: "https://qalqonai.uz/?utm_source=bot" }, { text: "ℹ️ Yordam", callback_data: "action_yordam" }],
       [{ text: "🌐 Til / Язык (UZ/RU)", callback_data: "action_lang" }],
     ],
   };
@@ -5328,7 +5504,7 @@ async function handleRequest(req: Request): Promise<Response> {
     const NO_ACTOR_TYPES = [
       "device_pair", "device_pair_preview", "parent_pair", "cron_daily_digest", "cron_live_reminder",
       "cron_evening_check", "web_login", "web_logout", "google_login", "setup_webhook",
-      "app_login_start", "app_login_poll",
+      "app_login_start", "app_login_poll", "site_visit", "cron_site_report",
     ];
     let actor: Actor | null = null;
     if (typeof payload?.type === "string" && !NO_ACTOR_TYPES.includes(payload.type)) {
@@ -5338,6 +5514,21 @@ async function handleRequest(req: Request): Promise<Response> {
           "initData (Mini App) yoki deviceToken (Android) yuborilishi kerak"
         );
       }
+    }
+
+    // Sayt hisoblagichi (qalqonai.uz) — ochiq, hisobsiz.
+    if (payload.type === "site_visit") return await handleSiteVisit(payload, req);
+
+    // Har ertalab adminga kechagi sayt hisoboti (pg_cron, 33-migratsiya).
+    if (payload.type === "cron_site_report") {
+      if (!WEBHOOK_SECRET || req.headers.get("x-telegram-bot-api-secret-token") !== WEBHOOK_SECRET) {
+        return jsonRes({ ok: false, error: "forbidden" }, 403);
+      }
+      const matn = await saytHisoboti(toshkentKunBoshi(1), toshkentKunBoshi(0), "qalqonai.uz — kecha");
+      const r = await notifyAdmins(matn + "
+
+<i>Istalgan payt: /sayt</i>");
+      return jsonRes({ ok: true, sent: r.sent });
     }
 
     // AI JAVOBIGA SHIKOYAT — Google Play'ning AI kontenti siyosati talabi.
@@ -10705,6 +10896,12 @@ async function handleRequest(req: Request): Promise<Response> {
         return new Response(JSON.stringify({ ok: true }), { status: 200 });
       }
 
+      if (data === "action_yordam") {
+        const y = yordamMatni(lang);
+        await sendMessage(chatId, y.text, y.markup);
+        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      }
+
       // "Farzandim qayerda?" — so'nggi joy va vaqti.
       if (data === "action_where") {
         const r = await buildWhereReport(await familyCodeFor(chatId), lang);
@@ -10841,6 +11038,20 @@ async function handleRequest(req: Request): Promise<Response> {
           `🆔 <b>Sizning Telegram ID'ingiz:</b> <code>${tgEsc(msg.from.id)}</code>\n\n` +
             (isAdmin ? "✅ Siz administrator sifatida tanilgansiz." : "Siz administrator ro'yxatida emassiz.")
         );
+        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      }
+
+      if (/^\/(yordam|help|sayt_haqida)/.test(text)) {
+        const y = yordamMatni(lang);
+        await sendMessage(chatId, y.text, y.markup);
+        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      }
+
+      // Sayt statistikasi — faqat admin: bugun va oxirgi 7 kun.
+      if (/^\/sayt/.test(text) && isAdmin) {
+        const bugun = toshkentKunBoshi(0);
+        await sendMessage(chatId, await saytHisoboti(bugun, new Date(), "qalqonai.uz — bugun"));
+        await sendMessage(chatId, await saytHisoboti(toshkentKunBoshi(7), bugun, "qalqonai.uz — oxirgi 7 kun"));
         return new Response(JSON.stringify({ ok: true }), { status: 200 });
       }
 

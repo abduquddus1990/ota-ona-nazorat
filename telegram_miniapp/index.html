@@ -2684,6 +2684,23 @@
             <span class="text-slate-500 text-sm font-bold">›</span>
         </div>
 
+        <!-- Yordam va biz haqimizda: sayt, yo'riqnoma, ijtimoiy tarmoqlar.
+             Havolalar ilova tashqarisida ochiladi (tashqiHavola), sayt
+             statistikasida manba "ilova" bo'lib sanaladi. Bu yerda to'lov
+             sahifasiga havola BO'LMASIN (Google Play qoidasi). -->
+        <div class="glass-card p-4 space-y-3">
+            <h3 class="text-xs font-bold text-white">ℹ️ Yordam va biz haqimizda</h3>
+            <style>.yordam-havola{background:#eef4fb;color:#0f2a4a;border:1px solid #dbe7f3;text-decoration:none}.yordam-havola:active{background:#dbe9f7}</style>
+            <div class="grid grid-cols-2 gap-2">
+                <a href="https://qalqonai.uz/?utm_source=ilova" target="_blank" rel="noopener" onclick="return tashqiHavola(this.href)" class="yordam-havola rounded-xl p-3 flex items-center gap-2 text-[11px] font-bold">🌐 Sayt</a>
+                <a href="https://qalqonai.uz/fon/?utm_source=ilova" target="_blank" rel="noopener" onclick="return tashqiHavola(this.href)" class="yordam-havola rounded-xl p-3 flex items-center gap-2 text-[11px] font-bold">📱 Ilova o'chmasin</a>
+                <a href="https://t.me/aibotqalqon" target="_blank" rel="noopener" onclick="return tashqiHavola(this.href)" class="yordam-havola rounded-xl p-3 flex items-center gap-2 text-[11px] font-bold">✈️ Telegram kanal</a>
+                <a href="https://instagram.com/qalqon_ai" target="_blank" rel="noopener" onclick="return tashqiHavola(this.href)" class="yordam-havola rounded-xl p-3 flex items-center gap-2 text-[11px] font-bold">📸 Instagram</a>
+                <a href="https://youtube.com/@qalqon_ai" target="_blank" rel="noopener" onclick="return tashqiHavola(this.href)" class="yordam-havola rounded-xl p-3 flex items-center gap-2 text-[11px] font-bold">▶️ YouTube</a>
+                <a href="https://t.me/ai_loyihachi" target="_blank" rel="noopener" onclick="return tashqiHavola(this.href)" class="yordam-havola rounded-xl p-3 flex items-center gap-2 text-[11px] font-bold">💬 Bizga yozish</a>
+            </div>
+        </div>
+
         <div onclick="openSubpage('modal-delete-account')" class="glass-panel p-3.5 flex items-center justify-between cursor-pointer hover:border-rose-500/50 transition">
             <div class="flex items-center gap-3">
                 <div class="w-9 h-9 rounded-xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center text-lg">🗑</div>

@@ -19,6 +19,11 @@ cp "$ROOT/site/ulash/index.html" "$OUT/ulash/"
 # "Telefon ilovani o'chirmasin" yo'riqnomasi (Android: Avtostart.kt havolasi).
 mkdir -p "$OUT/fon"
 cp "$ROOT/site/fon/index.html" "$OUT/fon/"
+# Qisqa havolalar: qalqonai.uz/ig, /yt, /tg -> manbasi sanaladi (assets/stat.js).
+for d in ig yt tg; do
+  mkdir -p "$OUT/$d"
+  cp "$ROOT/site/$d/index.html" "$OUT/$d/"
+done
 for f in about.html privacy-policy.html terms.html account-deletion.html; do
   cp "$ROOT/$f" "$OUT/"
 done

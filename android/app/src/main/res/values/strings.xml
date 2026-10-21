@@ -26,6 +26,7 @@
     <string name="login_password_submit">Kirish</string>
     <string name="login_child_hint">Farzandmisan? Ota-onang yuborgan havolani bos yoki kodni kirit.</string>
     <string name="login_child">Kod bilan kirish (farzand)</string>
+    <string name="login_site_link">🌐 qalqonai.uz — batafsil ma\'lumot</string>
     <string name="login_opening_telegram">Telegram ochilmoqda...</string>
     <string name="login_waiting_confirm">Telegramda \"Ha, bu men\" tugmasini bosing — ilova o\'zi ochiladi.</string>
     <string name="login_rejected">Kirish tasdiqlanmadi. Qaytadan urinib ko\'ring.</string>
