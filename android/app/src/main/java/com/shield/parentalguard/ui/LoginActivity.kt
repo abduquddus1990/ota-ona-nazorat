@@ -73,6 +73,12 @@ class LoginActivity : AppCompatActivity() {
         etPassword = findViewById(R.id.etPassword)
         btnPasswordSubmit = findViewById(R.id.btnPasswordSubmit)
         tvStatus = findViewById(R.id.tvLoginStatus)
+        findViewById<TextView>(R.id.tvSiteLink).setOnClickListener {
+            try {
+                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://qalqonai.uz/?utm_source=ilova")))
+            } catch (_: Exception) {
+            }
+        }
         btnOpenBot = findViewById(R.id.btnOpenBot)
         etParentCode = findViewById(R.id.etParentCode)
         btnCodeSubmit = findViewById(R.id.btnCodeSubmit)
