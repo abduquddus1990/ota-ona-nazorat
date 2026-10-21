@@ -180,7 +180,14 @@ for (const yol of fayllar) {
     if (statSync(yol).size > 2_000_000) continue;
     matn = readFileSync(yol, "utf8");
   } catch { continue; }
-  for (const [re, tur] of SIRLAR) if (re.test(matn)) topildi.push(`${yol}: ${tur}`);
+  for (const [re, tur] of SIRLAR) {
+    // Firebase Android kaliti sir emas: u har bir APK ichida ochiq turadi va
+    // faqat Firebase loyihasini tanitadi (Firebase hujjatlari shunday deydi).
+    // Faqat shu faylda va faqat shu tur uchun istisno — service account
+    // (haqiqiy maxfiy kalit) bu faylda bo'lsa ham ushlanadi.
+    if (yol === "android/app/google-services.json" && tur === "Google API kaliti") continue;
+    if (re.test(matn)) topildi.push(`${yol}: ${tur}`);
+  }
 }
 tekshir(topildi.length === 0, "Repoda token yoki maxfiy kalit yo'q", topildi.join("\n     → "));
 
