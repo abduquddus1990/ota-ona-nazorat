@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "218057669076",
+    "project_id": "qalqonai-b1a18",
+    "storage_bucket": "qalqonai-b1a18.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:218057669076:android:cbc403864337e84d8bfe41",
+        "android_client_info": {
+          "package_name": "com.shield.parentalguard"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBQALI1mQb7VVFHJ7EUDVv3md8pRGcMnwI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:218057669076:android:e6ffbc80f2a45c408bfe41",
+        "android_client_info": {
+          "package_name": "com.shield.parentalguard.debug"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBQALI1mQb7VVFHJ7EUDVv3md8pRGcMnwI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
