@@ -394,6 +394,10 @@ class AppWebActivity : AppCompatActivity() {
 
         @JavascriptInterface
         fun logout() {
+            // Push manzili o'chiriladi: aks holda chiqqan (masalan boshqaga
+            // berilgan) telefonga oilaning SOS xabarlari kelib turaverardi.
+            // Server eskirgan manzilni keyingi yuborishda o'zi o'chiradi.
+            QalqonPush.unregister(this@AppWebActivity)
             AppAuthApi.clearSession(this@AppWebActivity)
             runOnUiThread {
                 startActivity(Intent(this@AppWebActivity, LoginActivity::class.java))
