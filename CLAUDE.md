@@ -123,8 +123,10 @@ Bu loyihada "bajarildi" xabari bir necha marta haqiqatga mos kelmagan.
   `#0f2a4a`, ko'k `#1d6fe0`, zangori `#22b8e6`.
 - **Ota-ona bosh ekrani — hozirgi (bo'ri kartochkali "QALQON AI HIMOYACHI")
   qoladi.** 2026-10-22 da "Madina maktabda" bilan boshlanadigan yangi bosh
-  ekran qurildi (#82), egasi ko'rib "yoqmadi, eskisini qaytar" dedi —
-  qaytarildi. Bosh ekranni egasining aniq so'rovisiz qayta loyihalamang.
+  ekran qurildi (#82), egasi qaytarishni so'radi: "aslida yaxshi, lekin
+  obunachilar ko'payguncha bo'ri va ilova haqidagi ma'lumot asosiy ekranda
+  tursin; keyin shu variantga o'tamiz". Tayyor kod: `git show aefac01`
+  (qaytarish — `git revert 4a830a3` ga yaqin). Vaqtini egasi aytadi.
   Sozlamalardagi "Dastur statistikasi" yashirin (kichik raqamlar).
 - Pastki panel: **suzuvchi "tabletka"**, 4 bo'lim (Asosiy · Xarita ·
   Farzand · Sozlamalar). 2026-10-08 gacha Sozlamalar faqat profil doirasida
