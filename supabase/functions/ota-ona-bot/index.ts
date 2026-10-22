@@ -11046,7 +11046,17 @@ async function handleRequest(req: Request): Promise<Response> {
       }
 
       // Sayt statistikasi — faqat admin: bugun va oxirgi 7 kun.
-      if (/^\/sayt\b/.test(text) && isAdmin) {
+      if (/^\/sayt\b/.test(text)) {
+        // Admin bo'lmasa — ochiq aytamiz: ilgari buyruq jim o'tib ketib,
+        // odam "Ota-ona paneli" xabarini olardi va nima bo'lganini tushunmasdi.
+        if (!isAdmin) {
+          await sendMessage(
+            chatId,
+            "ℹ️ /sayt — sayt statistikasi, faqat administrator uchun.\n\n" +
+              "Administrator bo'lsangiz: /myid bilan ID'ingizni bilib, uni Supabase'dagi <b>ADMIN_CHAT_IDS</b> sozlamasiga yozing."
+          );
+          return new Response(JSON.stringify({ ok: true }), { status: 200 });
+        }
         const bugun = toshkentKunBoshi(0);
         await sendMessage(chatId, await saytHisoboti(bugun, new Date(), "qalqonai.uz — bugun"));
         await sendMessage(chatId, await saytHisoboti(toshkentKunBoshi(7), bugun, "qalqonai.uz — oxirgi 7 kun"));
