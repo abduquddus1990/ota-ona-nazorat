@@ -13,6 +13,31 @@
 // skript yuklanishi bilanoq ishlaydi.
 const QALQON_BOT_FN = 'https://ytjvmmcpmpnaivtzymtq.supabase.co/functions/v1/ota-ona-bot';
 
+/**
+ * Server "seans uzilgan" desa (seansTugadi) — darhol kirish ekraniga.
+ *
+ * Ota-ona botdagi "Bu men emasman" ni bosganda server kirishni bekor
+ * qiladi, lekin ilova oldin yuklangan ma'lumotni ko'rsatib turaverardi
+ * (2026-10-22). Endi birinchi rad javobidayoq chiqib ketadi; Android'da
+ * QalqonNative.logout() bu telefonning push manzilini ham o'chiradi.
+ */
+let qalqonSeansTugadi = false;
+function seansniTekshir(resp) {
+    if (resp && resp.status === 401 && !qalqonSeansTugadi) {
+        resp.clone().json().then(j => {
+            if (!j || !j.seansTugadi || qalqonSeansTugadi) return;
+            qalqonSeansTugadi = true;
+            try { localStorage.removeItem('web_session_token'); } catch (e) {}
+            try { document.body.innerHTML = '<div style="padding:40px 24px;text-align:center;font-family:sans-serif;color:#0f2a4a"><h2>Kirish uzildi</h2><p>Bu qurilmadagi kirish bekor qilindi. Qayta kiring.</p></div>'; } catch (e) {}
+            setTimeout(() => {
+                if (window.QalqonNative && window.QalqonNative.logout) window.QalqonNative.logout();
+                else location.reload();
+            }, 1200);
+        }).catch(() => {});
+    }
+    return resp;
+}
+
 (function attachInitDataToBotCalls() {
     const BOT_FN = 'https://ytjvmmcpmpnaivtzymtq.supabase.co/functions/v1/ota-ona-bot';
     const nativeFetch = window.fetch.bind(window);
@@ -22,7 +47,7 @@ const QALQON_BOT_FN = 'https://ytjvmmcpmpnaivtzymtq.supabase.co/functions/v1/ota
         const tayyor = qalqonBootOl(input, init);
         if (tayyor) {
             return tayyor.then(r => r
-                ? new Response(r.body, { status: r.status, headers: { 'Content-Type': 'application/json' } })
+                ? seansniTekshir(new Response(r.body, { status: r.status, headers: { 'Content-Type': 'application/json' } }))
                 : window.fetch(input, Object.assign({}, init, { qalqonBootsiz: true })));
         }
         try {
@@ -77,8 +102,8 @@ const QALQON_BOT_FN = 'https://ytjvmmcpmpnaivtzymtq.supabase.co/functions/v1/ota
             if (url.indexOf(BOT_FN) === 0 && init && typeof init.body === 'string') type = JSON.parse(init.body).type || '';
         } catch (e) {}
         const readOnly = /(_status$|_list$|^list_|_state$|^my_|^check_|^ai_quota$|history|^family_matches$|^quiz_open_rounds$|^quiz_round_questions$|^weekly)/.test(type);
-        if (!readOnly) return nativeFetch(input, init);
-        const attempt = (n) => nativeFetch(input, init).then(resp => {
+        if (!readOnly) return nativeFetch(input, init).then(seansniTekshir);
+        const attempt = (n) => nativeFetch(input, init).then(seansniTekshir).then(resp => {
             if ([502, 503, 504].includes(resp.status) && n < 2) {
                 return new Promise(r => setTimeout(r, 700 * (n + 1))).then(() => attempt(n + 1));
             }
@@ -2212,12 +2237,7 @@ function switchAppRole(role) {
     const roleSwitcher = document.getElementById('roleSwitcherContainer');
     if (roleSwitcher) {
         const lockedToChild = !!(realChildProfile && realChildProfile.role === 'child');
-        // Ota-ona panelida ham yashirin (2026-10-22, "Tinch tong" bosh
-        // ekrani): ota-onaga farzand panelini ko'rish odatda kerak emas,
-        // almashtirgich esa ekranning eng ko'rinadigan joyini egallardi.
-        // Farzand ko'rinishiga o'tib qolgan ota-ona uchun u ko'rinadi —
-        // ortga qaytish uchun.
-        roleSwitcher.classList.toggle('hidden', lockedToChild || role === 'parent');
+        roleSwitcher.classList.toggle('hidden', lockedToChild);
     }
 
     const isParent = (role === 'parent');
@@ -2226,11 +2246,7 @@ function switchAppRole(role) {
         quickMenuFab.classList.toggle('hidden', !isParent);
     }
     // Farzand panelida "💎 Pro" (sotuv taklifi) ko'rinmaydi.
-    // headerPlanBadge — farzand qatoridagi ikkinchi "Pro" edi; bepul
-    // farzand yonida "Pro" turgani chalg'itardi. Endi faqat tepadagi tugma.
-    const ikkinchiPro = document.getElementById('headerPlanBadge');
-    if (ikkinchiPro) ikkinchiPro.remove();
-    ['headerProBtn'].forEach(id => {
+    ['headerProBtn', 'headerPlanBadge'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.classList.toggle('hidden', !isParent);
     });
@@ -3924,7 +3940,6 @@ function renderActiveChild() {
     // DEFAULT_INITIAL_CHILDREN dagi namunadan to'ldirilardi va ota-ona
     // o'z farzandining ismi ostida o'ylab topilgan raqamlarni ko'rardi.
     loadChildOverview(child.id);
-    boshEkranniYangila();
 
     // "Qoldi" ham loadChildOverview() ichida — haqiqiy ekran vaqti va
     // belgilangan limitdan hisoblanadi.
@@ -5720,184 +5735,6 @@ async function renderRadarStatus() {
     } catch (e) {
         console.error('radar_status error:', e);
     }
-}
-
-// ============================================================================
-// BOSH EKRAN — "Madina maktabda" (index.html: #boshEkran)
-//
-// Holat oxirgi "kirdi/chiqdi" voqeasidan olinadi: hudud nomi ota-onaning
-// o'zi yozgani ("Uy", "Maktab", "Sport zali"). Voqea bo'lmasa — oxirgi
-// ma'lum joy va qachonligi. Taxmin qilinmaydi: "maktabda" deb faqat server
-// maktab hududiga kirganini qayd etgan bo'lsa aytiladi.
-// ============================================================================
-let boshRadar = null;      // oxirgi radar_status javobi
-let boshRadarVaqt = 0;
-let boshXaritaObj = null;
-let boshBelgi = null;
-
-function boshQachon(iso) {
-    const daq = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
-    if (daq < 1) return 'hozirgina';
-    if (daq < 60) return daq + ' daqiqa oldin';
-    if (daq < 1440) return Math.floor(daq / 60) + ' soat oldin';
-    return Math.floor(daq / 1440) + ' kun oldin';
-}
-
-function boshBugunmi(iso) {
-    const t = (d) => new Date(new Date(d).getTime() + 5 * 3600000).toISOString().slice(0, 10);
-    return t(iso) === t(Date.now());
-}
-
-/** "Maktab" -> "maktabda", "Uy" -> "uyda", boshqasi -> «Sport zali» hududida. */
-function boshJoyda(zona) {
-    const z = String(zona || '').trim();
-    const k = z.toLowerCase();
-    if (k === 'uy') return 'uyda';
-    if (k === 'maktab') return 'maktabda';
-    if (k === "bog'cha" || k === 'bogcha') return "bog'chada";
-    return '«' + z + '» hududida';
-}
-
-function boshBelgisi(zona) {
-    const k = String(zona || '').trim().toLowerCase();
-    if (k === 'uy') return '🏠';
-    if (k === 'maktab') return '🏫';
-    return '📍';
-}
-
-/** Bitta farzand holati: { sarlavha, chip, chipRang, vaqt }. */
-function boshHolatHisobla(k) {
-    const ism = k.childName || 'Farzand';
-    const bugungi = (k.events || []).filter(e => boshBugunmi(e.created_at))
-        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-    const p = k.lastPing;
-    const vaqt = p ? 'Oxirgi joy · ' + boshQachon(p.recorded_at) : 'Hali joylashuv kelmagan';
-    const oxirgi = bugungi[0];
-    if (oxirgi && oxirgi.alert_type === 'enter') {
-        const joy = boshJoyda(oxirgi.zone_name);
-        const chip = joy.charAt(0) === '«' ? oxirgi.zone_name : joy.charAt(0).toUpperCase() + joy.slice(1);
-        return { sarlavha: ism + ' ' + joy, chip: boshBelgisi(oxirgi.zone_name) + ' ' + chip, rang: 'yashil', vaqt };
-    }
-    if (oxirgi && oxirgi.alert_type === 'exit') {
-        const soat = new Date(oxirgi.created_at).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' });
-        return { sarlavha: ism + " yo'lda", chip: '🚶 ' + oxirgi.zone_name + 'dan ' + soat, rang: 'kok', vaqt };
-    }
-    if (p) return { sarlavha: ism + ' — oxirgi joyi xaritada', chip: '📍 ' + boshQachon(p.recorded_at), rang: 'kulrang', vaqt };
-    return { sarlavha: ism + ' hali ulanmagan', chip: '⏳ Kutilmoqda', rang: 'kulrang', vaqt };
-}
-
-async function boshEkranniYangila(majburiy) {
-    if (currentAppRole !== 'parent' || !document.getElementById('boshEkran')) return;
-    if (!boshRadar || majburiy || Date.now() - boshRadarVaqt > 60000) {
-        try {
-            const r = await fetch(QALQON_BOT_FN, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ type: 'radar_status' })
-            });
-            const d = await r.json();
-            if (d && d.ok) { boshRadar = d; boshRadarVaqt = Date.now(); }
-        } catch (e) {
-            console.error('bosh ekran:', e);
-        }
-    }
-    boshEkranniChiz();
-}
-
-function boshEkranniChiz() {
-    const el = (id) => document.getElementById(id);
-    const soat = new Date(Date.now() + 5 * 3600000).getUTCHours();
-    if (el('boshSalom')) {
-        el('boshSalom').textContent = soat >= 5 && soat < 11 ? 'Xayrli tong'
-            : soat < 17 && soat >= 11 ? 'Xayrli kun'
-            : soat >= 17 && soat < 22 ? 'Xayrli kech' : 'Xayrli tun';
-    }
-    const kids = (boshRadar && boshRadar.children) || [];
-    if (!kids.length) {
-        el('boshSarlavha').textContent = 'Farzandingizni ulang';
-        el('boshIsm').textContent = '—';
-        el('boshVaqt').textContent = "Farzand bo'limida «Farzand qo'shish» ni bosing";
-        el('boshHolat').textContent = '';
-        el('boshBoshqalar').innerHTML = '';
-        el('boshBugun').innerHTML = '';
-        return;
-    }
-    const tanlangan = childrenDatabase && childrenDatabase[currentChildKey];
-    const k = kids.find(x => tanlangan && x.childId === tanlangan.id) || kids[0];
-    const h = boshHolatHisobla(k);
-    el('boshSarlavha').textContent = h.sarlavha;
-    el('boshIsm').textContent = k.childName || 'Farzand';
-    el('boshVaqt').textContent = h.vaqt;
-    const chip = el('boshHolat');
-    chip.textContent = h.chip;
-    chip.className = 'shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-full ' + (
-        h.rang === 'yashil' ? 'bg-emerald-500/15 text-emerald-500 border border-emerald-500/30'
-        : h.rang === 'kok' ? 'bg-sky-500/15 text-sky-500 border border-sky-500/30'
-        : 'bg-slate-700/40 text-slate-400 border border-slate-600/30');
-
-    // Boshqa farzandlar — bir qatordan; bosilsa o'sha farzand tanlanadi.
-    const boshqalar = kids.filter(x => x !== k);
-    el('boshBoshqalar').innerHTML = boshqalar.map((x, i) => {
-        const hx = boshHolatHisobla(x);
-        return '<button data-i="' + i + '" class="bosh-boshqa yordam-havola w-full p-2.5 rounded-xl flex items-center justify-between gap-2 text-left">' +
-            '<span class="text-[12px] font-bold text-white truncate">' + escapeHtml(hx.sarlavha) + '</span>' +
-            '<span class="text-[10px] text-slate-400 shrink-0">' + escapeHtml(x.lastPing ? boshQachon(x.lastPing.recorded_at) : '') + ' ›</span></button>';
-    }).join('');
-    el('boshBoshqalar').querySelectorAll('.bosh-boshqa').forEach(b => b.addEventListener('click', () => {
-        const x = boshqalar[Number(b.dataset.i)];
-        const kalit = Object.keys(childrenDatabase || {}).find(key => childrenDatabase[key].id === x.childId);
-        if (!kalit) return;
-        const sel = document.getElementById('childSelector');
-        if (sel) sel.value = kalit;
-        switchChild(kalit);
-    }));
-
-    // Bugungi voqealar — tanlangan farzand.
-    const bugungi = (k.events || []).filter(e => boshBugunmi(e.created_at))
-        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 6);
-    el('boshBugun').innerHTML = bugungi.length ? bugungi.map(e => {
-        const t = new Date(e.created_at).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' });
-        return '<div class="flex items-center gap-3 py-1.5 border-b border-slate-800/60 last:border-0">' +
-            '<span class="text-[12px] font-black text-slate-400 font-mono w-11 shrink-0">' + t + '</span>' +
-            '<span class="text-[12px] text-white">' + escapeHtml(e.message) + '</span></div>';
-    }).join('') : '<div class="text-[11px] text-slate-400">Bugun hali voqea yo\'q. ' +
-        '<button onclick="openZonesModal()" class="font-bold text-cyan-500">Uy va maktabni belgilang</button> — kirdi-chiqdi shu yerda ko\'rinadi.</div>';
-
-    boshXaritaniChiz(k.lastPing);
-}
-
-function boshXaritaniChiz(p) {
-    const box = document.getElementById('boshXarita');
-    if (!box) return;
-    if (!p || typeof L === 'undefined') {
-        box.innerHTML = '<div class="h-full flex items-center justify-center text-[11px] text-slate-400">Joylashuv kelgach, shu yerda ko\'rinadi</div>';
-        boshXaritaObj = null;
-        return;
-    }
-    if (!boshXaritaObj) {
-        box.innerHTML = '';
-        boshXaritaObj = L.map(box, {
-            zoomControl: false, attributionControl: false, dragging: false, scrollWheelZoom: false,
-            doubleClickZoom: false, boxZoom: false, keyboard: false, touchZoom: false, tap: false
-        });
-        qalqonXaritaQatlami(boshXaritaObj);
-    }
-    boshXaritaObj.setView([p.lat, p.lng], 15);
-    if (boshBelgi) boshXaritaObj.removeLayer(boshBelgi);
-    boshBelgi = L.layerGroup([
-        L.circle([p.lat, p.lng], { radius: Math.min(300, Math.max(40, Number(p.accuracy_m) || 60)), color: '#22b8e6', weight: 1.5, dashArray: '4 4', fillColor: '#22b8e6', fillOpacity: 0.18 }),
-        L.circleMarker([p.lat, p.lng], { radius: 7, color: '#fff', weight: 3, fillColor: '#1d6fe0', fillOpacity: 1 })
-    ]).addTo(boshXaritaObj);
-    setTimeout(() => boshXaritaObj && boshXaritaObj.invalidateSize(), 200);
-}
-
-/** Asosiy tugma: joylashuvni so'raydi va bosh ekranni yangilaydi. */
-async function boshJoyniSora() {
-    const btn = document.getElementById('boshSoraBtn');
-    if (btn) { btn.disabled = true; btn.textContent = "📍 So'ralmoqda…"; }
-    try { await requestChildLocation(); } catch (e) {}
-    await boshEkranniYangila(true);
-    if (btn) { btn.disabled = false; btn.textContent = "📍 Hozir qayerda? — so'rash"; }
 }
 
 // ============================================================================

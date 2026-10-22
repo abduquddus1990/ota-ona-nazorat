@@ -971,38 +971,58 @@
     <!-- TAB 1: 📊 DASHBOARD (QALQON AI HIMOYACHI HERO & ASOSIY STATUS) -->
     <!-- ==================================================================== -->
     <main id="tab-dashboard" class="tab-content active space-y-3.5">
-        <!-- BOSH EKRAN — "Tinch tong" (2026-10-22). Ota-ona ilovani ochganda
-             birinchi savoli: "farzandim hozir qayerda?". Shuning uchun ekran
-             bitta javob bilan boshlanadi ("Madina maktabda"), keyin xarita,
-             bitta asosiy tugma va bugungi voqealar. Ilgari bu yerda reklama
-             kartochkasi turardi, javob esa ekrandan pastda qolardi.
-             Ma'lumot: radar_status (panel_bootstrap bilan birga keladi),
-             chizadi: boshEkranniChiz() — app.js. -->
-        <section id="boshEkran" class="glass-card p-4 space-y-3">
-            <div>
-                <div id="boshSalom" class="text-[11px] font-semibold text-slate-400">Xayrli kun</div>
-                <h2 id="boshSarlavha" class="text-[19px] font-black text-white leading-tight mt-0.5">Yuklanmoqda…</h2>
-            </div>
-            <div class="flex items-center justify-between gap-2">
-                <div class="flex items-center gap-2.5 min-w-0">
-                    <div class="w-11 h-11 shrink-0 rounded-2xl bg-slate-900/60 border border-slate-800 flex items-center justify-center text-2xl">🧒</div>
-                    <div class="min-w-0">
-                        <div id="boshIsm" class="text-sm font-black text-white truncate">—</div>
-                        <div id="boshVaqt" class="text-[11px] text-slate-400 truncate"></div>
-                    </div>
+        <!-- 3D Bo'ri Qalqon AI Himoyachi Katta & Kengaytirilgan Hero Card (Erkin va Keng Hoshiyali) -->
+        <section class="glass-panel px-6 py-5 bg-gradient-to-br from-slate-900/95 via-slate-900/90 to-cyan-950/85 border-2 border-cyan-500/50 rounded-3xl relative overflow-hidden shadow-[0_8px_36px_rgba(34,211,238,0.22)]">
+            <!-- Top Badges Row -->
+            <div class="flex items-center justify-between gap-2 mb-3.5 z-10 relative pl-1">
+                <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/20 border border-cyan-400/50 text-cyan-300 text-[11px] font-black uppercase tracking-wider shadow-sm">
+                    <span class="material-symbols-outlined text-sm text-cyan-300">shield</span>
+                    <span>QALQON AI HIMOYACHI</span>
                 </div>
-                <span id="boshHolat" class="shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-full bg-slate-700/40 text-slate-300"></span>
+                <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-bold">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span>Doimiy Himoyada</span>
+                </div>
             </div>
-            <div id="boshXarita" onclick="switchTab('tab-radar')" class="h-40 rounded-2xl overflow-hidden bg-slate-900/40 border border-slate-800 cursor-pointer relative z-0"></div>
-            <button id="boshSoraBtn" onclick="boshJoyniSora()" class="w-full py-3 rounded-2xl bg-gradient-to-r from-cyan-500 to-teal-500 text-white font-black text-sm shadow-md transition">
-                📍 Hozir qayerda? — so'rash
-            </button>
-            <div id="boshBoshqalar" class="space-y-1.5"></div>
-            <style>.yordam-havola{background:#eef4fb;color:#0f2a4a;border:1px solid #dbe7f3;text-decoration:none}.yordam-havola:active{background:#dbe9f7}</style>
-            <div class="pt-1">
-                <div class="text-[11px] font-bold text-slate-400 mb-1.5">Bugun</div>
-                <div id="boshBugun" class="space-y-1"></div>
+
+            <!-- Main Content & Wolf Row with generous left margin -->
+            <div class="flex items-center justify-between gap-3 z-10 relative pl-1">
+                <div class="space-y-2 flex-1 pr-2">
+                    <h2 class="text-xl md:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-teal-200 to-white leading-tight tracking-wide font-display-brand uppercase">
+                        QALQON AI
+                    </h2>
+                    <div class="text-xs font-extrabold text-cyan-200/90 tracking-wide uppercase">
+                        Oila Xavfsizlik & Ta'lim Qalqoni
+                    </div>
+                    <p class="text-xs text-slate-300 leading-relaxed pt-0.5">
+                        Farzandingiz 24/7 aqlli sun'iy intellekt, 100 ballik DTS darsliklari va raqamli odatlar xavfsizligi nazorati ostida.
+                    </p>
+                </div>
+
+                <!-- 3D Bo'ri Render Figurasi -->
+                <div class="w-28 h-36 md:w-34 md:h-40 relative flex-shrink-0 flex items-center justify-center">
+                    <img src="assets/wolf_adult_hero.webp" alt="Qalqon AI Bo'ri Himoyachi" class="w-full h-full object-contain filter drop-shadow-[0_0_24px_rgba(34,211,238,0.65)] transform hover:scale-105 transition duration-300">
+                </div>
             </div>
+
+            <!-- Bottom Tech Tags -->
+            <div class="mt-3.5 pt-3 border-t border-cyan-500/25 flex items-center justify-between text-[10px] text-slate-300 font-semibold z-10 relative px-1">
+                <span class="flex items-center gap-1 text-cyan-300">
+                    <span class="material-symbols-outlined text-xs">psychology</span>
+                    <span>AI do'st</span>
+                </span>
+                <span class="flex items-center gap-1 text-emerald-300">
+                    <span class="material-symbols-outlined text-xs">school</span>
+                    <span>100 Ball DTS</span>
+                </span>
+                <span class="flex items-center gap-1 text-sky-300">
+                    <span class="material-symbols-outlined text-xs">distance</span>
+                    <span>Jonli Radar</span>
+                </span>
+            </div>
+
+            <!-- Orqa Fon Suv Belgisi (Watermark) -->
+            <div class="absolute -right-8 -bottom-10 w-56 h-56 opacity-15 pointer-events-none bg-center bg-no-repeat bg-contain" style="background-image: url('assets/wolf_adult_hero.webp');"></div>
         </section>
 
         <!-- 1. Stitch Status Card (Level 1 Surface with Glow) -->
@@ -2978,7 +2998,7 @@
 
     <!-- Custom JavaScript -->
     <script src="splash.js?v=3"></script>
-    <script src="app.js?v=11.2"></script>
+    <script src="app.js?v=11.4"></script>
     <!-- O'yinlar alohida faylda: app.js allaqachon katta, va o'yin kontenti
          (savollar, kartalar) o'sib boradi. Alohida fayl brauzerda alohida
          keshlanadi — o'yin qo'shilsa, butun ilova qayta yuklanmaydi. -->

@@ -146,6 +146,10 @@ const A = (a1.ok ? a1 : a2).sessionToken;
 msgs = tgSince(t0).filter((m) => /yangi kirish/.test(m.text));
 check(msgs.length === 2 && /sec_kill_/.test(btn(msgs[0])) && /Qalqon Android ilovasi/.test(msgs[0].text), "9b. 'yangi kirish' xabari + 'Bu men emasman' tugmasi", tgSince(t0));
 const kill = (btn(msgs[0]).match(/sec_kill_([0-9a-f-]+)/) || [])[1];
+// Shu seans orqali ro'yxatdan o'tgan push manzili (uzilganda o'chishi kerak).
+const PUSH_A = "pushA-" + "x".repeat(40);
+r = await api({ type: "push_register", token: PUSH_A, sessionToken: A });
+check(r.ok && (DB.push_tokens || []).some((t) => t.token === PUSH_A && t.session_id), "9c. push manzili seansga bog'lanib saqlandi", { r, rows: DB.push_tokens });
 
 // 10. "Bu men emasman"
 await press(2001, "sec_kill_" + kill);
@@ -155,6 +159,8 @@ t0 = TG.length;
 await press(1001, "sec_kill_" + kill);
 r = await api({ type: "security_overview", sessionToken: A });
 check(r.status === 401, "10b. 'Bu men emasman' seansni uzdi", r);
+check(r.seansTugadi === true, "10d. ilovaga 'seans uzildi' belgisi qaytadi (kirish ekraniga chiqadi)", r);
+check(!(DB.push_tokens || []).some((t) => t.token === PUSH_A), "10e. uzilgan telefonga SOS push'i bormaydi (manzil o'chirildi)", DB.push_tokens);
 check(tgSince(t0).some((m) => /Kirish uzildi/.test(m.text)), "10c. tasdiq xabari");
 
 // 11. Qurilma ulash — bir vaqtda ikki so'rov, ogohlantirish
