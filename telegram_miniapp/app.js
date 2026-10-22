@@ -13,6 +13,31 @@
 // skript yuklanishi bilanoq ishlaydi.
 const QALQON_BOT_FN = 'https://ytjvmmcpmpnaivtzymtq.supabase.co/functions/v1/ota-ona-bot';
 
+/**
+ * Server "seans uzilgan" desa (seansTugadi) — darhol kirish ekraniga.
+ *
+ * Ota-ona botdagi "Bu men emasman" ni bosganda server kirishni bekor
+ * qiladi, lekin ilova oldin yuklangan ma'lumotni ko'rsatib turaverardi
+ * (2026-10-22). Endi birinchi rad javobidayoq chiqib ketadi; Android'da
+ * QalqonNative.logout() bu telefonning push manzilini ham o'chiradi.
+ */
+let qalqonSeansTugadi = false;
+function seansniTekshir(resp) {
+    if (resp && resp.status === 401 && !qalqonSeansTugadi) {
+        resp.clone().json().then(j => {
+            if (!j || !j.seansTugadi || qalqonSeansTugadi) return;
+            qalqonSeansTugadi = true;
+            try { localStorage.removeItem('web_session_token'); } catch (e) {}
+            try { document.body.innerHTML = '<div style="padding:40px 24px;text-align:center;font-family:sans-serif;color:#0f2a4a"><h2>Kirish uzildi</h2><p>Bu qurilmadagi kirish bekor qilindi. Qayta kiring.</p></div>'; } catch (e) {}
+            setTimeout(() => {
+                if (window.QalqonNative && window.QalqonNative.logout) window.QalqonNative.logout();
+                else location.reload();
+            }, 1200);
+        }).catch(() => {});
+    }
+    return resp;
+}
+
 (function attachInitDataToBotCalls() {
     const BOT_FN = 'https://ytjvmmcpmpnaivtzymtq.supabase.co/functions/v1/ota-ona-bot';
     const nativeFetch = window.fetch.bind(window);
@@ -22,7 +47,7 @@ const QALQON_BOT_FN = 'https://ytjvmmcpmpnaivtzymtq.supabase.co/functions/v1/ota
         const tayyor = qalqonBootOl(input, init);
         if (tayyor) {
             return tayyor.then(r => r
-                ? new Response(r.body, { status: r.status, headers: { 'Content-Type': 'application/json' } })
+                ? seansniTekshir(new Response(r.body, { status: r.status, headers: { 'Content-Type': 'application/json' } }))
                 : window.fetch(input, Object.assign({}, init, { qalqonBootsiz: true })));
         }
         try {
@@ -77,8 +102,8 @@ const QALQON_BOT_FN = 'https://ytjvmmcpmpnaivtzymtq.supabase.co/functions/v1/ota
             if (url.indexOf(BOT_FN) === 0 && init && typeof init.body === 'string') type = JSON.parse(init.body).type || '';
         } catch (e) {}
         const readOnly = /(_status$|_list$|^list_|_state$|^my_|^check_|^ai_quota$|history|^family_matches$|^quiz_open_rounds$|^quiz_round_questions$|^weekly)/.test(type);
-        if (!readOnly) return nativeFetch(input, init);
-        const attempt = (n) => nativeFetch(input, init).then(resp => {
+        if (!readOnly) return nativeFetch(input, init).then(seansniTekshir);
+        const attempt = (n) => nativeFetch(input, init).then(seansniTekshir).then(resp => {
             if ([502, 503, 504].includes(resp.status) && n < 2) {
                 return new Promise(r => setTimeout(r, 700 * (n + 1))).then(() => attempt(n + 1));
             }

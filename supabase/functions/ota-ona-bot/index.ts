@@ -343,7 +343,9 @@ async function verifyDeviceToken(
 }
 
 type Actor =
-  | { kind: "telegram"; telegramId: number; username: string; familyCode: string }
+  // sessionId — faqat brauzer/ilova seansida (web_sessions.id): push manzili
+  // shu seansga bog'lanadi va seans uzilganda o'chiriladi.
+  | { kind: "telegram"; telegramId: number; username: string; familyCode: string; sessionId?: string }
   | { kind: "device"; familyCode: string; childId: string };
 
 /**
@@ -377,6 +379,7 @@ async function authenticate(payload: any): Promise<Actor | null> {
       telegramId: web.telegramId,
       username: web.username,
       familyCode: web.familyCode,
+      sessionId: web.sessionId,
     };
   }
   return null;
@@ -385,7 +388,7 @@ async function authenticate(payload: any): Promise<Actor | null> {
 /** Brauzer seans tokenini tekshiradi (token emas, faqat hash saqlanadi). */
 async function verifyWebSession(
   token: unknown
-): Promise<{ familyCode: string; telegramId: number; username: string } | null> {
+): Promise<{ familyCode: string; telegramId: number; username: string; sessionId: string } | null> {
   const raw = typeof token === "string" ? token.trim() : "";
   if (!raw || !db) return null;
 
@@ -418,7 +421,20 @@ async function verifyWebSession(
     familyCode: row.family_code,
     telegramId: Number(row.telegram_id) || 0,
     username,
+    sessionId: row.id,
   };
+}
+
+/**
+ * Seans uzilganda (chiqish, "Bu men emasman") shu seans ro'yxatdan o'tkazgan
+ * push manzillarini o'chiradi — aks holda uzilgan telefonga oilaning SOS va
+ * "maktabga yetdi" xabarlari kelib turaverardi. 34-migratsiyagacha ustun
+ * yo'q bo'lsa — jim o'tadi.
+ */
+async function seansPushiniOchir(sessionId: string) {
+  if (!db || !sessionId) return;
+  const { error } = await db.from("push_tokens").delete().eq("session_id", sessionId);
+  if (error && !/session_id/.test(error.message || "")) console.error("seansPushiniOchir:", error.message);
 }
 
 // ============================================================================
@@ -4280,11 +4296,17 @@ async function handleAppRoutes(payload: any, actor: Actor | null): Promise<Respo
     await db.from("push_tokens").delete().eq("token", token);
     return jsonRes({ ok: true });
   }
-  const { error } = await db.from("push_tokens").upsert({
+  const qator: Record<string, unknown> = {
     family_code: fam, subject_id: subjectId, role: kid ? "child" : "parent",
     token, platform: String(payload.platform || "android").slice(0, 20),
     updated_at: new Date().toISOString(),
-  }, { onConflict: "token" });
+  };
+  const sid = !kid && actor.kind === "telegram" ? actor.sessionId : undefined;
+  let { error } = await db.from("push_tokens").upsert(sid ? { ...qator, session_id: sid } : qator, { onConflict: "token" });
+  // 34-migratsiya hali qo'llanmagan bo'lsa ham push ishlashi kerak.
+  if (error && sid && /session_id/.test(error.message || "")) {
+    ({ error } = await db.from("push_tokens").upsert(qator, { onConflict: "token" }));
+  }
   if (error) return jsonRes({ ok: false, error: error.message }, 500);
   return jsonRes({ ok: true, subjectId });
 }
@@ -5549,6 +5571,16 @@ async function handleRequest(req: Request): Promise<Response> {
     if (typeof payload?.type === "string" && !NO_ACTOR_TYPES.includes(payload.type)) {
       actor = await authenticate(payload);
       if (!actor) {
+        // Seans tokeni keldi-yu, yaroqsiz (uzilgan / muddati o'tgan) — mijozga
+        // buni aniq aytamiz: ilova kirish ekraniga chiqishi kerak. Ilgari
+        // "Bu men emasman" bosilgandan keyin ham ilova oldin yuklangan
+        // ma'lumotni ko'rsatib turaverardi (2026-10-22).
+        if (typeof payload?.sessionToken === "string" && payload.sessionToken && !payload.initData) {
+          return new Response(
+            JSON.stringify({ ok: false, error: "Kirish muddati tugagan yoki uzilgan", seansTugadi: true }),
+            { status: 401, headers: { "Content-Type": "application/json" } }
+          );
+        }
         return unauthorized(
           "initData (Mini App) yoki deviceToken (Android) yuborilishi kerak"
         );
@@ -8080,7 +8112,8 @@ async function handleRequest(req: Request): Promise<Response> {
         .eq("family_code", actor!.familyCode)
         .is("revoked_at", null);
       if (joriy) bekorQ = bekorQ.neq("token_hash", joriy);
-      await bekorQ;
+      const { data: bekorlar } = await bekorQ.select("id");
+      for (const r of bekorlar || []) await seansPushiniOchir(r.id);
 
       // Parolni o'g'irlangan seans orqali ham almashtirish mumkin — shu
       // sababli ota-onalar buni albatta bilishi kerak.
@@ -8101,10 +8134,12 @@ async function handleRequest(req: Request): Promise<Response> {
 
     if (payload.type === "web_logout") {
       if (db && typeof payload.sessionToken === "string") {
-        await db
+        const { data: uz } = await db
           .from("web_sessions")
           .update({ revoked_at: new Date().toISOString() })
-          .eq("token_hash", await sha256Hex(payload.sessionToken.trim()));
+          .eq("token_hash", await sha256Hex(payload.sessionToken.trim()))
+          .select("id");
+        for (const r of uz || []) await seansPushiniOchir(r.id);
       }
       return new Response(JSON.stringify({ ok: true }), {
         status: 200, headers: { "Content-Type": "application/json" },
@@ -9483,6 +9518,7 @@ async function handleRequest(req: Request): Promise<Response> {
           .select("id");
         if (error) return jsonRes({ ok: false, error: error.message }, 500);
         if (!rows || !rows.length) return jsonRes({ ok: false, error: "Bunday kirish topilmadi" }, 404);
+        await seansPushiniOchir(sid);
         await logSecurityEvent(familyCode, "session_revoked", kim, { sessionId: sid, via: "panel" });
         return jsonRes({ ok: true });
       }
@@ -9496,6 +9532,7 @@ async function handleRequest(req: Request): Promise<Response> {
         if (joriyHash) q = q.neq("token_hash", joriyHash);
         const { data: rows, error } = await q.select("id");
         if (error) return jsonRes({ ok: false, error: error.message }, 500);
+        for (const r of rows || []) await seansPushiniOchir(r.id);
         const n = (rows || []).length;
         if (n) await logSecurityEvent(familyCode, "sessions_revoked_all", kim, { count: n });
         return jsonRes({ ok: true, revoked: n });
@@ -10870,6 +10907,7 @@ async function handleRequest(req: Request): Promise<Response> {
             .select("id, login_method");
           uzildi = !!(rows && rows[0]);
           if (uzildi) {
+            await seansPushiniOchir(sid);
             await logSecurityEvent(fam, "session_revoked", `tg:${chatId}`, { sessionId: sid, via: "alert", method: rows![0].login_method || null });
           }
           if (uzildi && rows![0].login_method === "password") {
