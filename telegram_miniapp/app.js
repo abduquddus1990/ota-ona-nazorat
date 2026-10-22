@@ -6817,6 +6817,38 @@ function openMyFamily() {
     openSubpage('modal-my-family');
 }
 
+/** Chiqish faqat Android ilovada va brauzer seansida bor (Telegramda — yo'q). */
+function chiqishMumkin() {
+    try {
+        if (window.QalqonNative && window.QalqonNative.logout) return true;
+        return !!localStorage.getItem('web_session_token');
+    } catch (e) { return false; }
+}
+
+/**
+ * Hisobdan chiqish: serverdagi seans bekor qilinadi (token boshqa joyda
+ * qolib ketgan bo'lsa ham ishlamaydi), keyin ilova kirish ekraniga qaytadi.
+ * Android bu telefonning push manzilini ham o'chiradi — aks holda chiqqan
+ * telefonga oilaning SOS xabarlari kelib turaverardi.
+ */
+function hisobdanChiqish() {
+    const savol = "Shu telefonda hisobdan chiqasizmi? Oila, farzandlar va tarix saqlanib qoladi — keyin qayta kirasiz.";
+    const chiq = async (ha) => {
+        if (!ha) return;
+        try {
+            await fetch(QALQON_BOT_FN, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ type: 'web_logout' })
+            });
+        } catch (e) {}
+        try { localStorage.removeItem('web_session_token'); } catch (e) {}
+        if (window.QalqonNative && window.QalqonNative.logout) { window.QalqonNative.logout(); return; }
+        location.reload();
+    };
+    if (tg && tg.showConfirm && tg.initData) tg.showConfirm(savol, chiq); else chiq(confirm(savol));
+}
+
 async function renderMyFamily() {
     if (currentAppRole !== 'parent') return;
     const q = (type) => fetch(QALQON_BOT_FN, {
@@ -6837,6 +6869,9 @@ async function renderMyFamily() {
         ).join('') : '<div class="text-[10px] text-slate-400">Hali farzand qo\'shilmagan.</div>';
     }
     renderCoParents();
+
+    const chiqish = document.getElementById('myFamilyLogout');
+    if (chiqish) chiqish.classList.toggle('hidden', !chiqishMumkin());
 
     const [fam, plan, tgHolat] = await Promise.all([q('my_family'), q('plan_status'), q('link_telegram_status')]);
     const p = (fam && fam.profile) || {};

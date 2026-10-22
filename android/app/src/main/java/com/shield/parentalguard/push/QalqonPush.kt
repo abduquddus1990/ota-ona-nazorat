@@ -85,6 +85,16 @@ object QalqonPush {
         }
     }
 
+    /** Hisobdan chiqishda: shu telefonning push manzilini bekor qiladi. */
+    fun unregister(context: Context) {
+        if (!ensureFirebase(context.applicationContext)) return
+        try {
+            FirebaseMessaging.getInstance().deleteToken()
+        } catch (e: Exception) {
+            Log.w(TAG, "push tokeni o'chirilmadi", e)
+        }
+    }
+
     /** Tokenni server push_register'ga yuboradi (tarmoq — alohida oqimda). */
     fun sendToken(context: Context, token: String) {
         val app = context.applicationContext

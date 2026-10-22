@@ -303,11 +303,11 @@ Server va ilova tayyor. Google Cloud'da **Android** turidagi OAuth mijozi kerak:
 1. https://console.cloud.google.com/apis/credentials — `167850690503-...` Web
    mijozi turgan loyihani tanlang.
 2. **+ Create credentials → OAuth client ID → Application type: Android**.
-3. Package name: `com.shield.parentalguard`.
-4. SHA-1 — har bir imzo uchun alohida Android mijoz yarating:
-   - GitHub sinov APK'si: `F7:7B:11:94:C5:F0:F8:2F:C5:B8:7A:BF:8E:69:25:FF:6B:F1:07:15`
-   - Play yuklash kaliti: `62:24:18:2E:68:B5:05:73:5A:25:B7:DA:3C:9A:0D:7A:E9:96:10:92`
-   - Play App Signing kaliti: Play Console → Test and release → Setup → **App signing** → "App signing key certificate" SHA-1 (birinchi yuklashdan keyin paydo bo'ladi)
+3. Har bir imzo uchun alohida Android mijoz (paket nomi + SHA-1 juftligi):
+   - ✅ GitHub sinov APK'si (debug): `com.shield.parentalguard.debug` + `F7:7B:11:94:C5:F0:F8:2F:C5:B8:7A:BF:8E:69:25:FF:6B:F1:07:15` (2026-10-22 yaratildi)
+   - Play yuklash kaliti: `com.shield.parentalguard` + `62:24:18:2E:68:B5:05:73:5A:25:B7:DA:3C:9A:0D:7A:E9:96:10:92`
+   - Play App Signing kaliti: `com.shield.parentalguard` + Play Console → Test and release → Setup → **App signing** → "App signing key certificate" SHA-1 (birinchi yuklashdan keyin paydo bo'ladi). **Play'dan o'rnatilgan ilova shu kalit bilan imzolanadi** — usiz Play versiyasida Google kirishi ishlamaydi.
+4. Yaratish sahifasi: https://console.cloud.google.com/auth/clients/create
 5. **OAuth consent screen** "In production" (yoki test foydalanuvchilar ro'yxatida bo'ling).
 
 Sozlanmaguncha tugma xato bermaydi — "Telegram bilan kirib ko'ring" deydi.
