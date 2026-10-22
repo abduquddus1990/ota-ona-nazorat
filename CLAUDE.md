@@ -120,9 +120,12 @@ Bu loyihada "bajarildi" xabari bir necha marta haqiqatga mos kelmagan.
 ## Dizayn qarorlari (2026-10)
 
 - Ilova uslubi: **"Tinch tong"** — yorug', Nunito shrifti, to'q ko'k
-  `#0f2a4a`, ko'k `#1d6fe0`, zangori `#22b8e6`. Bosh ekran "Madina hozir
-  maktabda" kabi bitta javobdan boshlanadi: holat, xarita, bitta asosiy
-  tugma, bugungi voqealar. Reklama banneri yo'q.
+  `#0f2a4a`, ko'k `#1d6fe0`, zangori `#22b8e6`.
+- **Ota-ona bosh ekrani — hozirgi (bo'ri kartochkali "QALQON AI HIMOYACHI")
+  qoladi.** 2026-10-22 da "Madina maktabda" bilan boshlanadigan yangi bosh
+  ekran qurildi (#82), egasi ko'rib "yoqmadi, eskisini qaytar" dedi —
+  qaytarildi. Bosh ekranni egasining aniq so'rovisiz qayta loyihalamang.
+  Sozlamalardagi "Dastur statistikasi" yashirin (kichik raqamlar).
 - Pastki panel: **suzuvchi "tabletka"**, 4 bo'lim (Asosiy · Xarita ·
   Farzand · Sozlamalar). 2026-10-08 gacha Sozlamalar faqat profil doirasida
   edi — ota-onalar uni topa olmadi. O'ng yuqoridagi profil doirasi
