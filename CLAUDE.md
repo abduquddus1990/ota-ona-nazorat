@@ -126,7 +126,7 @@ Bu loyihada "bajarildi" xabari bir necha marta haqiqatga mos kelmagan.
   ekran qurildi (#82), egasi qaytarishni so'radi: "aslida yaxshi, lekin
   obunachilar ko'payguncha bo'ri va ilova haqidagi ma'lumot asosiy ekranda
   tursin; keyin shu variantga o'tamiz". Tayyor kod: `git show aefac01`
-  (qaytarish — `git revert 4a830a3` ga yaqin). Vaqtini egasi aytadi.
+  (qayta qo'llash: `git cherry-pick aefac01`). Vaqtini egasi aytadi.
   Sozlamalardagi "Dastur statistikasi" yashirin (kichik raqamlar).
 - Pastki panel: **suzuvchi "tabletka"**, 4 bo'lim (Asosiy · Xarita ·
   Farzand · Sozlamalar). 2026-10-08 gacha Sozlamalar faqat profil doirasida
