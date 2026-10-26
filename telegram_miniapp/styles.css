@@ -741,10 +741,6 @@ body[data-theme="tong"] input::placeholder, body[data-theme="tong"] textarea::pl
 body[data-theme="tong"] .leaflet-tile-pane { filter: grayscale(1) sepia(.35) hue-rotate(170deg) saturate(1.7) brightness(1.08) contrast(.85); }
 body[data-theme="tong"] .leaflet-container { background: #e3eef7; }
 
-/* Suzuvchi ⚙️ tugma "Tinch tong"da kerak emas: Sozlamalar — profil
-   doirasida, uning barcha bandlari Sozlamalar va "Farzand" bo'limida bor.
-   U suzuvchi panel ustiga chiqib, uni to'sib qo'yardi. */
-body[data-theme="tong"] #quickMenuFab { display: none !important; }
 /* "Sizning rolingiz: Otasi / Onasi" — endi har kim o'z hisobidan kiradi. */
 body[data-theme="tong"] #parentRolePillContainer { display: none !important; }
 

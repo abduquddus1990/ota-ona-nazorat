@@ -477,10 +477,10 @@ const I18N = {
         langSub: "O'zbekcha / Русский",
         plansSelect: "Tariflar va Obuna",
         plansSub: "Bepul: 1 farzand / Pro: cheklovsiz",
-        pairingSelect: "Farzandni Ulash & Android Ilova",
-        pairingSub: "Oila kodi va avtomatik juftlash",
-        feedbackTitle: "Taklif va Mulohazalar",
-        feedbackSub: "quddusxon90@gmail.com orqali fikr yuborish",
+        pairingSelect: "Farzandlar",
+        pairingSub: "Qo'shish, ma'lumotlari va sinfi, qurilmani ulash",
+        feedbackTitle: "Yordam va aloqa",
+        feedbackSub: "Yo'riqnoma, ijtimoiy tarmoqlar, bizga yozish",
         feedbackHeader: "Fikringiz biz uchun muhim!",
         feedbackDesc: "Dasturni yanada takomillashtirish, yangi darsliklar yoki qulayliklar bo'yicha takliflaringizni to'g'ridan-to'g'ri ishlab chiquvchilarga yuboring.",
         feedbackEmailLabel: "Rasmiy qabul pochtasi:",
@@ -625,10 +625,10 @@ const I18N = {
         langSub: "O'zbekcha / Русский",
         plansSelect: "Тарифы и Подписка",
         plansSub: "Free (Локация) / Pro (10 000 сум)",
-        pairingSelect: "Подключение Ребёнка и Android App",
-        pairingSub: "Код семьи и авто-привязка",
-        feedbackTitle: "Предложения и Отзывы",
-        feedbackSub: "Отправить отзыв на quddusxon90@gmail.com",
+        pairingSelect: "Дети",
+        pairingSub: "Добавить, данные и класс, подключить телефон",
+        feedbackTitle: "Помощь и связь",
+        feedbackSub: "Инструкции, соцсети, написать нам",
         feedbackHeader: "Ваше мнение важно для нас!",
         feedbackDesc: "Отправьте свои предложения по улучшению программы, новым предметам или удобствам напрямую разработчикам.",
         feedbackEmailLabel: "Официальная почта для приёма:",
@@ -2241,10 +2241,6 @@ function switchAppRole(role) {
     }
 
     const isParent = (role === 'parent');
-    const quickMenuFab = document.getElementById('quickMenuFab');
-    if (quickMenuFab) {
-        quickMenuFab.classList.toggle('hidden', !isParent);
-    }
     // Farzand panelida "💎 Pro" (sotuv taklifi) ko'rinmaydi.
     ['headerProBtn', 'headerPlanBadge'].forEach(id => {
         const el = document.getElementById(id);
@@ -2850,6 +2846,28 @@ async function finishFocusSession() {
  * Tasdiqlash uchun so'z yozdiriladi — bitta tasodifiy bosish bilan butun
  * oila tarixini yo'qotib qo'ymaslik uchun.
  */
+/**
+ * Xavfli amal (hisobni o'chirish, parol). Brauzer yoki Android ilovada server
+ * avval ota-onaning Telegram'iga 6 xonali kod yuboradi ({kodKerak: true}) —
+ * shu kodni so'rab, so'rovni u bilan qaytaramiz. Telegram ichida kod
+ * so'ralmaydi va javob darhol keladi.
+ */
+async function tasdiqBilanYubor(body) {
+    const yubor = async (b) => (await fetch(QALQON_BOT_FN, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(b)
+    })).json();
+    let data = await yubor(body);
+    for (let i = 0; data && data.kodKerak && i < 3; i++) {
+        const kod = prompt((data.error || "Telegram'ga tasdiq kodi yuborildi.") +
+            "\n\nTelegram'dagi Qalqon botidan kelgan 6 xonali kodni kiriting:");
+        if (!kod || !kod.trim()) return { ok: false, bekor: true };
+        data = await yubor({ ...body, tasdiqKodi: kod.trim() });
+    }
+    return data;
+}
+
 async function handleDeleteAccount() {
     const input = document.getElementById('deleteConfirmInput');
     const btn = document.getElementById('deleteAccountBtn');
@@ -2866,16 +2884,14 @@ async function handleDeleteAccount() {
 
     if (btn) { btn.disabled = true; btn.innerText = '⏳ O\'chirilmoqda...'; }
     try {
-        const resp = await fetch(QALQON_BOT_FN, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ type: 'delete_account', confirm: true })
-        });
-        const data = await resp.json();
+        const data = await tasdiqBilanYubor({ type: 'delete_account', confirm: true });
 
+        if (data.bekor) return;
         if (data.ok) {
             try { localStorage.clear(); } catch (e) {}
-            alert("✅ Hisobingiz va barcha ma'lumotlaringiz o'chirildi.\n\n" +
+            alert(data.leftFamily
+                ? "✅ Hisobingiz o'chirildi. Siz oila panelidan chiqdingiz — oila va farzandlar ma'lumoti oilani ochgan ota-onada qoldi."
+                : "✅ Hisobingiz va barcha ma'lumotlaringiz o'chirildi.\n\n" +
                   (data.childrenNotified ? `${data.childrenNotified} ta farzandga xabar berildi.` : ''));
             window.location.reload();
         } else {
@@ -5535,6 +5551,8 @@ function xavfsizlikVoqeaMatni(e) {
         case 'password_set': return '🔑 Parol o\'zgartirildi';
         case 'coparent_added': return '👩 ' + q(e.name || 'Ota-ona') + ' oilaga qo\'shildi';
         case 'coparent_removed': return '👤 Ota-ona oiladan olib tashlandi';
+        case 'coparent_left': return '👤 Ikkinchi ota-ona hisobini o\'chirdi';
+        case 'confirm_code_sent': return '🔐 Tasdiq kodi so\'raldi: ' + (e.amal === 'delete_account' ? 'hisobni o\'chirish' : 'parol');
         default: return q(e.kind);
     }
 }
@@ -6334,11 +6352,6 @@ function openUsernameGuideModal() {
     openSubpage('modal-username-guide');
 }
 
-function toggleQuickMenu() {
-    const menu = document.getElementById('quickMenuDropdown');
-    if (menu) menu.classList.toggle('hidden');
-}
-
 function handleCompleteParentOnboarding() {
     const isRu = (currentLang === 'ru');
 
@@ -6454,10 +6467,8 @@ function handleCompleteParentOnboarding() {
     // Javobni KUTAMIZ: allaqachon tasdiqlangan oila uchun server yangi so'rov
     // yubormaydi, shuning uchun "kutilmoqda" oynasini va "adminga yuborildi"
     // xabarini ko'rsatish noto'g'ri bo'lardi.
-    fetch(QALQON_BOT_FN, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+    // Parol berilgan bo'lsa, brauzer/ilovada server Telegram kodini so'raydi.
+    tasdiqBilanYubor({
             type: 'parent_registration_request',
             familyName: familyName,
             parentName: parentName,
@@ -6473,8 +6484,15 @@ function handleCompleteParentOnboarding() {
             // Taklifni bola yuborgan bo'lsa, kim yuborganini ham olib o'tamiz —
             // mukofot oilaga tushadi, lekin tabrik o'sha bolaga boradi.
             refChild: new URLSearchParams(window.location.search).get('refc') || undefined
-        })
-    }).then(r => r.json()).then(data => {
+    }).then(data => {
+        if (data && data.bekor) {
+            alert(isRu ? "Изменения не сохранены." : "O'zgarishlar saqlanmadi.");
+            return;
+        }
+        if (data && data.ok === false && data.error) {
+            alert((isRu ? "⚠️ Не сохранено: " : "⚠️ Saqlanmadi: ") + data.error);
+            return;
+        }
         if (data && data.alreadyApproved) {
             localStorage.setItem('auth_status', 'approved');
             alert(isRu
@@ -6936,10 +6954,8 @@ function renderParentExtras() {
         { emoji: '🧠', name: 'Farzandingiz haqida', desc: 'Haftalik tahlil va suhbat savollari', fn: 'openWeeklyReport()' },
         { emoji: '💰', name: 'Ball tizimi', desc: "Ball kursi va sovg'alar ro'yxati", fn: 'openTimeBankRules()' },
         { emoji: '🗺️', name: 'Kun marshruti', desc: "Bugun qayerlarda bo'ldi", fn: "switchTab('tab-radar'); setTimeout(renderDayRoute, 500);" },
-        { emoji: '🎁', name: "Do'stingizni taklif qiling", desc: 'Ikkalangizga ham bepul Pro', fn: 'shareReferralLink()' },
         { emoji: '📍', name: 'Xavfsiz hududlar', desc: 'Uy va maktabni belgilang', fn: 'openZonesModal()' },
         { emoji: '🔔', name: 'Bildirishnomalar', desc: 'Nima va qachon keladi', fn: 'openNotificationsModal()' },
-        { emoji: '🧩', name: 'Oilaviy Viktorina', desc: 'Farzandingiz bilan bellashing', fn: "switchTab('tab-games'); setTimeout(() => openGame('quiz'), 300);" },
         { emoji: '🎮', name: "Farzand o'yinlari", desc: "Kim bilan online o'ynagan", fn: 'openFamilyMatches()' },
         { emoji: '💬', name: 'Oila chati', desc: "Uy vazifasi, sovg'alar, xabarlar", fn: 'openFamilyChat()' }
     ];

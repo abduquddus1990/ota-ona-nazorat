@@ -438,6 +438,71 @@ async function seansPushiniOchir(sessionId: string) {
 }
 
 // ============================================================================
+// XAVFLI AMALLARNI TELEGRAM KODI BILAN TASDIQLASH
+//
+// Hisobni o'chirish va parolni almashtirish brauzer/ilova seansida bitta
+// tugma bilan bajarilardi. Telefon yoki seans kaliti begonaga tushsa, u
+// butun oilani o'chirib yoki parolni almashtirib, haqiqiy ota-onani hisobdan
+// chiqarib yuborishi mumkin edi. Endi bunday seansda server ota-onaning
+// Telegram'iga 6 xonali kod yuboradi; amal faqat shu kod bilan bajariladi.
+//
+// Kod bazada saqlanmaydi: u seans, amal va 10 daqiqalik oyna bo'yicha
+// HMAC'dan hisoblanadi (joriy va oldingi oyna qabul qilinadi). Taxmin
+// qilishga qarshi — seans bo'yicha soatiga 10 urinish.
+//
+// Telegram ichidagi Mini App'da (initData) kod so'ralmaydi: u yerda
+// Telegram'ning o'zi tasdiq. Telegram'i yo'q oilaga kod yuboradigan joy
+// yo'q — ular uchun hozircha avvalgidek.
+// ============================================================================
+const TASDIQ_OYNA_MS = 10 * 60 * 1000;
+
+async function tasdiqKodiHisobla(sessionId: string, amal: string, oyna: number): Promise<string> {
+  const kalit = new TextEncoder().encode("qalqon-tasdiq:" + SUPABASE_SERVICE_ROLE_KEY);
+  const h = await hmacSha256(kalit, `${sessionId}|${amal}|${oyna}`);
+  const son = ((h[0] << 24) | (h[1] << 16) | (h[2] << 8) | h[3]) >>> 0;
+  return String(son % 1000000).padStart(6, "0");
+}
+
+/**
+ * null — amalni bajarish mumkin. Aks holda mijozga qaytariladigan javob:
+ * kod yuborildi (kodKerak) yoki kod noto'g'ri.
+ */
+async function xavfliAmalTasdigi(actor: Actor, payload: any, amal: string, nomi: string): Promise<Response | null> {
+  if (actor.kind !== "telegram" || !actor.sessionId || !actor.telegramId) return null;
+  const sid = actor.sessionId;
+  const kalit = `tasdiq:${sid}`;
+  if (await joinRateLimited(kalit)) {
+    return jsonRes({ ok: false, error: "Juda ko'p urinish. 1 soatdan keyin qayta urinib ko'ring." }, 429);
+  }
+  const oyna = Math.floor(Date.now() / TASDIQ_OYNA_MS);
+  const kiritilgan = String(payload?.tasdiqKodi || "").replace(/\D/g, "");
+  if (kiritilgan) {
+    const togri = timingSafeEqual(kiritilgan, await tasdiqKodiHisobla(sid, amal, oyna)) ||
+      timingSafeEqual(kiritilgan, await tasdiqKodiHisobla(sid, amal, oyna - 1));
+    await recordJoinAttempt(kalit, actor.familyCode, togri);
+    if (togri) return null;
+    return jsonRes({ ok: false, kodKerak: true, error: "Kod noto'g'ri yoki eskirgan." }, 403);
+  }
+  await recordJoinAttempt(kalit, actor.familyCode, false);
+  const kod = await tasdiqKodiHisobla(sid, amal, oyna);
+  const r = await sendMessage(
+    actor.telegramId,
+    `🔐 <b>${tgEsc(nomi)}</b> — tasdiq kodi:\n\n<code>${kod}</code>\n\n` +
+      `Kod 10 daqiqa amal qiladi. Uni faqat o'zingiz ilovaga kiriting.\n\n` +
+      `<i>Buni siz so'ramagan bo'lsangiz — kodni hech kimga bermang va panelda ` +
+      `«Kirishlar va xavfsizlik» → «Boshqa barcha kirishlarni uzish» ni bosing.</i>`
+  );
+  if (!r?.ok) {
+    return jsonRes({
+      ok: false,
+      error: "Telegram'ga tasdiq kodini yuborib bo'lmadi. Bu amalni Telegram ichidagi Qalqon panelidan bajaring.",
+    }, 503);
+  }
+  await logSecurityEvent(actor.familyCode, "confirm_code_sent", `tg:${actor.telegramId}`, { amal, sessionId: sid });
+  return jsonRes({ ok: false, kodKerak: true, error: "Telegram'ga tasdiq kodi yuborildi." });
+}
+
+// ============================================================================
 // XAVFSIZLIK JURNALI VA OGOHLANTIRISHLAR (database/31_security_events.sql)
 //
 // Ota-onaning hisobiga kirish va farzand telefonini ulash — oiladagi eng
@@ -3603,8 +3668,7 @@ async function handleBallRoutes(payload: any, actor: Actor): Promise<Response | 
     const note = String(payload.note || "").trim().slice(0, 120);
     const subject = String(payload.subject || "Uy vazifasi").trim().slice(0, 40) || "Uy vazifasi";
     // Daftar surati (ixtiyoriy) — oila chatiga karta bilan birga tushadi.
-    const hwPhoto = typeof payload.photo === "string" && /^data:image\/(jpeg|png|webp);base64,/.test(payload.photo) &&
-      payload.photo.length <= CHAT_PHOTO_MAX ? payload.photo : null;
+    const hwPhoto = isSafeDataImage(payload.photo) ? payload.photo : null;
     // Mashq raqamlari ("39-40") — fokus savollari shu mashqlardan tuziladi.
     const hwNumbers = parseExerciseNumbers(payload.exercises);
     const hwGrade = await childGrade(familyCode, childId);
@@ -4374,6 +4438,17 @@ async function textbookCoverage(grade: number, subject: unknown) {
 const CHAT_TEXT_MAX = 1000;
 // Siqilgan JPEG data URL. Mijoz 1024px / 60% sifatga tushiradi (~150 KB).
 const CHAT_PHOTO_MAX = 600_000;
+
+/**
+ * Rasm data URL'i BUTUNLAY tekshiriladi — faqat boshi emas. Ilgari
+ * `data:image/png;base64,AAAA" onerror=...` ham o'tardi va ota-ona rasmni
+ * kattalashtirganda bu matn uning panelida kod bo'lib ishlardi (seans
+ * kalitini o'g'irlash mumkin edi).
+ */
+function isSafeDataImage(s: unknown): s is string {
+  return typeof s === "string" && s.length <= CHAT_PHOTO_MAX &&
+    /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+\/]+={0,2}$/.test(s);
+}
 const CHAT_PAGE = 60;
 // Shu vaqt ichida chatni o'qigan a'zoga bot orqali xabar yuborilmaydi —
 // u baribir ekranda ko'rib turibdi.
@@ -4547,7 +4622,7 @@ async function handleChatRoutes(payload: any, actor: Actor): Promise<Response | 
   if (t === "chat_send") {
     const body = String(payload.text || "").trim().slice(0, CHAT_TEXT_MAX);
     const photo = typeof payload.photo === "string" ? payload.photo : "";
-    if (photo && (!/^data:image\/(jpeg|png|webp);base64,/.test(photo) || photo.length > CHAT_PHOTO_MAX)) {
+    if (photo && !isSafeDataImage(photo)) {
       return jsonRes({ ok: false, error: "Surat juda katta yoki noto'g'ri formatda." }, 400);
     }
     if (!body && !photo) return jsonRes({ ok: false, error: "Xabar bo'sh." }, 400);
@@ -5542,8 +5617,10 @@ async function handleRequest(req: Request): Promise<Response> {
     // berilgan maxfiy token har bir so'rovda shu sarlavhada qaytib keladi.
     // Ilgari hech qanday tekshiruv yo'q edi — istalgan odam funksiya URL'iga
     // soxta "tugma bosildi" so'rovini yuborib, oilalarni o'zi tasdiqlay olardi.
-    if (typeof payload?.type !== "string" && WEBHOOK_SECRET) {
-      if (req.headers.get("x-telegram-bot-api-secret-token") !== WEBHOOK_SECRET) {
+    // Kalit sozlanmagan bo'lsa ham ochiq qolmaydi: aks holda sekret yo'qolsa,
+    // tekshiruv jimgina o'chib qolardi.
+    if (typeof payload?.type !== "string") {
+      if (!WEBHOOK_SECRET || req.headers.get("x-telegram-bot-api-secret-token") !== WEBHOOK_SECRET) {
         console.error("Webhook: maxfiy token mos kelmadi — so'rov rad etildi");
         return new Response(JSON.stringify({ ok: false, error: "forbidden" }), {
           status: 403,
@@ -5778,8 +5855,14 @@ async function handleRequest(req: Request): Promise<Response> {
             status: 400, headers: { "Content-Type": "application/json" },
           });
         }
+        // Brauzer/ilova seansida parol faqat Telegram kodi bilan almashadi:
+        // aks holda seansni o'g'irlagan odam parolni o'zgartirib, haqiqiy
+        // ota-onani hisobidan chiqarib yuborardi.
+        const tasdiq = await xavfliAmalTasdigi(actor!, payload, "password", "Parolni almashtirish");
+        if (tasdiq) return tasdiq;
         (row as Record<string, unknown>).password_hash = await hashPassword(payload.password);
         (row as Record<string, unknown>).password_set_at = new Date().toISOString();
+        await logSecurityEvent(familyCode, "password_set", `tg:${actor!.kind === "telegram" ? actor!.telegramId : ""}`, {});
       }
 
       // Taklif kodi: faqat MAVJUD va o'zi bo'lmagan oila qabul qilinadi.
@@ -6949,6 +7032,33 @@ async function handleRequest(req: Request): Promise<Response> {
           status: 500, headers: { "Content-Type": "application/json" },
         });
       }
+      const tasdiq = await xavfliAmalTasdigi(actor!, payload, "delete_account", "Hisobni o'chirish");
+      if (tasdiq) return tasdiq;
+
+      // Ikkinchi ota-ona (ona) faqat O'Z hisobini o'chiradi. Ilgari bu tugma
+      // uning qo'lida ham butun oilani — otaning hisobini, farzandlarning
+      // joylashuv tarixini, hammasini — o'chirib yuborardi.
+      const onaOilasi = await coParentFamily(actor!.telegramId);
+      if (onaOilasi) {
+        await db.from("family_parents").delete()
+          .eq("family_code", onaOilasi).eq("telegram_id", actor!.telegramId);
+        await db.from("ai_chat_messages").delete().eq("telegram_id", actor!.telegramId);
+        const { data: seanslar } = await db.from("web_sessions").delete()
+          .eq("family_code", onaOilasi).eq("telegram_id", actor!.telegramId).select("id");
+        for (const s of seanslar || []) await seansPushiniOchir(s.id);
+        await logSecurityEvent(onaOilasi, "coparent_left", `tg:${actor!.telegramId}`, {});
+        await notifyFamilyParents(
+          onaOilasi,
+          "ℹ️ <b>Ikkinchi ota-ona o'z hisobini o'chirdi va oiladan chiqdi.</b>\n\nOila, farzandlar va ularning ma'lumotlari joyida qoldi."
+        );
+        try {
+          await sendMessage(
+            actor!.telegramId,
+            "✅ <b>Hisobingiz o'chirildi.</b>\n\nSiz oila panelidan chiqdingiz, endi bu oila haqidagi xabarlar kelmaydi. Oilaning o'zi va farzandlar ma'lumoti oilani ochgan ota-onada qoldi."
+          );
+        } catch (_e) { /* xabar bormasa ham o'chirish bajarildi */ }
+        return jsonRes({ ok: true, leftFamily: true, childrenNotified: 0 });
+      }
 
       const familyCode = actor!.familyCode;
 
@@ -6984,6 +7094,9 @@ async function handleRequest(req: Request): Promise<Response> {
         // "41% batareya" va eski ogohlantirishlar ko'rinib turdi.
         "device_health", "app_login_requests", "push_tokens",
         "parent_pair_codes", "family_code_overrides", "security_events",
+        // Ikkinchi ota-ona yozuvi ham — aks holda ona o'chirilgan oilaga
+        // bog'langanicha qolardi.
+        "family_parents",
       ];
 
       const failed: string[] = [];
@@ -8067,6 +8180,8 @@ async function handleRequest(req: Request): Promise<Response> {
           status: 400, headers: { "Content-Type": "application/json" },
         });
       }
+      const tasdiq = await xavfliAmalTasdigi(actor!, payload, "password", "Parolni almashtirish");
+      if (tasdiq) return tasdiq;
 
       const { data: reg } = await db
         .from("parent_registrations")
@@ -10634,6 +10749,20 @@ async function handleRequest(req: Request): Promise<Response> {
       });
     }
 
+    // Bu yerdan pastda — faqat Telegram webhook update'lari. "type" li so'rov
+    // Mini App/ilovadan keladi: webhook maxfiy kaliti unda tekshirilmagan.
+    // Ilgari noma'lum "type" bilan kelgan so'rov shu oqimga tushardi: Mini
+    // App'ni ochgan istalgan odam ichiga soxta callback_query (chat.id = admin)
+    // yoki boshqa odam nomidan xabar qo'shib, oilalarni "admin" sifatida
+    // tasdiqlay olardi (2026-10-26, sinov 30).
+    if (typeof payload?.type === "string") {
+      console.error("Noma'lum Mini App so'rov turi:", payload.type);
+      return new Response(
+        JSON.stringify({ ok: false, error: `Noma'lum so'rov turi: ${payload.type}` }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
     const update = payload;
 
     // 0. JONLI JOYLASHUV (Telegram "Live Location").
@@ -11358,7 +11487,11 @@ async function handleRequest(req: Request): Promise<Response> {
                 // u tasdiq xabariga soxta matn yoki havola qo'sha olardi.
                 (req.device_label ? `<b>Qurilma:</b> ${tgEsc(req.device_label)}\n` : "") +
                 `<b>Oila kodi:</b> <code>${famOfParent}</code>\n\n` +
-                `<i>Bu so'rovni siz boshlamagan bo'lsangiz — «Yo'q» ni bosing.</i>`,
+                // Havolani hujumchi ham yaratib, "sovg'a oling" deb yuborishi
+                // mumkin: «Ha» uning telefoniga oilaning to'liq paneli beradi.
+                `⚠️ <b>«Ha» — shu telefonga oilangiz paneliga to'liq kirish.</b> ` +
+                `Havolani boshqa odam yuborgan bo'lsa yoki ilovani hozir o'zingiz ochmagan bo'lsangiz — «Yo'q» ni bosing. ` +
+                `Qalqon xodimlari buni hech qachon so'ramaydi.`,
               { inline_keyboard: [[
                 { text: "✅ Ha, bu men", callback_data: "applogin_ok_" + appCode },
                 { text: "❌ Yo'q", callback_data: "applogin_no_" + appCode },

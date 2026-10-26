@@ -204,7 +204,15 @@ check((await api({ type: "security_overview", sessionToken: B })).status === 401
 // 14. Brauzerdan parol almashtirish o'zini chiqarib yubormaydi
 DB.parent_pair_codes.push({ code: "APPCODE3", family_code: fam1, parent_telegram_id: 1001, purpose: "app_login", expires_at: future() });
 const C = (await api({ type: "parent_pair", code: "APPCODE3" }, "10.6.0.1")).sessionToken;
+// Seansda parol faqat Telegram kodi bilan almashadi.
+t0 = TG.length;
 r = await api({ type: "set_password", password: "Yangi#Parol10", sessionToken: S });
+const kodXabar = tgSince(t0).find((m) => /tasdiq kodi/.test(m.text || ""));
+const tasdiqKodi = ((kodXabar?.text || "").match(/<code>(\d{6})<\/code>/) || [])[1];
+check(!r.ok && r.kodKerak && !!tasdiqKodi, "14a. seansda parol uchun Telegram'ga kod yuborildi", { r, yuborilgan: tgSince(t0).map((m) => [m.chat_id, String(m.text).slice(0, 60)]) });
+r = await api({ type: "set_password", password: "Yangi#Parol10", sessionToken: S, tasdiqKodi: tasdiqKodi === "000000" ? "111111" : "000000" });
+check(!r.ok && r.kodKerak, "14d. noto'g'ri kod rad etiladi", r);
+r = await api({ type: "set_password", password: "Yangi#Parol10", sessionToken: S, tasdiqKodi });
 check(r.ok, "14. seansdan parol almashtirildi", r);
 check((await api({ type: "security_overview", sessionToken: S })).ok, "14b. joriy seans saqlandi");
 check((await api({ type: "security_overview", sessionToken: C })).status === 401, "14c. boshqa seanslar uzildi");
@@ -326,6 +334,39 @@ for (let i = 0; i < 10; i++) r = await api({ type: "ai_report", savol: "x", javo
 check(r.status === 429, "29c. ko'p shikoyat cheklanadi", r);
 r = await api({ type: "ai_report", savol: "x", javob: "y" });
 check(r.status === 401, "29d. kirishsiz shikoyat qabul qilinmaydi", r);
+
+// 30. Mini App so'rovi ichiga Telegram update'ini (tugma bosilishi, xabar)
+// tiqib, uni "Telegram'dan kelgandek" o'tkazib bo'lmaydi. Ilgari noma'lum
+// "type" bilan kelgan so'rov webhook oqimiga tushardi: chat.id ni admin
+// ID'si qilib yozsa — istalgan oilani "admin" sifatida tasdiqlay olardi.
+const fam3 = gen(4001);
+DB.parent_registrations.push({ family_code: fam3, parent_telegram_id: 4001, parent_username: "kutayotgan", parent_name: "K", status: "pending" });
+t0 = TG.length;
+r = await api({
+  type: "soxta_tur", initData: await initData(2001),
+  callback_query: { id: "x1", from: { id: 9999, first_name: "Admin" }, message: { chat: { id: 9999 }, message_id: 1 }, data: "admin_approve_" + fam3 },
+});
+const fam3Row = DB.parent_registrations.find((x: any) => x.family_code === fam3);
+check(r.status === 400 && fam3Row?.status === "pending", "30. Mini App so'rovidagi soxta 'admin tugmasi' ishlamaydi", { r, status: fam3Row?.status });
+r = await api({
+  type: "soxta_tur", initData: await initData(2001),
+  message: { message_id: 7, chat: { id: 1001, type: "private" }, from: { id: 1001, first_name: "Ota" }, text: "/start" },
+});
+check(r.status === 400 && tgSince(t0).length === 0, "30b. boshqa odam nomidan soxta bot xabari ishlamaydi", { r, yuborildi: tgSince(t0).length });
+
+// 31. Chat surati: data URL oxirigacha tekshiriladi (ota-ona panelida XSS).
+r = await api({ type: "chat_send", initData: await initData(3001), photo: 'data:image/png;base64,AAAA" onerror="alert(1)' });
+check(r.status === 400, "31. ichida kod bor 'surat' rad etiladi", r);
+r = await api({ type: "chat_send", initData: await initData(3001), photo: "data:image/png;base64,iVBORw0KGgo=" });
+check(r.ok, "31b. haqiqiy surat o'tadi", r);
+
+// 32. Ikkinchi ota-ona (ona) "hisobni o'chirish"da faqat o'zini o'chiradi.
+r = await api({ type: "delete_account", confirm: true, initData: await initData(1002) });
+check(r.ok && r.leftFamily, "32. ona o'z hisobini o'chirdi", r);
+check(DB.parent_registrations.some((x: any) => x.family_code === fam1) &&
+  DB.child_pairings.some((x: any) => x.family_code === fam1) &&
+  !DB.family_parents.some((x: any) => x.telegram_id === 1002),
+  "32b. oila va farzandlar joyida, ona oiladan chiqdi");
 
 const fail = results.filter(([ok]) => !ok).length;
 console.log(`\n${results.length - fail}/${results.length} o'tdi`);

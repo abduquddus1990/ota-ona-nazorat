@@ -7,6 +7,16 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Qalqon AI — Ota-Ona Nazorati & Farzand Xavfsizligi</title>
     <!--
+        CSP (2026-10-26): sahifa qaysi manzillardan kod, rasm, shrift olishi va
+        QAYERGA ma'lumot yuborishi mumkinligi ro'yxati. Ilovada qandaydir
+        xato orqali begona kod ishlab ketsa ham, u seans kalitini o'z serveriga
+        yubora olmaydi (connect-src / img-src faqat bizniki).
+        Yangi tashqi manzil (CDN, API, rasm) qo'shilsa — SHU YERGA ham
+        qo'shing, aks holda brauzer uni jimgina bloklaydi.
+        'unsafe-inline' hozircha shart: tugmalar onclick="..." bilan yozilgan.
+    -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://telegram.org https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https://tile.openstreetmap.org https://unpkg.com; connect-src 'self' https://ytjvmmcpmpnaivtzymtq.supabase.co; media-src 'self' data: blob:; worker-src 'self' blob:; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self'">
+    <!--
         TEZ OCHILISH (2026-10-17). Ilgari bu yerda cdn.tailwindcss.com turardi:
         u har bir ochilishda telefonning O'ZIDA butun CSS'ni noldan yasardi va
         sahifa shuni kutardi. Endi CSS oldindan yig'iladi (tools/tailwind,
@@ -26,7 +36,7 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <!-- Custom Stitch Styles -->
-    <link rel="stylesheet" href="styles.css?v=7.7">
+    <link rel="stylesheet" href="styles.css?v=7.8">
     <link rel="stylesheet" href="splash.css?v=1">
     <link rel="stylesheet" href="theme-tong.css?v=1">
     <!-- Tailwind ENG OXIRIDA: CDN versiyasi ham o'z CSS'ini shu yerga qo'shardi
@@ -1098,41 +1108,23 @@
         <!-- ✨ QO'SHIMCHA IMKONIYATLAR
              Ilova o'sib borgani sari yangi bo'limlar paydo bo'ladi. Ularni
              asosiy oqimga qo'shib yuborsak, panel uzun ro'yxatga aylanardi;
-             shuning uchun alohida, bir qarashda o'qiladigan kataklar. -->
+             shuning uchun alohida, bir qarashda o'qiladigan kataklar.
+             Faqat eng ko'p kerak bo'ladigan uchtasi: qolganlari (viktorina,
+             ball tizimi, marshrut, bildirishnomalar) "Farzand" bo'limida. -->
         <section class="glass-card p-4 space-y-3">
             <h3 class="text-xs font-bold text-white flex items-center gap-1.5">
-                <span>✨</span><span>Qo'shimcha imkoniyatlar</span>
+                <span>✨</span><span>Tezkor</span>
             </h3>
-            <div class="grid grid-cols-2 gap-2">
+            <div class="grid grid-cols-3 gap-2">
                 <button onclick="openFamilyChat()" class="p-3 rounded-2xl bg-slate-900/70 border border-slate-700 hover:border-indigo-500/60 transition text-left">
                     <div class="flex items-center"><span class="text-xl">💬</span><span class="chat-unread-badge hidden ml-auto min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center">0</span></div>
                     <div class="text-[11px] font-bold text-white mt-1">Oila chati</div>
                     <div class="text-[9px] text-slate-400">Uy vazifasi, sovg'alar, xabarlar</div>
                 </button>
-                <button onclick="openSubpage('modal-games'); renderGamesGrid();" class="p-3 rounded-2xl bg-slate-900/70 border border-slate-700 hover:border-fuchsia-500/60 transition text-left">
-                    <div class="text-xl">🧩</div>
-                    <div class="text-[11px] font-bold text-white mt-1">Oilaviy Viktorina</div>
-                    <div class="text-[9px] text-slate-400">Farzandingiz bilan bellashing</div>
-                </button>
-                <button onclick="openTimeBankRules()" class="p-3 rounded-2xl bg-slate-900/70 border border-slate-700 hover:border-amber-500/60 transition text-left">
-                    <div class="text-xl">💰</div>
-                    <div class="text-[11px] font-bold text-white mt-1">Ball tizimi</div>
-                    <div class="text-[9px] text-slate-400">Ball kursi va sovg'alar ro'yxati</div>
-                </button>
-                <button onclick="switchTab('tab-radar'); setTimeout(renderDayRoute, 500);" class="p-3 rounded-2xl bg-slate-900/70 border border-slate-700 hover:border-cyan-500/60 transition text-left">
-                    <div class="text-xl">🗺️</div>
-                    <div class="text-[11px] font-bold text-white mt-1">Kun marshruti</div>
-                    <div class="text-[9px] text-slate-400">Bugun qayerlarda bo'ldi</div>
-                </button>
                 <button onclick="openZonesModal()" class="p-3 rounded-2xl bg-slate-900/70 border border-slate-700 hover:border-cyan-500/60 transition text-left">
                     <div class="text-xl">📍</div>
                     <div class="text-[11px] font-bold text-white mt-1">Xavfsiz hududlar</div>
                     <div class="text-[9px] text-slate-400">Uy va maktabni belgilang</div>
-                </button>
-                <button onclick="openNotificationsModal()" class="p-3 rounded-2xl bg-slate-900/70 border border-slate-700 hover:border-amber-500/60 transition text-left">
-                    <div class="text-xl">🔔</div>
-                    <div class="text-[11px] font-bold text-white mt-1">Bildirishnomalar</div>
-                    <div class="text-[9px] text-slate-400">Nima va qachon keladi</div>
                 </button>
                 <button onclick="openSubpage('modal-plans')" class="p-3 rounded-2xl bg-slate-900/70 border border-slate-700 hover:border-emerald-500/60 transition text-left">
                     <div class="text-xl">⭐️</div>
@@ -1142,20 +1134,6 @@
             </div>
         </section>
 
-        <!-- 🎁 Taklif: boshqa ota-onani chaqirish -->
-        <section class="glass-card p-4 space-y-2.5" id="parentReferralCard">
-            <div class="flex items-center gap-2">
-                <span class="text-xl">🎁</span>
-                <div>
-                    <h3 class="text-xs font-bold text-white">Do'stingizni taklif qiling</h3>
-                    <div class="text-[10px] text-slate-400" id="parentReferralSub">Chaqirgan oilangiz qo'shilsa — ikkalangizga ham bepul Pro</div>
-                </div>
-            </div>
-            <div id="parentReferralStats" class="text-[11px] text-slate-300"></div>
-            <button onclick="shareReferralLink()" class="w-full py-2.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 text-emerald-200 text-[11px] font-bold transition">
-                🤝 Taklif havolasini yuborish
-            </button>
-        </section>
     </main>
 
     <!-- ==================================================================== -->
@@ -1387,20 +1365,6 @@
             <span class="text-slate-500 text-sm font-bold">›</span>
         </div>
 
-        <!-- 4. Farzand Ma'lumotlari & Sinfi -->
-        <div onclick="openChildProfileModal()" class="glass-panel p-3.5 flex items-center justify-between cursor-pointer hover:border-cyan-500/50 transition">
-            <div class="flex items-center gap-3">
-                <div class="w-9 h-9 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 text-lg">
-                    👶
-                </div>
-                <div>
-                    <div class="text-xs font-bold text-white" data-i18n="profileTitle">Farzand Ma'lumotlari & Sinfi</div>
-                    <div class="text-[10px] text-slate-400" data-i18n="profileSub">Ism, Username, Telefon va e-Maktab</div>
-                </div>
-            </div>
-            <span class="text-slate-500 text-sm font-bold">›</span>
-        </div>
-
         <!-- 5. Tilni O'zgartirish (UZ / RU) -->
         <div onclick="openSubpage('modal-languages')" class="glass-panel p-3.5 flex items-center justify-between cursor-pointer hover:border-cyan-500/50 transition">
             <div class="flex items-center gap-3">
@@ -1429,15 +1393,17 @@
             <span class="text-slate-500 text-sm font-bold">›</span>
         </div>
 
-        <!-- 7. Juftlash va Android Ilova -->
+        <!-- 7. Farzandlar: qo'shish, ma'lumotlari va sinfi, qurilmani ulash.
+             Ilgari "Farzand Ma'lumotlari & Sinfi" alohida band edi va
+             aynan shu oynadagi tugma bilan bir xil sahifani ochardi. -->
         <div onclick="openSubpage('modal-pairing')" class="glass-panel p-3.5 flex items-center justify-between cursor-pointer hover:border-cyan-500/50 transition">
             <div class="flex items-center gap-3">
                 <div class="w-9 h-9 rounded-xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center text-rose-400 text-lg">
                     🛡️
                 </div>
                 <div>
-                    <div class="text-xs font-bold text-white" data-i18n="pairingSelect">Farzand</div>
-                    <div class="text-[10px] text-slate-400" data-i18n="pairingSub">Qo'shish, ma'lumotlari, qurilmani ulash</div>
+                    <div class="text-xs font-bold text-white" data-i18n="pairingSelect">Farzandlar</div>
+                    <div class="text-[10px] text-slate-400" data-i18n="pairingSub">Qo'shish, ma'lumotlari va sinfi, qurilmani ulash</div>
                 </div>
             </div>
             <span class="text-slate-500 text-sm font-bold">›</span>
@@ -1458,15 +1424,15 @@
             <span class="text-slate-500 text-sm font-bold">›</span>
         </div>
 
-        <!-- 8. Takliflar va Fikr-mulohazalar (quddusxon90@gmail.com) -->
+        <!-- 8. Yordam va aloqa: pochta, sayt, ijtimoiy tarmoqlar -->
         <div onclick="openSubpage('modal-feedback')" class="glass-panel p-3.5 flex items-center justify-between cursor-pointer hover:border-cyan-500/50 transition">
             <div class="flex items-center gap-3">
                 <div class="w-9 h-9 rounded-xl bg-teal-500/15 border border-teal-500/30 flex items-center justify-center text-teal-400 text-lg">
                     💡
                 </div>
                 <div>
-                    <div class="text-xs font-bold text-white" data-i18n="feedbackTitle">Taklif va Mulohazalar</div>
-                    <div class="text-[10px] text-slate-400" data-i18n="feedbackSub">quddusxon90@gmail.com orqali fikr yuborish</div>
+                    <div class="text-xs font-bold text-white" data-i18n="feedbackTitle">Yordam va aloqa</div>
+                    <div class="text-[10px] text-slate-400" data-i18n="feedbackSub">Yo'riqnoma, ijtimoiy tarmoqlar, bizga yozish</div>
                 </div>
             </div>
             <span class="text-slate-500 text-sm font-bold">›</span>
@@ -2350,35 +2316,6 @@
         </div>
     </div>
 
-    <!-- 🔘 FLOATING BOTTOM-RIGHT QUICK MENU BUTTON (faqat ota-ona rejimida) -->
-    <div id="quickMenuFab" class="fixed bottom-20 right-4 z-[99990]">
-        <div class="relative">
-            <button onclick="toggleQuickMenu()" class="w-12 h-12 rounded-full bg-gradient-to-tr from-cyan-500 to-teal-400 text-slate-950 font-black shadow-xl shadow-cyan-500/40 flex items-center justify-center text-xl hover:scale-105 transition active:scale-95 border-2 border-white/40">
-                ⚙️
-            </button>
-            <div id="quickMenuDropdown" class="absolute bottom-14 right-0 w-48 bg-slate-900/95 border border-slate-700 rounded-2xl p-2 shadow-2xl backdrop-blur-xl space-y-1 hidden">
-                <button onclick="copyPairingLink(); toggleQuickMenu();" class="w-full text-left px-3 py-2 rounded-xl text-[11px] font-bold text-cyan-300 hover:bg-slate-800 flex items-center gap-2">
-                    <span>🔗</span> <span>Farzand Havolasi</span>
-                </button>
-                <button onclick="openTimeBankRules(); toggleQuickMenu();" class="w-full text-left px-3 py-2 rounded-xl text-[11px] font-bold text-amber-300 hover:bg-slate-800 flex items-center gap-2">
-                    <span>💰</span> <span>Ball tizimi va sovg'alar</span>
-                </button>
-                <button onclick="openSubpage('modal-delete-account'); toggleQuickMenu();" class="w-full text-left px-3 py-2 rounded-xl text-[11px] font-bold text-rose-300 hover:bg-slate-800 flex items-center gap-2">
-                    <span>🗑</span> <span>Hisobni O'chirish</span>
-                </button>
-                <button onclick="shareReferralLink(); toggleQuickMenu();" class="w-full text-left px-3 py-2 rounded-xl text-[11px] font-bold text-emerald-300 hover:bg-slate-800 flex items-center gap-2">
-                    <span>🎁</span> <span>Do'stni Taklif Qilish</span>
-                </button>
-                <button onclick="openSubpage('modal-parent-onboarding'); toggleQuickMenu();" class="w-full text-left px-3 py-2 rounded-xl text-[11px] font-bold text-slate-300 hover:bg-slate-800 flex items-center gap-2">
-                    <span>👨‍👩‍👧</span> <span>Oila Ma'lumotlari</span>
-                </button>
-                <button onclick="openSubpage('modal-settings'); toggleQuickMenu();" class="w-full text-left px-3 py-2 rounded-xl text-[11px] font-bold text-slate-300 hover:bg-slate-800 flex items-center gap-2">
-                    <span>⚙️</span> <span>Sozlamalar</span>
-                </button>
-            </div>
-        </div>
-    </div>
-
     <!-- ➕ MODAL: YANGI FARZAND QO'SHISH -->
     <div id="modal-add-child" class="subpage-modal space-y-4">
         <div class="flex items-center justify-between pb-3 border-b border-slate-800">
@@ -2513,15 +2450,6 @@
                 </div>
             </div>
 
-            <!-- Email va Murojaat -->
-            <div class="p-3.5 rounded-xl bg-gradient-to-r from-teal-500/10 to-emerald-500/10 border border-teal-500/30 text-center space-y-2">
-                <div class="text-[10px] text-slate-400" data-i18n="aboutContactHint">Loyiha bo'yicha taklif, mulohaza va murojaatlaringiz uchun rasmiy manzil:</div>
-                <div class="text-sm font-black text-teal-300 font-mono select-all">quddusxon90@gmail.com</div>
-                <a href="https://mail.google.com/mail/?view=cm&fs=1&to=quddusxon90@gmail.com&su=Qalqon+AI+murojaat" target="_blank" class="w-full py-2 bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-600 hover:to-emerald-700 text-white font-bold text-xs rounded-xl transition flex items-center justify-center gap-2">
-                    <span>✉️</span>
-                    <span data-i18n="writeGmailBtn">Gmail orqali xat yozish</span>
-                </a>
-            </div>
         </div>
     </div>
 
@@ -2545,7 +2473,7 @@
     <div id="modal-feedback" class="subpage-modal space-y-4">
         <div class="flex items-center justify-between pb-3 border-b border-slate-800">
             <button onclick="closeSubpage()" class="text-xs font-bold text-emerald-400" data-i18n="backBtn">← Orqaga</button>
-            <h2 class="text-xs font-bold text-white" data-i18n="feedbackTitle">Taklif va Mulohazalar</h2>
+            <h2 class="text-xs font-bold text-white" data-i18n="feedbackTitle">Yordam va aloqa</h2>
             <span class="w-8"></span>
         </div>
 
@@ -2577,18 +2505,22 @@
                 </a>
             </div>
         </div>
-        <!-- Rasmiy sahifalar: yangiliklar, qo'llanma videolar, savol-javob. -->
-        <div class="glass-card p-4 space-y-2.5">
-            <h3 class="text-xs font-bold text-white">Biz ijtimoiy tarmoqlarda</h3>
-            <a href="https://t.me/aibotqalqon" target="_blank" rel="noopener" onclick="return tashqiHavola(this.href)" class="flex items-center justify-between p-2.5 rounded-xl bg-slate-900/60 border border-slate-800">
-                <span class="text-[11px] font-bold text-white">✈️ Telegram kanal</span><span class="text-[10px] text-slate-400">@aibotqalqon ›</span>
-            </a>
-            <a href="https://www.instagram.com/qalqon_ai/" target="_blank" rel="noopener" onclick="return tashqiHavola(this.href)" class="flex items-center justify-between p-2.5 rounded-xl bg-slate-900/60 border border-slate-800">
-                <span class="text-[11px] font-bold text-white">📸 Instagram</span><span class="text-[10px] text-slate-400">@qalqon_ai ›</span>
-            </a>
-            <a href="https://www.youtube.com/@qalqon_ai" target="_blank" rel="noopener" onclick="return tashqiHavola(this.href)" class="flex items-center justify-between p-2.5 rounded-xl bg-slate-900/60 border border-slate-800">
-                <span class="text-[11px] font-bold text-white">▶️ YouTube — qo'llanma videolar</span><span class="text-[10px] text-slate-400">@qalqon_ai ›</span>
-            </a>
+        <!-- Yordam va aloqaning YAGONA joyi: sayt, yo'riqnoma, ijtimoiy
+             tarmoqlar. Ilgari bu havolalar uch joyda (shu yer, "Mening oilam",
+             "Dastur haqida") turardi. Havolalar ilova tashqarisida ochiladi
+             (tashqiHavola). Bu yerda to'lov sahifasiga havola BO'LMASIN
+             (Google Play qoidasi). -->
+        <div class="glass-card p-4 space-y-3">
+            <h3 class="text-xs font-bold text-white">ℹ️ Yordam va biz haqimizda</h3>
+            <style>.yordam-havola{background:#eef4fb;color:#0f2a4a;border:1px solid #dbe7f3;text-decoration:none}.yordam-havola:active{background:#dbe9f7}</style>
+            <div class="grid grid-cols-2 gap-2">
+                <a href="https://qalqonai.uz/?utm_source=ilova" target="_blank" rel="noopener" onclick="return tashqiHavola(this.href)" class="yordam-havola rounded-xl p-3 flex items-center gap-2 text-[11px] font-bold">🌐 Sayt</a>
+                <a href="https://qalqonai.uz/fon/?utm_source=ilova" target="_blank" rel="noopener" onclick="return tashqiHavola(this.href)" class="yordam-havola rounded-xl p-3 flex items-center gap-2 text-[11px] font-bold">📱 Ilova o'chmasin</a>
+                <a href="https://t.me/aibotqalqon" target="_blank" rel="noopener" onclick="return tashqiHavola(this.href)" class="yordam-havola rounded-xl p-3 flex items-center gap-2 text-[11px] font-bold">✈️ Telegram kanal</a>
+                <a href="https://instagram.com/qalqon_ai" target="_blank" rel="noopener" onclick="return tashqiHavola(this.href)" class="yordam-havola rounded-xl p-3 flex items-center gap-2 text-[11px] font-bold">📸 Instagram</a>
+                <a href="https://youtube.com/@qalqon_ai" target="_blank" rel="noopener" onclick="return tashqiHavola(this.href)" class="yordam-havola rounded-xl p-3 flex items-center gap-2 text-[11px] font-bold">▶️ YouTube</a>
+                <a href="https://t.me/ai_loyihachi" target="_blank" rel="noopener" onclick="return tashqiHavola(this.href)" class="yordam-havola rounded-xl p-3 flex items-center gap-2 text-[11px] font-bold">💬 Bizga yozish</a>
+            </div>
         </div>
     </div>
 
@@ -2676,32 +2608,31 @@
             <span class="text-slate-500 text-sm font-bold">›</span>
         </div>
 
-        <div onclick="shareReferralLink()" class="glass-panel p-3.5 flex items-center justify-between cursor-pointer hover:border-cyan-500/50 transition">
-            <div class="flex items-center gap-3">
-                <div class="w-9 h-9 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-lg">🎁</div>
+        <!-- 🎁 Taklif: boshqa ota-onani chaqirish. Yagona joyi — shu yer
+             (ilgari bosh ekranda va "Farzand" bo'limida ham bor edi). -->
+        <section class="glass-card p-4 space-y-2.5" id="parentReferralCard">
+            <div class="flex items-center gap-2">
+                <span class="text-xl">🎁</span>
                 <div>
-                    <div class="text-xs font-bold text-white">Do'stni taklif qilish</div>
-                    <div class="text-[10px] text-slate-400">Do'stingiz qo'shilsa, sizga Pro kunlari</div>
+                    <h3 class="text-xs font-bold text-white">Do'stingizni taklif qiling</h3>
+                    <div class="text-[10px] text-slate-400" id="parentReferralSub">Chaqirgan oilangiz qo'shilsa — ikkalangizga ham bepul Pro</div>
+                </div>
+            </div>
+            <div id="parentReferralStats" class="text-[11px] text-slate-300"></div>
+            <button onclick="shareReferralLink()" class="w-full py-2.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 text-emerald-200 text-[11px] font-bold transition">
+                🤝 Taklif havolasini yuborish
+            </button>
+        </section>
+
+        <div onclick="openSubpage('modal-feedback')" class="glass-panel p-3.5 flex items-center justify-between cursor-pointer hover:border-cyan-500/50 transition">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-teal-500/15 border border-teal-500/30 flex items-center justify-center text-lg">💬</div>
+                <div>
+                    <div class="text-xs font-bold text-white" data-i18n="feedbackTitle">Yordam va aloqa</div>
+                    <div class="text-[10px] text-slate-400" data-i18n="feedbackSub">Yo'riqnoma, ijtimoiy tarmoqlar, bizga yozish</div>
                 </div>
             </div>
             <span class="text-slate-500 text-sm font-bold">›</span>
-        </div>
-
-        <!-- Yordam va biz haqimizda: sayt, yo'riqnoma, ijtimoiy tarmoqlar.
-             Havolalar ilova tashqarisida ochiladi (tashqiHavola), sayt
-             statistikasida manba "ilova" bo'lib sanaladi. Bu yerda to'lov
-             sahifasiga havola BO'LMASIN (Google Play qoidasi). -->
-        <div class="glass-card p-4 space-y-3">
-            <h3 class="text-xs font-bold text-white">ℹ️ Yordam va biz haqimizda</h3>
-            <style>.yordam-havola{background:#eef4fb;color:#0f2a4a;border:1px solid #dbe7f3;text-decoration:none}.yordam-havola:active{background:#dbe9f7}</style>
-            <div class="grid grid-cols-2 gap-2">
-                <a href="https://qalqonai.uz/?utm_source=ilova" target="_blank" rel="noopener" onclick="return tashqiHavola(this.href)" class="yordam-havola rounded-xl p-3 flex items-center gap-2 text-[11px] font-bold">🌐 Sayt</a>
-                <a href="https://qalqonai.uz/fon/?utm_source=ilova" target="_blank" rel="noopener" onclick="return tashqiHavola(this.href)" class="yordam-havola rounded-xl p-3 flex items-center gap-2 text-[11px] font-bold">📱 Ilova o'chmasin</a>
-                <a href="https://t.me/aibotqalqon" target="_blank" rel="noopener" onclick="return tashqiHavola(this.href)" class="yordam-havola rounded-xl p-3 flex items-center gap-2 text-[11px] font-bold">✈️ Telegram kanal</a>
-                <a href="https://instagram.com/qalqon_ai" target="_blank" rel="noopener" onclick="return tashqiHavola(this.href)" class="yordam-havola rounded-xl p-3 flex items-center gap-2 text-[11px] font-bold">📸 Instagram</a>
-                <a href="https://youtube.com/@qalqon_ai" target="_blank" rel="noopener" onclick="return tashqiHavola(this.href)" class="yordam-havola rounded-xl p-3 flex items-center gap-2 text-[11px] font-bold">▶️ YouTube</a>
-                <a href="https://t.me/ai_loyihachi" target="_blank" rel="noopener" onclick="return tashqiHavola(this.href)" class="yordam-havola rounded-xl p-3 flex items-center gap-2 text-[11px] font-bold">💬 Bizga yozish</a>
-            </div>
         </div>
 
         <!-- Hisobdan chiqish — faqat Android ilova va brauzerda (Telegram'da
@@ -2998,7 +2929,7 @@
 
     <!-- Custom JavaScript -->
     <script src="splash.js?v=3"></script>
-    <script src="app.js?v=11.4"></script>
+    <script src="app.js?v=11.7"></script>
     <!-- O'yinlar alohida faylda: app.js allaqachon katta, va o'yin kontenti
          (savollar, kartalar) o'sib boradi. Alohida fayl brauzerda alohida
          keshlanadi — o'yin qo'shilsa, butun ilova qayta yuklanmaydi. -->
@@ -3007,7 +2938,7 @@
     <!-- Do'st bilan online o'yinlar: sim.js serverdagi nusxa bilan AYNAN bir xil bo'lishi shart. -->
     <script src="sim.js?v=1"></script>
     <script src="online.js?v=2"></script>
-    <script src="chat.js?v=1"></script>
+    <script src="chat.js?v=2"></script>
     <script src="advice.js?v=1"></script>
     <!-- Rus tili: sahifadagi barcha matnni lug'at bo'yicha o'giradi (keyin paydo bo'ladiganini ham). -->
     <script src="i18n_ru.js?v=4"></script>
