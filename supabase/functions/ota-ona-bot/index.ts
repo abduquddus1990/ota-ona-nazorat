@@ -438,6 +438,71 @@ async function seansPushiniOchir(sessionId: string) {
 }
 
 // ============================================================================
+// XAVFLI AMALLARNI TELEGRAM KODI BILAN TASDIQLASH
+//
+// Hisobni o'chirish va parolni almashtirish brauzer/ilova seansida bitta
+// tugma bilan bajarilardi. Telefon yoki seans kaliti begonaga tushsa, u
+// butun oilani o'chirib yoki parolni almashtirib, haqiqiy ota-onani hisobdan
+// chiqarib yuborishi mumkin edi. Endi bunday seansda server ota-onaning
+// Telegram'iga 6 xonali kod yuboradi; amal faqat shu kod bilan bajariladi.
+//
+// Kod bazada saqlanmaydi: u seans, amal va 10 daqiqalik oyna bo'yicha
+// HMAC'dan hisoblanadi (joriy va oldingi oyna qabul qilinadi). Taxmin
+// qilishga qarshi — seans bo'yicha soatiga 10 urinish.
+//
+// Telegram ichidagi Mini App'da (initData) kod so'ralmaydi: u yerda
+// Telegram'ning o'zi tasdiq. Telegram'i yo'q oilaga kod yuboradigan joy
+// yo'q — ular uchun hozircha avvalgidek.
+// ============================================================================
+const TASDIQ_OYNA_MS = 10 * 60 * 1000;
+
+async function tasdiqKodiHisobla(sessionId: string, amal: string, oyna: number): Promise<string> {
+  const kalit = new TextEncoder().encode("qalqon-tasdiq:" + SUPABASE_SERVICE_ROLE_KEY);
+  const h = await hmacSha256(kalit, `${sessionId}|${amal}|${oyna}`);
+  const son = ((h[0] << 24) | (h[1] << 16) | (h[2] << 8) | h[3]) >>> 0;
+  return String(son % 1000000).padStart(6, "0");
+}
+
+/**
+ * null — amalni bajarish mumkin. Aks holda mijozga qaytariladigan javob:
+ * kod yuborildi (kodKerak) yoki kod noto'g'ri.
+ */
+async function xavfliAmalTasdigi(actor: Actor, payload: any, amal: string, nomi: string): Promise<Response | null> {
+  if (actor.kind !== "telegram" || !actor.sessionId || !actor.telegramId) return null;
+  const sid = actor.sessionId;
+  const kalit = `tasdiq:${sid}`;
+  if (await joinRateLimited(kalit)) {
+    return jsonRes({ ok: false, error: "Juda ko'p urinish. 1 soatdan keyin qayta urinib ko'ring." }, 429);
+  }
+  const oyna = Math.floor(Date.now() / TASDIQ_OYNA_MS);
+  const kiritilgan = String(payload?.tasdiqKodi || "").replace(/\D/g, "");
+  if (kiritilgan) {
+    const togri = timingSafeEqual(kiritilgan, await tasdiqKodiHisobla(sid, amal, oyna)) ||
+      timingSafeEqual(kiritilgan, await tasdiqKodiHisobla(sid, amal, oyna - 1));
+    await recordJoinAttempt(kalit, actor.familyCode, togri);
+    if (togri) return null;
+    return jsonRes({ ok: false, kodKerak: true, error: "Kod noto'g'ri yoki eskirgan." }, 403);
+  }
+  await recordJoinAttempt(kalit, actor.familyCode, false);
+  const kod = await tasdiqKodiHisobla(sid, amal, oyna);
+  const r = await sendMessage(
+    actor.telegramId,
+    `🔐 <b>${tgEsc(nomi)}</b> — tasdiq kodi:\n\n<code>${kod}</code>\n\n` +
+      `Kod 10 daqiqa amal qiladi. Uni faqat o'zingiz ilovaga kiriting.\n\n` +
+      `<i>Buni siz so'ramagan bo'lsangiz — kodni hech kimga bermang va panelda ` +
+      `«Kirishlar va xavfsizlik» → «Boshqa barcha kirishlarni uzish» ni bosing.</i>`
+  );
+  if (!r?.ok) {
+    return jsonRes({
+      ok: false,
+      error: "Telegram'ga tasdiq kodini yuborib bo'lmadi. Bu amalni Telegram ichidagi Qalqon panelidan bajaring.",
+    }, 503);
+  }
+  await logSecurityEvent(actor.familyCode, "confirm_code_sent", `tg:${actor.telegramId}`, { amal, sessionId: sid });
+  return jsonRes({ ok: false, kodKerak: true, error: "Telegram'ga tasdiq kodi yuborildi." });
+}
+
+// ============================================================================
 // XAVFSIZLIK JURNALI VA OGOHLANTIRISHLAR (database/31_security_events.sql)
 //
 // Ota-onaning hisobiga kirish va farzand telefonini ulash — oiladagi eng
@@ -5790,8 +5855,14 @@ async function handleRequest(req: Request): Promise<Response> {
             status: 400, headers: { "Content-Type": "application/json" },
           });
         }
+        // Brauzer/ilova seansida parol faqat Telegram kodi bilan almashadi:
+        // aks holda seansni o'g'irlagan odam parolni o'zgartirib, haqiqiy
+        // ota-onani hisobidan chiqarib yuborardi.
+        const tasdiq = await xavfliAmalTasdigi(actor!, payload, "password", "Parolni almashtirish");
+        if (tasdiq) return tasdiq;
         (row as Record<string, unknown>).password_hash = await hashPassword(payload.password);
         (row as Record<string, unknown>).password_set_at = new Date().toISOString();
+        await logSecurityEvent(familyCode, "password_set", `tg:${actor!.kind === "telegram" ? actor!.telegramId : ""}`, {});
       }
 
       // Taklif kodi: faqat MAVJUD va o'zi bo'lmagan oila qabul qilinadi.
@@ -6961,6 +7032,33 @@ async function handleRequest(req: Request): Promise<Response> {
           status: 500, headers: { "Content-Type": "application/json" },
         });
       }
+      const tasdiq = await xavfliAmalTasdigi(actor!, payload, "delete_account", "Hisobni o'chirish");
+      if (tasdiq) return tasdiq;
+
+      // Ikkinchi ota-ona (ona) faqat O'Z hisobini o'chiradi. Ilgari bu tugma
+      // uning qo'lida ham butun oilani — otaning hisobini, farzandlarning
+      // joylashuv tarixini, hammasini — o'chirib yuborardi.
+      const onaOilasi = await coParentFamily(actor!.telegramId);
+      if (onaOilasi) {
+        await db.from("family_parents").delete()
+          .eq("family_code", onaOilasi).eq("telegram_id", actor!.telegramId);
+        await db.from("ai_chat_messages").delete().eq("telegram_id", actor!.telegramId);
+        const { data: seanslar } = await db.from("web_sessions").delete()
+          .eq("family_code", onaOilasi).eq("telegram_id", actor!.telegramId).select("id");
+        for (const s of seanslar || []) await seansPushiniOchir(s.id);
+        await logSecurityEvent(onaOilasi, "coparent_left", `tg:${actor!.telegramId}`, {});
+        await notifyFamilyParents(
+          onaOilasi,
+          "ℹ️ <b>Ikkinchi ota-ona o'z hisobini o'chirdi va oiladan chiqdi.</b>\n\nOila, farzandlar va ularning ma'lumotlari joyida qoldi."
+        );
+        try {
+          await sendMessage(
+            actor!.telegramId,
+            "✅ <b>Hisobingiz o'chirildi.</b>\n\nSiz oila panelidan chiqdingiz, endi bu oila haqidagi xabarlar kelmaydi. Oilaning o'zi va farzandlar ma'lumoti oilani ochgan ota-onada qoldi."
+          );
+        } catch (_e) { /* xabar bormasa ham o'chirish bajarildi */ }
+        return jsonRes({ ok: true, leftFamily: true, childrenNotified: 0 });
+      }
 
       const familyCode = actor!.familyCode;
 
@@ -6996,6 +7094,9 @@ async function handleRequest(req: Request): Promise<Response> {
         // "41% batareya" va eski ogohlantirishlar ko'rinib turdi.
         "device_health", "app_login_requests", "push_tokens",
         "parent_pair_codes", "family_code_overrides", "security_events",
+        // Ikkinchi ota-ona yozuvi ham — aks holda ona o'chirilgan oilaga
+        // bog'langanicha qolardi.
+        "family_parents",
       ];
 
       const failed: string[] = [];
@@ -8079,6 +8180,8 @@ async function handleRequest(req: Request): Promise<Response> {
           status: 400, headers: { "Content-Type": "application/json" },
         });
       }
+      const tasdiq = await xavfliAmalTasdigi(actor!, payload, "password", "Parolni almashtirish");
+      if (tasdiq) return tasdiq;
 
       const { data: reg } = await db
         .from("parent_registrations")

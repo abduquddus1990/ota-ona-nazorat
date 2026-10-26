@@ -204,7 +204,15 @@ check((await api({ type: "security_overview", sessionToken: B })).status === 401
 // 14. Brauzerdan parol almashtirish o'zini chiqarib yubormaydi
 DB.parent_pair_codes.push({ code: "APPCODE3", family_code: fam1, parent_telegram_id: 1001, purpose: "app_login", expires_at: future() });
 const C = (await api({ type: "parent_pair", code: "APPCODE3" }, "10.6.0.1")).sessionToken;
+// Seansda parol faqat Telegram kodi bilan almashadi.
+t0 = TG.length;
 r = await api({ type: "set_password", password: "Yangi#Parol10", sessionToken: S });
+const kodXabar = tgSince(t0).find((m) => /tasdiq kodi/.test(m.text || ""));
+const tasdiqKodi = ((kodXabar?.text || "").match(/<code>(\d{6})<\/code>/) || [])[1];
+check(!r.ok && r.kodKerak && !!tasdiqKodi, "14a. seansda parol uchun Telegram'ga kod yuborildi", { r, yuborilgan: tgSince(t0).map((m) => [m.chat_id, String(m.text).slice(0, 60)]) });
+r = await api({ type: "set_password", password: "Yangi#Parol10", sessionToken: S, tasdiqKodi: tasdiqKodi === "000000" ? "111111" : "000000" });
+check(!r.ok && r.kodKerak, "14d. noto'g'ri kod rad etiladi", r);
+r = await api({ type: "set_password", password: "Yangi#Parol10", sessionToken: S, tasdiqKodi });
 check(r.ok, "14. seansdan parol almashtirildi", r);
 check((await api({ type: "security_overview", sessionToken: S })).ok, "14b. joriy seans saqlandi");
 check((await api({ type: "security_overview", sessionToken: C })).status === 401, "14c. boshqa seanslar uzildi");
@@ -351,6 +359,14 @@ r = await api({ type: "chat_send", initData: await initData(3001), photo: 'data:
 check(r.status === 400, "31. ichida kod bor 'surat' rad etiladi", r);
 r = await api({ type: "chat_send", initData: await initData(3001), photo: "data:image/png;base64,iVBORw0KGgo=" });
 check(r.ok, "31b. haqiqiy surat o'tadi", r);
+
+// 32. Ikkinchi ota-ona (ona) "hisobni o'chirish"da faqat o'zini o'chiradi.
+r = await api({ type: "delete_account", confirm: true, initData: await initData(1002) });
+check(r.ok && r.leftFamily, "32. ona o'z hisobini o'chirdi", r);
+check(DB.parent_registrations.some((x: any) => x.family_code === fam1) &&
+  DB.child_pairings.some((x: any) => x.family_code === fam1) &&
+  !DB.family_parents.some((x: any) => x.telegram_id === 1002),
+  "32b. oila va farzandlar joyida, ona oiladan chiqdi");
 
 const fail = results.filter(([ok]) => !ok).length;
 console.log(`\n${results.length - fail}/${results.length} o'tdi`);
