@@ -477,8 +477,8 @@ const I18N = {
         langSub: "O'zbekcha / Русский",
         plansSelect: "Tariflar va Obuna",
         plansSub: "Bepul: 1 farzand / Pro: cheklovsiz",
-        pairingSelect: "Farzandni Ulash & Android Ilova",
-        pairingSub: "Oila kodi va avtomatik juftlash",
+        pairingSelect: "Farzandlar",
+        pairingSub: "Qo'shish, ma'lumotlari va sinfi, qurilmani ulash",
         feedbackTitle: "Taklif va Mulohazalar",
         feedbackSub: "quddusxon90@gmail.com orqali fikr yuborish",
         feedbackHeader: "Fikringiz biz uchun muhim!",
@@ -625,8 +625,8 @@ const I18N = {
         langSub: "O'zbekcha / Русский",
         plansSelect: "Тарифы и Подписка",
         plansSub: "Free (Локация) / Pro (10 000 сум)",
-        pairingSelect: "Подключение Ребёнка и Android App",
-        pairingSub: "Код семьи и авто-привязка",
+        pairingSelect: "Дети",
+        pairingSub: "Добавить, данные и класс, подключить телефон",
         feedbackTitle: "Предложения и Отзывы",
         feedbackSub: "Отправить отзыв на quddusxon90@gmail.com",
         feedbackHeader: "Ваше мнение важно для нас!",
@@ -2241,10 +2241,6 @@ function switchAppRole(role) {
     }
 
     const isParent = (role === 'parent');
-    const quickMenuFab = document.getElementById('quickMenuFab');
-    if (quickMenuFab) {
-        quickMenuFab.classList.toggle('hidden', !isParent);
-    }
     // Farzand panelida "💎 Pro" (sotuv taklifi) ko'rinmaydi.
     ['headerProBtn', 'headerPlanBadge'].forEach(id => {
         const el = document.getElementById(id);
@@ -6332,11 +6328,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 function openUsernameGuideModal() {
     closeSubpage();
     openSubpage('modal-username-guide');
-}
-
-function toggleQuickMenu() {
-    const menu = document.getElementById('quickMenuDropdown');
-    if (menu) menu.classList.toggle('hidden');
 }
 
 function handleCompleteParentOnboarding() {

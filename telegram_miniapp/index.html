@@ -26,7 +26,7 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <!-- Custom Stitch Styles -->
-    <link rel="stylesheet" href="styles.css?v=7.7">
+    <link rel="stylesheet" href="styles.css?v=7.8">
     <link rel="stylesheet" href="splash.css?v=1">
     <link rel="stylesheet" href="theme-tong.css?v=1">
     <!-- Tailwind ENG OXIRIDA: CDN versiyasi ham o'z CSS'ini shu yerga qo'shardi
@@ -1387,20 +1387,6 @@
             <span class="text-slate-500 text-sm font-bold">›</span>
         </div>
 
-        <!-- 4. Farzand Ma'lumotlari & Sinfi -->
-        <div onclick="openChildProfileModal()" class="glass-panel p-3.5 flex items-center justify-between cursor-pointer hover:border-cyan-500/50 transition">
-            <div class="flex items-center gap-3">
-                <div class="w-9 h-9 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 text-lg">
-                    👶
-                </div>
-                <div>
-                    <div class="text-xs font-bold text-white" data-i18n="profileTitle">Farzand Ma'lumotlari & Sinfi</div>
-                    <div class="text-[10px] text-slate-400" data-i18n="profileSub">Ism, Username, Telefon va e-Maktab</div>
-                </div>
-            </div>
-            <span class="text-slate-500 text-sm font-bold">›</span>
-        </div>
-
         <!-- 5. Tilni O'zgartirish (UZ / RU) -->
         <div onclick="openSubpage('modal-languages')" class="glass-panel p-3.5 flex items-center justify-between cursor-pointer hover:border-cyan-500/50 transition">
             <div class="flex items-center gap-3">
@@ -1429,15 +1415,17 @@
             <span class="text-slate-500 text-sm font-bold">›</span>
         </div>
 
-        <!-- 7. Juftlash va Android Ilova -->
+        <!-- 7. Farzandlar: qo'shish, ma'lumotlari va sinfi, qurilmani ulash.
+             Ilgari "Farzand Ma'lumotlari & Sinfi" alohida band edi va
+             aynan shu oynadagi tugma bilan bir xil sahifani ochardi. -->
         <div onclick="openSubpage('modal-pairing')" class="glass-panel p-3.5 flex items-center justify-between cursor-pointer hover:border-cyan-500/50 transition">
             <div class="flex items-center gap-3">
                 <div class="w-9 h-9 rounded-xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center text-rose-400 text-lg">
                     🛡️
                 </div>
                 <div>
-                    <div class="text-xs font-bold text-white" data-i18n="pairingSelect">Farzand</div>
-                    <div class="text-[10px] text-slate-400" data-i18n="pairingSub">Qo'shish, ma'lumotlari, qurilmani ulash</div>
+                    <div class="text-xs font-bold text-white" data-i18n="pairingSelect">Farzandlar</div>
+                    <div class="text-[10px] text-slate-400" data-i18n="pairingSub">Qo'shish, ma'lumotlari va sinfi, qurilmani ulash</div>
                 </div>
             </div>
             <span class="text-slate-500 text-sm font-bold">›</span>
@@ -2350,35 +2338,6 @@
         </div>
     </div>
 
-    <!-- 🔘 FLOATING BOTTOM-RIGHT QUICK MENU BUTTON (faqat ota-ona rejimida) -->
-    <div id="quickMenuFab" class="fixed bottom-20 right-4 z-[99990]">
-        <div class="relative">
-            <button onclick="toggleQuickMenu()" class="w-12 h-12 rounded-full bg-gradient-to-tr from-cyan-500 to-teal-400 text-slate-950 font-black shadow-xl shadow-cyan-500/40 flex items-center justify-center text-xl hover:scale-105 transition active:scale-95 border-2 border-white/40">
-                ⚙️
-            </button>
-            <div id="quickMenuDropdown" class="absolute bottom-14 right-0 w-48 bg-slate-900/95 border border-slate-700 rounded-2xl p-2 shadow-2xl backdrop-blur-xl space-y-1 hidden">
-                <button onclick="copyPairingLink(); toggleQuickMenu();" class="w-full text-left px-3 py-2 rounded-xl text-[11px] font-bold text-cyan-300 hover:bg-slate-800 flex items-center gap-2">
-                    <span>🔗</span> <span>Farzand Havolasi</span>
-                </button>
-                <button onclick="openTimeBankRules(); toggleQuickMenu();" class="w-full text-left px-3 py-2 rounded-xl text-[11px] font-bold text-amber-300 hover:bg-slate-800 flex items-center gap-2">
-                    <span>💰</span> <span>Ball tizimi va sovg'alar</span>
-                </button>
-                <button onclick="openSubpage('modal-delete-account'); toggleQuickMenu();" class="w-full text-left px-3 py-2 rounded-xl text-[11px] font-bold text-rose-300 hover:bg-slate-800 flex items-center gap-2">
-                    <span>🗑</span> <span>Hisobni O'chirish</span>
-                </button>
-                <button onclick="shareReferralLink(); toggleQuickMenu();" class="w-full text-left px-3 py-2 rounded-xl text-[11px] font-bold text-emerald-300 hover:bg-slate-800 flex items-center gap-2">
-                    <span>🎁</span> <span>Do'stni Taklif Qilish</span>
-                </button>
-                <button onclick="openSubpage('modal-parent-onboarding'); toggleQuickMenu();" class="w-full text-left px-3 py-2 rounded-xl text-[11px] font-bold text-slate-300 hover:bg-slate-800 flex items-center gap-2">
-                    <span>👨‍👩‍👧</span> <span>Oila Ma'lumotlari</span>
-                </button>
-                <button onclick="openSubpage('modal-settings'); toggleQuickMenu();" class="w-full text-left px-3 py-2 rounded-xl text-[11px] font-bold text-slate-300 hover:bg-slate-800 flex items-center gap-2">
-                    <span>⚙️</span> <span>Sozlamalar</span>
-                </button>
-            </div>
-        </div>
-    </div>
-
     <!-- ➕ MODAL: YANGI FARZAND QO'SHISH -->
     <div id="modal-add-child" class="subpage-modal space-y-4">
         <div class="flex items-center justify-between pb-3 border-b border-slate-800">
@@ -2998,7 +2957,7 @@
 
     <!-- Custom JavaScript -->
     <script src="splash.js?v=3"></script>
-    <script src="app.js?v=11.4"></script>
+    <script src="app.js?v=11.5"></script>
     <!-- O'yinlar alohida faylda: app.js allaqachon katta, va o'yin kontenti
          (savollar, kartalar) o'sib boradi. Alohida fayl brauzerda alohida
          keshlanadi — o'yin qo'shilsa, butun ilova qayta yuklanmaydi. -->
