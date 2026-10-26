@@ -3603,8 +3603,7 @@ async function handleBallRoutes(payload: any, actor: Actor): Promise<Response | 
     const note = String(payload.note || "").trim().slice(0, 120);
     const subject = String(payload.subject || "Uy vazifasi").trim().slice(0, 40) || "Uy vazifasi";
     // Daftar surati (ixtiyoriy) — oila chatiga karta bilan birga tushadi.
-    const hwPhoto = typeof payload.photo === "string" && /^data:image\/(jpeg|png|webp);base64,/.test(payload.photo) &&
-      payload.photo.length <= CHAT_PHOTO_MAX ? payload.photo : null;
+    const hwPhoto = isSafeDataImage(payload.photo) ? payload.photo : null;
     // Mashq raqamlari ("39-40") — fokus savollari shu mashqlardan tuziladi.
     const hwNumbers = parseExerciseNumbers(payload.exercises);
     const hwGrade = await childGrade(familyCode, childId);
@@ -4374,6 +4373,17 @@ async function textbookCoverage(grade: number, subject: unknown) {
 const CHAT_TEXT_MAX = 1000;
 // Siqilgan JPEG data URL. Mijoz 1024px / 60% sifatga tushiradi (~150 KB).
 const CHAT_PHOTO_MAX = 600_000;
+
+/**
+ * Rasm data URL'i BUTUNLAY tekshiriladi — faqat boshi emas. Ilgari
+ * `data:image/png;base64,AAAA" onerror=...` ham o'tardi va ota-ona rasmni
+ * kattalashtirganda bu matn uning panelida kod bo'lib ishlardi (seans
+ * kalitini o'g'irlash mumkin edi).
+ */
+function isSafeDataImage(s: unknown): s is string {
+  return typeof s === "string" && s.length <= CHAT_PHOTO_MAX &&
+    /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+\/]+={0,2}$/.test(s);
+}
 const CHAT_PAGE = 60;
 // Shu vaqt ichida chatni o'qigan a'zoga bot orqali xabar yuborilmaydi —
 // u baribir ekranda ko'rib turibdi.
@@ -4547,7 +4557,7 @@ async function handleChatRoutes(payload: any, actor: Actor): Promise<Response | 
   if (t === "chat_send") {
     const body = String(payload.text || "").trim().slice(0, CHAT_TEXT_MAX);
     const photo = typeof payload.photo === "string" ? payload.photo : "";
-    if (photo && (!/^data:image\/(jpeg|png|webp);base64,/.test(photo) || photo.length > CHAT_PHOTO_MAX)) {
+    if (photo && !isSafeDataImage(photo)) {
       return jsonRes({ ok: false, error: "Surat juda katta yoki noto'g'ri formatda." }, 400);
     }
     if (!body && !photo) return jsonRes({ ok: false, error: "Xabar bo'sh." }, 400);
@@ -11374,7 +11384,11 @@ async function handleRequest(req: Request): Promise<Response> {
                 // u tasdiq xabariga soxta matn yoki havola qo'sha olardi.
                 (req.device_label ? `<b>Qurilma:</b> ${tgEsc(req.device_label)}\n` : "") +
                 `<b>Oila kodi:</b> <code>${famOfParent}</code>\n\n` +
-                `<i>Bu so'rovni siz boshlamagan bo'lsangiz — «Yo'q» ni bosing.</i>`,
+                // Havolani hujumchi ham yaratib, "sovg'a oling" deb yuborishi
+                // mumkin: «Ha» uning telefoniga oilaning to'liq paneli beradi.
+                `⚠️ <b>«Ha» — shu telefonga oilangiz paneliga to'liq kirish.</b> ` +
+                `Havolani boshqa odam yuborgan bo'lsa yoki ilovani hozir o'zingiz ochmagan bo'lsangiz — «Yo'q» ni bosing. ` +
+                `Qalqon xodimlari buni hech qachon so'ramaydi.`,
               { inline_keyboard: [[
                 { text: "✅ Ha, bu men", callback_data: "applogin_ok_" + appCode },
                 { text: "❌ Yo'q", callback_data: "applogin_no_" + appCode },

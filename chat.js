@@ -184,7 +184,13 @@ function openChatPhoto(id) {
     const ov = document.createElement('div');
     ov.className = 'fixed inset-0 z-[10000] flex items-center justify-center p-3';
     ov.style.background = 'rgba(2,6,23,0.95)';
-    ov.innerHTML = `<img src="${src}" class="max-w-full max-h-full rounded-xl">`;
+    // src — bazadan kelgan matn: innerHTML'ga qo'yilsa, ichidagi `"` bilan
+    // yangi atribut (onerror=...) qo'shib, ota-ona panelida kod ishlatish
+    // mumkin edi. Xususiyat orqali berilsa, u faqat manzil bo'lib qoladi.
+    const img = document.createElement('img');
+    img.className = 'max-w-full max-h-full rounded-xl';
+    img.src = src;
+    ov.appendChild(img);
     ov.onclick = () => ov.remove();
     document.body.appendChild(ov);
 }

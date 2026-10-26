@@ -346,6 +346,12 @@ r = await api({
 });
 check(r.status === 400 && tgSince(t0).length === 0, "30b. boshqa odam nomidan soxta bot xabari ishlamaydi", { r, yuborildi: tgSince(t0).length });
 
+// 31. Chat surati: data URL oxirigacha tekshiriladi (ota-ona panelida XSS).
+r = await api({ type: "chat_send", initData: await initData(3001), photo: 'data:image/png;base64,AAAA" onerror="alert(1)' });
+check(r.status === 400, "31. ichida kod bor 'surat' rad etiladi", r);
+r = await api({ type: "chat_send", initData: await initData(3001), photo: "data:image/png;base64,iVBORw0KGgo=" });
+check(r.ok, "31b. haqiqiy surat o'tadi", r);
+
 const fail = results.filter(([ok]) => !ok).length;
 console.log(`\n${results.length - fail}/${results.length} o'tdi`);
 Deno.exit(fail ? 1 : 0);
