@@ -327,6 +327,25 @@ check(r.status === 429, "29c. ko'p shikoyat cheklanadi", r);
 r = await api({ type: "ai_report", savol: "x", javob: "y" });
 check(r.status === 401, "29d. kirishsiz shikoyat qabul qilinmaydi", r);
 
+// 30. Mini App so'rovi ichiga Telegram update'ini (tugma bosilishi, xabar)
+// tiqib, uni "Telegram'dan kelgandek" o'tkazib bo'lmaydi. Ilgari noma'lum
+// "type" bilan kelgan so'rov webhook oqimiga tushardi: chat.id ni admin
+// ID'si qilib yozsa — istalgan oilani "admin" sifatida tasdiqlay olardi.
+const fam3 = gen(4001);
+DB.parent_registrations.push({ family_code: fam3, parent_telegram_id: 4001, parent_username: "kutayotgan", parent_name: "K", status: "pending" });
+t0 = TG.length;
+r = await api({
+  type: "soxta_tur", initData: await initData(2001),
+  callback_query: { id: "x1", from: { id: 9999, first_name: "Admin" }, message: { chat: { id: 9999 }, message_id: 1 }, data: "admin_approve_" + fam3 },
+});
+const fam3Row = DB.parent_registrations.find((x: any) => x.family_code === fam3);
+check(r.status === 400 && fam3Row?.status === "pending", "30. Mini App so'rovidagi soxta 'admin tugmasi' ishlamaydi", { r, status: fam3Row?.status });
+r = await api({
+  type: "soxta_tur", initData: await initData(2001),
+  message: { message_id: 7, chat: { id: 1001, type: "private" }, from: { id: 1001, first_name: "Ota" }, text: "/start" },
+});
+check(r.status === 400 && tgSince(t0).length === 0, "30b. boshqa odam nomidan soxta bot xabari ishlamaydi", { r, yuborildi: tgSince(t0).length });
+
 const fail = results.filter(([ok]) => !ok).length;
 console.log(`\n${results.length - fail}/${results.length} o'tdi`);
 Deno.exit(fail ? 1 : 0);

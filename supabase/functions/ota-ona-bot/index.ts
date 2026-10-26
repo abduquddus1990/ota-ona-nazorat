@@ -5542,8 +5542,10 @@ async function handleRequest(req: Request): Promise<Response> {
     // berilgan maxfiy token har bir so'rovda shu sarlavhada qaytib keladi.
     // Ilgari hech qanday tekshiruv yo'q edi — istalgan odam funksiya URL'iga
     // soxta "tugma bosildi" so'rovini yuborib, oilalarni o'zi tasdiqlay olardi.
-    if (typeof payload?.type !== "string" && WEBHOOK_SECRET) {
-      if (req.headers.get("x-telegram-bot-api-secret-token") !== WEBHOOK_SECRET) {
+    // Kalit sozlanmagan bo'lsa ham ochiq qolmaydi: aks holda sekret yo'qolsa,
+    // tekshiruv jimgina o'chib qolardi.
+    if (typeof payload?.type !== "string") {
+      if (!WEBHOOK_SECRET || req.headers.get("x-telegram-bot-api-secret-token") !== WEBHOOK_SECRET) {
         console.error("Webhook: maxfiy token mos kelmadi — so'rov rad etildi");
         return new Response(JSON.stringify({ ok: false, error: "forbidden" }), {
           status: 403,
@@ -10632,6 +10634,20 @@ async function handleRequest(req: Request): Promise<Response> {
         status: 200,
         headers: { "Content-Type": "application/json" },
       });
+    }
+
+    // Bu yerdan pastda — faqat Telegram webhook update'lari. "type" li so'rov
+    // Mini App/ilovadan keladi: webhook maxfiy kaliti unda tekshirilmagan.
+    // Ilgari noma'lum "type" bilan kelgan so'rov shu oqimga tushardi: Mini
+    // App'ni ochgan istalgan odam ichiga soxta callback_query (chat.id = admin)
+    // yoki boshqa odam nomidan xabar qo'shib, oilalarni "admin" sifatida
+    // tasdiqlay olardi (2026-10-26, sinov 30).
+    if (typeof payload?.type === "string") {
+      console.error("Noma'lum Mini App so'rov turi:", payload.type);
+      return new Response(
+        JSON.stringify({ ok: false, error: `Noma'lum so'rov turi: ${payload.type}` }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
     }
 
     const update = payload;
