@@ -5416,8 +5416,17 @@ const KNOWN_APPS: Record<string, string> = {
   "com.dts.freefireth": "🎮 Free Fire",
 };
 
+/**
+ * Paket nomini odam o'qiydigan nomga aylantiradi. Ro'yxatda bo'lmasa —
+ * paketning eng ma'noli qismi ("com.supercell.brawlstars" -> "Brawlstars"):
+ * ilgari ota-ona "com.shield.parentalguard" kabi texnik nomni ko'rardi.
+ */
 function friendlyAppName(pkg: string): string {
-  return KNOWN_APPS[pkg] || pkg;
+  if (KNOWN_APPS[pkg]) return KNOWN_APPS[pkg];
+  if (/^com\.shield\.parentalguard/.test(pkg)) return "🛡 Qalqon AI";
+  const qism = String(pkg).split(".").filter((x) => x && !/^(com|org|net|app|apps|android|mobile|client|ru|uz|io|co|www)$/i.test(x));
+  const nom = qism.length ? qism[qism.length - 1] : String(pkg);
+  return nom.charAt(0).toUpperCase() + nom.slice(1);
 }
 
 // Bu — eski, HECH QACHON HAQIQIY MA'LUMOT KO'RSATMAGAN "Reels tahlili"
