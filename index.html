@@ -7,6 +7,16 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Qalqon AI — Ota-Ona Nazorati & Farzand Xavfsizligi</title>
     <!--
+        CSP (2026-10-26): sahifa qaysi manzillardan kod, rasm, shrift olishi va
+        QAYERGA ma'lumot yuborishi mumkinligi ro'yxati. Ilovada qandaydir
+        xato orqali begona kod ishlab ketsa ham, u seans kalitini o'z serveriga
+        yubora olmaydi (connect-src / img-src faqat bizniki).
+        Yangi tashqi manzil (CDN, API, rasm) qo'shilsa — SHU YERGA ham
+        qo'shing, aks holda brauzer uni jimgina bloklaydi.
+        'unsafe-inline' hozircha shart: tugmalar onclick="..." bilan yozilgan.
+    -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://telegram.org https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https://tile.openstreetmap.org https://unpkg.com; connect-src 'self' https://ytjvmmcpmpnaivtzymtq.supabase.co; media-src 'self' data: blob:; worker-src 'self' blob:; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self'">
+    <!--
         TEZ OCHILISH (2026-10-17). Ilgari bu yerda cdn.tailwindcss.com turardi:
         u har bir ochilishda telefonning O'ZIDA butun CSS'ni noldan yasardi va
         sahifa shuni kutardi. Endi CSS oldindan yig'iladi (tools/tailwind,
