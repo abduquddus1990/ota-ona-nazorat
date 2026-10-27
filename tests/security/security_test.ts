@@ -368,6 +368,24 @@ check(DB.parent_registrations.some((x: any) => x.family_code === fam1) &&
   !DB.family_parents.some((x: any) => x.telegram_id === 1002),
   "32b. oila va farzandlar joyida, ona oiladan chiqdi");
 
+// 33. Farzand telefonida "Joylashuv" kaliti o'chirilsa — ota-onaga darhol,
+// lekin har 15 daqiqalik hisobotda takrorlanmaydi.
+const devTok = "joylashuv-sinov-kaliti-33";
+const devHash = hex(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(devTok))));
+(DB.device_tokens ||= []).push({ id: "dev33", token_hash: devHash, family_code: fam1, child_id: "tg_3001", is_active: true });
+const telemetriya = (on: boolean) => api({ type: "report_telemetry", deviceToken: devTok, encryptedPayload: "x", iv: "y",
+  health: { locationPermission: true, locationServicesOn: on, backgroundLocation: true } });
+const joyXabari = (n: number, re: RegExp) => tgSince(n).filter((m) => re.test(m.text || "") && String(m.chat_id) === "1001");
+t0 = TG.length;
+r = await telemetriya(false);
+check(r.ok && joyXabari(t0, /Joylashuv» o'chirildi/).length === 1, "33. joylashuv o'chirilganda ota-onaga xabar", tgSince(t0));
+t0 = TG.length;
+await telemetriya(false);
+check(joyXabari(t0, /Joylashuv/).length === 0, "33b. keyingi hisobotda takrorlanmaydi", tgSince(t0));
+t0 = TG.length;
+await telemetriya(true);
+check(joyXabari(t0, /qayta yoqildi/).length === 1, "33c. yoqilganda 'yoqildi' xabari", tgSince(t0));
+
 const fail = results.filter(([ok]) => !ok).length;
 console.log(`\n${results.length - fail}/${results.length} o'tdi`);
 Deno.exit(fail ? 1 : 0);

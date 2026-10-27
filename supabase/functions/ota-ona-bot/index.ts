@@ -10197,6 +10197,10 @@ async function handleRequest(req: Request): Promise<Response> {
       // javob olishi uchun (database/24_device_health.sql izohiga qarang).
       const health = payload.health;
       if (health && typeof health === "object") {
+        // Avvalgi holat — "Joylashuv" kaliti o'zgarganini bilish uchun.
+        const { data: oldin } = await db.from("device_health").select("location_services")
+          .eq("family_code", actor!.familyCode).eq("child_id", actor!.childId).limit(1);
+        const oldingiJoylashuv = oldin && oldin[0] ? oldin[0].location_services : null;
         await db.from("device_health").upsert({
           family_code: actor!.familyCode,
           child_id: actor!.childId,
@@ -10215,6 +10219,31 @@ async function handleRequest(req: Request): Promise<Response> {
           app_version: String(health.appVersion || "").slice(0, 20),
           reported_at: new Date().toISOString(),
         }, { onConflict: "family_code,child_id" });
+
+        // Farzand telefonida "Joylashuv" kaliti o'chirilsa — ota-onaga DARHOL.
+        // Ilgari bu faqat panel va kunlik hisobotda ko'rinardi: 2026-10-27 da
+        // qizning telefonida joylashuv bir necha kun o'chiq turgan, ota-ona
+        // esa "ilova ishlamayapti" deb o'ylagan. Faqat holat O'ZGARGANDA
+        // yoziladi (har 15 daqiqada takrorlanmaydi).
+        const hozirgiJoylashuv = typeof health.locationServicesOn === "boolean" ? health.locationServicesOn : null;
+        const ochdi = hozirgiJoylashuv === false && oldingiJoylashuv !== false;
+        const yoqdi = hozirgiJoylashuv === true && oldingiJoylashuv === false;
+        if (ochdi || yoqdi) {
+          const { data: kid } = await db.from("child_pairings").select("child_name")
+            .eq("family_code", actor!.familyCode).eq("child_id", actor!.childId).limit(1);
+          const xomIsm = (kid && kid[0]?.child_name) || "Farzand";
+          const ism = tgEsc(xomIsm);
+          await logSecurityEvent(actor!.familyCode, ochdi ? "location_off" : "location_on", `child:${actor!.childId}`, { childName: xomIsm });
+          await notifyFamilyParents(
+            actor!.familyCode,
+            ochdi
+              ? `📍 <b>${ism}ning telefonida «Joylashuv» o'chirildi</b>\n\n` +
+                `Radar endi uning joyini ko'rmaydi, SOS ham joylashuvsiz boradi.\n\n` +
+                `<i>Yoqish: telefon ekranining tepasidan pastga suring → «Joylashuv» (Location) tugmasini bosing. ` +
+                `Farzandingiz bilan gaplashib oling — u yoqiq turishi kerak.</i>`
+              : `✅ <b>${ism}ning telefonida «Joylashuv» qayta yoqildi</b> — radar yana ishlayapti.`
+          );
+        }
       }
 
       return new Response(JSON.stringify({ ok: true }), {
