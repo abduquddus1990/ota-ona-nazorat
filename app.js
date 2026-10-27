@@ -5552,6 +5552,8 @@ function xavfsizlikVoqeaMatni(e) {
         case 'coparent_added': return '👩 ' + q(e.name || 'Ota-ona') + ' oilaga qo\'shildi';
         case 'coparent_removed': return '👤 Ota-ona oiladan olib tashlandi';
         case 'coparent_left': return '👤 Ikkinchi ota-ona hisobini o\'chirdi';
+        case 'location_off': return '📍 ' + q(e.childName || 'Farzand') + ' telefonida joylashuv o\'chirildi';
+        case 'location_on': return '✅ ' + q(e.childName || 'Farzand') + ' telefonida joylashuv yoqildi';
         case 'confirm_code_sent': return '🔐 Tasdiq kodi so\'raldi: ' + (e.amal === 'delete_account' ? 'hisobni o\'chirish' : 'parol');
         default: return q(e.kind);
     }
