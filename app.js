@@ -2066,7 +2066,7 @@ const isNativeApp = !!qalqonNativeRole;
 // ilovaning o'zi fonda yuboradi, ulashish oynalari esa tashqarida ochiladi.
 if (isNativeApp) {
     document.addEventListener('DOMContentLoaded', () => {
-        document.querySelectorAll('[data-tg-only]').forEach(el => el.classList.add('hidden'));
+        document.querySelectorAll('[data-tg-only], [data-apk]').forEach(el => el.classList.add('hidden'));
     });
 }
 // "Tinch tong" (yorug') — 2026-10 dan standart. Eski kalit ('app_theme')
@@ -5243,7 +5243,9 @@ async function maybeShowOnboarding() {
             n: qadamlar.length + 1,
             ogoh: false,
             sarlavha: "Ilovani farzand telefoniga o'rnating",
-            matn: "Havolani farzand telefonining brauzerida oching — fayl <b>.apk</b> bo'lib yuklanadi.",
+            matn: isNativeApp
+                ? "Havolani farzand telefonida oching — Google Play'da Qalqon ochiladi."
+                : "Havolani farzand telefonining brauzerida oching — fayl <b>.apk</b> bo'lib yuklanadi.",
             tugma: 'Yuklab olish havolasi',
             amal: 'copyApkLink()'
         });
@@ -6073,6 +6075,9 @@ function copyPairingLink() {
 }
 
 const QALQON_APK_URL = 'https://github.com/abduquddus1990/ota-ona-nazorat/releases/download/apk/qalqon.apk';
+// Play'dagi ilova ichida APK havolasi berilmaydi (Google Play qoidasi) —
+// o'rniga ilovaning Play sahifasi.
+const QALQON_PLAY_URL = 'https://play.google.com/store/apps/details?id=com.shield.parentalguard';
 
 /**
  * APK havolasini nusxa oladi — ota-ona uni farzandga yuborishi uchun.
@@ -6086,17 +6091,21 @@ const QALQON_APK_URL = 'https://github.com/abduquddus1990/ota-ona-nazorat/releas
  */
 function copyApkLink() {
     const isRu = (currentLang === 'ru');
-    const xabar = isRu
+    const url = isNativeApp ? QALQON_PLAY_URL : QALQON_APK_URL;
+    const xabar = isNativeApp
+        ? (isRu ? "Ссылка скопирована. Откройте её на телефоне ребёнка — откроется Qalqon в Google Play."
+                : "Havola nusxalandi. Uni farzand telefonida oching — Google Play'da Qalqon ochiladi.")
+        : isRu
         ? "Ссылка скопирована. Откройте её в браузере телефона ребёнка — файл скачается как .apk."
         : "Havola nusxalandi. Uni farzand telefonining brauzerida ochsangiz, fayl .apk bo'lib yuklanadi.";
     const xato = isRu ? "Не удалось скопировать. Ссылка: " : "Nusxa olinmadi. Havola: ";
     const koRsat = (matn) => { if (tg && tg.showAlert) tg.showAlert(matn); else alert(matn); };
     if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(QALQON_APK_URL)
+        navigator.clipboard.writeText(url)
             .then(() => koRsat(xabar))
-            .catch(() => koRsat(xato + QALQON_APK_URL));
+            .catch(() => koRsat(xato + url));
     } else {
-        koRsat(xato + QALQON_APK_URL);
+        koRsat(xato + url);
     }
 }
 
