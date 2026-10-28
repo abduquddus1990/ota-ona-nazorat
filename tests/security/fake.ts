@@ -91,7 +91,39 @@ function json(body: unknown, status = 200, extra: Record<string, string> = {}) {
   });
 }
 
+// Soxta fayl ombori (Supabase Storage): "bucket/yo'l" -> baytlar.
+export const STORAGE = new Map<string, Uint8Array>();
+
+async function fakeStorage(url: URL, init: RequestInit): Promise<Response> {
+  const method = (init.method || "GET").toUpperCase();
+  const p = url.pathname.replace(/^.*\/storage\/v1\/object\//, "");
+  const matn = async () => init.body instanceof Uint8Array ? new TextDecoder().decode(init.body) : String(init.body || "{}");
+  if (p.startsWith("list/")) {
+    const bucket = p.slice(5);
+    const { prefix = "", limit = 100 } = JSON.parse(await matn());
+    const names = [...STORAGE.keys()].filter((k) => k.startsWith(`${bucket}/${prefix}/`))
+      .map((k) => ({ name: k.slice(`${bucket}/${prefix}/`.length) })).slice(0, limit);
+    return json(names);
+  }
+  if (method === "DELETE") {
+    const { prefixes = [] } = JSON.parse(await matn());
+    for (const x of prefixes) STORAGE.delete(`${p}/${x}`);
+    return json(prefixes.map((name: string) => ({ name })));
+  }
+  const key = p.replace(/^(authenticated|public)\//, "");
+  if (method === "POST" || method === "PUT") {
+    const b = init.body;
+    const bytes = b instanceof Uint8Array ? b : b instanceof Blob ? new Uint8Array(await b.arrayBuffer()) : new TextEncoder().encode(String(b));
+    STORAGE.set(key, bytes);
+    return json({ Key: key });
+  }
+  const bytes = STORAGE.get(key);
+  if (!bytes) return json({ statusCode: "404", message: "Object not found" }, 400);
+  return new Response(bytes, { status: 200, headers: { "content-type": "application/octet-stream" } });
+}
+
 export async function fakeRest(url: URL, init: RequestInit): Promise<Response> {
+  if (url.pathname.includes("/storage/v1/object/")) return fakeStorage(url, init);
   const m = url.pathname.match(/\/rest\/v1\/(.+)$/);
   if (!m) return json({ message: "fake: noma'lum yo'l " + url.pathname }, 404);
   const name = m[1];
