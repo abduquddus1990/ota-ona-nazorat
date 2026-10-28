@@ -73,10 +73,6 @@ class TelemetrySyncWorker(
             }
             val apps = readAppUsage(windowStart, now)
 
-            if (location != null) {
-                reportLocationToRadar(location, token)
-            }
-
             val rawTelemetry = JSONObject().apply {
                 put("timestamp", now)
                 put("battery_level", battery)
@@ -126,6 +122,10 @@ class TelemetrySyncWorker(
                 })
                 put("encryptedPayload", encryptedPayload)
                 put("iv", iv)
+                // Joylashuv shu so'rovning ichida: ilgari alohida
+                // report_location so'rovi edi va har 15 daqiqada ikki
+                // so'rov ketardi (bepul server chegarasining yarmi).
+                if (location != null) put("location", locationJson(location))
             }
 
             val requestBody = postPayload.toString()
@@ -165,33 +165,16 @@ class TelemetrySyncWorker(
     }
 
     /**
-     * report_location so'rovi actor.kind === "device" talab qiladi (index.ts),
-     * ya'ni deviceToken shart — doWork() buni allaqachon tekshirgan.
+     * report_telemetry ichidagi "location" — server uni report_location
+     * mantig'idan o'tkazadi (geozona, ogohlantirishlar).
      */
-    private fun reportLocationToRadar(location: Location, token: String) {
-        try {
-            val body = JSONObject().apply {
-                put("type", "report_location")
-                put("deviceToken", token)
-                put("lat", location.latitude)
-                put("lng", location.longitude)
-                if (location.hasAccuracy()) put("accuracyM", location.accuracy)
-                // Nuqta AYNAN QACHON o'lchangani. Usiz server yuklash
-                // vaqtini yozardi va ota-ona eski nuqtani "hozirgi" deb
-                // ko'rardi.
-                put("recordedAt", location.time)
-            }.toString().toRequestBody("application/json; charset=utf-8".toMediaType())
-
-            val request = Request.Builder()
-                .url(PairingApi.OTA_ONA_BOT_URL)
-                .post(body)
-                .header("Content-Type", "application/json")
-                .build()
-
-            EncryptedNetworkClient.client.newCall(request).execute().use { /* best-effort */ }
-        } catch (_: Exception) {
-            // Radar so'rovi muvaffaqiyatsiz bo'lsa ham asosiy telemetriya davom etadi.
-        }
+    private fun locationJson(location: Location): JSONObject = JSONObject().apply {
+        put("lat", location.latitude)
+        put("lng", location.longitude)
+        if (location.hasAccuracy()) put("accuracyM", location.accuracy)
+        // Nuqta AYNAN QACHON o'lchangani. Usiz server yuklash vaqtini
+        // yozardi va ota-ona eski nuqtani "hozirgi" deb ko'rardi.
+        put("recordedAt", location.time)
     }
 
     private fun readBatteryLevel(): Int {

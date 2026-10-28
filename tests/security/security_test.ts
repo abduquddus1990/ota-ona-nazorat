@@ -335,6 +335,26 @@ check(r.status === 429, "29c. ko'p shikoyat cheklanadi", r);
 r = await api({ type: "ai_report", savol: "x", javob: "y" });
 check(r.status === 401, "29d. kirishsiz shikoyat qabul qilinmaydi", r);
 
+// 29e. Chat surati bazada emas, fayl omborida; ochilganda o'sha surat qaytadi.
+const surat = "data:image/jpeg;base64," + btoa(String.fromCharCode(...new Uint8Array(300).map((_, i) => i % 256)));
+r = await api({ type: "chat_send", initData: await initData(3001), photo: surat });
+const suratQatori = (DB.family_messages || []).find((x: any) => x.id === r.message?.id);
+check(r.ok && String(suratQatori?.photo).startsWith("storage:" + fam1 + "/"), "29e. surat omborga yozildi, bazada faqat yo'li", suratQatori?.photo?.slice?.(0, 60));
+const ochildi = await api({ type: "chat_photo", id: r.message?.id, initData: await initData(1001) });
+check(ochildi.ok && ochildi.photo === surat, "29f. ota-ona suratni o'sha holida ko'radi", ochildi.photo?.slice?.(0, 60));
+const ro = await api({ type: "chat_list", initData: await initData(1001) });
+check(ro.ok && ro.messages.some((x: any) => x.id === r.message?.id && x.hasPhoto && !("photo" in x)), "29g. ro'yxatda surat belgisi bor, suratning o'zi yo'q");
+
+// 29h. Joylashuv hisobot (report_telemetry) ichida keladi — alohida so'rovsiz.
+const dt29 = "telemetriya-ichida-joy-29";
+const dt29h = hex(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(dt29))));
+(DB.device_tokens ||= []).push({ id: "dev29", token_hash: dt29h, family_code: fam1, child_id: "tg_3001", is_active: true });
+const nuqtalar = () => (DB.location_pings || []).filter((x: any) => x.family_code === fam1).length;
+const oldinNuqta = nuqtalar();
+r = await api({ type: "report_telemetry", deviceToken: dt29, encryptedPayload: "x", iv: "y",
+  location: { lat: 41.3111, lng: 69.2797, accuracyM: 25, recordedAt: Date.now() } });
+check(r.ok && nuqtalar() === oldinNuqta + 1, "29h. hisobot ichidagi joylashuv xaritaga tushdi", { r, oldinNuqta, keyin: nuqtalar() });
+
 // 30. Mini App so'rovi ichiga Telegram update'ini (tugma bosilishi, xabar)
 // tiqib, uni "Telegram'dan kelgandek" o'tkazib bo'lmaydi. Ilgari noma'lum
 // "type" bilan kelgan so'rov webhook oqimiga tushardi: chat.id ni admin

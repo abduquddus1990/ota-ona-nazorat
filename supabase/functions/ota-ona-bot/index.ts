@@ -4449,6 +4449,75 @@ function isSafeDataImage(s: unknown): s is string {
   return typeof s === "string" && s.length <= CHAT_PHOTO_MAX &&
     /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+\/]+={0,2}$/.test(s);
 }
+
+// ============================================================================
+// CHAT SURATLARI — FAYL OMBORIDA (database/35_bepul_tarif_tejash.sql)
+//
+// Ilgari surat data URL bo'lib family_messages.photo ustunining O'ZIDA
+// saqlanardi (har biri 150–600 KB). Bepul Supabase bazasi 500 MB — bir
+// necha yuz surat uni to'ldirardi; chat ro'yxati ham har ochilishda
+// hamma suratni tortib kelardi. Endi surat yopiq "chat-photos" omborida,
+// ustunda esa faqat "storage:<oila>/<nom>.jpg" yo'li.
+//
+// Mijoz hech narsani sezmaydi: chat_photo avvalgidek data URL qaytaradi
+// (server ombordan o'qib beradi). Shuning uchun CSP'ga supabase.co rasm
+// manzilini qo'shish ham, ommaviy havola ham kerak emas.
+// Eski (data URL) suratlar birinchi ochilganda omborga ko'chiriladi.
+// ============================================================================
+const CHAT_BUCKET = "chat-photos";
+
+/** Data URL'ni omborga qo'yadi. Ombor ishlamasa — surat yo'qolmasin, o'zi qaytadi. */
+async function suratniOmborgaQoy(familyCode: string, dataUrl: string): Promise<string> {
+  if (!db) return dataUrl;
+  const m = dataUrl.match(/^data:(image\/(jpeg|png|webp));base64,(.+)$/);
+  if (!m) return dataUrl;
+  try {
+    const bytes = Uint8Array.from(atob(m[3]), (c) => c.charCodeAt(0));
+    const ext = m[2] === "jpeg" ? "jpg" : m[2];
+    const yol = `${familyCode}/${toHex(crypto.getRandomValues(new Uint8Array(12)))}.${ext}`;
+    const { error } = await db.storage.from(CHAT_BUCKET).upload(yol, bytes, { contentType: m[1], upsert: false });
+    if (error) {
+      console.error("chat surati omborga yozilmadi:", error.message);
+      return dataUrl;
+    }
+    return "storage:" + yol;
+  } catch (e) {
+    console.error("chat surati:", e);
+    return dataUrl;
+  }
+}
+
+/** Saqlangan qiymatdan (data URL yoki storage: yo'li) data URL. */
+async function suratniOl(saqlangan: string): Promise<string | null> {
+  if (!saqlangan) return null;
+  if (saqlangan.startsWith("data:")) return saqlangan;
+  if (!saqlangan.startsWith("storage:") || !db) return null;
+  const yol = saqlangan.slice("storage:".length);
+  const { data, error } = await db.storage.from(CHAT_BUCKET).download(yol);
+  if (error || !data) {
+    console.error("chat surati o'qilmadi:", error?.message);
+    return null;
+  }
+  const bytes = new Uint8Array(await data.arrayBuffer());
+  let bin = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  const turi = yol.endsWith(".png") ? "image/png" : yol.endsWith(".webp") ? "image/webp" : "image/jpeg";
+  return `data:${turi};base64,${btoa(bin)}`;
+}
+
+/** Hisob o'chirilganda oilaning barcha chat suratlari ham o'chadi. */
+async function oilaSuratlariniOchir(familyCode: string): Promise<void> {
+  if (!db || !familyCode) return;
+  for (let i = 0; i < 20; i++) {
+    const { data, error } = await db.storage.from(CHAT_BUCKET).list(familyCode, { limit: 100 });
+    if (error || !data || !data.length) return;
+    const { error: delErr } = await db.storage.from(CHAT_BUCKET).remove(data.map((f: any) => `${familyCode}/${f.name}`));
+    if (delErr) {
+      console.error("chat suratlari o'chmadi:", delErr.message);
+      return;
+    }
+  }
+}
 const CHAT_PAGE = 60;
 // Shu vaqt ichida chatni o'qigan a'zoga bot orqali xabar yuborilmaydi —
 // u baribir ekranda ko'rib turibdi.
@@ -4503,9 +4572,10 @@ async function postChatEvent(
 ) {
   if (!db || !familyCode) return;
   try {
+    const saqlanadi = photo ? await suratniOmborgaQoy(familyCode, photo) : null;
     await db.from("family_messages").insert({
       family_code: familyCode, author_id: author.id, author_role: author.role,
-      author_name: author.name, body: body.slice(0, CHAT_TEXT_MAX), photo: photo || null, event,
+      author_name: author.name, body: body.slice(0, CHAT_TEXT_MAX), photo: saqlanadi, event,
     });
   } catch (e) {
     console.error("postChatEvent:", e);
@@ -4568,7 +4638,7 @@ async function notifyChatMembers(familyCode: string, author: ChatMember, preview
 function chatRow(m: any) {
   return {
     id: m.id, authorId: m.author_id, role: m.author_role, name: m.author_name,
-    body: m.body, hasPhoto: !!m.photo, event: m.event, createdAt: m.created_at, updatedAt: m.updated_at,
+    body: m.body, hasPhoto: m.has_photo ?? !!m.photo, event: m.event, createdAt: m.created_at, updatedAt: m.updated_at,
   };
 }
 
@@ -4592,12 +4662,19 @@ async function handleChatRoutes(payload: any, actor: Actor): Promise<Response | 
     // after — shu vaqtdan keyin YARATILGAN yoki YANGILANGAN xabarlar (so'rov
     // takrorlanganda faqat yangilar keladi, suratlar esa umuman kelmaydi).
     const after = String(payload.after || "");
-    let q = db.from("family_messages")
-      .select("id, author_id, author_role, author_name, body, photo, event, created_at, updated_at")
-      .eq("family_code", me.familyCode);
-    if (after) q = q.gt("updated_at", after).order("updated_at", { ascending: true }).limit(CHAT_PAGE);
-    else q = q.order("created_at", { ascending: false }).limit(CHAT_PAGE);
-    const { data, error } = await q;
+    // Suratning o'zi emas, faqat "bor-yo'q" belgisi (has_photo, 35-migratsiya):
+    // ilgari ro'yxat har ochilishda 60 ta xabarning barcha suratlarini
+    // tortardi. Migratsiya hali qo'llanmagan bo'lsa — eski usul.
+    const sorov = (ustunlar: string) => {
+      let q = db!.from("family_messages").select(ustunlar).eq("family_code", me.familyCode);
+      if (after) q = q.gt("updated_at", after).order("updated_at", { ascending: true }).limit(CHAT_PAGE);
+      else q = q.order("created_at", { ascending: false }).limit(CHAT_PAGE);
+      return q;
+    };
+    let { data, error } = await sorov("id, author_id, author_role, author_name, body, has_photo, event, created_at, updated_at");
+    if (error && /has_photo/.test(error.message || "")) {
+      ({ data, error } = await sorov("id, author_id, author_role, author_name, body, photo, event, created_at, updated_at"));
+    }
     if (error) return jsonRes({ ok: false, error: error.message }, 500);
     const rows = (data || []).map(chatRow);
     if (!after) rows.reverse();
@@ -4605,10 +4682,21 @@ async function handleChatRoutes(payload: any, actor: Actor): Promise<Response | 
   }
 
   if (t === "chat_photo") {
+    const id = String(payload.id || "");
     const { data } = await db.from("family_messages").select("photo")
-      .eq("family_code", me.familyCode).eq("id", String(payload.id || "")).limit(1);
+      .eq("family_code", me.familyCode).eq("id", id).limit(1);
     if (!data || !data[0] || !data[0].photo) return jsonRes({ ok: false, error: "Surat topilmadi." }, 404);
-    return jsonRes({ ok: true, photo: data[0].photo });
+    const saqlangan = String(data[0].photo);
+    const photo = await suratniOl(saqlangan);
+    if (!photo) return jsonRes({ ok: false, error: "Surat topilmadi." }, 404);
+    // Eski surat bazaning ichida turibdi — shu ochilishda omborga ko'chiramiz.
+    if (saqlangan.startsWith("data:")) {
+      const yangi = await suratniOmborgaQoy(me.familyCode, saqlangan);
+      if (yangi !== saqlangan) {
+        await db.from("family_messages").update({ photo: yangi }).eq("family_code", me.familyCode).eq("id", id);
+      }
+    }
+    return jsonRes({ ok: true, photo });
   }
 
   if (t === "chat_read") {
@@ -4634,7 +4722,8 @@ async function handleChatRoutes(payload: any, actor: Actor): Promise<Response | 
 
     const { data: ins, error } = await db.from("family_messages").insert({
       family_code: me.familyCode, author_id: me.memberId, author_role: me.role,
-      author_name: me.name, body: body || null, photo: photo || null,
+      author_name: me.name, body: body || null,
+      photo: photo ? await suratniOmborgaQoy(me.familyCode, photo) : null,
     }).select("id, author_id, author_role, author_name, body, photo, event, created_at, updated_at").limit(1);
     if (error || !ins || !ins[0]) return jsonRes({ ok: false, error: error?.message || "Yuborilmadi." }, 500);
     await db.from("family_chat_reads").upsert(
@@ -7107,6 +7196,9 @@ async function handleRequest(req: Request): Promise<Response> {
         // bog'langanicha qolardi.
         "family_parents",
       ];
+
+      // Chat suratlari fayl omborida — jadval bilan birga o'chmaydi.
+      await oilaSuratlariniOchir(familyCode);
 
       const failed: string[] = [];
       for (const table of byFamily) {
@@ -10192,6 +10284,29 @@ async function handleRequest(req: Request): Promise<Response> {
       }
 
       if (rows.length > 0) await db.from("device_telemetry").insert(rows);
+
+      // Joylashuv shu so'rov ichida keladi (Android 1.0.2+). Ilgari telefon
+      // har 15 daqiqada IKKI so'rov yuborardi (report_location +
+      // report_telemetry) — bepul tarifdagi oylik chaqiruvlarning yarmi
+      // shunga ketardi. Ichki chaqiruv o'sha report_location mantig'idan
+      // (geozona, kechikish, ogohlantirishlar) o'tadi va alohida hisoblanmaydi.
+      const loc = payload.location;
+      if (loc && typeof loc === "object" && Number.isFinite(Number(loc.lat)) && Number.isFinite(Number(loc.lng))) {
+        try {
+          const sarlavha = new Headers(req.headers);
+          sarlavha.delete("content-length");
+          await handleRequest(new Request(req.url, {
+            method: "POST",
+            headers: sarlavha,
+            body: JSON.stringify({
+              type: "report_location", deviceToken: payload.deviceToken,
+              lat: loc.lat, lng: loc.lng, accuracyM: loc.accuracyM, recordedAt: loc.recordedAt,
+            }),
+          }));
+        } catch (e) {
+          console.error("report_telemetry ichidagi joylashuv:", e);
+        }
+      }
 
       // Qurilma sog'ligi — ota-ona "nega joylashuv eskirgan?" degan savolga
       // javob olishi uchun (database/24_device_health.sql izohiga qarang).
