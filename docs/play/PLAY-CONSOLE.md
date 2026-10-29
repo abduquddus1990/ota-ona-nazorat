@@ -322,3 +322,34 @@ Sozlanmaguncha tugma xato bermaydi — "Telegram bilan kirib ko'ring" deydi.
 3. Testerlarga "opt-in" havolasini yuboring — ular havolani ochib **"Become a tester"**
    ni bosishi va ilovani Play'dan o'rnatishi shart.
 4. 14 kun uzluksiz (testerlar chiqib ketmasin). Keyin: Dashboard → **Apply for production**.
+
+### Testerlarni qayerdan topish
+
+Google tester bermaydi — 12 kishini egasi o'zi topadi. Ularga Android telefon va
+Gmail kerak, xolos. 14 kun ichida ilovani o'chirmasliklari shart.
+- Oila, qarindoshlar, do'stlar, hamkasblar (eng ishonchli: o'chirib yubormaydi).
+- Farzandi bor tanishlar — ular ilovani haqiqatan ishlatadi, fikri ham foydali.
+- Telegram kanal @aibotqalqon va tanish ota-onalar guruhlari (pastdagi matn).
+- **15–20 kishi** yig'ing: kimdir chiqib ketsa ham 12 tadan kam bo'lmasin.
+- Pullik "12 tester xizmati"dan foydalanmang: Google faol bo'lmagan, soxta
+  testerlarni aniqlaydi va production'ni rad etadi.
+
+Taklif matni (Telegram uchun):
+
+> 👋 Assalomu alaykum! Farzandlar xavfsizligi uchun **Qalqon AI** ilovasini Google
+> Play'ga chiqaryapmiz. Google talabi bo'yicha 14 kun sinovdan o'tkazadigan
+> ota-onalar kerak.
+> Sizdan: Android telefon, Gmail manzilingiz va ilovani 14 kun o'chirmaslik.
+> Sizga: barcha Pro imkoniyatlar bepul va fikringiz bilan ilovani birga yaxshilaymiz.
+> Qatnashmoqchi bo'lsangiz, Gmail manzilingizni @ai_loyihachi ga yozing 🙏
+
+### "Apply for production" anketasiga javoblar (namuna)
+
+- *Testerlarni qanday topdingiz?* — Oila a'zolari, tanishlar va Telegram kanalimiz
+  orqali ota-onalar; ularning ko'pchiligi farzandi bilan ilovani haqiqatan ishlatdi.
+- *Qanday fikrlar keldi, nimani o'zgartirdingiz?* — (14 kun davomida yozib boring:
+  masalan, "joylashuv o'chirilganda ota-onaga darhol xabar qo'shildi",
+  "bildirishnoma ruxsati so'ralmayotgani tuzatildi").
+- *Ilova kim uchun?* — Ota-onalar (18+). Farzand telefonidagi qism faqat ota-ona
+  ruxsati va farzandning ochiq roziligi bilan, doimiy bildirishnoma bilan ishlaydi.
+- *Production'ga tayyormisiz?* — Ha: barcha sinov fikrlari ko'rib chiqildi.
