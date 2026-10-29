@@ -73,15 +73,61 @@ class AppWebActivity : AppCompatActivity() {
      * so'raydi — ruxsatsiz SOS xabari telefonda umuman ko'rinmaydi.
      */
     private fun pushniYoq() {
-        if (!QalqonPush.enabled()) return
-        QalqonPush.register(this)
-        if (android.os.Build.VERSION.SDK_INT >= 33 &&
-            androidx.core.content.ContextCompat.checkSelfPermission(
-                this, android.Manifest.permission.POST_NOTIFICATIONS
-            ) != android.content.pm.PackageManager.PERMISSION_GRANTED
-        ) {
-            notifRuxsat.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+        if (QalqonPush.enabled()) QalqonPush.register(this)
+        bildirishnomaRuxsati()
+    }
+
+    /**
+     * Bildirishnomaga ruxsat — push sozlanganmi-yo'qmi, baribir so'raladi.
+     *
+     * Ilgari faqat push yoqilgan bo'lsa so'ralardi; push esa hali sozlanmagan,
+     * shuning uchun hech kimdan so'ralmasdi. Natijada farzand telefonida
+     * "Qalqon kuzatyapti" doimiy bildirishnomasi ko'rinmasdi (2026-10-27,
+     * qizning telefoni) — Google Play kuzatuv ilovalaridan aynan shu
+     * bildirishnomani talab qiladi.
+     *
+     * Rad etilsa — kuniga ko'pi bilan bir marta, tushuntirish bilan qayta;
+     * butunlay rad etilgan bo'lsa, ilovaning bildirishnoma sozlamalari ochiladi.
+     */
+    private fun bildirishnomaRuxsati() {
+        if (android.os.Build.VERSION.SDK_INT < 33) return
+        val ruxsat = android.Manifest.permission.POST_NOTIFICATIONS
+        if (androidx.core.content.ContextCompat.checkSelfPermission(this, ruxsat) ==
+            android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) return
+
+        val prefs = getSharedPreferences("shield_guard_prefs", MODE_PRIVATE)
+        val oldinSoralgan = prefs.getBoolean("notif_soralgan", false)
+        val oxirgi = prefs.getLong("notif_oxirgi_sorov", 0L)
+        if (oldinSoralgan && System.currentTimeMillis() - oxirgi < 24 * 3600 * 1000L) return
+        prefs.edit().putBoolean("notif_soralgan", true)
+            .putLong("notif_oxirgi_sorov", System.currentTimeMillis()).apply()
+
+        if (!oldinSoralgan) {
+            notifRuxsat.launch(ruxsat)
+            return
         }
+        val tushuntirish = "Qalqon ishlayotganini telefon tepasidagi belgi ko'rsatib turadi, " +
+            "SOS va ota-onangdan keladigan xabarlar ham shu yerda chiqadi. " +
+            "Iltimos, bildirishnomalarga ruxsat bering."
+        val dialog = android.app.AlertDialog.Builder(this)
+            .setTitle("Bildirishnomalar o'chiq")
+            .setMessage(tushuntirish)
+            .setNegativeButton("Keyinroq", null)
+        if (shouldShowRequestPermissionRationale(ruxsat)) {
+            dialog.setPositiveButton("Ruxsat berish") { _, _ -> notifRuxsat.launch(ruxsat) }
+        } else {
+            // Butunlay rad etilgan — tizim oynasi endi chiqmaydi, faqat sozlamalar.
+            dialog.setPositiveButton("Sozlamalarni ochish") { _, _ ->
+                runCatching {
+                    startActivity(
+                        Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                            .putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, packageName)
+                    )
+                }
+            }
+        }
+        dialog.show()
     }
 
     /**
