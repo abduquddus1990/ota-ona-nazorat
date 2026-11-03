@@ -7,10 +7,19 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.location.Location
 import android.os.Build
 import android.os.IBinder
+import android.os.Looper
 import androidx.core.app.NotificationCompat
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationCallback
+import com.google.android.gms.location.LocationRequest
+import com.google.android.gms.location.LocationResult
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
 import com.shield.parentalguard.ParentalGuardApp
+import com.shield.parentalguard.workers.TelemetrySyncWorker
 
 /**
  * Shaffof va O'ldirilmas Foreground Servis.
@@ -67,6 +76,8 @@ class PersistentGuardService : Service() {
             return START_NOT_STICKY
         }
 
+        harakatniKuzat()
+
         // START_STICKY: Tizim xotira yetishmovchiligida o'ldirsa ham, xotira bo'shaganda qayta ishga tushiradi
         return START_STICKY
     }
@@ -81,6 +92,72 @@ class PersistentGuardService : Service() {
      */
     override fun onTimeout(startId: Int) {
         stopSelf()
+    }
+
+    // ---- Harakat kuzatuvi ----
+    //
+    // Ilgari joylashuv faqat 15 daqiqalik navbat bilan yuborilardi va
+    // ota-ona xaritada bolani 5-15 daqiqa orqada ko'rardi. Endi xizmat
+    // tizimdan "tejamkor" aniqlikdagi o'lchovlarni oladi (Wi-Fi/minora,
+    // GPS'ni doim yoqmaydi) va bola haqiqatan JOY O'ZGARTIRGANDAGINA
+    // tezkor yuboradi. Bir joyda o'tirganda yangi so'rov ketmaydi —
+    // u holda 15 daqiqalik hisobot yetarli.
+    private var fused: FusedLocationProviderClient? = null
+    private val harakat = object : LocationCallback() {
+        override fun onLocationResult(natija: LocationResult) {
+            natija.lastLocation?.let { harakatniTekshir(it) }
+        }
+    }
+
+    private fun harakatniKuzat() {
+        if (fused != null) return
+        val client = LocationServices.getFusedLocationProviderClient(this)
+        val soRov = LocationRequest.Builder(Priority.PRIORITY_BALANCED_POWER_ACCURACY, 2 * 60_000L)
+            .setMinUpdateIntervalMillis(60_000L)
+            .setMinUpdateDistanceMeters(50f)
+            .build()
+        try {
+            client.requestLocationUpdates(soRov, harakat, Looper.getMainLooper())
+            fused = client
+        } catch (_: SecurityException) {
+            // Ruxsat olib tashlangan — 15 daqiqalik hisobot baribir ishlaydi.
+        }
+    }
+
+    private fun harakatniTekshir(joy: Location) {
+        // Bino ichidagi Wi-Fi taxmini 100+ metr "sakraydi" — undan harakat
+        // xulosasi chiqarmaymiz.
+        if (joy.hasAccuracy() && joy.accuracy > 100f) return
+        val prefs = getSharedPreferences("shield_guard_prefs", Context.MODE_PRIVATE)
+        val hozir = System.currentTimeMillis()
+        if (hozir - prefs.getLong("oxirgi_joy_vaqt", 0L) < 2 * 60_000L) return
+
+        val oLat = prefs.getString("oxirgi_lat", null)?.toDoubleOrNull()
+        val oLng = prefs.getString("oxirgi_lng", null)?.toDoubleOrNull()
+        if (oLat != null && oLng != null) {
+            val masofa = FloatArray(1)
+            Location.distanceBetween(oLat, oLng, joy.latitude, joy.longitude, masofa)
+            val chegara = maxOf(150f, if (joy.hasAccuracy()) joy.accuracy * 2 else 150f)
+            if (masofa[0] < chegara) return
+        }
+
+        // Kuniga ko'pi bilan 60 ta tezkor yuborish: adashgan o'lchovlar
+        // bepul server chegarasini yeb qo'ymasin.
+        val kun = hozir / 86_400_000L
+        val soni = if (prefs.getLong("harakat_kuni", -1L) == kun) prefs.getInt("harakat_soni", 0) else 0
+        if (soni >= 60) return
+        prefs.edit()
+            .putLong("harakat_kuni", kun)
+            .putInt("harakat_soni", soni + 1)
+            .putLong("oxirgi_joy_vaqt", hozir)
+            .apply()
+        TelemetrySyncWorker.tezYubor(this, joy, null, null)
+    }
+
+    override fun onDestroy() {
+        fused?.removeLocationUpdates(harakat)
+        fused = null
+        super.onDestroy()
     }
 
     override fun onTimeout(startId: Int, fgsType: Int) {

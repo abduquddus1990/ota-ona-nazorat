@@ -12,6 +12,7 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import com.shield.parentalguard.location.HududKuzatuvi
 import com.shield.parentalguard.push.QalqonPush
 import com.shield.parentalguard.services.PersistentGuardService
 import com.shield.parentalguard.workers.TelemetrySyncWorker
@@ -90,6 +91,9 @@ class ParentalGuardApp : Application() {
             } catch (_: Exception) {
             }
             WorkManager.getInstance(context).cancelUniqueWork("TelemetrySyncWork")
+            WorkManager.getInstance(context).cancelUniqueWork(TelemetrySyncWorker.HUDUD_ISHI)
+            WorkManager.getInstance(context).cancelUniqueWork(TelemetrySyncWorker.HARAKAT_ISHI)
+            HududKuzatuvi.ochir(context)
         }
     }
 }

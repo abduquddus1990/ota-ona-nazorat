@@ -10,9 +10,16 @@ import android.os.BatteryManager
 import android.os.Build
 import android.os.Process
 import androidx.core.content.ContextCompat
+import androidx.work.Constraints
 import androidx.work.CoroutineWorker
+import androidx.work.Data
+import androidx.work.ExistingWorkPolicy
+import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.shield.parentalguard.ParentalGuardApp
+import com.shield.parentalguard.location.HududKuzatuvi
 import com.shield.parentalguard.network.DeviceCredentials
 import com.shield.parentalguard.network.EncryptedNetworkClient
 import com.shield.parentalguard.network.PairingApi
@@ -54,9 +61,22 @@ class TelemetrySyncWorker(
             return@withContext Result.success()
         }
 
+        // Tezkor yuborish (harakat yoki hudud hodisasi) — joylashuv bilan
+        // keladi. Davriy navbat esa yaqinda tezkor yuborish bo'lgan bo'lsa,
+        // o'tkazib yuboriladi: bola yurganda so'rovlar ikki baravar bo'lmasin
+        // (bepul server chegarasi). Hech narsa yo'qolmaydi — keyingi hisobot
+        // oynasi oxirgi muvaffaqiyatli yuborishdan boshlanadi.
+        val kirishJoyi = kirishJoylashuvi()
+        val hududTur = inputData.getString(K_TUR)
+        val hududNomlar = inputData.getStringArray(K_NOMLAR)
+        val tezkor = kirishJoyi != null || hududTur != null
+        if (!tezkor && System.currentTimeMillis() - prefs.getLong("last_usage_sync_at", 0L) < 7 * 60 * 1000L) {
+            return@withContext Result.success()
+        }
+
         try {
             val battery = readBatteryLevel()
-            val location = readLastKnownLocation()
+            val location = kirishJoyi ?: readLastKnownLocation()
 
             // O'lchov oynasi — oxirgi muvaffaqiyatli yuborishdan hozirgacha.
             // Shunday qilinganining sababi: WorkManager 15 daqiqani KAFOLATLAMAYDI
@@ -125,7 +145,15 @@ class TelemetrySyncWorker(
                 // Joylashuv shu so'rovning ichida: ilgari alohida
                 // report_location so'rovi edi va har 15 daqiqada ikki
                 // so'rov ketardi (bepul server chegarasining yarmi).
-                if (location != null) put("location", locationJson(location))
+                if (location != null) put("location", locationJson(location).apply {
+                    // Telefon o'zi aniqlagan kirish/chiqish — server uni
+                    // ikkinchi o'lchovni kutmasdan e'lon qiladi.
+                    if (hududTur != null && hududNomlar != null) {
+                        put("hudud", JSONObject()
+                            .put("tur", hududTur)
+                            .put("nomlar", org.json.JSONArray(hududNomlar.toList())))
+                    }
+                })
             }
 
             val requestBody = postPayload.toString()
@@ -144,7 +172,19 @@ class TelemetrySyncWorker(
                         // Faqat yuborish muvaffaqiyatli bo'lgandagina oynani
                         // surib qo'yamiz — aks holda qayta urinishda o'sha vaqt
                         // ikkinchi marta yozilib, jami bo'rttirilardi.
-                        prefs.edit().putLong("last_usage_sync_at", now).apply()
+                        val ed = prefs.edit().putLong("last_usage_sync_at", now)
+                        // Harakat kuzatuvi (PersistentGuardService) shu
+                        // nuqtadan qancha uzoqlashganini o'lchaydi.
+                        if (location != null) {
+                            ed.putString("oxirgi_lat", location.latitude.toString())
+                                .putString("oxirgi_lng", location.longitude.toString())
+                                .putLong("oxirgi_joy_vaqt", now)
+                        }
+                        ed.apply()
+                        // Javobdagi hududlar telefonning o'z kuzatuviga yoziladi.
+                        runCatching {
+                            JSONObject(it.body?.string() ?: "").optJSONArray("zones")
+                        }.getOrNull()?.let { z -> HududKuzatuvi.yangila(applicationContext, z) }
                         Result.success()
                     }
                     // 401/403 — token endi hech qanday oilaga tegishli emas:
@@ -162,6 +202,65 @@ class TelemetrySyncWorker(
         } catch (e: Exception) {
             Result.retry()
         }
+    }
+
+    /** tezYubor() bilan kelgan joylashuv (harakat yoki hudud hodisasi). */
+    private fun kirishJoylashuvi(): Location? {
+        val vaqt = inputData.getLong(K_VAQT, 0L)
+        if (vaqt <= 0L) return null
+        return Location("qalqon").apply {
+            latitude = inputData.getDouble(K_LAT, 0.0)
+            longitude = inputData.getDouble(K_LNG, 0.0)
+            val acc = inputData.getFloat(K_ACC, -1f)
+            if (acc >= 0f) accuracy = acc
+            time = vaqt
+        }
+    }
+
+    companion object {
+        private const val K_LAT = "lat"
+        private const val K_LNG = "lng"
+        private const val K_ACC = "acc"
+        private const val K_VAQT = "vaqt"
+        private const val K_TUR = "hudud_tur"
+        private const val K_NOMLAR = "hudud_nomlar"
+
+        /**
+         * Navbatni kutmasdan hozir yuborish: bola harakatlanayotgan bo'lsa
+         * (PersistentGuardService) yoki telefon hududga kirib-chiqqan bo'lsa
+         * (HududReceiver). Internet bo'lmasa — paydo bo'lishi bilan.
+         */
+        fun tezYubor(context: Context, loc: Location?, hududTur: String?, nomlar: List<String>?) {
+            val data = Data.Builder().apply {
+                if (loc != null) {
+                    putDouble(K_LAT, loc.latitude)
+                    putDouble(K_LNG, loc.longitude)
+                    if (loc.hasAccuracy()) putFloat(K_ACC, loc.accuracy)
+                    putLong(K_VAQT, if (loc.time > 0L) loc.time else System.currentTimeMillis())
+                }
+                if (hududTur != null && !nomlar.isNullOrEmpty()) {
+                    putString(K_TUR, hududTur)
+                    putStringArray(K_NOMLAR, nomlar.take(20).toTypedArray())
+                }
+            }.build()
+            val ish = OneTimeWorkRequestBuilder<TelemetrySyncWorker>()
+                .setInputData(data)
+                .setConstraints(
+                    Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
+                )
+                .build()
+            val wm = WorkManager.getInstance(context)
+            if (hududTur != null) {
+                // Har bir kirish/chiqish yetib borsin — navbatga qo'shiladi.
+                wm.enqueueUniqueWork(HUDUD_ISHI, ExistingWorkPolicy.APPEND_OR_REPLACE, ish)
+            } else {
+                // Harakat nuqtasi: biri kutib turgan bo'lsa, yangisi shart emas.
+                wm.enqueueUniqueWork(HARAKAT_ISHI, ExistingWorkPolicy.KEEP, ish)
+            }
+        }
+
+        const val HUDUD_ISHI = "HududHodisa"
+        const val HARAKAT_ISHI = "HarakatJoyi"
     }
 
     /**

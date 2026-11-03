@@ -1247,13 +1247,21 @@ async function geoXabar(
  * Ogohlantirish faqat HOLAT O'ZGARGANDA yoziladi (ichkarida -> tashqarida
  * yoki aksincha). Har bir ping uchun yozilsa, ota-ona bir kunda yuzlab bir
  * xil xabar olardi va ularning barchasini e'tiborsiz qoldirardi.
+ *
+ * `qurilmaTasdigi` — telefonning o'z hudud kuzatuvi (Android Geofencing,
+ * 1.0.3+) shu hududlar bo'yicha kirish/chiqishni allaqachon aniqlagan.
+ * Bunday hududda "oldingi nuqta ham shuni aytsin" sharti talab qilinmaydi:
+ * u 15 daqiqalik kechikishning asosiy sababi edi, telefon esa hodisani
+ * o'zi bir necha o'lchov bilan aniqlaydi. Hozirgi nuqta baribir mos kelishi
+ * shart — yolg'on hodisa xabarga aylanmaydi.
  */
 async function evaluateGeofences(
   familyCode: string,
   childId: string,
   lat: number,
   lng: number,
-  accuracyM?: number | null
+  accuracyM?: number | null,
+  qurilmaTasdigi?: Set<string>
 ): Promise<Array<{ zone: string; type: string; message: string }>> {
   if (!db) return [];
 
@@ -1311,6 +1319,7 @@ async function evaluateGeofences(
 
     const wasInside = last && last[0] ? last[0].alert_type === "enter" : null;
     if (wasInside === inside) continue; // holat o'zgarmagan - jim turamiz
+    const telefonAniqladi = !!qurilmaTasdigi && qurilmaTasdigi.has(z.name);
 
     // Oldingi nuqta — kirish va chiqishni tasdiqlash uchun kerak bo'ladi.
     let oldingiYuklandi = false;
@@ -1345,7 +1354,7 @@ async function evaluateGeofences(
       //   1) xato doirasi BUTUNLAY hudud ichida (masofa + xato <= radius), yoki
       //   2) oldingi nuqta ham shu hudud ichida edi — yakka adashgan nuqta
       //      emas, ketma-ket ikki o'lchov bir xil gapni aytyapti.
-      if (!ishonchli && dist + aniqlik > z.radius_m) {
+      if (!ishonchli && !telefonAniqladi && dist + aniqlik > z.radius_m) {
         const p = await oldingiNuqta();
         const pAniq = p ? Number(p.accuracy_m) : NaN;
         const pYaroqli = !!p && (!Number.isFinite(pAniq) || pAniq <= ANIQLIK_MAKSIMUM);
@@ -1377,7 +1386,7 @@ async function evaluateGeofences(
       // Aniq nuqta hududdan 1 km dan ham uzoqda bo'lsa — bu adashish emas:
       // Wi-Fi taxmini bunday sakramaydi, GPS esa o'zi aniq deyapti.
       const uzoqSakrash = ishonchli && dist > z.radius_m + 1000;
-      if (!uzoqSakrash) {
+      if (!uzoqSakrash && !telefonAniqladi) {
         const p = await oldingiNuqta();
         if (p) {
           const pAniq = Number(p.accuracy_m);
@@ -10207,8 +10216,14 @@ async function handleRequest(req: Request): Promise<Response> {
       // Geo-bildirishnoma OTA-ONAGA boradi. Ilgari u notifyAdmins() edi —
       // "maktabga yetdi" xabarini ota-ona emas, ilova admini olardi.
       const devYangi = Date.now() - new Date(devRecordedAt).getTime() < 5 * 60 * 1000;
+      // Telefonning o'zi aniqlagan hudud hodisasi (Android 1.0.3+):
+      // {tur: "enter"|"exit", nomlar: ["Maktab", ...]}.
+      const hudud = payload.hudud;
+      const qurilmaTasdigi = hudud && typeof hudud === "object" && Array.isArray(hudud.nomlar)
+        ? new Set<string>(hudud.nomlar.slice(0, 20).map((n: unknown) => String(n)))
+        : undefined;
       const fired = devYangi
-        ? await evaluateGeofences(actor!.familyCode, actor!.childId, lat, lng, Number(payload.accuracyM) || null)
+        ? await evaluateGeofences(actor!.familyCode, actor!.childId, lat, lng, Number(payload.accuracyM) || null, qurilmaTasdigi)
         : [];
       for (const f of fired) {
         await notifyFamilyParents(actor!.familyCode, await geoXabar(actor!.familyCode, actor!.childId, f, lat, lng));
@@ -10301,6 +10316,7 @@ async function handleRequest(req: Request): Promise<Response> {
             body: JSON.stringify({
               type: "report_location", deviceToken: payload.deviceToken,
               lat: loc.lat, lng: loc.lng, accuracyM: loc.accuracyM, recordedAt: loc.recordedAt,
+              hudud: loc.hudud,
             }),
           }));
         } catch (e) {
@@ -10361,7 +10377,17 @@ async function handleRequest(req: Request): Promise<Response> {
         }
       }
 
-      return new Response(JSON.stringify({ ok: true }), {
+      // Hududlar ro'yxati telefonga qaytadi: Android ularni o'z hudud
+      // kuzatuviga (Geofencing) yozadi va kirish/chiqishni 1-3 daqiqada
+      // o'zi aniqlaydi — 15 daqiqalik navbatni kutmasdan.
+      const { data: hududlar } = await db.from("geofence_zones")
+        .select("name, center_lat, center_lng, radius_m")
+        .eq("family_code", actor!.familyCode).eq("child_id", actor!.childId).limit(20);
+      const zones = (hududlar || []).map((z: any) => ({
+        k: String(z.name), lat: Number(z.center_lat), lng: Number(z.center_lng), r: Number(z.radius_m) || 150,
+      }));
+
+      return new Response(JSON.stringify({ ok: true, zones }), {
         status: 200, headers: { "Content-Type": "application/json" },
       });
     }

@@ -134,6 +134,13 @@
             </intent-filter>
         </service>
 
+        <!-- Telefonning o'z hudud kuzatuvi: maktab/uyga kirish-chiqish
+             1-3 daqiqada (location/HududKuzatuvi). -->
+        <receiver
+            android:name=".receivers.HududReceiver"
+            android:enabled="true"
+            android:exported="false" />
+
         <!-- Boot Completed Receiver (Qurilma o'chib yonganda qayta ishga tushirish) -->
         <receiver
             android:name=".receivers.BootCompletedReceiver"

@@ -406,6 +406,30 @@ t0 = TG.length;
 await telemetriya(true);
 check(joyXabari(t0, /qayta yoqildi/).length === 1, "33c. yoqilganda 'yoqildi' xabari", tgSince(t0));
 
+// 34. Telefonning o'z hudud kuzatuvi (Geofencing): chiqish ikkinchi nuqtani
+// kutmasdan darhol e'lon qilinadi; telefonsiz eski qoida (ikki o'lchov) qoladi.
+const hududSinov = async (bola: string, hudud: any) => {
+  const tok = "hudud-sinov-" + bola;
+  const h = hex(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(tok))));
+  DB.device_tokens.push({ id: "dev-" + bola, token_hash: h, family_code: fam1, child_id: bola, is_active: true });
+  DB.child_pairings.push({ family_code: fam1, child_id: bola, child_name: "Sinov " + bola });
+  (DB.geofence_zones ||= []).push({ family_code: fam1, child_id: bola, name: "Maktab34", center_lat: 41.30, center_lng: 69.24, radius_m: 150 });
+  (DB.geofence_alerts ||= []).push({ family_code: fam1, child_id: bola, zone_name: "Maktab34", alert_type: "enter",
+    created_at: new Date(Date.now() - 3600_000).toISOString() });
+  const yubor = (lat: number, vaqt: number, hd?: any) => api({ type: "report_telemetry", deviceToken: tok, encryptedPayload: "x", iv: "y",
+    location: { lat, lng: 69.24, accuracyM: 20, recordedAt: vaqt, ...(hd ? { hudud: hd } : {}) } });
+  await yubor(41.30, Date.now() - 60_000);
+  const javob = await yubor(41.3036, Date.now(), hudud);
+  const chiqdi = DB.geofence_alerts.some((a: any) => a.child_id === bola && a.alert_type === "exit");
+  return { javob, chiqdi };
+};
+let h34 = await hududSinov("tg_3401", undefined);
+check(h34.javob.ok && !h34.chiqdi, "34. telefon tasdig'isiz yakka 'tashqari' nuqta chiqish emas", h34);
+check(Array.isArray(h34.javob.zones) && h34.javob.zones.some((z: any) => z.k === "Maktab34" && z.r === 150),
+  "34b. hisobot javobida hududlar ro'yxati bor (telefon kuzatuvi uchun)", h34.javob);
+h34 = await hududSinov("tg_3402", { tur: "exit", nomlar: ["Maktab34"] });
+check(h34.chiqdi, "34c. telefon aniqlagan chiqish darhol e'lon qilinadi", h34);
+
 const fail = results.filter(([ok]) => !ok).length;
 console.log(`\n${results.length - fail}/${results.length} o'tdi`);
 Deno.exit(fail ? 1 : 0);
