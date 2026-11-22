@@ -60,9 +60,9 @@ async function hmac(key: Uint8Array, msg: string) {
   return new Uint8Array(await crypto.subtle.sign("HMAC", k, new TextEncoder().encode(msg)));
 }
 const hex = (b: Uint8Array) => Array.from(b).map((x) => x.toString(16).padStart(2, "0")).join("");
-async function initData(id: number) {
+async function initData(id: number, yoshiSoniya = 0) {
   const p = new URLSearchParams();
-  p.set("auth_date", String(Math.floor(Date.now() / 1000)));
+  p.set("auth_date", String(Math.floor(Date.now() / 1000) - yoshiSoniya));
   p.set("user", JSON.stringify({ id, first_name: "U" + id }));
   const pairs = [...p].map(([k, v]) => `${k}=${v}`).sort().join("\n");
   const secret = await hmac(new TextEncoder().encode("WebAppData"), BOT);
@@ -405,6 +405,38 @@ check(joyXabari(t0, /Joylashuv/).length === 0, "33b. keyingi hisobotda takrorlan
 t0 = TG.length;
 await telemetriya(true);
 check(joyXabari(t0, /qayta yoqildi/).length === 1, "33c. yoqilganda 'yoqildi' xabari", tgSince(t0));
+
+
+// 34. 6 soatdan eski initData rad etiladi va mijozga aniq sabab aytiladi.
+r = await api({ type: "my_family", initData: await initData(1001, 7 * 3600) });
+check(r.status === 401 && r.initDataEskirgan === true, "34. 7 soatlik initData — 401 + initDataEskirgan", r);
+r = await api({ type: "my_family", initData: await initData(1001, 5 * 3600) });
+check(r.status !== 401, "34b. 5 soatlik initData hali qabul qilinadi", r);
+const soxtaEski = (await initData(1001, 7 * 3600)).replace(/hash=[0-9a-f]+/, "hash=" + "0".repeat(64));
+r = await api({ type: "my_family", initData: soxtaEski });
+check(r.status === 401 && !r.initDataEskirgan, "34c. soxta imzoga 'eskirgan' deyilmaydi", r);
+
+
+// 35. Haftalik hisobot: ekran vaqti kunma-kun va maktabga kelgan kunlar.
+const kunOldin = (n: number, soat = 4) => new Date(Date.now() - n * 86400000).toISOString().slice(0, 11) + String(soat).padStart(2, "0") + ":00:00.000Z";
+(DB.device_telemetry ||= []).push(
+  { family_code: fam1, child_id: "tg_3001", app_package_name: "a", screen_time_seconds: 3600, created_at: kunOldin(1) },
+  { family_code: fam1, child_id: "tg_3001", app_package_name: "b", screen_time_seconds: 1800, created_at: kunOldin(1) },
+  { family_code: fam1, child_id: "tg_3001", app_package_name: "a", screen_time_seconds: 600, created_at: kunOldin(3) },
+  { family_code: fam2, child_id: "tg_9", app_package_name: "a", screen_time_seconds: 99999, created_at: kunOldin(1) },
+);
+(DB.geofence_alerts ||= []).push(
+  { family_code: fam1, child_id: "tg_3001", zone_name: "Maktab", alert_type: "enter", created_at: kunOldin(1) },
+  { family_code: fam1, child_id: "tg_3001", zone_name: "Maktab", alert_type: "enter", created_at: kunOldin(2) },
+  { family_code: fam1, child_id: "tg_3001", zone_name: "Uy", alert_type: "enter", created_at: kunOldin(2, 9) },
+);
+r = await api({ type: "weekly_report", childId: "tg_3001", initData: await initData(1001) });
+const ek = r.stats?.ekranKunlik || [];
+check(r.ok && ek.length === 7 && r.stats.ekranJami === 100 && r.stats.maktabKunlari === 2,
+  "35. haftalik: 7 kun, jami 100 daqiqa, maktabga 2 kun", r.stats);
+check(!ek.some((k: any) => k.daqiqa > 90), "35b. boshqa oilaning ekran vaqti aralashmadi", ek);
+r = await api({ type: "weekly_report", childId: "tg_3001", initData: await initData(2001) });
+check(!r.ok || !(r.stats?.ekranJami > 0), "35c. begona ota-ona boshqa oila farzandining hisobotini ololmaydi", r);
 
 const fail = results.filter(([ok]) => !ok).length;
 console.log(`\n${results.length - fail}/${results.length} o'tdi`);

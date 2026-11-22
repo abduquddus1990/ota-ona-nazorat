@@ -190,7 +190,13 @@ async function reconcileInvite(
 // qilinadi, u ham ota-ona oldindan ruxsat bergan bo'lsa.
 // ============================================================================
 
-const INIT_DATA_MAX_AGE_SEC = 86400;
+// initData Telegram Mini App ochilgan paytda imzolanadi va ochiq turgan
+// oyna davomida o'zgarmaydi. Ilgari 24 soat qabul qilinardi: biror joyda
+// (log, skrinshot, begona brauzer kengaytmasi) ushlab olingan initData bir
+// kun davomida ota-ona nomidan ishlatilishi mumkin edi. 2026-11-22: 6 soat.
+// Muddati o'tganda server "initDataEskirgan" deydi va Mini App
+// "ilovani qayta oching" deb ko'rsatadi (jim 401 emas).
+const INIT_DATA_MAX_AGE_SEC = 6 * 3600;
 
 function toHex(buf: Uint8Array): string {
   return Array.from(buf).map((b) => b.toString(16).padStart(2, "0")).join("");
@@ -315,6 +321,28 @@ async function verifyInitData(
   } catch {
     return null;
   }
+}
+
+/**
+ * initData imzosi TO'G'RI, lekin muddati o'tganmi? Faqat rad javobini
+ * aniqlashtirish uchun (mijoz "qayta oching" deydi). Umumiy o'zgaruvchi
+ * ishlatilmaydi — bir vaqtda kelgan so'rovlar bir-biriga aralashmasin.
+ */
+async function initDataEskirganmi(initData: unknown): Promise<boolean> {
+  const raw = typeof initData === "string" ? initData : "";
+  if (!raw || !BOT_TOKEN) return false;
+  const params = new URLSearchParams(raw);
+  const hash = params.get("hash");
+  if (!hash) return false;
+  params.delete("hash");
+  const pairs: string[] = [];
+  for (const [k, v] of params) pairs.push(`${k}=${v}`);
+  pairs.sort();
+  const secret = await hmacSha256(new TextEncoder().encode("WebAppData"), BOT_TOKEN);
+  const calc = toHex(await hmacSha256(secret, pairs.join("\n")));
+  if (!timingSafeEqual(calc, hash.toLowerCase())) return false;
+  const authDate = Number(params.get("auth_date") || 0);
+  return !!authDate && Math.floor(Date.now() / 1000) - authDate > INIT_DATA_MAX_AGE_SEC;
 }
 
 /** Qurilma tokenini tekshirib, u bog'langan oila/farzandni qaytaradi. */
@@ -457,7 +485,11 @@ async function seansPushiniOchir(sessionId: string) {
 const TASDIQ_OYNA_MS = 10 * 60 * 1000;
 
 async function tasdiqKodiHisobla(sessionId: string, amal: string, oyna: number): Promise<string> {
-  const kalit = new TextEncoder().encode("qalqon-tasdiq:" + SUPABASE_SERVICE_ROLE_KEY);
+  // Alohida sekret (TASDIQ_KOD_SEKRETI) bo'lsa — o'sha. Bo'lmasa avvalgidek
+  // service role kalitidan: sekret qo'shilguncha hech narsa buzilmaydi.
+  // Alohida sekret yaxshiroq: service role kaliti almashtirilganda yoki
+  // boshqa joyda ishlatilganda tasdiq kodlari unga bog'liq bo'lib qolmaydi.
+  const kalit = new TextEncoder().encode("qalqon-tasdiq:" + (Deno.env.get("TASDIQ_KOD_SEKRETI") || SUPABASE_SERVICE_ROLE_KEY));
   const h = await hmacSha256(kalit, `${sessionId}|${amal}|${oyna}`);
   const son = ((h[0] << 24) | (h[1] << 16) | (h[2] << 8) | h[3]) >>> 0;
   return String(son % 1000000).padStart(6, "0");
@@ -5756,6 +5788,12 @@ async function handleRequest(req: Request): Promise<Response> {
             { status: 401, headers: { "Content-Type": "application/json" } }
           );
         }
+        if (await initDataEskirganmi(payload?.initData)) {
+          return new Response(
+            JSON.stringify({ ok: false, error: "Ilova uzoq ochiq turdi. Uni yopib, qayta oching.", initDataEskirgan: true }),
+            { status: 401, headers: { "Content-Type": "application/json" } }
+          );
+        }
         return unauthorized(
           "initData (Mini App) yoki deviceToken (Android) yuborilishi kerak"
         );
@@ -5868,7 +5906,7 @@ async function handleRequest(req: Request): Promise<Response> {
             body: JSON.stringify({ ...r, ...kalit }),
           });
           const res = await handleRequest(ichki);
-          return { status: res.status, body: await res.text() };
+          return { status: res.status, body: xatoniTozala(res.status, await res.text()) };
         } catch (e) {
           console.error("panel_bootstrap:", r.type, e);
           return { status: 500, body: JSON.stringify({ ok: false, error: "Ichki xato" }) };
@@ -9229,10 +9267,41 @@ async function handleRequest(req: Request): Promise<Response> {
         .limit(1);
       const nom = (kid && kid[0] && kid[0].child_name) || "Farzandingiz";
 
+      // --- 5. Ekran vaqti kunma-kun (2026-11-22) ---
+      // device_telemetry qatorlari — ORTTIRMA (har hisobotda o'tgan vaqt),
+      // shuning uchun kun bo'yicha yig'iladi. Kun — Toshkent vaqti bilan.
+      const toshkentKuni = (iso: string | number) =>
+        new Date(new Date(iso).getTime() + 5 * 3600000).toISOString().slice(0, 10);
+      const kunlar: string[] = [];
+      for (let i = 6; i >= 0; i--) kunlar.push(toshkentKuni(Date.now() - i * 86400000));
+      const { data: tel } = await db
+        .from("device_telemetry")
+        .select("screen_time_seconds, created_at")
+        .eq("family_code", familyCode)
+        .eq("child_id", childId)
+        .gte("created_at", haftaOldin)
+        .limit(2000);
+      const ekranSek: Record<string, number> = {};
+      for (const r of tel || []) {
+        const k = toshkentKuni(r.created_at);
+        ekranSek[k] = (ekranSek[k] || 0) + (Number(r.screen_time_seconds) || 0);
+      }
+      const ekranKunlik = kunlar.map((kun) => ({ kun, daqiqa: Math.round((ekranSek[kun] || 0) / 60) }));
+      const ekranJami = ekranKunlik.reduce((a, b) => a + b.daqiqa, 0);
+
+      // --- 6. Maktabga kelgan kunlar: "Maktab" nomli hududga kirish ---
+      // Hudud nomini ota-onaning o'zi yozadi; "maktab" so'zi bo'lsa sanaymiz.
+      const maktabKunlari = new Set(
+        (alerts || [])
+          .filter((a: any) => a.alert_type === "enter" && /maktab/i.test(String(a.zone_name || "")))
+          .map((a: any) => toshkentKuni(a.created_at)),
+      ).size;
+
       // Ma'lumot juda kam bo'lsa AI chaqirmaymiz: u bo'sh ma'lumotdan
       // ishonchli ko'rinadigan, lekin asossiz xulosa yasab beradi — bu
       // ota-onani noto'g'ri yo'lga boshlaydi.
-      const yetarli = buHafta > 0 || (notes || []).length > 0 || suhbat.length > 0;
+      const yetarli = buHafta > 0 || (notes || []).length > 0 || suhbat.length > 0 ||
+        ekranJami > 0 || (alerts || []).length > 0;
       if (!yetarli) {
         return new Response(
           JSON.stringify({
@@ -9256,6 +9325,9 @@ async function handleRequest(req: Request): Promise<Response> {
         kunlikXabar: (notes || []).length,
         aiSavollar: suhbat.length,
         hududHodisalari: (alerts || []).length,
+        ekranKunlik,
+        ekranJami,
+        maktabKunlari,
       };
 
       const apiKey = Deno.env.get("GEMINI_API_KEY") || "";
@@ -9272,6 +9344,10 @@ async function handleRequest(req: Request): Promise<Response> {
           `- Kayfiyat belgilari: ${JSON.stringify(kayfiyat)} ` +
           `(great=zo'r, good=yaxshi, tired=charchagan, sad=xafa)\n` +
           `- Uy/maktab hududiga kelish-ketish hodisalari: ${(alerts || []).length} ta\n` +
+          `- Maktab hududiga kelgan kunlar soni (7 kun ichida): ${maktabKunlari}\n` +
+          `- Telefon ekran vaqti kunma-kun, daqiqa: ` +
+          ekranKunlik.map((e) => `${e.kun}: ${e.daqiqa}`).join(", ") +
+          ` (0 — ma'lumot kelmagan bo'lishi ham mumkin, buni "kam ishlatdi" deb talqin qilma)\n` +
           `- AI do'stga bergan savollari (${suhbat.length} ta):\n` +
           suhbat.slice(0, 40).map((q) => `  · ${q}`).join("\n") + `\n\n` +
           `QOIDALAR — buzilmasin:\n` +
@@ -9283,7 +9359,7 @@ async function handleRequest(req: Request): Promise<Response> {
           `FAQAT shu JSON ni qaytar:\n` +
           `{"ozgarish":"bu hafta nima o'zgardi, 1-2 jumla",` +
           `"yaxshi":"xursand bo'ladigan bitta narsa, 1 jumla",` +
-          `"etibor":"e'tibor berish kerak bo'lgan bitta narsa, 1-2 jumla",` +
+          `"etibor":"e'tibor berish kerak bo'lgan bitta narsa, 1-2 jumla (masalan, ekran vaqti boshqa kunlardan keskin ko'p bo'lgan kun)",` +
           `"savollar":["farzandga beriladigan aniq savol 1","savol 2","savol 3"],` +
           `"xavf":"agar zo'ravonlik, o'ziga zarar, qo'rquv yoki majburlash belgisi bo'lsa qisqa izoh, aks holda bo'sh satr"}`;
 
@@ -9324,9 +9400,14 @@ async function handleRequest(req: Request): Promise<Response> {
       // tuzilgan xulosa — kambag'alroq, lekin rost.
       if (!hisobot) {
         const farq = buHafta - otganHafta;
+        const engKopKun = ekranKunlik.reduce((a, b) => (b.daqiqa > a.daqiqa ? b : a), ekranKunlik[0]);
         hisobot = {
           ozgarish:
-            otganHafta === 0
+            buHafta === 0 && otganHafta === 0
+              ? (ekranJami > 0
+                  ? `${nom} bu hafta telefonda jami ${Math.round(ekranJami / 60)} soat o'tkazdi; eng ko'p — ${engKopKun.kun} (${engKopKun.daqiqa} daqiqa).`
+                  : `${nom} bu hafta maktab hududiga ${maktabKunlari} kun keldi.`)
+              : otganHafta === 0
               ? `${nom} bu hafta ${buHafta} daqiqa diqqat bilan ishladi.`
               : `Diqqat bilan ishlagan vaqti ${farq >= 0 ? "oshdi" : "kamaydi"}: ` +
                 `${otganHafta} → ${buHafta} daqiqa.`,
@@ -12007,8 +12088,33 @@ async function handleRequest(req: Request): Promise<Response> {
     return new Response(JSON.stringify({ ok: true }), { status: 200 });
   } catch (error) {
     console.error("Webhook xatosi:", error);
-    return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+    return new Response(JSON.stringify({ ok: false, error: "Ichki xato. Qayta urinib ko'ring." }), { status: 500, headers: { "Content-Type": "application/json" } });
   }
+}
+
+// ============================================================================
+// ICHKI XATO MATNI MIJOZGA CHIQMASIN (2026-11-22)
+//
+// Ko'p joyda bazaning xato matni (error.message) to'g'ridan-to'g'ri mijozga
+// qaytarilardi: unda jadval, ustun va cheklov nomlari bo'ladi — hujumchi
+// uchun baza tuzilishining xaritasi. Endi 5xx javoblardagi texnik matn
+// umumiy jumla bilan almashtiriladi, asl matn esa logga yoziladi.
+// O'zbekcha, foydalanuvchiga mo'ljallangan xabarlar ("Saqlab bo'lmadi.")
+// o'zgarmaydi.
+// ============================================================================
+const TEXNIK_XATO = /violates|constraint|relation|column|duplicate key|permission denied|syntax|null value|invalid input|PGRST|JSON|fetch|timeout|ECONN|deno|TypeError|undefined|schema|function .*does not exist|row-level security|uuid|bigint|integer|operator/i;
+
+function xatoniTozala(status: number, body: string): string {
+  if (status < 500 || !body) return body;
+  try {
+    const j = JSON.parse(body);
+    if (j && typeof j.error === "string" && TEXNIK_XATO.test(j.error)) {
+      console.error("Mijozdan yashirilgan ichki xato:", j.error);
+      j.error = "Ichki xato. Qayta urinib ko'ring.";
+      return JSON.stringify(j);
+    }
+  } catch { /* JSON emas — tegmaymiz */ }
+  return body;
 }
 
 // Mini App brauzerda github.io'dan ochiladi, funksiya esa supabase.co'da —
@@ -12056,5 +12162,10 @@ serve(async (req) => {
   }
   const headers = new Headers(res.headers);
   for (const [key, value] of Object.entries(CORS_HEADERS)) headers.set(key, value);
+  if (res.status >= 500) {
+    const matn = xatoniTozala(res.status, await res.text());
+    headers.delete("content-length");
+    return new Response(matn, { status: res.status, statusText: res.statusText, headers });
+  }
   return new Response(res.body, { status: res.status, statusText: res.statusText, headers });
 });
