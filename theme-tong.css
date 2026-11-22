@@ -247,3 +247,35 @@ body[data-theme="tong"] .from-teal-600.text-white,
 body[data-theme="tong"] .from-teal-600 .text-white,
 body[data-theme="tong"] .from-violet-400.text-white,
 body[data-theme="tong"] .from-violet-400 .text-white {color:#ffffff}
+
+/* ==========================================================================
+   Bosh ekran: ixcham bo'ri kartasi (2026-11-22, index.html #boriKarta)
+   ========================================================================== */
+.bori-karta{position:relative;overflow:hidden;border-radius:24px;padding:16px 132px 16px 16px;min-height:136px;
+  background:linear-gradient(120deg,#0f2a4a 0%,#1b4f8a 100%);color:#fff;box-shadow:0 10px 28px -12px rgba(15,42,74,.55)}
+.bori-karta img{position:absolute;right:6px;bottom:-6px;height:150px;width:auto;pointer-events:none;
+  filter:drop-shadow(0 6px 18px rgba(34,184,230,.35))}
+.bori-karta-sarlavha{font:900 17px/1.2 'Nunito',sans-serif;color:#fff}
+.bori-karta p{font:600 12.5px/1.45 'Nunito',sans-serif;color:rgba(255,255,255,.82);margin-top:4px}
+.bori-karta-teglar{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.bori-karta-teglar>span{display:inline-flex;align-items:center;gap:4px;font:800 11.5px/1 'Nunito',sans-serif;
+  color:#9fe6ff;background:rgba(34,184,230,.18);padding:6px 9px;border-radius:999px}
+.bori-karta-teglar .material-symbols-outlined{font-size:15px}
+
+/* Haftalik hisobot: ekran vaqti ustunlari (app.js openWeeklyReport) */
+.haftalik-ekran{background:#fff;border:1px solid #dbe7f3;border-radius:18px;padding:12px 14px}
+.haftalik-ekran-sarlavha{display:flex;justify-content:space-between;align-items:baseline;font:900 13px/1.2 'Nunito',sans-serif;color:#0f2a4a}
+.haftalik-ekran-sarlavha span{font:700 11px 'Nunito',sans-serif;color:#5a6f88}
+.haftalik-ustunlar{display:flex;align-items:flex-end;gap:8px;height:118px;margin-top:10px}
+.haftalik-ustun{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%}
+.haftalik-ustun i{display:block;width:100%;border-radius:7px 7px 3px 3px;background:#bfe0fb}
+.haftalik-ustun.eng i{background:#e8930c}
+.haftalik-ustun.bugun i{background:#1d6fe0}
+.haftalik-ustun b{font:700 10.5px 'Nunito',sans-serif;color:#5a6f88;margin-top:5px}
+.haftalik-qator{display:flex;justify-content:space-between;background:#fff;border:1px solid #dbe7f3;border-radius:14px;padding:10px 14px;font:700 12.5px 'Nunito',sans-serif;color:#5a6f88}
+.haftalik-qator b{color:#16a37a;font-weight:900}
+.haftalik-kirish{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:#fff;border:1.5px solid #cdeaf7;border-radius:20px;padding:14px;color:#0f2a4a}
+.haftalik-kirish .material-symbols-outlined{width:40px;height:40px;border-radius:12px;background:#e3f0ff;color:#1d6fe0;display:grid;place-items:center;font-size:22px}
+.haftalik-kirish b{display:block;font:900 14.5px 'Nunito',sans-serif}
+.haftalik-kirish small{display:block;font:600 12px 'Nunito',sans-serif;color:#5a6f88;margin-top:2px}
+.haftalik-kirish .oq{margin-left:auto;color:#5a6f88;font-weight:900}

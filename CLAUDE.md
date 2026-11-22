@@ -40,9 +40,17 @@ Pages `telegram_miniapp/` ni chiqaradi. `app.js` o'zgarsa, `index.html` dagi
 **Tezlik (2026-10-17):** Tailwind CDN emas, oldindan yig'ilgan `tailwind.css`
 (`bash tools/tailwind/build.sh`; Pages'ga chiqarishda o'zi qayta yig'iladi).
 U `<head>` ning ENG OXIRIDA turishi shart — aks holda `.hidden` styles.css'dan
-yutqazib, yashirin tugmalar ko'rinadi. Ikonka shriftida faqat ishlatiladigan
-belgilar (`icon_names=`, alifbo tartibida) — yangi ikonka qo'shsangiz, o'sha
-ro'yxatga ham qo'shing. Katta rasmlar — WebP (PNG faqat manba sifatida).
+yutqazib, yashirin tugmalar ko'rinadi. Katta rasmlar — WebP (PNG faqat manba sifatida).
+
+**Shriftlar va Leaflet repoda (2026-11-22):** `vendor/fonts` (Nunito, Outfit,
+ikonkalar) va `vendor/leaflet` — Google Fonts va unpkg'ga bog'liqlik yo'q, CSP
+ham ularni endi ruxsat etmaydi. Ikonka shriftida faqat ishlatiladigan belgilar:
+yangi ikonka qo'shsangiz — `tools/fonts/subset_icons.py` dagi `NOMLAR` ga
+qo'shib, skriptni qayta ishga tushiring (aks holda u so'z bo'lib ko'rinadi).
+**Kech yuklash:** o'yinlar (games/arcade/online/sim) faqat birinchi chaqiruvda,
+rus lug'ati faqat rus tilida yuklanadi (`index.html`, "KECH YUKLASH" bloki).
+app.js/index.html dan o'yin fayllaridagi yangi funksiya chaqirilsa —
+`QALQON_OYIN_KIRISH` ro'yxatiga qo'shing. O'yin fayli versiyasi ham o'sha yerda.
 Server va baza 2026-10 da Sidneydan **Frankfurtga** (`eu-central-1`) ko'chdi:
 baza murojaati Toshkentdan ~0,5 s dan ~0,05 s ga tushdi.
 
@@ -121,7 +129,11 @@ Bu loyihada "bajarildi" xabari bir necha marta haqiqatga mos kelmagan.
 
 - Ilova uslubi: **"Tinch tong"** — yorug', Nunito shrifti, to'q ko'k
   `#0f2a4a`, ko'k `#1d6fe0`, zangori `#22b8e6`.
-- **Ota-ona bosh ekrani — hozirgi (bo'ri kartochkali "QALQON AI HIMOYACHI")
+- **Ota-ona bosh ekrani (2026-11-22, egasi "hammasini bajar" dedi):** avval
+  javob ("Madina maktabda", xarita, "Hozir qayerda?" — aefac01 kodi), keyin
+  IXCHAM bo'ri kartasi (fonsiz bo'ri, ilova haqida 1 jumla), keyin "Bugun" va
+  "Haftalik hisobot" kirishi. Bo'ri bosh ekrandan olib tashlanmasin.
+- Eski qaror (tarix uchun): **bo'ri kartochkali "QALQON AI HIMOYACHI"
   qoladi.** 2026-10-22 da "Madina maktabda" bilan boshlanadigan yangi bosh
   ekran qurildi (#82), egasi qaytarishni so'radi: "aslida yaxshi, lekin
   obunachilar ko'payguncha bo'ri va ilova haqidagi ma'lumot asosiy ekranda

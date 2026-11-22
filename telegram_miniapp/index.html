@@ -15,7 +15,7 @@
         qo'shing, aks holda brauzer uni jimgina bloklaydi.
         'unsafe-inline' hozircha shart: tugmalar onclick="..." bilan yozilgan.
     -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://telegram.org https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https://tile.openstreetmap.org https://unpkg.com; connect-src 'self' https://ytjvmmcpmpnaivtzymtq.supabase.co; media-src 'self' data: blob:; worker-src 'self' blob:; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self'">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://telegram.org; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob: https://tile.openstreetmap.org; connect-src 'self' https://ytjvmmcpmpnaivtzymtq.supabase.co; media-src 'self' data: blob:; worker-src 'self' blob:; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self'">
     <!--
         TEZ OCHILISH (2026-10-17). Ilgari bu yerda cdn.tailwindcss.com turardi:
         u har bir ochilishda telefonning O'ZIDA butun CSS'ni noldan yasardi va
@@ -25,20 +25,27 @@
         Plus Jakarta olib tashlandi. Yangi ikonka qo'shilsa — icon_names ga
         ham qo'shing (alifbo tartibida), aks holda u so'z bo'lib ko'rinadi.
     -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&icon_names=apps,battery_charging_full,child_care,distance,family_restroom,home,location_on,map,menu_book,military_tech,person,psychology,school,settings,shield,shield_person,smart_toy,stadia_controller,timer&display=block" rel="stylesheet"/>
-    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;600;700;800;900&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+    <!--
+        2026-11-22: shriftlar endi REPODA (vendor/fonts). Google Fonts sekin
+        yoki yopiq tarmoqda ikonkalar "home", "settings" degan so'z bo'lib
+        chiqardi. Ikonka shrifti faqat kerakli belgilardan iborat —
+        yangi ikonka: tools/fonts/subset_icons.py dagi NOMLAR ga qo'shib,
+        skriptni qayta ishga tushiring.
+    -->
+    <link rel="preload" href="vendor/fonts/material-symbols.woff2?v=1" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="vendor/fonts/fonts.css?v=1">
     <!-- Telegram WebApp SDK -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <!-- Xarita: sahifa chizilishini to'xtatmaydi (defer). L faqat funksiyalar
-         ichida ishlatiladi, defer skriptlar esa DOMContentLoaded'dan oldin tugaydi. -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+         ichida ishlatiladi, defer skriptlar esa DOMContentLoaded'dan oldin tugaydi.
+         Leaflet 1.9.4 repoda (vendor/leaflet): begona CDN (unpkg) buzilsa yoki
+         fayl almashtirilsa, ota-ona paneliga begona kod tushmasligi uchun. -->
+    <link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=1.9.4" />
+    <script defer src="vendor/leaflet/leaflet.js?v=1.9.4"></script>
     <!-- Custom Stitch Styles -->
     <link rel="stylesheet" href="styles.css?v=7.8">
     <link rel="stylesheet" href="splash.css?v=1">
-    <link rel="stylesheet" href="theme-tong.css?v=1">
+    <link rel="stylesheet" href="theme-tong.css?v=3">
     <!-- Tailwind ENG OXIRIDA: CDN versiyasi ham o'z CSS'ini shu yerga qo'shardi
          va styles.css'dan ustun turardi (masalan, .hidden .nav-btn'ni yashiradi).
          Tartib o'zgarsa, yashirin tugmalar ko'rinib qoladi. -->
@@ -981,59 +988,65 @@
     <!-- TAB 1: 📊 DASHBOARD (QALQON AI HIMOYACHI HERO & ASOSIY STATUS) -->
     <!-- ==================================================================== -->
     <main id="tab-dashboard" class="tab-content active space-y-3.5">
-        <!-- 3D Bo'ri Qalqon AI Himoyachi Katta & Kengaytirilgan Hero Card (Erkin va Keng Hoshiyali) -->
-        <section class="glass-panel px-6 py-5 bg-gradient-to-br from-slate-900/95 via-slate-900/90 to-cyan-950/85 border-2 border-cyan-500/50 rounded-3xl relative overflow-hidden shadow-[0_8px_36px_rgba(34,211,238,0.22)]">
-            <!-- Top Badges Row -->
-            <div class="flex items-center justify-between gap-2 mb-3.5 z-10 relative pl-1">
-                <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/20 border border-cyan-400/50 text-cyan-300 text-[11px] font-black uppercase tracking-wider shadow-sm">
-                    <span class="material-symbols-outlined text-sm text-cyan-300">shield</span>
-                    <span>QALQON AI HIMOYACHI</span>
-                </div>
-                <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-bold">
-                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                    <span>Doimiy Himoyada</span>
-                </div>
+        <!-- BOSH EKRAN — "Tinch tong" (2026-10-22). Ota-ona ilovani ochganda
+             birinchi savoli: "farzandim hozir qayerda?". Shuning uchun ekran
+             bitta javob bilan boshlanadi ("Madina maktabda"), keyin xarita,
+             bitta asosiy tugma va bugungi voqealar. Ilgari bu yerda reklama
+             kartochkasi turardi, javob esa ekrandan pastda qolardi.
+             Ma'lumot: radar_status (panel_bootstrap bilan birga keladi),
+             chizadi: boshEkranniChiz() — app.js. -->
+        <section id="boshEkran" class="glass-card p-4 space-y-3">
+            <div>
+                <div id="boshSalom" class="text-[11px] font-semibold text-slate-400">Xayrli kun</div>
+                <h2 id="boshSarlavha" class="text-[19px] font-black text-white leading-tight mt-0.5">Yuklanmoqda…</h2>
             </div>
-
-            <!-- Main Content & Wolf Row with generous left margin -->
-            <div class="flex items-center justify-between gap-3 z-10 relative pl-1">
-                <div class="space-y-2 flex-1 pr-2">
-                    <h2 class="text-xl md:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-teal-200 to-white leading-tight tracking-wide font-display-brand uppercase">
-                        QALQON AI
-                    </h2>
-                    <div class="text-xs font-extrabold text-cyan-200/90 tracking-wide uppercase">
-                        Oila Xavfsizlik & Ta'lim Qalqoni
+            <div class="flex items-center justify-between gap-2">
+                <div class="flex items-center gap-2.5 min-w-0">
+                    <div class="w-11 h-11 shrink-0 rounded-2xl bg-slate-900/60 border border-slate-800 flex items-center justify-center text-2xl">🧒</div>
+                    <div class="min-w-0">
+                        <div id="boshIsm" class="text-sm font-black text-white truncate">—</div>
+                        <div id="boshVaqt" class="text-[11px] text-slate-400 truncate"></div>
                     </div>
-                    <p class="text-xs text-slate-300 leading-relaxed pt-0.5">
-                        Farzandingiz 24/7 aqlli sun'iy intellekt, 100 ballik DTS darsliklari va raqamli odatlar xavfsizligi nazorati ostida.
-                    </p>
                 </div>
-
-                <!-- 3D Bo'ri Render Figurasi -->
-                <div class="w-28 h-36 md:w-34 md:h-40 relative flex-shrink-0 flex items-center justify-center">
-                    <img src="assets/wolf_adult_hero.webp" alt="Qalqon AI Bo'ri Himoyachi" class="w-full h-full object-contain filter drop-shadow-[0_0_24px_rgba(34,211,238,0.65)] transform hover:scale-105 transition duration-300">
-                </div>
+                <span id="boshHolat" class="shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-full bg-slate-700/40 text-slate-300"></span>
             </div>
-
-            <!-- Bottom Tech Tags -->
-            <div class="mt-3.5 pt-3 border-t border-cyan-500/25 flex items-center justify-between text-[10px] text-slate-300 font-semibold z-10 relative px-1">
-                <span class="flex items-center gap-1 text-cyan-300">
-                    <span class="material-symbols-outlined text-xs">psychology</span>
-                    <span>AI do'st</span>
-                </span>
-                <span class="flex items-center gap-1 text-emerald-300">
-                    <span class="material-symbols-outlined text-xs">school</span>
-                    <span>100 Ball DTS</span>
-                </span>
-                <span class="flex items-center gap-1 text-sky-300">
-                    <span class="material-symbols-outlined text-xs">distance</span>
-                    <span>Jonli Radar</span>
-                </span>
-            </div>
-
-            <!-- Orqa Fon Suv Belgisi (Watermark) -->
-            <div class="absolute -right-8 -bottom-10 w-56 h-56 opacity-15 pointer-events-none bg-center bg-no-repeat bg-contain" style="background-image: url('assets/wolf_adult_hero.webp');"></div>
+            <div id="boshXarita" onclick="switchTab('tab-radar')" class="h-40 rounded-2xl overflow-hidden bg-slate-900/40 border border-slate-800 cursor-pointer relative z-0"></div>
+            <button id="boshSoraBtn" onclick="boshJoyniSora()" class="w-full py-3 rounded-2xl bg-gradient-to-r from-cyan-500 to-teal-500 text-white font-black text-sm shadow-md transition">
+                📍 Hozir qayerda? — so'rash
+            </button>
+            <div id="boshBoshqalar" class="space-y-1.5"></div>
+            <style>.yordam-havola{background:#eef4fb;color:#0f2a4a;border:1px solid #dbe7f3;text-decoration:none}.yordam-havola:active{background:#dbe9f7}</style>
         </section>
+
+        <!-- BO'RI KARTASI — ixcham (2026-11-22). Egasi qarori: obunachilar
+             ko'payguncha bo'ri va ilova haqidagi ma'lumot bosh ekranda
+             qoladi. Endi u javobdan ("Madina maktabda") KEYIN turadi va
+             ekranning uchdan birini emas, bir kartani egallaydi.
+             Rasm — fonsiz bo'ri (oq to'rtburchaksiz). -->
+        <section id="boriKarta" class="bori-karta" aria-label="Qalqon AI haqida">
+            <div class="bori-karta-matn">
+                <div class="bori-karta-sarlavha">Qalqon himoyada</div>
+                <p>SOS, maktab va uy xabarlari, AI do'st va 100 ballik DTS darslari — bitta ilovada.</p>
+                <div class="bori-karta-teglar">
+                    <span><span class="material-symbols-outlined">verified_user</span>Doimiy himoya</span>
+                    <span><span class="material-symbols-outlined">psychology</span>AI do'st</span>
+                </div>
+            </div>
+            <img src="assets/qalqon-qoriqchi-kichik.webp" alt="" width="80" height="150" loading="eager" decoding="async">
+        </section>
+
+        <section class="glass-card p-4">
+            <div class="text-sm font-black text-white mb-1.5">Bugun</div>
+            <div id="boshBugun" class="space-y-1"></div>
+        </section>
+
+        <!-- Haftalik AI hisobot — ilgari faqat "Qo'shimcha" ichida edi va
+             ota-onalar uni topmasdi (2026-11-22). -->
+        <button type="button" onclick="openWeeklyReport()" class="haftalik-kirish">
+            <span class="material-symbols-outlined">auto_awesome</span>
+            <span><b>Haftalik hisobot</b><small>AI xulosa, ekran vaqti va suhbat savollari</small></span>
+            <span class="oq">›</span>
+        </button>
 
         <!-- 1. Stitch Status Card (Level 1 Surface with Glow) -->
         <section class="glass-panel p-4 status-glow-safe status-accent-safe relative overflow-hidden">
@@ -2937,18 +2950,77 @@
 
     <!-- Custom JavaScript -->
     <script src="splash.js?v=3"></script>
-    <script src="app.js?v=11.9"></script>
-    <!-- O'yinlar alohida faylda: app.js allaqachon katta, va o'yin kontenti
-         (savollar, kartalar) o'sib boradi. Alohida fayl brauzerda alohida
-         keshlanadi — o'yin qo'shilsa, butun ilova qayta yuklanmaydi. -->
-    <script src="games.js?v=10"></script>
-    <script src="arcade.js?v=6"></script>
-    <!-- Do'st bilan online o'yinlar: sim.js serverdagi nusxa bilan AYNAN bir xil bo'lishi shart. -->
-    <script src="sim.js?v=1"></script>
-    <script src="online.js?v=2"></script>
+    <!--
+        KECH YUKLASH (2026-11-22). O'yinlar (games/arcade/online/sim, ~170 KB)
+        faqat farzandga, rus tili lug'ati (~150 KB) faqat rus tilini
+        tanlaganga kerak. Ilgari ular har ochilishda ota-onaga ham yuklanib,
+        panelni sekin tarmoqda ~2,5 s kechiktirardi.
+
+        Tashqaridan chaqiriladigan funksiyalar (renderGamesGrid, openGame,
+        closeGame, acceptPlayFromUrl, openFamilyMatches) uchun bu yerda
+        vaqtinchalik "o'rinbosar" turadi: birinchi chaqiruvda fayllarni
+        yuklaydi, keyin haqiqiy funksiyani chaqiradi. Fayl yuklangach, uning
+        o'z funksiyasi o'rinbosarni almashtiradi.
+        YANGI FUNKSIYA app.js/index.html dan o'yin fayliga murojaat qilsa —
+        uni QALQON_OYIN_KIRISH ro'yxatiga qo'shing.
+        Fayl versiyasini (?v=) shu yerda oshiring.
+    -->
+    <script>
+    (function () {
+        var kesh = {};
+        function yukla(src) {
+            if (!kesh[src]) kesh[src] = new Promise(function (ok, xato) {
+                var s = document.createElement('script');
+                s.src = src;
+                s.onload = ok;
+                s.onerror = function () { delete kesh[src]; xato(new Error(src + ' yuklanmadi')); };
+                document.body.appendChild(s);
+            });
+            return kesh[src];
+        }
+        // Tartib muhim: online.js sim.js ga tayanadi.
+        function oyinlar() {
+            return yukla('sim.js?v=1')
+                .then(function () { return yukla('games.js?v=10'); })
+                .then(function () { return yukla('arcade.js?v=6'); })
+                .then(function () { return yukla('online.js?v=2'); });
+        }
+        window.qalqonOyinlarniYukla = oyinlar;
+        var QALQON_OYIN_KIRISH = ['renderGamesGrid', 'openGame', 'closeGame', 'acceptPlayFromUrl', 'openFamilyMatches'];
+        QALQON_OYIN_KIRISH.forEach(function (nom) {
+            var orinbosar = function () {
+                var args = arguments;
+                return oyinlar().then(function () {
+                    if (window[nom] !== orinbosar) return window[nom].apply(window, args);
+                }).catch(function (e) { console.error(e); });
+            };
+            window[nom] = orinbosar;
+        });
+
+        function ruKerakmi() {
+            try { return (typeof currentLang !== 'undefined' ? currentLang : (new URLSearchParams(location.search).get('lang') || localStorage.getItem('app_lang'))) === 'ru'; }
+            catch (e) { return false; }
+        }
+        var ruOrinbosar = function () {
+            if (!ruKerakmi()) return;
+            yukla('i18n_ru.js?v=5').then(function () {
+                if (window.qalqonApplyRu !== ruOrinbosar) window.qalqonApplyRu();
+            }).catch(function (e) { console.error(e); });
+        };
+        window.qalqonApplyRu = ruOrinbosar;
+        if (ruKerakmi()) ruOrinbosar();
+
+        // Farzand panelida o'yinlar tez ochilsin: panel chizilgach, bo'sh
+        // paytda oldindan yuklab qo'yamiz.
+        window.addEventListener('load', function () {
+            var rol = '';
+            try { rol = (typeof currentAppRole !== 'undefined' && currentAppRole) || localStorage.getItem('app_role') || ''; } catch (e) {}
+            if (rol === 'child') setTimeout(function () { oyinlar().catch(function () {}); }, 1500);
+        });
+    })();
+    </script>
+    <script src="app.js?v=12.0"></script>
     <script src="chat.js?v=2"></script>
     <script src="advice.js?v=1"></script>
-    <!-- Rus tili: sahifadagi barcha matnni lug'at bo'yicha o'giradi (keyin paydo bo'ladiganini ham). -->
-    <script src="i18n_ru.js?v=4"></script>
 </body>
 </html>
