@@ -44,10 +44,12 @@ jobs:
         with:
           version: latest
 
+      # --yes: yangi Supabase CLI deploy oldidan tasdiq so'raydi; CI terminal
+      # emas, so'rolmasa hech narsa qilmay chiqib ketadi.
       # --no-verify-jwt majburiy: Telegram webhook JWT yubormaydi, usiz bot
       # har bir xabarga 401 qaytarib, butunlay jim qoladi.
       - name: Deploy
-        run: supabase functions deploy ota-ona-bot --project-ref "$PROJECT_REF" --no-verify-jwt --use-api
+        run: supabase functions deploy ota-ona-bot --project-ref "$PROJECT_REF" --no-verify-jwt --use-api --yes
 
       # Deploy "muvaffaqiyatli" deyilishi funksiya ishlayapti degani emas.
       # Autentifikatsiyasiz so'rovga 401 qaytsa — funksiya ko'tarilgan va
