@@ -63,7 +63,7 @@ Kod ichidagi escape'li matnlarni Edit vositasi yoki .py fayl orqali yozing.
 - **Server:** `main` ga `supabase/functions/**` o'zgarishi tushganda
   `.github/workflows/deploy-function.yml` uni avtomatik deploy qiladi
   (GitHub sekreti `SUPABASE_ACCESS_TOKEN`). Qo'lda:
-  `npx -y supabase@latest functions deploy ota-ona-bot --project-ref ytjvmmcpmpnaivtzymtq --no-verify-jwt --use-api`.
+  `npx -y supabase@latest functions deploy ota-ona-bot --project-ref ytjvmmcpmpnaivtzymtq --no-verify-jwt --use-api --yes`.
   `--no-verify-jwt` **majburiy** — Telegram webhook JWT yubormaydi.
   Supabase loyihasi: **`qalqon-ai` (`ytjvmmcpmpnaivtzymtq`, Frankfurt)**.
   Eski `xodim-intizom` (`wfrclcwjeeqeqchmdhzw`, Sidney) — endi faqat "Xodim
